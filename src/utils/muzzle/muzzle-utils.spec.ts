@@ -29,6 +29,10 @@ describe("muzzle-utils", () => {
     clock.reset();
   });
 
+  after(() => {
+    clock.uninstall();
+  });
+
   describe("addUserToMuzzled()", () => {
     describe("muzzled", () => {
       it("should add a user to the muzzled map", () => {
