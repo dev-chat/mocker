@@ -51,13 +51,14 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
   res.send({ challenge: request.challenge });
 });
 
-muzzleRoutes.post("/muzzle", (req: Request, res: Response) => {
+muzzleRoutes.post("/muzzle", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
   const userId: string = getUserId(request.text);
   const userName: string = getUserName(request.text);
-  try {
-    res.send(addUserToMuzzled(userId, userName, request.user_id));
-  } catch (e) {
-    res.send(e.message);
-  }
+  const results = await addUserToMuzzled(
+    userId,
+    userName,
+    request.user_id
+  ).catch(e => res.send(e));
+  res.send(results);
 });

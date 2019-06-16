@@ -46,36 +46,38 @@ describe("muzzle-utils", () => {
         );
       });
 
-      it("should throw an error if a user tries to muzzle an already muzzled user", () => {
-        addUserToMuzzled(
+      it("should throw an error if a user tries to muzzle an already muzzled user", async () => {
+        await addUserToMuzzled(
           testData.user,
           testData.friendlyName,
           testData.requestor
         );
         expect(muzzled.has(testData.user)).to.equal(true);
-        expect(() =>
-          addUserToMuzzled(
-            testData.user,
-            testData.friendlyName,
-            testData.requestor
-          )
-        ).to.throw(`${testData.friendlyName} is already muzzled!`);
+        await addUserToMuzzled(
+          testData.user,
+          testData.friendlyName,
+          testData.requestor
+        ).catch(e => {
+          expect(e).to.equal(`${testData.friendlyName} is already muzzled!`);
+        });
       });
 
-      it("should throw an error if a requestor tries to muzzle someone while the requestor is muzzled", () => {
-        addUserToMuzzled(
+      it("should throw an error if a requestor tries to muzzle someone while the requestor is muzzled", async () => {
+        await addUserToMuzzled(
           testData.user,
           testData.friendlyName,
           testData.requestor
         );
         expect(muzzled.has(testData.user)).to.equal(true);
-        expect(() =>
-          addUserToMuzzled(
-            testData.requestor,
-            testData.friendlyName,
-            testData.user
-          )
-        ).to.throw(`You can't muzzle someone if you are already muzzled!`);
+        await addUserToMuzzled(
+          testData.requestor,
+          testData.friendlyName,
+          testData.user
+        ).catch(e => {
+          expect(e).to.equal(
+            `You can't muzzle someone if you are already muzzled!`
+          );
+        });
       });
     });
 
@@ -116,25 +118,25 @@ describe("muzzle-utils", () => {
         expect(muzzlers.get(testData.requestor)!.muzzleCount).to.equal(2);
       });
 
-      it("should prevent a requestor from muzzling on their third count", () => {
-        addUserToMuzzled(
+      it("should prevent a requestor from muzzling on their third count", async () => {
+        await addUserToMuzzled(
           testData.user,
           testData.friendlyName,
           testData.requestor
         );
-        addUserToMuzzled(
+        await addUserToMuzzled(
           testData.user2,
           testData.friendlyName,
           testData.requestor
         );
-        expect(() =>
-          addUserToMuzzled(
-            testData.user3,
-            testData.friendlyName,
-            testData.requestor
+        await addUserToMuzzled(
+          testData.user3,
+          testData.friendlyName,
+          testData.requestor
+        ).catch(e =>
+          expect(e).to.equal(
+            `You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`
           )
-        ).to.throw(
-          `You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`
         );
       });
     });
