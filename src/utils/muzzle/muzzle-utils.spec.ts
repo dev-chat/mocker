@@ -57,7 +57,7 @@ describe("muzzle-utils", () => {
         );
       });
 
-      it("should throw an error if a user tries to muzzle an already muzzled user", async () => {
+      it("should reject if a user tries to muzzle an already muzzled user", async () => {
         await addUserToMuzzled(
           testData.user,
           testData.friendlyName,
@@ -73,7 +73,7 @@ describe("muzzle-utils", () => {
         });
       });
 
-      it("should throw an error if a requestor tries to muzzle someone while the requestor is muzzled", async () => {
+      it("should reject if a requestor tries to muzzle someone while the requestor is muzzled", async () => {
         await addUserToMuzzled(
           testData.user,
           testData.friendlyName,
