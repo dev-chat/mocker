@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as lolex from "lolex";
 import {
   addUserToMuzzled,
   MAX_MUZZLES,
@@ -17,9 +18,15 @@ describe("muzzle-utils", () => {
     requestor: "test-requestor"
   };
 
+  const clock = lolex.install();
+
   beforeEach(() => {
     muzzled.clear();
     muzzlers.clear();
+  });
+
+  afterEach(() => {
+    clock.reset();
   });
 
   describe("addUserToMuzzled()", () => {
