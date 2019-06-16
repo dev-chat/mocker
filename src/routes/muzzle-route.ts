@@ -60,5 +60,7 @@ muzzleRoutes.post("/muzzle", async (req: Request, res: Response) => {
     userName,
     request.user_id
   ).catch(e => res.send(e));
-  res.send(results);
+  if (results) {
+    res.send(results);
+  }
 });
