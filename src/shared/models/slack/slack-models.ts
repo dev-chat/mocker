@@ -28,6 +28,7 @@ export interface IEvent {
   subtype: string;
   text: string;
   user: string;
+  username: string;
   ts: string;
   channel: string;
   event_ts: string;

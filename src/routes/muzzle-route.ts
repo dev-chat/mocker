@@ -34,7 +34,8 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
     }
   } else if (
     request.event.subtype === "bot_message" &&
-    muzzled.has(request.authed_users[0])
+    muzzled.has(request.authed_users[0]) &&
+    request.event.username !== "muzzle"
   ) {
     console.log(
       `${
