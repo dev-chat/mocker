@@ -1,8 +1,4 @@
-import {
-  ChatDeleteArguments,
-  ChatPostMessageArguments,
-  WebClient
-} from "@slack/web-api";
+import { WebClient } from "@slack/web-api";
 import express, { Request, Response, Router } from "express";
 import {
   IEventRequest,
@@ -10,8 +6,10 @@ import {
 } from "../shared/models/slack/slack-models";
 import {
   addUserToMuzzled,
+  deleteMessage,
   muzzle,
-  muzzled
+  muzzled,
+  sendMessage
 } from "../utils/muzzle/muzzle-utils";
 import { getUserId, getUserName } from "../utils/slack/slack-utils";
 
@@ -22,31 +20,32 @@ const MAX_SUPPRESSIONS: number = 7;
 
 muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
-  console.log(request);
+  console.log(JSON.stringify(request));
   if (muzzled.has(request.event.user)) {
     console.log(`${request.event.user} is muzzled! Suppressing his voice...`);
-    const deleteRequest: ChatDeleteArguments = {
-      token: muzzleToken,
-      channel: request.event.channel,
-      ts: request.event.ts,
-      as_user: true
-    };
-
-    web.chat.delete(deleteRequest).catch(e => console.error(e));
+    deleteMessage(request.event.channel, request.event.ts, web);
 
     if (muzzled.get(request.event.user)!.suppressionCount < MAX_SUPPRESSIONS) {
       muzzled.set(request.event.user, {
         suppressionCount: ++muzzled.get(request.event.user)!.suppressionCount,
         muzzledBy: muzzled.get(request.event.user)!.muzzledBy
       });
-
-      const postRequest: ChatPostMessageArguments = {
-        token: muzzleToken,
-        channel: request.event.channel,
-        text: `<@${request.event.user}> says "${muzzle(request.event.text)}"`
-      };
-      web.chat.postMessage(postRequest).catch(e => console.error(e));
+      sendMessage(
+        request.event.channel,
+        `<@${request.event.user}> says "${muzzle(request.event.text)}"`,
+        web
+      );
     }
+  } else if (
+    request.event.subtype === "bot_message" &&
+    muzzled.has(request.event.authed_users[0])
+  ) {
+    console.log(
+      `${
+        request.event.authed_users[0]
+      } is muzzled and tried to send a bot message! Suppressing...`
+    );
+    deleteMessage(request.event.channel, request.event.ts, web);
   }
   res.send({ challenge: request.challenge });
 });
