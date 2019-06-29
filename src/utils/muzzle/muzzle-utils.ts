@@ -15,9 +15,17 @@ export function muzzle(text: string) {
   let returnText = "";
   const words = text.split(" ");
   for (const word of words) {
-    returnText += isRandomEven() ? ` *${word}* ` : " ..mMm.. ";
+    returnText +=
+      isRandomEven() && !containsAt(word) ? ` *${word}* ` : " ..mMm.. ";
   }
   return returnText;
+}
+
+/**
+ * Determines whether or not a user is trying to @ someone while muzzled.
+ */
+export function containsAt(word: string): boolean {
+  return word.includes("@");
 }
 
 /**

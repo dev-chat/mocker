@@ -2,7 +2,9 @@ import { expect } from "chai";
 import * as lolex from "lolex";
 import {
   addUserToMuzzled,
+  containsAt,
   MAX_MUZZLES,
+  muzzle,
   muzzled,
   muzzlers,
   removeMuzzle,
@@ -182,6 +184,28 @@ describe("muzzle-utils", () => {
       removeMuzzler(testData.requestor);
       expect(muzzlers.has(testData.requestor)).to.equal(false);
       expect(muzzlers.size).to.equal(0);
+    });
+  });
+
+  describe("containsAt()", () => {
+    it("should return true if a word has @ in it", () => {
+      const testWord = "@channel";
+      expect(containsAt(testWord)).to.equal(true);
+    });
+
+    it("should return false if a word does not include @", () => {
+      const testWord = "test";
+      expect(containsAt(testWord)).to.equal(false);
+    });
+  });
+
+  describe("muzzle()", () => {
+    it("should always muzzle @", () => {
+      const testSentence =
+        "@channel @channel @channel @channel @channel @channel @channel @jrjrjr @fudka";
+      expect(muzzle(testSentence)).to.equal(
+        " ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm.. "
+      );
     });
   });
 });
