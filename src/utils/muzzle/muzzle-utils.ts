@@ -13,6 +13,8 @@ export const muzzlers: Map<string, IMuzzler> = new Map();
 const MAX_MUZZLE_TIME = 3600000;
 const MAX_TIME_BETWEEN_MUZZLES = 3600000;
 export const MAX_MUZZLES = 2;
+
+const web: WebClient = new WebClient(process.env.muzzleBotToken);
 /**
  * Takes in text and randomly muzzles certain words.
  */
@@ -147,8 +149,10 @@ export function removeMuzzle(user: string) {
 export function isRandomEven() {
   return Math.floor(Math.random() * 2) % 2 === 0;
 }
-
-export function deleteMessage(channel: string, ts: string, web: WebClient) {
+/**
+ * Handles deletion of any messages inside of slack when given the proper paramters.
+ */
+export function deleteMessage(channel: string, ts: string) {
   const muzzleToken: any = process.env.muzzleBotToken;
   const deleteRequest: ChatDeleteArguments = {
     token: muzzleToken,
@@ -160,7 +164,7 @@ export function deleteMessage(channel: string, ts: string, web: WebClient) {
   web.chat.delete(deleteRequest).catch(e => console.error(e));
 }
 
-export function sendMessage(channel: string, text: string, web: WebClient) {
+export function sendMessage(channel: string, text: string) {
   const muzzleToken: any = process.env.muzzleBotToken;
   const postRequest: ChatPostMessageArguments = {
     token: muzzleToken,

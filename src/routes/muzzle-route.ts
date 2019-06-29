@@ -1,4 +1,3 @@
-import { WebClient } from "@slack/web-api";
 import express, { Request, Response, Router } from "express";
 import {
   IEventRequest,
@@ -14,8 +13,6 @@ import {
 import { getUserId, getUserName } from "../utils/slack/slack-utils";
 
 export const muzzleRoutes: Router = express.Router();
-const muzzleToken: any = process.env.muzzleBotToken;
-const web: WebClient = new WebClient(muzzleToken);
 const MAX_SUPPRESSIONS: number = 7;
 
 muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
@@ -23,7 +20,7 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
   console.log(request);
   if (muzzled.has(request.event.user)) {
     console.log(`${request.event.user} is muzzled! Suppressing his voice...`);
-    deleteMessage(request.event.channel, request.event.ts, web);
+    deleteMessage(request.event.channel, request.event.ts);
 
     if (muzzled.get(request.event.user)!.suppressionCount < MAX_SUPPRESSIONS) {
       muzzled.set(request.event.user, {
@@ -32,8 +29,7 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
       });
       sendMessage(
         request.event.channel,
-        `<@${request.event.user}> says "${muzzle(request.event.text)}"`,
-        web
+        `<@${request.event.user}> says "${muzzle(request.event.text)}"`
       );
     }
   } else if (
@@ -45,7 +41,7 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
         request.authed_users[0]
       } is muzzled and tried to send a bot message! Suppressing...`
     );
-    deleteMessage(request.event.channel, request.event.ts, web);
+    deleteMessage(request.event.channel, request.event.ts);
   }
   res.send({ challenge: request.challenge });
 });
