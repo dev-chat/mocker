@@ -197,6 +197,11 @@ describe("muzzle-utils", () => {
       const testWord = "test";
       expect(containsAt(testWord)).to.equal(false);
     });
+
+    it("should return true if a word has <!channel> in it", () => {
+      const testWord = "<!channel>";
+      expect(containsAt(testWord)).to.equal(true);
+    });
   });
 
   describe("muzzle()", () => {
