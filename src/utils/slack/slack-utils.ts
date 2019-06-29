@@ -7,7 +7,7 @@ import { web } from "../muzzle/muzzle-utils";
 
 const userIdRegEx = /@\w+/gm;
 
-let userList: ISlackUser[];
+export let userList: ISlackUser[];
 
 export function sendResponse(
   responseUrl: string,
@@ -35,6 +35,14 @@ export function getUserId(user: string): string {
 
 export function getUserById(userId: string) {
   return userList.find((user: ISlackUser) => user.id === userId);
+}
+
+/**
+ * TO BE USED EXCLUSIVELY FOR TESTING. WE SHOULD *NEVER* be setting the userList manually
+ * This should be handled by getAllUsers() only.
+ */
+export function setUserList(list: ISlackUser[]) {
+  userList = list;
 }
 
 export function getAllUsers() {

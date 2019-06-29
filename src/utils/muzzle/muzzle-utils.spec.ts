@@ -1,5 +1,7 @@
 import { expect } from "chai";
 import * as lolex from "lolex";
+import { ISlackUser } from "../../shared/models/slack/slack-models";
+import { setUserList } from "../slack/slack-utils";
 import {
   addUserToMuzzled,
   containsAt,
@@ -13,11 +15,10 @@ import {
 
 describe("muzzle-utils", () => {
   const testData = {
-    user: "test-user",
-    user2: "test-user2",
-    user3: "test-user3",
-    friendlyName: "test-muzzler",
-    requestor: "test-requestor"
+    user: "123",
+    user2: "456",
+    user3: "789",
+    requestor: "666"
   };
 
   const clock = lolex.install();
@@ -25,6 +26,12 @@ describe("muzzle-utils", () => {
   beforeEach(() => {
     muzzled.clear();
     muzzlers.clear();
+    setUserList([
+      { id: "123", name: "test123" },
+      { id: "456", name: "test456" },
+      { id: "789", name: "test789" },
+      { id: "666", name: "requestor" }
+    ] as ISlackUser[]);
   });
 
   afterEach(() => {
@@ -55,7 +62,7 @@ describe("muzzle-utils", () => {
         await addUserToMuzzled(testData.user, testData.requestor);
         expect(muzzled.has(testData.user)).to.equal(true);
         await addUserToMuzzled(testData.user, testData.requestor).catch(e => {
-          expect(e).to.equal(`${testData.friendlyName} is already muzzled!`);
+          expect(e).to.equal("test123 is already muzzled!");
         });
       });
 
