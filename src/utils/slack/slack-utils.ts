@@ -7,7 +7,7 @@ import { web } from "../muzzle/muzzle-utils";
 
 const userIdRegEx = /@\w+/gm;
 
-export let userList: ISlackUser[];
+let userList: ISlackUser[];
 
 export function sendResponse(
   responseUrl: string,
@@ -41,6 +41,7 @@ export function getAllUsers() {
   web.users
     .list()
     .then(resp => {
+      console.log("Set users as ", resp.users);
       userList = resp.users as ISlackUser[];
     })
     .catch(e => {
