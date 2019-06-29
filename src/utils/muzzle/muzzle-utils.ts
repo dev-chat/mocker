@@ -4,6 +4,7 @@ import {
   WebClient
 } from "@slack/web-api";
 import { IMuzzled, IMuzzler } from "../../shared/models/muzzle/muzzle-models";
+import { getUserName } from "../slack/slack-utils";
 // Store for the muzzled users.
 export const muzzled: Map<string, IMuzzled> = new Map();
 // Store for people who are muzzling others.
@@ -39,76 +40,74 @@ export function containsAt(word: string): boolean {
 /**
  * Adds a user to the muzzled array and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
  */
-export function addUserToMuzzled(
-  toMuzzle: string,
-  friendlyMuzzle: string,
-  requestor: string
-) {
+export function addUserToMuzzled(userId: string, requestorId: string) {
+  const userName = getUserName(userId);
+  const requestorName = getUserName(requestorId);
   return new Promise((resolve, reject) => {
     const timeToMuzzle = Math.floor(
       Math.random() * (180000 - 30000 + 1) + 30000
     );
     const minutes = Math.floor(timeToMuzzle / 60000);
     const seconds = ((timeToMuzzle % 60000) / 1000).toFixed(0);
-    if (muzzled.has(toMuzzle)) {
+    if (muzzled.has(userId)) {
       console.error(
-        `${requestor} attempted to muzzle ${toMuzzle} but ${toMuzzle} is already muzzled.`
+        `${requestorName} attempted to muzzle ${userName} but ${userName} is already muzzled.`
       );
-      reject(`${friendlyMuzzle} is already muzzled!`);
-    } else if (muzzled.has(requestor)) {
+      reject(`${userName} is already muzzled!`);
+    } else if (muzzled.has(requestorName)) {
       console.error(
-        `User: ${requestor} attempted to muzzle ${toMuzzle} but failed because requestor: ${requestor} is currently muzzled`
+        `User: ${requestorName} attempted to muzzle ${userName} but failed because requestor: ${requestorName} is currently muzzled`
       );
       reject(`You can't muzzle someone if you are already muzzled!`);
     } else if (
-      muzzlers.has(requestor) &&
-      muzzlers.get(requestor)!.muzzleCount === MAX_MUZZLES
+      muzzlers.has(requestorId) &&
+      muzzlers.get(requestorId)!.muzzleCount === MAX_MUZZLES
     ) {
       console.error(
-        `User: ${requestor} attempted to muzzle ${toMuzzle} but failed because requestor: ${requestor} has reached maximum muzzle of ${MAX_MUZZLES}`
+        `User: ${requestorName} attempted to muzzle ${userName} but failed because requestor: ${requestorName} has reached maximum muzzle of ${MAX_MUZZLES}`
       );
       reject(
         `You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`
       );
     } else {
       // Add a newly muzzled user.
-      muzzled.set(toMuzzle, {
+      muzzled.set(userId, {
         suppressionCount: 0,
-        muzzledBy: requestor
+        muzzledBy: requestorId
       });
-      const muzzleCount = muzzlers.has(requestor)
-        ? ++muzzlers.get(requestor)!.muzzleCount
+      const muzzleCount = muzzlers.has(requestorId)
+        ? ++muzzlers.get(requestorId)!.muzzleCount
         : 1;
       // Add requestor to muzzlers
-      muzzlers.set(requestor, {
+      muzzlers.set(requestorId, {
         muzzleCount,
         muzzleCountRemover: setTimeout(
-          () => decrementMuzzleCount(requestor),
+          () => decrementMuzzleCount(requestorId),
           MAX_TIME_BETWEEN_MUZZLES
         )
       });
 
       if (
-        muzzlers.has(requestor) &&
-        muzzlers.get(requestor)!.muzzleCountRemover
+        muzzlers.has(requestorId) &&
+        muzzlers.get(requestorId)!.muzzleCountRemover
       ) {
-        const currentTimer = muzzlers.get(requestor)!.muzzleCountRemover;
+        const currentTimer = muzzlers.get(requestorId)!.muzzleCountRemover;
         clearTimeout(currentTimer as NodeJS.Timeout);
         const removalFunction =
-          muzzlers.get(requestor)!.muzzleCount === MAX_MUZZLES
-            ? () => removeMuzzler(requestor)
-            : () => decrementMuzzleCount(requestor);
-        muzzlers.set(requestor, {
-          muzzleCount: muzzlers.get(requestor)!.muzzleCount,
+          muzzlers.get(requestorId)!.muzzleCount === MAX_MUZZLES
+            ? () => removeMuzzler(requestorId)
+            : () => decrementMuzzleCount(requestorId);
+        muzzlers.set(requestorId, {
+          muzzleCount: muzzlers.get(requestorId)!.muzzleCount,
           muzzleCountRemover: setTimeout(removalFunction, MAX_MUZZLE_TIME)
         });
       }
       console.log(
-        `${friendlyMuzzle} is now muzzled for ${timeToMuzzle} milliseconds`
+        `${userName} is now muzzled for ${timeToMuzzle} milliseconds`
       );
-      setTimeout(() => removeMuzzle(toMuzzle), timeToMuzzle);
+      setTimeout(() => removeMuzzle(userId), timeToMuzzle);
       resolve(
-        `Succesfully muzzled ${friendlyMuzzle} for ${
+        `Succesfully muzzled ${userName} for ${
           +seconds === 60
             ? minutes + 1 + "m00s"
             : minutes + "m" + (+seconds < 10 ? "0" : "") + seconds + "s"
@@ -118,19 +117,19 @@ export function addUserToMuzzled(
   });
 }
 
-export function decrementMuzzleCount(requestor: string) {
-  if (muzzlers.has(requestor)) {
-    const decrementedMuzzle = --muzzlers.get(requestor)!.muzzleCount;
-    muzzlers.set(requestor, {
+export function decrementMuzzleCount(requestorId: string) {
+  if (muzzlers.has(requestorId)) {
+    const decrementedMuzzle = --muzzlers.get(requestorId)!.muzzleCount;
+    muzzlers.set(requestorId, {
       muzzleCount: decrementedMuzzle,
-      muzzleCountRemover: muzzlers.get(requestor)!.muzzleCountRemover
+      muzzleCountRemover: muzzlers.get(requestorId)!.muzzleCountRemover
     });
     console.log(
-      `Successfully decremented ${requestor} muzzleCount to ${decrementedMuzzle}`
+      `Successfully decremented ${requestorId} muzzleCount to ${decrementedMuzzle}`
     );
   } else {
     console.error(
-      `Attemped to decrement muzzle count for ${requestor} but they did not exist!`
+      `Attemped to decrement muzzle count for ${requestorId} but they did not exist!`
     );
   }
 }
