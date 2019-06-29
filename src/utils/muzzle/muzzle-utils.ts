@@ -166,8 +166,8 @@ export function deleteMessage(channel: string, ts: string) {
       console.log("Message already deleted, no need to retry");
     } else {
       console.error(e);
-      console.error("Retrying...");
-      setTimeout(() => deleteMessage(channel, ts), 30000);
+      console.error("Retrying in 5 seconds...");
+      setTimeout(() => deleteMessage(channel, ts), 5000);
     }
   });
 }
