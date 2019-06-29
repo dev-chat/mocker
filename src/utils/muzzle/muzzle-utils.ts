@@ -164,7 +164,7 @@ export function deleteMessage(channel: string, ts: string) {
   web.chat.delete(deleteRequest).catch(e => {
     console.error(e);
     console.error("Retrying...");
-    setTimeout(() => deleteMessage(channel, ts), 5000);
+    setTimeout(() => deleteMessage(channel, ts), 30000);
   });
 }
 
