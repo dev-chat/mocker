@@ -9,7 +9,7 @@ import { getUserId, getUserName } from "../slack/slack-utils";
 // Store for the muzzled users.
 export const muzzled: Map<string, IMuzzled> = new Map();
 // Store for people who are muzzling others.
-export const muzzlers: Map<string, IMuzzler> = new Map();
+export const requestors: Map<string, IMuzzler> = new Map();
 
 // Time period in which a user must wait before making more muzzles.
 const MAX_MUZZLE_TIME = 3600000;
@@ -62,7 +62,8 @@ export function getTimeString(time: number) {
  */
 function isMaxMuzzlesReached(userId: string) {
   return (
-    muzzlers.has(userId) && muzzlers.get(userId)!.muzzleCount === MAX_MUZZLES
+    requestors.has(userId) &&
+    requestors.get(userId)!.muzzleCount === MAX_MUZZLES
   );
 }
 
@@ -88,31 +89,31 @@ export function shouldBotMessageBeMuzzled(request: IEventRequest) {
 }
 
 /**
- * Adds a requestor to the muzzlers array with a muzzleCount to track how many muzzles have been performed, as well as a removal funciton.
+ * Adds a requestor to the requestors array with a muzzleCount to track how many muzzles have been performed, as well as a removal funciton.
  */
 function setMuzzlerCount(requestorId: string) {
-  const muzzleCount = muzzlers.has(requestorId)
-    ? ++muzzlers.get(requestorId)!.muzzleCount
+  const muzzleCount = requestors.has(requestorId)
+    ? ++requestors.get(requestorId)!.muzzleCount
     : 1;
 
-  if (muzzlers.has(requestorId)) {
-    clearTimeout(muzzlers.get(requestorId)!
+  if (requestors.has(requestorId)) {
+    clearTimeout(requestors.get(requestorId)!
       .muzzleCountRemover as NodeJS.Timeout);
   }
 
   const removalFunction =
-    muzzlers.has(requestorId) &&
-    muzzlers.get(requestorId)!.muzzleCount === MAX_MUZZLES
+    requestors.has(requestorId) &&
+    requestors.get(requestorId)!.muzzleCount === MAX_MUZZLES
       ? () => removeMuzzler(requestorId)
       : () => decrementMuzzleCount(requestorId);
-  muzzlers.set(requestorId, {
+  requestors.set(requestorId, {
     muzzleCount,
     muzzleCountRemover: setTimeout(removalFunction, MAX_TIME_BETWEEN_MUZZLES)
   });
 }
 
 /**
- * Adds a userId to the muzzled array, adds the requestorId to the muzzlersArray, sets timeout for removeMuzzler.
+ * Adds a userId to the muzzled array, adds the requestorId to the requestorsArray, sets timeout for removeMuzzler.
  */
 function muzzleUser(userId: string, requestorId: string, timeToMuzzle: number) {
   muzzled.set(userId, {
@@ -162,11 +163,11 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
 }
 
 export function decrementMuzzleCount(requestorId: string) {
-  if (muzzlers.has(requestorId)) {
-    const decrementedMuzzle = --muzzlers.get(requestorId)!.muzzleCount;
-    muzzlers.set(requestorId, {
+  if (requestors.has(requestorId)) {
+    const decrementedMuzzle = --requestors.get(requestorId)!.muzzleCount;
+    requestors.set(requestorId, {
       muzzleCount: decrementedMuzzle,
-      muzzleCountRemover: muzzlers.get(requestorId)!.muzzleCountRemover
+      muzzleCountRemover: requestors.get(requestorId)!.muzzleCountRemover
     });
     console.log(
       `Successfully decremented ${requestorId} muzzleCount to ${decrementedMuzzle}`
@@ -179,9 +180,9 @@ export function decrementMuzzleCount(requestorId: string) {
 }
 
 export function removeMuzzler(user: string) {
-  muzzlers.delete(user);
+  requestors.delete(user);
   console.log(
-    `${MAX_MUZZLE_TIME} has passed since ${user} last successful muzzle. They have been removed from muzzlers.`
+    `${MAX_MUZZLE_TIME} has passed since ${user} last successful muzzle. They have been removed from requestors.`
   );
 }
 
