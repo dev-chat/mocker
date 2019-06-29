@@ -42,7 +42,7 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
   ) {
     console.log(
       `${
-        request.event.authed_users[0]
+        request.authed_users[0]
       } is muzzled and tried to send a bot message! Suppressing...`
     );
     deleteMessage(request.event.channel, request.event.ts, web);
