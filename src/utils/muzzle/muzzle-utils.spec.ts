@@ -215,7 +215,7 @@ describe("muzzle-utils", () => {
 
     it("should always muzzle <!channel>", () => {
       const testSentence = "<!channel> hey guys";
-      expect(muzzle(testSentence)).to.equal(" ..mMm..  ..mMm..  ..mMm.. ");
+      expect(muzzle(testSentence).includes("<!channel>")).to.equal(false);
     });
   });
 });

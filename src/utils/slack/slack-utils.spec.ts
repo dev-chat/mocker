@@ -1,16 +1,22 @@
 import { expect } from "chai";
-import { getUserId, getUserName } from "./slack-utils";
+import { getUserId } from "./slack-utils";
 
-const mockSlackIdString = "<@U12345678|jrjrjr>";
 describe("slack-utils", () => {
-  describe("getUserName()", () => {
-    it("should return the username from a slack formatted id string", () => {
-      expect(getUserName(mockSlackIdString)).to.equal("jrjrjr");
-    });
-  });
   describe("getUserId()", () => {
-    it("should return the user id from a slack formatted id string", () => {
-      expect(getUserId(mockSlackIdString)).to.equal("U12345678");
+    it("should return a userId when one is passed in without a username", () => {
+      expect(getUserId("<@U2TYNKJ>")).to.equal("U2TYNKJ");
+    });
+
+    it("should return a userId when one is passed in with a username with spaces", () => {
+      expect(getUserId("<@U2TYNKJ | jrjrjr>")).to.equal("U2TYNKJ");
+    });
+
+    it("should return a userId when one is passed in with a username without spaces", () => {
+      expect(getUserId("<@U2TYNKJ|jrjrjr>")).to.equal("U2TYNKJ");
+    });
+
+    it("should return an empty string when no userId exists", () => {
+      expect(getUserId("total waste of time")).to.equal("");
     });
   });
 });

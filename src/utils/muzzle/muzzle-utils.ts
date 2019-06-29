@@ -14,7 +14,8 @@ const MAX_MUZZLE_TIME = 3600000;
 const MAX_TIME_BETWEEN_MUZZLES = 3600000;
 export const MAX_MUZZLES = 2;
 
-const web: WebClient = new WebClient(process.env.muzzleBotToken);
+export const web: WebClient = new WebClient(process.env.muzzleBotToken);
+
 /**
  * Takes in text and randomly muzzles certain words.
  */
