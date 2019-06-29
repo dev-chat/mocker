@@ -150,7 +150,7 @@ export function isRandomEven() {
   return Math.floor(Math.random() * 2) % 2 === 0;
 }
 /**
- * Handles deletion of any messages inside of slack when given the proper paramters.
+ * Handles deletion of messages.
  */
 export function deleteMessage(channel: string, ts: string) {
   const muzzleToken: any = process.env.muzzleBotToken;
@@ -164,6 +164,9 @@ export function deleteMessage(channel: string, ts: string) {
   web.chat.delete(deleteRequest).catch(e => console.error(e));
 }
 
+/**
+ * Handles sending messages to the chat.
+ */
 export function sendMessage(channel: string, text: string) {
   const muzzleToken: any = process.env.muzzleBotToken;
   const postRequest: ChatPostMessageArguments = {
