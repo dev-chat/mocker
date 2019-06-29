@@ -20,7 +20,7 @@ const MAX_SUPPRESSIONS: number = 7;
 
 muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
-  console.log(JSON.stringify(request));
+  console.log(request);
   if (muzzled.has(request.event.user)) {
     console.log(`${request.event.user} is muzzled! Suppressing his voice...`);
     deleteMessage(request.event.channel, request.event.ts, web);
