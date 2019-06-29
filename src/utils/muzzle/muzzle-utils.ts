@@ -160,9 +160,7 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
         `${userName} | ${userId}  is now muzzled for ${timeToMuzzle} milliseconds`
       );
       resolve(
-        `Succesfully muzzled ${userName} | ${userId}  for ${getTimeString(
-          timeToMuzzle
-        )}`
+        `Succesfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`
       );
     }
   });
