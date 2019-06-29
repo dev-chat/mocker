@@ -212,5 +212,10 @@ describe("muzzle-utils", () => {
         " ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm.. "
       );
     });
+
+    it("should always muzzle <!channel>", () => {
+      const testSentence = "<!channel> hey guys";
+      expect(muzzle(testSentence)).to.equal(" ..mMm..  ..mMm..  ..mMm.. ");
+    });
   });
 });
