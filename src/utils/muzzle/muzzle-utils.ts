@@ -162,9 +162,13 @@ export function deleteMessage(channel: string, ts: string) {
   };
 
   web.chat.delete(deleteRequest).catch(e => {
-    console.error(e);
-    console.error("Retrying...");
-    setTimeout(() => deleteMessage(channel, ts), 30000);
+    if (e.data.error === "message_not_found") {
+      console.log("Message already deleted, no need to retry");
+    } else {
+      console.error(e);
+      console.error("Retrying...");
+      setTimeout(() => deleteMessage(channel, ts), 30000);
+    }
   });
 }
 
