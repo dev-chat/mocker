@@ -138,17 +138,17 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
   return new Promise((resolve, reject) => {
     if (isUserMuzzled(userId)) {
       console.error(
-        `${requestorName} attempted to muzzle ${userName} but ${userName} is already muzzled.`
+        `${requestorName} | ${requestorId} attempted to muzzle ${userName} | ${userId} but ${userName} | ${userId} is already muzzled.`
       );
       reject(`${userName} is already muzzled!`);
     } else if (isUserMuzzled(requestorId)) {
       console.error(
-        `User: ${requestorName} attempted to muzzle ${userName} but failed because requestor: ${requestorName} is currently muzzled`
+        `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId}  is currently muzzled`
       );
       reject(`You can't muzzle someone if you are already muzzled!`);
     } else if (isMaxMuzzlesReached(requestorId)) {
       console.error(
-        `User: ${requestorName} attempted to muzzle ${userName} but failed because requestor: ${requestorName} has reached maximum muzzle of ${MAX_MUZZLES}`
+        `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId} has reached maximum muzzle of ${MAX_MUZZLES}`
       );
       reject(
         `You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`
@@ -157,10 +157,12 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
       const timeToMuzzle = getTimeToMuzzle();
       muzzleUser(userId, requestorId, timeToMuzzle);
       console.log(
-        `${userName} is now muzzled for ${timeToMuzzle} milliseconds`
+        `${userName} | ${userId}  is now muzzled for ${timeToMuzzle} milliseconds`
       );
       resolve(
-        `Succesfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`
+        `Succesfully muzzled ${userName} | ${userId}  for ${getTimeString(
+          timeToMuzzle
+        )}`
       );
     }
   });
@@ -174,25 +176,33 @@ export function decrementMuzzleCount(requestorId: string) {
       muzzleCountRemover: requestors.get(requestorId)!.muzzleCountRemover
     });
     console.log(
-      `Successfully decremented ${requestorId} muzzleCount to ${decrementedMuzzle}`
+      `Successfully decremented ${getUserName(
+        requestorId
+      )} | ${requestorId} muzzleCount to ${decrementedMuzzle}`
     );
   } else {
     console.error(
-      `Attemped to decrement muzzle count for ${requestorId} but they did not exist!`
+      `Attemped to decrement muzzle count for ${getUserName(
+        requestorId
+      )} | ${requestorId} but they did not exist!`
     );
   }
 }
 
-export function removeMuzzler(user: string) {
-  requestors.delete(user);
+export function removeMuzzler(userId: string) {
+  requestors.delete(userId);
   console.log(
-    `${MAX_MUZZLE_TIME} has passed since ${user} last successful muzzle. They have been removed from requestors.`
+    `${MAX_MUZZLE_TIME} has passed since ${getUserName(
+      userId
+    )} | ${userId} last successful muzzle. They have been removed from requestors.`
   );
 }
 
-export function removeMuzzle(user: string) {
-  muzzled.delete(user);
-  console.log(`Removed ${user}'s muzzle! He is free at last.`);
+export function removeMuzzle(userId: string) {
+  muzzled.delete(userId);
+  console.log(
+    `Removed ${getUserName(userId)} | ${userId}'s muzzle! He is free at last.`
+  );
 }
 
 export function isRandomEven() {
@@ -201,15 +211,15 @@ export function isRandomEven() {
 
 export function sendMuzzledMessage(
   channel: string,
-  user: string,
+  userId: string,
   text: string
 ) {
-  if (muzzled.get(user)!.suppressionCount < MAX_SUPPRESSIONS) {
-    muzzled.set(user, {
-      suppressionCount: ++muzzled.get(user)!.suppressionCount,
-      muzzledBy: muzzled.get(user)!.muzzledBy
+  if (muzzled.get(userId)!.suppressionCount < MAX_SUPPRESSIONS) {
+    muzzled.set(userId, {
+      suppressionCount: ++muzzled.get(userId)!.suppressionCount,
+      muzzledBy: muzzled.get(userId)!.muzzledBy
     });
-    sendMessage(channel, `<@${user}> says "${muzzle(text)}"`);
+    sendMessage(channel, `<@${userId}> says "${muzzle(text)}"`);
   }
 }
 

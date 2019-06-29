@@ -10,14 +10,18 @@ import {
   sendMuzzledMessage,
   shouldBotMessageBeMuzzled
 } from "../utils/muzzle/muzzle-utils";
-import { getUserId } from "../utils/slack/slack-utils";
+import { getUserId, getUserName } from "../utils/slack/slack-utils";
 
 export const muzzleRoutes: Router = express.Router();
 
 muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
   if (isUserMuzzled(request.event.user)) {
-    console.log(`${request.event.user} is muzzled! Suppressing his voice...`);
+    console.log(
+      `${getUserName(request.event.user)} | ${
+        request.event.user
+      } is muzzled! Suppressing his voice...`
+    );
     deleteMessage(request.event.channel, request.event.ts);
     sendMuzzledMessage(
       request.event.channel,
@@ -26,9 +30,11 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
     );
   } else if (shouldBotMessageBeMuzzled(request)) {
     console.log(
-      `${
-        request.authed_users[0]
-      } is muzzled and tried to send a bot message! Suppressing...`
+      `${getUserName(
+        request.event.text || request.event.attachments[0].text
+      )} | ${request.event.text ||
+        request.event.attachments[0]
+          .text} is muzzled and tried to send a bot message! Suppressing...`
     );
     deleteMessage(request.event.channel, request.event.ts);
   }
