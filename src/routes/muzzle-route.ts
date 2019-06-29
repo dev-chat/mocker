@@ -6,40 +6,25 @@ import {
 import {
   addUserToMuzzled,
   deleteMessage,
-  muzzle,
-  muzzled,
-  sendMessage
+  isUserMuzzled,
+  sendMuzzledMessage,
+  shouldBotMessageBeMuzzled
 } from "../utils/muzzle/muzzle-utils";
 import { getUserId } from "../utils/slack/slack-utils";
 
 export const muzzleRoutes: Router = express.Router();
-const MAX_SUPPRESSIONS: number = 7;
 
 muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
-  console.log(request);
-  if (muzzled.has(request.event.user)) {
+  if (isUserMuzzled(request.event.user)) {
     console.log(`${request.event.user} is muzzled! Suppressing his voice...`);
     deleteMessage(request.event.channel, request.event.ts);
-
-    if (muzzled.get(request.event.user)!.suppressionCount < MAX_SUPPRESSIONS) {
-      muzzled.set(request.event.user, {
-        suppressionCount: ++muzzled.get(request.event.user)!.suppressionCount,
-        muzzledBy: muzzled.get(request.event.user)!.muzzledBy
-      });
-      sendMessage(
-        request.event.channel,
-        `<@${request.event.user}> says "${muzzle(request.event.text)}"`
-      );
-    }
-  } else if (
-    request.event.subtype === "bot_message" &&
-    request.event.attachments &&
-    muzzled.has(
-      getUserId(request.event.attachments[0].text || request.event.text)
-    ) &&
-    request.event.username !== "muzzle"
-  ) {
+    sendMuzzledMessage(
+      request.event.channel,
+      request.event.user,
+      request.event.text
+    );
+  } else if (shouldBotMessageBeMuzzled(request)) {
     console.log(
       `${
         request.authed_users[0]

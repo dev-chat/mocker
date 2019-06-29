@@ -5,7 +5,6 @@ import { setUserList } from "../slack/slack-utils";
 import {
   addUserToMuzzled,
   containsAt,
-  MAX_MUZZLES,
   muzzle,
   muzzled,
   muzzlers,
@@ -103,7 +102,7 @@ describe("muzzle-utils", () => {
         await addUserToMuzzled(testData.user2, testData.requestor);
         await addUserToMuzzled(testData.user3, testData.requestor).catch(e =>
           expect(e).to.equal(
-            `You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`
+            `You're doing that too much. Only 2 muzzles are allowed per hour.`
           )
         );
       });
