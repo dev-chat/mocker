@@ -33,10 +33,14 @@ export function muzzle(text: string) {
 }
 
 /**
- * Determines whether or not a user is trying to @ someone while muzzled or @ channel.
+ * Determines whether or not a user is trying to @user, @channel or @here while muzzled.
  */
 export function containsAt(word: string): boolean {
-  return word.includes("@") || word.includes("<!channel>");
+  return (
+    word.includes("@") ||
+    word.includes("<!channel>") ||
+    word.includes("<!here>")
+  );
 }
 
 /**
