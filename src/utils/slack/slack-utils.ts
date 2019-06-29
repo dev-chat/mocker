@@ -41,8 +41,7 @@ export function getAllUsers() {
   web.users
     .list()
     .then(resp => {
-      console.log("Set users as ", resp.users);
-      userList = resp.users as ISlackUser[];
+      userList = resp.members as ISlackUser[];
     })
     .catch(e => {
       console.error("Failed to retrieve users", e);
