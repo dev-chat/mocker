@@ -117,7 +117,7 @@ function setMuzzlerCount(requestorId: string) {
 }
 
 /**
- * Adds a userId to the muzzled array, and sets timeout for removeMuzzler.
+ * Adds a userId to the muzzled array, and sets timeout for removeMuzzle.
  */
 function muzzleUser(userId: string, requestorId: string, timeToMuzzle: number) {
   muzzled.set(userId, {
