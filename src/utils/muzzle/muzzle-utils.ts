@@ -14,6 +14,7 @@ export const requestors: Map<string, IMuzzler> = new Map();
 // Time period in which a user must wait before making more muzzles.
 const MAX_MUZZLE_TIME = 3600000;
 const MAX_TIME_BETWEEN_MUZZLES = 3600000;
+const ABUSE_PENALTY_TIME = 300000;
 const MAX_SUPPRESSIONS: number = 7;
 const MAX_MUZZLES = 2;
 
@@ -30,6 +31,19 @@ export function muzzle(text: string) {
       isRandomEven() && !containsAt(word) ? ` *${word}* ` : " ..mMm.. ";
   }
   return returnText;
+}
+
+export function addMuzzleTime(userId: string) {
+  if (userId && muzzled.has(userId)) {
+    const removalFn = muzzled.get(userId)!.removalFn;
+    console.log(getRemainingTime(removalFn));
+  }
+}
+
+function getRemainingTime(timeout: any) {
+  return Math.ceil(
+    (timeout._idleStart + timeout._idleTimeout - Date.now()) / 1000
+  );
 }
 
 /**
@@ -214,7 +228,8 @@ export function sendMuzzledMessage(
   if (muzzled.get(userId)!.suppressionCount < MAX_SUPPRESSIONS) {
     muzzled.set(userId, {
       suppressionCount: ++muzzled.get(userId)!.suppressionCount,
-      muzzledBy: muzzled.get(userId)!.muzzledBy
+      muzzledBy: muzzled.get(userId)!.muzzledBy,
+      removalFn: muzzled.get(userId)!.removalFn
     });
     sendMessage(channel, `<@${userId}> says "${muzzle(text)}"`);
   }

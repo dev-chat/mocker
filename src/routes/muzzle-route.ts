@@ -4,7 +4,9 @@ import {
   ISlashCommandRequest
 } from "../shared/models/slack/slack-models";
 import {
+  addMuzzleTime,
   addUserToMuzzled,
+  containsAt,
   deleteMessage,
   isUserMuzzled,
   sendMuzzledMessage,
@@ -28,6 +30,14 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
       request.event.user,
       request.event.text
     );
+    if (containsAt(request.event.text)) {
+      console.log(
+        `${getUserName(
+          request.event.user
+        )} atttempted to tag someone. Muzzle increased by 5 minutes!`
+      );
+      addMuzzleTime(request.event.user);
+    }
   } else if (shouldBotMessageBeMuzzled(request)) {
     console.log(
       `${getUserName(
