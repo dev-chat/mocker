@@ -44,11 +44,11 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
         () =>
           sendMessage(
             request.event.channel,
-            `:siren: <@${
+            `:rotating_light: <@${
               request.event.user
             }> attempted to tag someone, or the channel while muzzled! Muzzle increased by ${getTimeString(
               ABUSE_PENALTY_TIME
-            )} :siren:`
+            )} :rotating_light:`
           ),
         1000
       );
