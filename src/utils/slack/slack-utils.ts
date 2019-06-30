@@ -40,6 +40,17 @@ export function getUserById(userId: string) {
   return userList.find((user: ISlackUser) => user.id === userId);
 }
 
+function getUserByDisplayName(displayName: string) {
+  return userList.find(
+    (user: ISlackUser) => user.profile.display_name_normalized === displayName
+  );
+}
+
+export function getUserIdByDisplayName(displayName: string) {
+  const userProfile: any = getUserByDisplayName(displayName); // bad use of any
+  return userProfile.id;
+}
+
 /**
  * TO BE USED EXCLUSIVELY FOR TESTING. WE SHOULD *NEVER* be setting the userList manually
  * This should be handled by getAllUsers() only.

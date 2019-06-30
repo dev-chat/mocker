@@ -102,9 +102,10 @@ export function isUserMuzzled(userId: string) {
 function getBotId(
   fromText: string | undefined,
   fromAttachmentText: string | undefined,
-  fromPretext: string | undefined
+  fromPretext: string | undefined,
+  fromCallbackId: string | undefined
 ) {
-  return fromText || fromAttachmentText || fromPretext;
+  return fromText || fromAttachmentText || fromPretext || fromCallbackId;
 }
 
 /**
@@ -114,18 +115,29 @@ export function shouldBotMessageBeMuzzled(request: IEventRequest) {
   let userIdByEventText;
   let userIdByAttachmentText;
   let userIdByAttachmentPretext;
+  let userIdByCallbackId;
 
   if (request.event.text) {
     userIdByEventText = getUserId(request.event.text);
   } else if (request.event.attachments && request.event.attachments.length) {
     userIdByAttachmentText = getUserId(request.event.attachments[0].text);
     userIdByAttachmentPretext = getUserId(request.event.attachments[0].pretext);
+  } else if (
+    request.event.attachments &&
+    request.event.attachments.length &&
+    request.event.attachments[0].callback_id
+  ) {
+    userIdByCallbackId = request.event.attachments[0].callback_id.slice(
+      request.event.attachments[0].callback_id.indexOf("_"),
+      request.event.attachments[0].callback_id.length
+    );
   }
 
   const finalUserId = getBotId(
     userIdByEventText,
     userIdByAttachmentText,
-    userIdByAttachmentPretext
+    userIdByAttachmentPretext,
+    userIdByCallbackId
   );
 
   return (
