@@ -9,7 +9,9 @@ import {
   addUserToMuzzled,
   containsAt,
   deleteMessage,
+  getTimeString,
   isUserMuzzled,
+  sendMessage,
   sendMuzzledMessage,
   shouldBotMessageBeMuzzled
 } from "../utils/muzzle/muzzle-utils";
@@ -38,6 +40,14 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
         )} atttempted to tag someone. Muzzle increased by ${ABUSE_PENALTY_TIME}!`
       );
       addMuzzleTime(request.event.user);
+      sendMessage(
+        request.event.channel,
+        `<@${
+          request.event.user
+        } attempted to tag someone, or the channel! Muzzled increased by ${getTimeString(
+          ABUSE_PENALTY_TIME
+        )}`
+      );
     }
   } else if (shouldBotMessageBeMuzzled(request)) {
     console.log(

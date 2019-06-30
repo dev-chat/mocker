@@ -36,7 +36,13 @@ export function muzzle(text: string) {
 export function addMuzzleTime(userId: string) {
   if (userId && muzzled.has(userId)) {
     const removalFn = muzzled.get(userId)!.removalFn;
-    console.log(getRemainingTime(removalFn));
+    const newTime = getRemainingTime(removalFn) + ABUSE_PENALTY_TIME;
+    clearTimeout(muzzled.get(userId)!.removalFn);
+    muzzled.set(userId, {
+      suppressionCount: muzzled.get(userId)!.suppressionCount,
+      muzzledBy: muzzled.get(userId)!.muzzledBy,
+      removalFn: setTimeout(() => removeMuzzle(userId), newTime)
+    });
   }
 }
 
