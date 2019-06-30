@@ -122,16 +122,14 @@ export function shouldBotMessageBeMuzzled(request: IEventRequest) {
   } else if (request.event.attachments && request.event.attachments.length) {
     userIdByAttachmentText = getUserId(request.event.attachments[0].text);
     userIdByAttachmentPretext = getUserId(request.event.attachments[0].pretext);
-  } else if (
-    request.event.attachments &&
-    request.event.attachments.length &&
-    request.event.attachments[0].callback_id
-  ) {
-    userIdByCallbackId = request.event.attachments[0].callback_id.slice(
-      request.event.attachments[0].callback_id.indexOf("_"),
-      request.event.attachments[0].callback_id.length
-    );
-    console.log(userIdByCallbackId);
+
+    if (request.event.attachments[0].callback_id) {
+      userIdByCallbackId = request.event.attachments[0].callback_id.slice(
+        request.event.attachments[0].callback_id.indexOf("_"),
+        request.event.attachments[0].callback_id.length
+      );
+      console.log(userIdByCallbackId);
+    }
   }
 
   const finalUserId = getBotId(
