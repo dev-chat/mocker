@@ -40,15 +40,9 @@ export function getUserById(userId: string) {
   return userList.find((user: ISlackUser) => user.id === userId);
 }
 
-function getUserByDisplayName(displayName: string) {
-  return userList.find(
-    (user: ISlackUser) => user.profile.display_name_normalized === displayName
-  );
-}
-
-export function getUserIdByDisplayName(displayName: string) {
-  const userProfile: any = getUserByDisplayName(displayName); // bad use of any
-  return userProfile.id;
+// This will really only work for SpoilerBot since it stores userId here and nowhere else.
+export function getUserIdByCallbackId(callbackId: string) {
+  return callbackId.slice(callbackId.indexOf("_") + 1, callbackId.length);
 }
 
 /**

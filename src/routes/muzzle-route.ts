@@ -21,7 +21,6 @@ export const muzzleRoutes: Router = express.Router();
 
 muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
-  console.log(JSON.stringify(request));
   if (isUserMuzzled(request.event.user)) {
     console.log(
       `${getUserName(request.event.user)} | ${

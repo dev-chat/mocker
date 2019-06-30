@@ -5,7 +5,11 @@ import {
 } from "@slack/web-api";
 import { IMuzzled, IMuzzler } from "../../shared/models/muzzle/muzzle-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
-import { getUserId, getUserName } from "../slack/slack-utils";
+import {
+  getUserId,
+  getUserIdByCallbackId,
+  getUserName
+} from "../slack/slack-utils";
 // Store for the muzzled users.
 export const muzzled: Map<string, IMuzzled> = new Map();
 // Store for people who are muzzling others.
@@ -124,11 +128,9 @@ export function shouldBotMessageBeMuzzled(request: IEventRequest) {
     userIdByAttachmentPretext = getUserId(request.event.attachments[0].pretext);
 
     if (request.event.attachments[0].callback_id) {
-      userIdByCallbackId = request.event.attachments[0].callback_id.slice(
-        request.event.attachments[0].callback_id.indexOf("_") + 1,
-        request.event.attachments[0].callback_id.length
+      userIdByCallbackId = getUserIdByCallbackId(
+        request.event.attachments[0].callback_id
       );
-      console.log(userIdByCallbackId);
     }
   }
 
