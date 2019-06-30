@@ -21,6 +21,7 @@ export const muzzleRoutes: Router = express.Router();
 
 muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
+  console.log(JSON.stringify(request));
   if (isUserMuzzled(request.event.user)) {
     console.log(
       `${getUserName(request.event.user)} | ${
@@ -55,11 +56,7 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
     }
   } else if (shouldBotMessageBeMuzzled(request)) {
     console.log(
-      `${getUserName(
-        request.event.text || request.event.attachments[0].text
-      )} | ${request.event.text ||
-        request.event.attachments[0]
-          .text} is muzzled and tried to send a bot message! Suppressing...`
+      `A user is muzzled and tried to send a bot message! Suppressing...`
     );
     deleteMessage(request.event.channel, request.event.ts);
   }
