@@ -125,7 +125,7 @@ export function shouldBotMessageBeMuzzled(request: IEventRequest) {
 
     if (request.event.attachments[0].callback_id) {
       userIdByCallbackId = request.event.attachments[0].callback_id.slice(
-        request.event.attachments[0].callback_id.indexOf("_"),
+        request.event.attachments[0].callback_id.indexOf("_") + 1,
         request.event.attachments[0].callback_id.length
       );
       console.log(userIdByCallbackId);
