@@ -40,13 +40,17 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
         )} atttempted to tag someone. Muzzle increased by ${ABUSE_PENALTY_TIME}!`
       );
       addMuzzleTime(request.event.user);
-      sendMessage(
-        request.event.channel,
-        `<@${
-          request.event.user
-        } attempted to tag someone, or the channel! Muzzled increased by ${getTimeString(
-          ABUSE_PENALTY_TIME
-        )}`
+      setTimeout(
+        () =>
+          sendMessage(
+            request.event.channel,
+            `<@${
+              request.event.user
+            }> attempted to tag someone, or the channel! Muzzled increased by ${getTimeString(
+              ABUSE_PENALTY_TIME
+            )}`
+          ),
+        1000
       );
     }
   } else if (shouldBotMessageBeMuzzled(request)) {
