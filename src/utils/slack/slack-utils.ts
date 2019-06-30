@@ -28,12 +28,12 @@ export function getUserName(user: string): string {
   return userObj ? userObj.name : "";
 }
 
-export function getUserId(user: string): string {
+export function getUserId(user: string) {
   if (!user) {
-    return "";
+    return undefined;
   }
   const regArray = user.match(userIdRegEx);
-  return regArray ? regArray[0].slice(1) : "";
+  return regArray ? regArray[0].slice(1) : undefined;
 }
 
 export function getUserById(userId: string) {

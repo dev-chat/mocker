@@ -99,23 +99,40 @@ export function isUserMuzzled(userId: string) {
   return muzzled.has(userId);
 }
 
+function getBotId(
+  fromText: string | undefined,
+  fromAttachmentText: string | undefined,
+  fromPretext: string | undefined
+) {
+  return fromText || fromAttachmentText || fromPretext;
+}
+
 /**
  * Determines whether or not a bot message should be removed.
  */
 export function shouldBotMessageBeMuzzled(request: IEventRequest) {
-  const userIdByEventText = getUserId(request.event.text);
-  const userIdByAttachment = request.event.attachments
-    ? getUserId(request.event.attachments[0].text)
-    : "";
-  console.log(JSON.stringify(request));
-  console.log("byEventText", userIdByEventText);
-  console.log("byAttachment", userIdByAttachment);
+  let userIdByEventText;
+  let userIdByAttachmentText;
+  let userIdByAttachmentPretext;
+
+  if (request.event.text) {
+    userIdByEventText = getUserId(request.event.text);
+  } else if (request.event.attachments.length) {
+    userIdByAttachmentText = getUserId(request.event.attachments[0].text);
+    userIdByAttachmentPretext = getUserId(request.event.attachments[0].pretext);
+  }
+
+  const finalUserId = getBotId(
+    userIdByEventText,
+    userIdByAttachmentText,
+    userIdByAttachmentPretext
+  );
+
   return (
     request.event.subtype === "bot_message" &&
     request.event.attachments &&
-    isUserMuzzled(
-      userIdByEventText !== "" ? userIdByEventText : userIdByAttachment
-    ) &&
+    finalUserId &&
+    isUserMuzzled(finalUserId) &&
     request.event.username !== "muzzle"
   );
 }

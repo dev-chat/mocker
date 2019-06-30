@@ -35,6 +35,7 @@ export interface IEvent {
   channel_type: string;
   authed_users: string[];
   attachments: IEvent[];
+  pretext: string;
 }
 
 export interface IAttachment {
