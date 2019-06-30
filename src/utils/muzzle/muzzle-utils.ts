@@ -117,7 +117,7 @@ export function shouldBotMessageBeMuzzled(request: IEventRequest) {
 
   if (request.event.text) {
     userIdByEventText = getUserId(request.event.text);
-  } else if (request.event.attachments.length) {
+  } else if (request.event.attachments && request.event.attachments.length) {
     userIdByAttachmentText = getUserId(request.event.attachments[0].text);
     userIdByAttachmentPretext = getUserId(request.event.attachments[0].pretext);
   }
