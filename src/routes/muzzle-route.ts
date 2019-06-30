@@ -46,9 +46,8 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
             request.event.channel,
             `<@${
               request.event.user
-            }> attempted to tag someone, or the channel! Muzzled increased by ${getTimeString(
-              ABUSE_PENALTY_TIME
-            )}`
+            }> attempted to tag someone, or the channel while muzzled!
+            Muzzle increased by ${getTimeString(ABUSE_PENALTY_TIME)}`
           ),
         1000
       );
