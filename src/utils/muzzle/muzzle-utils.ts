@@ -117,16 +117,14 @@ function setMuzzlerCount(requestorId: string) {
 }
 
 /**
- * Adds a userId to the muzzled array, adds the requestorId to the requestorsArray, sets timeout for removeMuzzler.
+ * Adds a userId to the muzzled array, and sets timeout for removeMuzzler.
  */
 function muzzleUser(userId: string, requestorId: string, timeToMuzzle: number) {
   muzzled.set(userId, {
     suppressionCount: 0,
-    muzzledBy: requestorId
+    muzzledBy: requestorId,
+    removalFn: setTimeout(() => removeMuzzle(userId), timeToMuzzle)
   });
-
-  setMuzzlerCount(requestorId);
-  setTimeout(() => removeMuzzle(userId), timeToMuzzle);
 }
 
 /**
@@ -156,6 +154,7 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
     } else {
       const timeToMuzzle = getTimeToMuzzle();
       muzzleUser(userId, requestorId, timeToMuzzle);
+      setMuzzlerCount(requestorId);
       console.log(
         `${userName} | ${userId}  is now muzzled for ${timeToMuzzle} milliseconds`
       );
