@@ -103,11 +103,13 @@ export function isUserMuzzled(userId: string) {
  * Determines whether or not a bot message should be removed.
  */
 export function shouldBotMessageBeMuzzled(request: IEventRequest) {
+  const userIdByEventText = getUserId(request.event.text);
+  const userIdByAttachment = getUserId(request.event.attachments[0].text);
   return (
     request.event.subtype === "bot_message" &&
     request.event.attachments &&
     isUserMuzzled(
-      getUserId(request.event.text || request.event.attachments[0].text)
+      userIdByEventText !== "" ? userIdByEventText : userIdByAttachment
     ) &&
     request.event.username !== "muzzle"
   );
