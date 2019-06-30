@@ -4,6 +4,7 @@ import {
   ISlashCommandRequest
 } from "../shared/models/slack/slack-models";
 import {
+  ABUSE_PENALTY_TIME,
   addMuzzleTime,
   addUserToMuzzled,
   containsAt,
@@ -34,7 +35,7 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
       console.log(
         `${getUserName(
           request.event.user
-        )} atttempted to tag someone. Muzzle increased by 5 minutes!`
+        )} atttempted to tag someone. Muzzle increased by ${ABUSE_PENALTY_TIME}!`
       );
       addMuzzleTime(request.event.user);
     }

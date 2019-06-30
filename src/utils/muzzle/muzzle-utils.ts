@@ -14,7 +14,7 @@ export const requestors: Map<string, IMuzzler> = new Map();
 // Time period in which a user must wait before making more muzzles.
 const MAX_MUZZLE_TIME = 3600000;
 const MAX_TIME_BETWEEN_MUZZLES = 3600000;
-const ABUSE_PENALTY_TIME = 300000;
+export const ABUSE_PENALTY_TIME = 300000;
 const MAX_SUPPRESSIONS: number = 7;
 const MAX_MUZZLES = 2;
 
