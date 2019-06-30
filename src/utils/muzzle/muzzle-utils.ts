@@ -38,6 +38,7 @@ export function addMuzzleTime(userId: string) {
     const removalFn = muzzled.get(userId)!.removalFn;
     const newTime = getRemainingTime(removalFn) + ABUSE_PENALTY_TIME;
     clearTimeout(muzzled.get(userId)!.removalFn);
+    console.log(`Setting ${getUserName(userId)}'s muzzle time to ${newTime}`);
     muzzled.set(userId, {
       suppressionCount: muzzled.get(userId)!.suppressionCount,
       muzzledBy: muzzled.get(userId)!.muzzledBy,
