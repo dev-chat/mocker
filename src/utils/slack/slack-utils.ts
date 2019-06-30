@@ -29,6 +29,9 @@ export function getUserName(user: string): string {
 }
 
 export function getUserId(user: string): string {
+  if (!user) {
+    return "";
+  }
   const regArray = user.match(userIdRegEx);
   return regArray ? regArray[0].slice(1) : "";
 }
