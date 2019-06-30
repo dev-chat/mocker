@@ -42,7 +42,7 @@ export function addMuzzleTime(userId: string) {
 
 function getRemainingTime(timeout: any) {
   return Math.ceil(
-    (timeout._idleStart + timeout._idleTimeout - Date.now()) / 1000
+    (timeout._idleStart + timeout._idleTimeout) / 1000 - process.uptime()
   );
 }
 
