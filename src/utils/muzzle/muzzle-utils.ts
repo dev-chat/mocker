@@ -106,7 +106,7 @@ export function shouldBotMessageBeMuzzled(request: IEventRequest) {
     request.event.subtype === "bot_message" &&
     request.event.attachments &&
     isUserMuzzled(
-      getUserId(request.event.attachments[0].text || request.event.text)
+      getUserId(request.event.text || request.event.attachments[0].text)
     ) &&
     request.event.username !== "muzzle"
   );
