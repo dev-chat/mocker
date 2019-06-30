@@ -104,7 +104,9 @@ export function isUserMuzzled(userId: string) {
  */
 export function shouldBotMessageBeMuzzled(request: IEventRequest) {
   const userIdByEventText = getUserId(request.event.text);
-  const userIdByAttachment = getUserId(request.event.attachments[0].text);
+  const userIdByAttachment = request.event.attachments
+    ? getUserId(request.event.attachments[0].text)
+    : "";
   return (
     request.event.subtype === "bot_message" &&
     request.event.attachments &&
