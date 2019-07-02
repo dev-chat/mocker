@@ -15,7 +15,7 @@ describe("slack-utils", () => {
       expect(getUserId("<@U2TYNKJ|jrjrjr>")).to.equal("U2TYNKJ");
     });
 
-    it("should return an empty string when no userId exists", () => {
+    it("should return '' when no userId exists", () => {
       expect(getUserId("total waste of time")).to.equal("");
     });
   });

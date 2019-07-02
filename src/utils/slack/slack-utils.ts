@@ -5,7 +5,7 @@ import {
 } from "../../shared/models/slack/slack-models";
 import { web } from "../muzzle/muzzle-utils";
 
-const userIdRegEx = /@\w+/gm;
+const userIdRegEx = /[<]@\w+/gm;
 
 export let userList: ISlackUser[];
 
@@ -30,10 +30,10 @@ export function getUserName(user: string): string {
 
 export function getUserId(user: string) {
   if (!user) {
-    return undefined;
+    return "";
   }
   const regArray = user.match(userIdRegEx);
-  return regArray ? regArray[0].slice(1) : undefined;
+  return regArray ? regArray[0].slice(2) : "";
 }
 
 export function getUserById(userId: string) {

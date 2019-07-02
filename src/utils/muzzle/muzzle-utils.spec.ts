@@ -4,7 +4,7 @@ import { ISlackUser } from "../../shared/models/slack/slack-models";
 import { setUserList } from "../slack/slack-utils";
 import {
   addUserToMuzzled,
-  containsAt,
+  containsTag,
   muzzle,
   muzzled,
   removeMuzzle,
@@ -133,27 +133,37 @@ describe("muzzle-utils", () => {
     });
   });
 
-  describe("containsAt()", () => {
-    it("should return true if a word has @ in it", () => {
-      const testWord = "@channel";
-      expect(containsAt(testWord)).to.equal(true);
+  describe("containsTag()", () => {
+    it("should return false if a word has @ in it and is not a tag", () => {
+      const testWord = ".@channel";
+      expect(containsTag(testWord)).to.equal(false);
     });
 
     it("should return false if a word does not include @", () => {
       const testWord = "test";
-      expect(containsAt(testWord)).to.equal(false);
+      expect(containsTag(testWord)).to.equal(false);
     });
 
     it("should return true if a word has <!channel> in it", () => {
       const testWord = "<!channel>";
-      expect(containsAt(testWord)).to.equal(true);
+      expect(containsTag(testWord)).to.equal(true);
+    });
+
+    it("should return true if a word has <!here> in it", () => {
+      const testWord = "<!here>";
+      expect(containsTag(testWord)).to.equal(true);
+    });
+
+    it("should return true if a word has a tagged user", () => {
+      const testUser = "<@UTJFJKL>";
+      expect(containsTag(testUser)).to.equal(true);
     });
   });
 
   describe("muzzle()", () => {
-    it("should always muzzle @", () => {
+    it("should always muzzle a tagged user", () => {
       const testSentence =
-        "@channel @channel @channel @channel @channel @channel @channel @jrjrjr @fudka";
+        "<@U2TKJ> <@JKDSF> <@SDGJSK> <@LSKJDSG> <@lkjdsa> <@LKSJDF> <@SDLJG> <@jrjrjr> <@fudka>";
       expect(muzzle(testSentence)).to.equal(
         " ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm.. "
       );

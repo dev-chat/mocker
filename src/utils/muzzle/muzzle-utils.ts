@@ -32,7 +32,7 @@ export function muzzle(text: string) {
   const words = text.split(" ");
   for (const word of words) {
     returnText +=
-      isRandomEven() && !containsAt(word) ? ` *${word}* ` : " ..mMm.. ";
+      isRandomEven() && !containsTag(word) ? ` *${word}* ` : " ..mMm.. ";
   }
   return returnText;
 }
@@ -60,12 +60,8 @@ function getRemainingTime(timeout: any) {
 /**
  * Determines whether or not a user is trying to @user, @channel or @here while muzzled.
  */
-export function containsAt(word: string): boolean {
-  return (
-    word.includes("@") ||
-    word.includes("<!channel>") ||
-    word.includes("<!here>")
-  );
+export function containsTag(word: string): boolean {
+  return !!getUserId(word) || word === "<!channel>" || word === "<!here>";
 }
 
 /**
