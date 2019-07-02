@@ -7,7 +7,7 @@ import {
   ABUSE_PENALTY_TIME,
   addMuzzleTime,
   addUserToMuzzled,
-  containsAt,
+  containsTag,
   deleteMessage,
   getTimeString,
   isUserMuzzled,
@@ -33,7 +33,7 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
       request.event.user,
       request.event.text
     );
-    if (containsAt(request.event.text)) {
+    if (containsTag(request.event.text)) {
       console.log(
         `${getUserName(
           request.event.user
