@@ -1,5 +1,6 @@
 import bodyParser from "body-parser";
 import express, { Application } from "express";
+import "reflect-metadata";
 import { defineRoutes } from "./routes/define-route";
 import { mockRoutes } from "./routes/mock-route";
 import { muzzleRoutes } from "./routes/muzzle-route";
