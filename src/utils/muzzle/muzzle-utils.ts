@@ -185,7 +185,7 @@ function muzzleUser(userId: string, requestorId: string, timeToMuzzle: number) {
 /**
  * Adds a user to the muzzled array and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
  */
-export function addUserToMuzzled(userId: string, requestorId: string) {
+export async function addUserToMuzzled(userId: string, requestorId: string) {
   const userName = getUserName(userId);
   const requestorName = getUserName(requestorId);
   return new Promise(async (resolve, reject) => {
