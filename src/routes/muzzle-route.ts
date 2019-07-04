@@ -70,6 +70,7 @@ muzzleRoutes.post("/muzzle", async (req: Request, res: Response) => {
   );
   if (results) {
     console.log("Successfully added, sending results");
+    console.log(results);
     res.send(results);
   }
 });
