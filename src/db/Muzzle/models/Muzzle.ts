@@ -1,16 +1,13 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { User } from "../../User/models/User";
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Muzzle {
   @PrimaryGeneratedColumn()
   public id!: number;
 
-  @ManyToOne(() => User, user => user.requestedMuzzles)
   @Column()
   public requestorId!: string;
 
-  @ManyToOne(() => User, user => user.muzzles)
   @Column()
   public muzzledId!: string;
 
