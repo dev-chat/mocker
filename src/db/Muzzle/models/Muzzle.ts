@@ -26,6 +26,6 @@ export class Muzzle {
   @Column()
   public charactersSuppressed!: number;
 
-  @Column("datetime")
+  @Column()
   public date!: Date;
 }
