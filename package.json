@@ -2,7 +2,7 @@
   "name": "mock",
   "version": "1.0.0",
   "description": "Mock your friends",
-  "main": "src/server.ts",
+  "main": "src/index.ts",
   "scripts": {
     "format:check": "prettier --check 'src/**/*.ts'",
     "format:fix": "prettier --write 'src/**/*.ts'",
@@ -10,7 +10,7 @@
     "lint:fix": "tslint --fix -c tslint.json 'src/**/*.ts'",
     "start": "npm run start:dev",
     "start:prod": "node ./dist/server.js",
-    "start:dev": "nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.spec.ts' --exec 'ts-node' src/server.ts",
+    "start:dev": "nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.spec.ts' --exec 'ts-node' src/index.ts",
     "test": "mocha -r ts-node/register ./src/**/*.spec.ts",
     "test:watch": "mocha -r ts-node/register ./src/**/*.spec.ts --watch",
     "tsc": "tsc"
