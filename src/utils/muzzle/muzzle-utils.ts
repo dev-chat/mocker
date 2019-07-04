@@ -218,10 +218,15 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
         console.log(
           await addMuzzleTransaction(requestorId, userId, timeToMuzzle)
         );
-        resolve(`Successfully muzzled ${userName}!`);
+        resolve(
+          `Succesfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`
+        );
       } catch (e) {
         console.error(e);
-        reject(`Unable to add Muzzle to DB`);
+        resolve(`Succesfully muzzled ${userName} for ${getTimeString(
+          timeToMuzzle
+        )}
+        Warning: Your muzzle was not logged in the DB due to server-related issues`);
       }
     }
   });
