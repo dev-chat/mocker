@@ -185,7 +185,7 @@ function muzzleUser(userId: string, requestorId: string, timeToMuzzle: number) {
 /**
  * Adds a user to the muzzled array and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
  */
-export async function addUserToMuzzled(userId: string, requestorId: string) {
+export function addUserToMuzzled(userId: string, requestorId: string) {
   const userName = getUserName(userId);
   const requestorName = getUserName(requestorId);
   return new Promise(async (resolve, reject) => {
@@ -214,16 +214,23 @@ export async function addUserToMuzzled(userId: string, requestorId: string) {
       const timeToMuzzle = getTimeToMuzzle();
       muzzleUser(userId, requestorId, timeToMuzzle);
       setMuzzlerCount(requestorId);
-      await addMuzzleTransaction(requestorId, userId, timeToMuzzle).catch(e => {
-        console.error(e);
-        reject("Unable to store muzzle in DB.");
-      });
-      console.log(
-        `${userName} | ${userId}  is now muzzled for ${timeToMuzzle} milliseconds`
-      );
-      resolve(
-        `Succesfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`
-      );
+      addMuzzleTransaction(requestorId, userId, timeToMuzzle)
+        .then(success => {
+          if (success) {
+            console.log(
+              `${userName} | ${userId}  is now muzzled for ${timeToMuzzle} milliseconds`
+            );
+            resolve(
+              `Succesfully muzzled ${userName} for ${getTimeString(
+                timeToMuzzle
+              )}`
+            );
+          }
+        })
+        .catch(e => {
+          console.error(e);
+          reject("Unable to store muzzle in DB.");
+        });
     }
   });
 }
