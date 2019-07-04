@@ -214,23 +214,14 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
       const timeToMuzzle = getTimeToMuzzle();
       muzzleUser(userId, requestorId, timeToMuzzle);
       setMuzzlerCount(requestorId);
-      addMuzzleTransaction(requestorId, userId, timeToMuzzle)
-        .then(success => {
-          if (success) {
-            console.log(
-              `${userName} | ${userId}  is now muzzled for ${timeToMuzzle} milliseconds`
-            );
-            resolve(
-              `Succesfully muzzled ${userName} for ${getTimeString(
-                timeToMuzzle
-              )}`
-            );
-          }
-        })
-        .catch(e => {
-          console.error(e);
-          reject("Unable to store muzzle in DB.");
-        });
+      const addedToDb = await addMuzzleTransaction(
+        requestorId,
+        userId,
+        timeToMuzzle
+      ).catch(error => reject(error));
+      if (addedToDb) {
+        resolve(`Successfully muzzled ${userName}!`);
+      }
     }
   });
 }
