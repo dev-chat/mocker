@@ -1,5 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { User } from "../User/User";
+import { User } from "../../User/models/User";
 
 @Entity()
 export class Muzzle {

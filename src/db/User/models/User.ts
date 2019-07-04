@@ -1,5 +1,5 @@
 import { Column, Entity, OneToMany, PrimaryColumn } from "typeorm";
-import { Muzzle } from "../Muzzle/Muzzle";
+import { Muzzle } from "../../Muzzle/models/Muzzle";
 
 @Entity()
 export class User {

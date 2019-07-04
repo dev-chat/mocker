@@ -3,6 +3,7 @@ import {
   ChatPostMessageArguments,
   WebClient
 } from "@slack/web-api";
+import { addMuzzleTransaction } from "../../db/Muzzle/actions/muzzle-actions";
 import { IMuzzled, IMuzzler } from "../../shared/models/muzzle/muzzle-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
 import {
@@ -187,8 +188,12 @@ function muzzleUser(userId: string, requestorId: string, timeToMuzzle: number) {
 export function addUserToMuzzled(userId: string, requestorId: string) {
   const userName = getUserName(userId);
   const requestorName = getUserName(requestorId);
-  return new Promise((resolve, reject) => {
-    if (isUserMuzzled(userId)) {
+  return new Promise(async (resolve, reject) => {
+    if (!userId) {
+      reject(
+        `Invalid username passed in. You can only muzzle existing slack users`
+      );
+    } else if (isUserMuzzled(userId)) {
       console.error(
         `${requestorName} | ${requestorId} attempted to muzzle ${userName} | ${userId} but ${userName} | ${userId} is already muzzled.`
       );
@@ -209,6 +214,10 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
       const timeToMuzzle = getTimeToMuzzle();
       muzzleUser(userId, requestorId, timeToMuzzle);
       setMuzzlerCount(requestorId);
+      await addMuzzleTransaction(requestorId, userId, timeToMuzzle).catch(e => {
+        console.error(e);
+        reject("Unable to store muzzle in DB.");
+      });
       console.log(
         `${userName} | ${userId}  is now muzzled for ${timeToMuzzle} milliseconds`
       );

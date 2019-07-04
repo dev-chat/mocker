@@ -65,6 +65,16 @@ describe("muzzle-utils", () => {
         });
       });
 
+      it("should reject if a user tries to muzzle a user that does not exist", async () => {
+        await addUserToMuzzled("", testData.requestor);
+        expect(muzzled.has("")).to.equal(false);
+        await addUserToMuzzled("", testData.requestor).catch(e => {
+          expect(e).to.equal(
+            `Invalid username passed in. You can only muzzle existing slack users`
+          );
+        });
+      });
+
       it("should reject if a requestor tries to muzzle someone while the requestor is muzzled", async () => {
         await addUserToMuzzled(testData.user, testData.requestor);
         expect(muzzled.has(testData.user)).to.equal(true);

@@ -1,6 +1,7 @@
 import bodyParser from "body-parser";
 import express, { Application } from "express";
 import "reflect-metadata";
+import { createConnection } from "typeorm";
 import { defineRoutes } from "./routes/define-route";
 import { mockRoutes } from "./routes/mock-route";
 import { muzzleRoutes } from "./routes/muzzle-route";
@@ -15,7 +16,14 @@ app.use(mockRoutes);
 app.use(muzzleRoutes);
 app.use(defineRoutes);
 
-getAllUsers();
+createConnection()
+  .then(connection => {
+    if (connection) {
+      getAllUsers();
+      console.log("Connected to MySql");
+    }
+  })
+  .catch(e => console.error(e));
 
 app.listen(PORT, (e: Error) =>
   e ? console.error(e) : console.log("Listening on port 3000")
