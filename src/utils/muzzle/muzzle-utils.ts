@@ -215,7 +215,9 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
       muzzleUser(userId, requestorId, timeToMuzzle);
       setMuzzlerCount(requestorId);
       try {
-        await addMuzzleTransaction(requestorId, userId, timeToMuzzle);
+        console.log(
+          await addMuzzleTransaction(requestorId, userId, timeToMuzzle)
+        );
         resolve(`Successfully muzzled ${userName}!`);
       } catch (e) {
         console.error(e);
