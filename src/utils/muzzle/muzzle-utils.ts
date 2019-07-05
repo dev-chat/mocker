@@ -7,6 +7,7 @@ import {
   addMuzzleTransaction,
   incrementCharacterSuppressions,
   incrementMessageSuppressions,
+  incrementMuzzleTime,
   incrementWordSuppressions
 } from "../../db/Muzzle/actions/muzzle-actions";
 import { IMuzzled, IMuzzler } from "../../shared/models/muzzle/muzzle-models";
@@ -59,6 +60,8 @@ export function addMuzzleTime(userId: string) {
   if (userId && muzzled.has(userId)) {
     const removalFn = muzzled.get(userId)!.removalFn;
     const newTime = getRemainingTime(removalFn) + ABUSE_PENALTY_TIME;
+    const transactionId = muzzled.get(userId)!.transactionId;
+    incrementMuzzleTime(transactionId, ABUSE_PENALTY_TIME);
     clearTimeout(muzzled.get(userId)!.removalFn);
     console.log(`Setting ${getUserName(userId)}'s muzzle time to ${newTime}`);
     muzzled.set(userId, {

@@ -25,7 +25,4 @@ export class Muzzle {
 
   @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   public createdAt!: Date;
-
-  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
-  public lastUpdated!: Date;
 }

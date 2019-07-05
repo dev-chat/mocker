@@ -56,9 +56,17 @@ export function getMostMuzzledByDateRange(startDate: Date, endDate: Date) {
   return "test";
 }
 
-export function incrementMessageSuppressions(muzzleId: number) {
+export function incrementMuzzleTime(transactionId: number, ms: number) {
   return getRepository(Muzzle).increment(
-    { id: muzzleId },
+    { id: transactionId },
+    "milliseconds",
+    ms
+  );
+}
+
+export function incrementMessageSuppressions(transactionId: number) {
+  return getRepository(Muzzle).increment(
+    { id: transactionId },
     "messagesSuppressed",
     1
   );
