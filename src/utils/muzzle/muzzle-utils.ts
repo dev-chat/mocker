@@ -82,9 +82,10 @@ function getRemainingTime(timeout: any) {
 /**
  * Determines whether or not a user is trying to @user, @channel or @here while muzzled.
  */
-export function containsTag(word: string): boolean {
-  console.log(word);
-  return word === "<!channel>" || word === "<!here>" || !!getUserId(word);
+export function containsTag(text: string): boolean {
+  return (
+    text.includes("<!channel>") || text.includes("<!here>") || !!getUserId(text)
+  );
 }
 
 /**
