@@ -9,7 +9,7 @@ import {
   define,
   formatDefs
 } from "../utils/define/define-utils";
-import { muzzled } from "../utils/muzzle/muzzle-utils";
+import { muzzled } from "../utils/muzzle/muzzle";
 import { sendResponse } from "../utils/slack/slack-utils";
 
 export const defineRoutes: Router = express.Router();

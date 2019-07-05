@@ -42,3 +42,15 @@ export function incrementCharacterSuppressions(
     charactersSuppressed
   );
 }
+
+/**
+ * Determines suppression counts for messages that are ONLY deleted and not muzzled.
+ * Used when a muzzled user has hit their max suppressions or when they have tagged channel.
+ */
+export function trackDeletedMessage(muzzleId: number, text: string) {
+  const words = text.split(" ").length;
+  const characters = text.split("").length;
+  incrementMessageSuppressions(muzzleId);
+  incrementWordSuppressions(muzzleId, words);
+  incrementCharacterSuppressions(muzzleId, characters);
+}

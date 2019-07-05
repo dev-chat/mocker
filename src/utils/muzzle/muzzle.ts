@@ -8,19 +8,28 @@ import {
   incrementCharacterSuppressions,
   incrementMessageSuppressions,
   incrementMuzzleTime,
-  incrementWordSuppressions
+  incrementWordSuppressions,
+  trackDeletedMessage
 } from "../../db/Muzzle/actions/muzzle-actions";
-import { IMuzzled, IMuzzler } from "../../shared/models/muzzle/muzzle-models";
+import { IMuzzled, IRequestor } from "../../shared/models/muzzle/muzzle-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
 import {
+  containsTag,
+  getBotId,
   getUserId,
   getUserIdByCallbackId,
   getUserName
 } from "../slack/slack-utils";
+import {
+  getRemainingTime,
+  getTimeString,
+  getTimeToMuzzle,
+  isRandomEven
+} from "./muzzle-utilities";
 // Store for the muzzled users.
 export const muzzled: Map<string, IMuzzled> = new Map();
 // Store for people who are muzzling others.
-export const requestors: Map<string, IMuzzler> = new Map();
+export const requestors: Map<string, IRequestor> = new Map();
 
 // Muzzle Constants
 const MAX_MUZZLE_TIME = 3600000;
@@ -77,46 +86,10 @@ export function addMuzzleTime(userId: string, timeToAdd: number) {
 }
 
 /**
- * Gets the amount of time remaining on a NodeJS Timeout.
- */
-function getRemainingTime(timeout: any) {
-  return Math.ceil(
-    timeout._idleStart + timeout._idleTimeout - process.uptime() * 1000
-  );
-}
-
-/**
  * Gets the corresponding database ID for the user's current muzzle.
  */
 export function getMuzzleId(userId: string) {
   return muzzled.get(userId)!.id;
-}
-
-/**
- * Determines whether or not a user is trying to @user, @channel or @here while muzzled.
- */
-export function containsTag(text: string): boolean {
-  return (
-    text.includes("<!channel>") || text.includes("<!here>") || !!getUserId(text)
-  );
-}
-
-/**
- * Gives us a random value between 30 seconds and 3 minutes.
- */
-export function getTimeToMuzzle() {
-  return Math.floor(Math.random() * (180000 - 30000 + 1) + 30000);
-}
-
-/**
- * Gives us a time string formatted as 1m20s to show the user.
- */
-export function getTimeString(time: number) {
-  const minutes = Math.floor(time / 60000);
-  const seconds = ((time % 60000) / 1000).toFixed(0);
-  return +seconds === 60
-    ? minutes + 1 + "m00s"
-    : minutes + "m" + (+seconds < 10 ? "0" : "") + seconds + "s";
 }
 
 /**
@@ -134,18 +107,6 @@ function isMaxMuzzlesReached(userId: string) {
  */
 export function isUserMuzzled(userId: string) {
   return muzzled.has(userId);
-}
-
-/**
- * Retrieves a Slack user id from the various fields in which a userId can exist inside of a bot response.
- */
-function getBotId(
-  fromText: string | undefined,
-  fromAttachmentText: string | undefined,
-  fromPretext: string | undefined,
-  fromCallbackId: string | undefined
-) {
-  return fromText || fromAttachmentText || fromPretext || fromCallbackId;
 }
 
 /**
@@ -189,7 +150,7 @@ export function shouldBotMessageBeMuzzled(request: IEventRequest) {
 /**
  * Adds a requestor to the requestors array with a muzzleCount to track how many muzzles have been performed, as well as a removal function.
  */
-function setMuzzlerCount(requestorId: string) {
+function setRequestorCount(requestorId: string) {
   const muzzleCount = requestors.has(requestorId)
     ? ++requestors.get(requestorId)!.muzzleCount
     : 1;
@@ -268,7 +229,7 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
 
       if (muzzleFromDb) {
         muzzleUser(userId, requestorId, muzzleFromDb.id, timeToMuzzle);
-        setMuzzlerCount(requestorId);
+        setRequestorCount(requestorId);
         resolve(
           `Succesfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`
         );
@@ -323,13 +284,6 @@ export function removeMuzzle(userId: string) {
 }
 
 /**
- * Generates a random number tells us if it is event.
- */
-export function isRandomEven() {
-  return Math.floor(Math.random() * 2) % 2 === 0;
-}
-
-/**
  * Wrapper for sendMessage that handles suppression in memory and, if max suppressions are reached, handles suppression storage to disk.
  */
 export function sendMuzzledMessage(
@@ -349,18 +303,6 @@ export function sendMuzzledMessage(
   } else {
     trackDeletedMessage(muzzleId, text);
   }
-}
-
-/**
- * Determines suppression counts for messages that are ONLY deleted and not muzzled.
- * Used when a muzzled user has hit their max suppressions or when they have tagged channel.
- */
-export function trackDeletedMessage(muzzleId: number, text: string) {
-  const words = text.split(" ").length;
-  const characters = text.split("").length;
-  incrementMessageSuppressions(muzzleId);
-  incrementWordSuppressions(muzzleId, words);
-  incrementCharacterSuppressions(muzzleId, characters);
 }
 
 /**

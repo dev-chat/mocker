@@ -1,4 +1,5 @@
 import express, { Request, Response, Router } from "express";
+import { trackDeletedMessage } from "../db/Muzzle/actions/muzzle-actions";
 import {
   IEventRequest,
   ISlashCommandRequest
@@ -7,17 +8,19 @@ import {
   ABUSE_PENALTY_TIME,
   addMuzzleTime,
   addUserToMuzzled,
-  containsTag,
   deleteMessage,
   getMuzzleId,
-  getTimeString,
   isUserMuzzled,
   sendMessage,
   sendMuzzledMessage,
-  shouldBotMessageBeMuzzled,
-  trackDeletedMessage
-} from "../utils/muzzle/muzzle-utils";
-import { getUserId, getUserName } from "../utils/slack/slack-utils";
+  shouldBotMessageBeMuzzled
+} from "../utils/muzzle/muzzle";
+import { getTimeString } from "../utils/muzzle/muzzle-utilities";
+import {
+  containsTag,
+  getUserId,
+  getUserName
+} from "../utils/slack/slack-utils";
 
 export const muzzleRoutes: Router = express.Router();
 

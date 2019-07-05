@@ -3,7 +3,7 @@ import {
   IChannelResponse,
   ISlackUser
 } from "../../shared/models/slack/slack-models";
-import { web } from "../muzzle/muzzle-utils";
+import { web } from "../muzzle/muzzle";
 
 const userIdRegEx = /[<]@\w+/gm;
 
@@ -64,4 +64,25 @@ export function getAllUsers() {
       console.error("Retrying in 5 seconds");
       setTimeout(() => getAllUsers(), 5000);
     });
+}
+
+/**
+ * Retrieves a Slack user id from the various fields in which a userId can exist inside of a bot response.
+ */
+export function getBotId(
+  fromText: string | undefined,
+  fromAttachmentText: string | undefined,
+  fromPretext: string | undefined,
+  fromCallbackId: string | undefined
+) {
+  return fromText || fromAttachmentText || fromPretext || fromCallbackId;
+}
+
+/**
+ * Determines whether or not a user is trying to @user, @channel or @here while muzzled.
+ */
+export function containsTag(text: string): boolean {
+  return (
+    text.includes("<!channel>") || text.includes("<!here>") || !!getUserId(text)
+  );
 }

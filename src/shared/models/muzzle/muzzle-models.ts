@@ -5,7 +5,7 @@ export interface IMuzzled {
   removalFn: NodeJS.Timeout;
 }
 
-export interface IMuzzler {
+export interface IRequestor {
   muzzleCount: number;
   muzzleCountRemover?: NodeJS.Timeout;
 }

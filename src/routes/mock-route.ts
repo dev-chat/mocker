@@ -4,7 +4,7 @@ import {
   ISlashCommandRequest
 } from "../shared/models/slack/slack-models";
 import { mock } from "../utils/mock/mock-utils";
-import { muzzled } from "../utils/muzzle/muzzle-utils";
+import { muzzled } from "../utils/muzzle/muzzle";
 import { sendResponse } from "../utils/slack/slack-utils";
 
 export const mockRoutes: Router = express.Router();
