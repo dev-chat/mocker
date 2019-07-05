@@ -79,6 +79,10 @@ function getRemainingTime(timeout: any) {
   );
 }
 
+export function getTransactionId(userId: string) {
+  return muzzled.get(userId)!.transactionId;
+}
+
 /**
  * Determines whether or not a user is trying to @user, @channel or @here while muzzled.
  */
@@ -320,7 +324,7 @@ export async function sendMuzzledMessage(
   }
 }
 
-function trackDeletedMessage(transactionId: number, text: string) {
+export function trackDeletedMessage(transactionId: number, text: string) {
   const words = text.split(" ");
   let wordsSuppressed = 0;
   let charactersSuppressed = 0;
