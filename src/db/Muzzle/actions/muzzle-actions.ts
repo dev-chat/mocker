@@ -69,8 +69,14 @@ export function updateSuppressions(
   wordsSuppressed: number,
   charactersSuppressed: number
 ) {
-  return getRepository(Muzzle).update(muzzleId, {
-    wordsSuppressed,
-    charactersSuppressed
-  });
+  console.log("should update suppressions for: ", muzzleId);
+  console.log("wordsSuppressed", wordsSuppressed);
+  console.log("charactersSuppressed", charactersSuppressed);
+  return getRepository(Muzzle).update(
+    { id: muzzleId },
+    {
+      wordsSuppressed,
+      charactersSuppressed
+    }
+  );
 }
