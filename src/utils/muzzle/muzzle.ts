@@ -148,7 +148,7 @@ export function shouldBotMessageBeMuzzled(request: IEventRequest) {
 }
 
 /**
- * Adds a requestor to the requestors array with a muzzleCount to track how many muzzles have been performed, as well as a removal function.
+ * Adds a requestor to the requestors map with a muzzleCount to track how many muzzles have been performed, as well as a removal function.
  */
 function setRequestorCount(requestorId: string) {
   const muzzleCount = requestors.has(requestorId)
@@ -172,7 +172,7 @@ function setRequestorCount(requestorId: string) {
 }
 
 /**
- * Adds a userId to the muzzled array, and sets timeout for removeMuzzle.
+ * Adds a userId to the muzzled map, and sets timeout for removeMuzzle.
  */
 function muzzleUser(
   userId: string,
@@ -189,7 +189,7 @@ function muzzleUser(
 }
 
 /**
- * Adds a user to the muzzled array and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
+ * Adds a user to the muzzled map and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
  */
 export function addUserToMuzzled(userId: string, requestorId: string) {
   const userName = getUserName(userId);
