@@ -258,7 +258,7 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
         );
       } catch (e) {
         console.error(e);
-        resolve(`Warning: Muzzle succeeded but logging did not.`);
+        reject(`Muzzled failed!`);
       }
     }
   });
