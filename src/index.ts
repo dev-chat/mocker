@@ -2,6 +2,7 @@ import bodyParser from "body-parser";
 import express, { Application } from "express";
 import "reflect-metadata";
 import { createConnection } from "typeorm";
+import { config } from "./ormconfig";
 import { defineRoutes } from "./routes/define-route";
 import { mockRoutes } from "./routes/mock-route";
 import { muzzleRoutes } from "./routes/muzzle-route";
@@ -16,11 +17,13 @@ app.use(mockRoutes);
 app.use(muzzleRoutes);
 app.use(defineRoutes);
 
-createConnection()
+createConnection(config)
   .then(connection => {
-    if (connection) {
+    if (connection.isConnected) {
       getAllUsers();
-      console.log("Connected to MySql");
+      console.log(`Connected to MySQL DB: ${config.database}`);
+    } else {
+      throw Error("Unable to connect to database");
     }
   })
   .catch(e => console.error(e));
