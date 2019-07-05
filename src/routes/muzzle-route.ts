@@ -9,8 +9,8 @@ import {
   addUserToMuzzled,
   containsTag,
   deleteMessage,
+  getMuzzleId,
   getTimeString,
-  getTransactionId,
   isUserMuzzled,
   sendMessage,
   sendMuzzledMessage,
@@ -39,7 +39,7 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
     isUserMuzzled(request.event.user) &&
     containsTag(request.event.text)
   ) {
-    const transactionId = getTransactionId(request.event.user);
+    const muzzleId = getMuzzleId(request.event.user);
     console.log(
       `${getUserName(
         request.event.user
@@ -47,7 +47,7 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
     );
     addMuzzleTime(request.event.user);
     deleteMessage(request.event.channel, request.event.ts);
-    trackDeletedMessage(transactionId, request.event.text);
+    trackDeletedMessage(muzzleId, request.event.text);
     sendMessage(
       request.event.channel,
       `:rotating_light: <@${

@@ -1,7 +1,7 @@
 export interface IMuzzled {
   suppressionCount: number;
   muzzledBy: string;
-  transactionId: number;
+  id: number;
   removalFn: NodeJS.Timeout;
 }
 

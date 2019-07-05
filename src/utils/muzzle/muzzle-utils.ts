@@ -34,7 +34,7 @@ export const web: WebClient = new WebClient(process.env.muzzleBotToken);
 /**
  * Takes in text and randomly muzzles certain words.
  */
-export function muzzle(text: string, transactionId: number) {
+export function muzzle(text: string, muzzleId: number) {
   const replacementText = " ..mMm... ";
   let returnText = "";
   const words = text.split(" ");
@@ -50,9 +50,9 @@ export function muzzle(text: string, transactionId: number) {
     }
     returnText += replacementWord;
   }
-  incrementMessageSuppressions(transactionId);
-  incrementCharacterSuppressions(transactionId, charactersSuppressed);
-  incrementWordSuppressions(transactionId, wordsSuppressed);
+  incrementMessageSuppressions(muzzleId);
+  incrementCharacterSuppressions(muzzleId, charactersSuppressed);
+  incrementWordSuppressions(muzzleId, wordsSuppressed);
   return returnText;
 }
 
@@ -60,14 +60,14 @@ export function addMuzzleTime(userId: string) {
   if (userId && muzzled.has(userId)) {
     const removalFn = muzzled.get(userId)!.removalFn;
     const newTime = getRemainingTime(removalFn) + ABUSE_PENALTY_TIME;
-    const transactionId = muzzled.get(userId)!.transactionId;
-    incrementMuzzleTime(transactionId, ABUSE_PENALTY_TIME);
+    const muzzleId = muzzled.get(userId)!.id;
+    incrementMuzzleTime(muzzleId, ABUSE_PENALTY_TIME);
     clearTimeout(muzzled.get(userId)!.removalFn);
     console.log(`Setting ${getUserName(userId)}'s muzzle time to ${newTime}`);
     muzzled.set(userId, {
       suppressionCount: muzzled.get(userId)!.suppressionCount,
       muzzledBy: muzzled.get(userId)!.muzzledBy,
-      transactionId: muzzled.get(userId)!.transactionId,
+      id: muzzled.get(userId)!.id,
       removalFn: setTimeout(() => removeMuzzle(userId), newTime)
     });
   }
@@ -79,8 +79,8 @@ function getRemainingTime(timeout: any) {
   );
 }
 
-export function getTransactionId(userId: string) {
-  return muzzled.get(userId)!.transactionId;
+export function getMuzzleId(userId: string) {
+  return muzzled.get(userId)!.id;
 }
 
 /**
@@ -204,13 +204,13 @@ function setMuzzlerCount(requestorId: string) {
 function muzzleUser(
   userId: string,
   requestorId: string,
-  transactionId: number,
+  id: number,
   timeToMuzzle: number
 ) {
   muzzled.set(userId, {
     suppressionCount: 0,
     muzzledBy: requestorId,
-    transactionId,
+    id,
     removalFn: setTimeout(() => removeMuzzle(userId), timeToMuzzle)
   });
 }
@@ -310,21 +310,21 @@ export function sendMuzzledMessage(
   userId: string,
   text: string
 ) {
-  const transactionId = muzzled.get(userId)!.transactionId;
+  const muzzleId = muzzled.get(userId)!.id;
   if (muzzled.get(userId)!.suppressionCount < MAX_SUPPRESSIONS) {
     muzzled.set(userId, {
       suppressionCount: ++muzzled.get(userId)!.suppressionCount,
       muzzledBy: muzzled.get(userId)!.muzzledBy,
-      transactionId,
+      id: muzzleId,
       removalFn: muzzled.get(userId)!.removalFn
     });
-    sendMessage(channel, `<@${userId}> says "${muzzle(text, transactionId)}"`);
+    sendMessage(channel, `<@${userId}> says "${muzzle(text, muzzleId)}"`);
   } else {
-    trackDeletedMessage(transactionId, text);
+    trackDeletedMessage(muzzleId, text);
   }
 }
 
-export function trackDeletedMessage(transactionId: number, text: string) {
+export function trackDeletedMessage(muzzleId: number, text: string) {
   const words = text.split(" ");
   let wordsSuppressed = 0;
   let charactersSuppressed = 0;
@@ -332,9 +332,9 @@ export function trackDeletedMessage(transactionId: number, text: string) {
     wordsSuppressed++;
     charactersSuppressed += word.length;
   }
-  incrementMessageSuppressions(transactionId);
-  incrementWordSuppressions(transactionId, wordsSuppressed);
-  incrementCharacterSuppressions(transactionId, charactersSuppressed);
+  incrementMessageSuppressions(muzzleId);
+  incrementWordSuppressions(muzzleId, wordsSuppressed);
+  incrementCharacterSuppressions(muzzleId, charactersSuppressed);
 }
 
 /**

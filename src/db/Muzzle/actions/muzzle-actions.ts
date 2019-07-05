@@ -1,58 +1,43 @@
 import { getRepository } from "typeorm";
 import { Muzzle } from "../models/Muzzle";
 
-export function addMuzzleTransaction(
+export function addMuzzleToDb(
   requestorId: string,
-  muzzleId: string,
+  muzzledId: string,
   time: number
 ) {
-  const transaction = new Muzzle();
-  transaction.requestorId = requestorId;
-  transaction.muzzledId = muzzleId;
-  transaction.messagesSuppressed = 0;
-  transaction.wordsSuppressed = 0;
-  transaction.charactersSuppressed = 0;
-  transaction.milliseconds = time;
-  return getRepository(Muzzle).save(transaction);
+  const muzzle = new Muzzle();
+  muzzle.requestorId = requestorId;
+  muzzle.muzzledId = muzzledId;
+  muzzle.messagesSuppressed = 0;
+  muzzle.wordsSuppressed = 0;
+  muzzle.charactersSuppressed = 0;
+  muzzle.milliseconds = time;
+  return getRepository(Muzzle).save(muzzle);
 }
 
-export function incrementMuzzleTime(transactionId: number, ms: number) {
-  return getRepository(Muzzle).increment(
-    { id: transactionId },
-    "milliseconds",
-    ms
-  );
+export function incrementMuzzleTime(id: number, ms: number) {
+  return getRepository(Muzzle).increment({ id }, "milliseconds", ms);
 }
 
-export function incrementMessageSuppressions(transactionId: number) {
-  return getRepository(Muzzle).increment(
-    { id: transactionId },
-    "messagesSuppressed",
-    1
-  );
+export function incrementMessageSuppressions(id: number) {
+  return getRepository(Muzzle).increment({ id }, "messagesSuppressed", 1);
 }
 
-export function incrementWordSuppressions(
-  transactionId: number,
-  wordSuppressions: number
-) {
+export function incrementWordSuppressions(id: number, suppressions: number) {
   return getRepository(Muzzle).increment(
-    {
-      id: transactionId
-    },
+    { id },
     "wordsSuppressed",
-    wordSuppressions
+    suppressions
   );
 }
 
 export function incrementCharacterSuppressions(
-  transactionId: number,
+  id: number,
   charactersSuppressed: number
 ) {
   return getRepository(Muzzle).increment(
-    {
-      id: transactionId
-    },
+    { id },
     "charactersSuppressed",
     charactersSuppressed
   );
