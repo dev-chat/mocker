@@ -6,7 +6,7 @@ import { config } from "./ormconfig";
 import { defineRoutes } from "./routes/define-route";
 import { mockRoutes } from "./routes/mock-route";
 import { muzzleRoutes } from "./routes/muzzle-route";
-import { getAllUsers } from "./utils/slack/slack.service";
+import { SlackServiceSingleton } from "./utils/slack/slack.service";
 
 const app: Application = express();
 const PORT: number = 3000;
@@ -20,7 +20,7 @@ app.use(defineRoutes);
 createConnection(config)
   .then(connection => {
     if (connection.isConnected) {
-      getAllUsers();
+      SlackServiceSingleton.getAllUsers();
       console.log(`Connected to MySQL DB: ${config.database}`);
     } else {
       throw Error("Unable to connect to database");

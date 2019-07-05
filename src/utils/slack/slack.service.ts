@@ -3,6 +3,7 @@ import {
   IChannelResponse,
   ISlackUser
 } from "../../shared/models/slack/slack-models";
+import { WebClientSingleton } from "../WebClient/web-client.service";
 
 export class SlackService {
   private userIdRegEx = /[<]@\w+/gm;
@@ -61,4 +62,16 @@ export class SlackService {
       !!this.getUserId(text)
     );
   }
+
+  public getAllUsers() {
+    WebClientSingleton.getAllUsers()
+      .then(resp => (this.userList = resp.members as ISlackUser[]))
+      .catch(e => {
+        console.error("Failed to retrieve users", e);
+        console.error("Retrying in 5 seconds");
+        setTimeout(() => this.getAllUsers(), 5000);
+      });
+  }
 }
+
+export const SlackServiceSingleton = new SlackService();

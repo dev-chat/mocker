@@ -3,7 +3,6 @@ import {
   ChatPostMessageArguments,
   WebClient
 } from "@slack/web-api";
-import { ISlackUser } from "../../shared/models/slack/slack-models";
 
 class WebClientService {
   private web: WebClient = new WebClient(process.env.muzzleBotToken);
@@ -45,16 +44,7 @@ class WebClientService {
   }
 
   public getAllUsers() {
-    return this.web.users
-      .list()
-      .then(resp => {
-        userList = resp.members as ISlackUser[];
-      })
-      .catch(e => {
-        console.error("Failed to retrieve users", e);
-        console.error("Retrying in 5 seconds");
-        setTimeout(() => this.getAllUsers(), 5000);
-      });
+    return this.web.users.list();
   }
 }
 

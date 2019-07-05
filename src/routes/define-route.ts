@@ -11,7 +11,7 @@ import {
 } from "../utils/define/define-utils";
 
 import { MuzzleManagerSingleton } from "../utils/muzzle/muzzle.service";
-import { sendResponse } from "../utils/slack/slack.service";
+import { SlackServiceSingleton } from "../utils/slack/slack.service";
 
 export const defineRoutes: Router = express.Router();
 
@@ -28,7 +28,7 @@ defineRoutes.post("/define", async (req: Request, res: Response) => {
         text: `*${capitalizeFirstLetter(request.text)}*`,
         attachments: formatDefs(defined.list)
       };
-      sendResponse(request.response_url, response);
+      SlackServiceSingleton.sendResponse(request.response_url, response);
       res.status(200).send();
     } catch (e) {
       res.send(`error: ${e.message}`);
