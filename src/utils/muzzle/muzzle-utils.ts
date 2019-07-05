@@ -4,7 +4,7 @@ import {
   WebClient
 } from "@slack/web-api";
 import {
-  addMuzzleTransaction,
+  addMuzzleToDb,
   incrementCharacterSuppressions,
   incrementMessageSuppressions,
   incrementMuzzleTime,
@@ -245,7 +245,7 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
       );
     } else {
       const timeToMuzzle = getTimeToMuzzle();
-      const transaction = await addMuzzleTransaction(
+      const transaction = await addMuzzleToDb(
         requestorId,
         userId,
         timeToMuzzle
