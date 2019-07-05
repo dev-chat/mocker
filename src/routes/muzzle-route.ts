@@ -68,9 +68,10 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
 muzzleRoutes.post("/muzzle", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
   const userId: any = getUserId(request.text);
-  try {
-    res.send(await addUserToMuzzled(userId, request.user_id));
-  } catch (e) {
+  const results = await addUserToMuzzled(userId, request.user_id).catch(e => {
     res.send(e);
+  });
+  if (results) {
+    res.send(results);
   }
 });

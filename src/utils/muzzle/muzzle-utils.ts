@@ -244,21 +244,22 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
         `You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`
       );
     } else {
-      try {
-        const timeToMuzzle = getTimeToMuzzle();
-        const transaction = await addMuzzleTransaction(
-          requestorId,
-          userId,
-          timeToMuzzle
-        );
+      const timeToMuzzle = getTimeToMuzzle();
+      const transaction = await addMuzzleTransaction(
+        requestorId,
+        userId,
+        timeToMuzzle
+      ).catch((e: any) => {
+        console.error(e);
+        reject(`Muzzle failed!`);
+      });
+
+      if (transaction) {
         muzzleUser(userId, requestorId, transaction.id, timeToMuzzle);
         setMuzzlerCount(requestorId);
         resolve(
           `Succesfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`
         );
-      } catch (e) {
-        console.error(e);
-        reject(`Muzzled failed!`);
       }
     }
   });
