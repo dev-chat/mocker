@@ -45,7 +45,7 @@ muzzleRoutes.post("/muzzle/handle", (req: Request, res: Response) => {
         request.event.user
       )} atttempted to tag someone. Muzzle increased by ${ABUSE_PENALTY_TIME}!`
     );
-    addMuzzleTime(request.event.user);
+    addMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
     deleteMessage(request.event.channel, request.event.ts);
     trackDeletedMessage(muzzleId, request.event.text);
     sendMessage(

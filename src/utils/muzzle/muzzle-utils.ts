@@ -22,7 +22,7 @@ export const muzzled: Map<string, IMuzzled> = new Map();
 // Store for people who are muzzling others.
 export const requestors: Map<string, IMuzzler> = new Map();
 
-// Time period in which a user must wait before making more muzzles.
+// Muzzle Constants
 const MAX_MUZZLE_TIME = 3600000;
 const MAX_TIME_BETWEEN_MUZZLES = 3600000;
 export const ABUSE_PENALTY_TIME = 300000;
@@ -56,10 +56,10 @@ export function muzzle(text: string, muzzleId: number) {
   return returnText;
 }
 
-export function addMuzzleTime(userId: string) {
+export function addMuzzleTime(userId: string, timeToAdd: number) {
   if (userId && muzzled.has(userId)) {
     const removalFn = muzzled.get(userId)!.removalFn;
-    const newTime = getRemainingTime(removalFn) + ABUSE_PENALTY_TIME;
+    const newTime = getRemainingTime(removalFn) + timeToAdd;
     const muzzleId = muzzled.get(userId)!.id;
     incrementMuzzleTime(muzzleId, ABUSE_PENALTY_TIME);
     clearTimeout(muzzled.get(userId)!.removalFn);
