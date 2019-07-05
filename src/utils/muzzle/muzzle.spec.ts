@@ -1,4 +1,3 @@
-import { expect } from "chai";
 import * as lolex from "lolex";
 import { ISlackUser } from "../../shared/models/slack/slack-models";
 import { setUserList } from "../slack/slack-utils";
@@ -36,39 +35,39 @@ describe("muzzle", () => {
     clock.reset();
   });
 
-  after(() => {
+  afterAll(() => {
     clock.uninstall();
   });
 
   describe("addUserToMuzzled()", () => {
     describe("muzzled", () => {
-      it("should add a user to the muzzled map", () => {
-        addUserToMuzzled(testData.user, testData.requestor);
-        expect(muzzled.size).to.equal(1);
-        expect(muzzled.has(testData.user)).to.equal(true);
+      it("should add a user to the muzzled map", async () => {
+        await addUserToMuzzled(testData.user, testData.requestor);
+        expect(muzzled.size).toBe(1);
+        expect(muzzled.has(testData.user)).toBe(true);
       });
 
-      it("should return an added user with IMuzzled attributes", () => {
-        addUserToMuzzled(testData.user, testData.requestor);
-        expect(muzzled.get(testData.user)!.suppressionCount).to.equal(0);
-        expect(muzzled.get(testData.user)!.muzzledBy).to.equal(
-          testData.requestor
-        );
+      it("should return an added user with IMuzzled attributes", async () => {
+        await addUserToMuzzled(testData.user, testData.requestor);
+        expect(muzzled.get(testData.user)!.suppressionCount).toBe(0);
+        expect(muzzled.get(testData.user)!.muzzledBy).toBe(testData.requestor);
+        expect(muzzled.get(testData.user)!.id).toBe(1);
+        expect(muzzled.get(testData.user)!.removalFn).toBeDefined();
       });
 
       it("should reject if a user tries to muzzle an already muzzled user", async () => {
         await addUserToMuzzled(testData.user, testData.requestor);
-        expect(muzzled.has(testData.user)).to.equal(true);
+        expect(muzzled.has(testData.user)).toBe(true);
         await addUserToMuzzled(testData.user, testData.requestor).catch(e => {
-          expect(e).to.equal("test123 is already muzzled!");
+          expect(e).toBe("test123 is already muzzled!");
         });
       });
 
       it("should reject if a user tries to muzzle a user that does not exist", async () => {
         await addUserToMuzzled("", testData.requestor);
-        expect(muzzled.has("")).to.equal(false);
+        expect(muzzled.has("")).toBe(false);
         await addUserToMuzzled("", testData.requestor).catch(e => {
-          expect(e).to.equal(
+          expect(e).toBe(
             `Invalid username passed in. You can only muzzle existing slack users`
           );
         });
@@ -76,9 +75,9 @@ describe("muzzle", () => {
 
       it("should reject if a requestor tries to muzzle someone while the requestor is muzzled", async () => {
         await addUserToMuzzled(testData.user, testData.requestor);
-        expect(muzzled.has(testData.user)).to.equal(true);
+        expect(muzzled.has(testData.user)).toBe(true);
         await addUserToMuzzled(testData.requestor, testData.user).catch(e => {
-          expect(e).to.equal(
+          expect(e).toBe(
             `You can't muzzle someone if you are already muzzled!`
           );
         });
@@ -89,28 +88,28 @@ describe("muzzle", () => {
       it("should add a user to the requestors map", () => {
         addUserToMuzzled(testData.user, testData.requestor);
 
-        expect(requestors.size).to.equal(1);
-        expect(requestors.has(testData.requestor)).to.equal(true);
+        expect(requestors.size).toBe(1);
+        expect(requestors.has(testData.requestor)).toBe(true);
       });
 
       it("should return an added user with IMuzzler attributes", () => {
         addUserToMuzzled(testData.user, testData.requestor);
-        expect(requestors.get(testData.requestor)!.muzzleCount).to.equal(1);
+        expect(requestors.get(testData.requestor)!.muzzleCount).toBe(1);
       });
 
       it("should increment a requestors muzzle count on a second addUserToMuzzled() call", () => {
         addUserToMuzzled(testData.user, testData.requestor);
         addUserToMuzzled(testData.user2, testData.requestor);
-        expect(muzzled.size).to.equal(2);
-        expect(requestors.has(testData.requestor)).to.equal(true);
-        expect(requestors.get(testData.requestor)!.muzzleCount).to.equal(2);
+        expect(muzzled.size).toBe(2);
+        expect(requestors.has(testData.requestor)).toBe(true);
+        expect(requestors.get(testData.requestor)!.muzzleCount).toBe(2);
       });
 
       it("should prevent a requestor from muzzling on their third count", async () => {
         await addUserToMuzzled(testData.user, testData.requestor);
         await addUserToMuzzled(testData.user2, testData.requestor);
         await addUserToMuzzled(testData.user3, testData.requestor).catch(e =>
-          expect(e).to.equal(
+          expect(e).toBe(
             `You're doing that too much. Only 2 muzzles are allowed per hour.`
           )
         );
@@ -121,24 +120,24 @@ describe("muzzle", () => {
   describe("removeMuzzle()", () => {
     it("should remove a user from the muzzled array", () => {
       addUserToMuzzled(testData.user, testData.requestor);
-      expect(muzzled.size).to.equal(1);
-      expect(muzzled.has(testData.user)).to.equal(true);
+      expect(muzzled.size).toBe(1);
+      expect(muzzled.has(testData.user)).toBe(true);
       removeMuzzle(testData.user);
-      expect(muzzled.has(testData.user)).to.equal(false);
-      expect(muzzled.size).to.equal(0);
+      expect(muzzled.has(testData.user)).toBe(false);
+      expect(muzzled.size).toBe(0);
     });
   });
 
   describe("removeRequestor()", () => {
     it("should remove a user from the muzzler array", () => {
       addUserToMuzzled(testData.user, testData.requestor);
-      expect(muzzled.size).to.equal(1);
-      expect(muzzled.has(testData.user)).to.equal(true);
-      expect(requestors.size).to.equal(1);
-      expect(requestors.has(testData.requestor)).to.equal(true);
+      expect(muzzled.size).toBe(1);
+      expect(muzzled.has(testData.user)).toBe(true);
+      expect(requestors.size).toBe(1);
+      expect(requestors.has(testData.requestor)).toBe(true);
       removeRequestor(testData.requestor);
-      expect(requestors.has(testData.requestor)).to.equal(false);
-      expect(requestors.size).to.equal(0);
+      expect(requestors.has(testData.requestor)).toBe(false);
+      expect(requestors.size).toBe(0);
     });
   });
 
@@ -146,14 +145,14 @@ describe("muzzle", () => {
     it("should always muzzle a tagged user", () => {
       const testSentence =
         "<@U2TKJ> <@JKDSF> <@SDGJSK> <@LSKJDSG> <@lkjdsa> <@LKSJDF> <@SDLJG> <@jrjrjr> <@fudka>";
-      expect(muzzle(testSentence, 1)).to.equal(
+      expect(muzzle(testSentence, 1)).toBe(
         " ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm.. "
       );
     });
 
     it("should always muzzle <!channel>", () => {
       const testSentence = "<!channel> hey guys";
-      expect(muzzle(testSentence, 1).includes("<!channel>")).to.equal(false);
+      expect(muzzle(testSentence, 1).includes("<!channel>")).toBe(false);
     });
   });
 });
