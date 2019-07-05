@@ -4,14 +4,14 @@ import {
   ISlashCommandRequest
 } from "../shared/models/slack/slack-models";
 import { mock } from "../utils/mock/mock-utils";
-import { isUserMuzzled } from "../utils/muzzle/muzzle";
+import { MuzzleManagerSingleton } from "../utils/muzzle/muzzle.service";
 import { sendResponse } from "../utils/slack/slack-utils";
 
 export const mockRoutes: Router = express.Router();
 
 mockRoutes.post("/mock", (req, res) => {
   const request: ISlashCommandRequest = req.body;
-  if (isUserMuzzled(request.user_id)) {
+  if (MuzzleManagerSingleton.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     const mocked: string = mock(request.text);

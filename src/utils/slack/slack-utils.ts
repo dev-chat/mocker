@@ -3,7 +3,6 @@ import {
   IChannelResponse,
   ISlackUser
 } from "../../shared/models/slack/slack-models";
-import { web } from "../muzzle/muzzle";
 
 const userIdRegEx = /[<]@\w+/gm;
 
@@ -51,19 +50,6 @@ export function getUserIdByCallbackId(callbackId: string) {
  */
 export function setUserList(list: ISlackUser[]) {
   userList = list;
-}
-
-export function getAllUsers() {
-  web.users
-    .list()
-    .then(resp => {
-      userList = resp.members as ISlackUser[];
-    })
-    .catch(e => {
-      console.error("Failed to retrieve users", e);
-      console.error("Retrying in 5 seconds");
-      setTimeout(() => getAllUsers(), 5000);
-    });
 }
 
 /**

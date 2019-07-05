@@ -9,7 +9,8 @@ import {
   define,
   formatDefs
 } from "../utils/define/define-utils";
-import { isUserMuzzled } from "../utils/muzzle/muzzle";
+
+import { MuzzleManagerSingleton } from "../utils/muzzle/muzzle.service";
 import { sendResponse } from "../utils/slack/slack-utils";
 
 export const defineRoutes: Router = express.Router();
@@ -17,7 +18,7 @@ export const defineRoutes: Router = express.Router();
 defineRoutes.post("/define", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
 
-  if (isUserMuzzled(request.user_id)) {
+  if (MuzzleManagerSingleton.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     try {

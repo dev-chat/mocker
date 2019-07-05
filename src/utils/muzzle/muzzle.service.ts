@@ -1,0 +1,332 @@
+import {
+  addMuzzleToDb,
+  incrementCharacterSuppressions,
+  incrementMessageSuppressions,
+  incrementMuzzleTime,
+  incrementWordSuppressions,
+  trackDeletedMessage
+} from "../../db/Muzzle/actions/muzzle-actions";
+import { IMuzzled, IRequestor } from "../../shared/models/muzzle/muzzle-models";
+import { IEventRequest } from "../../shared/models/slack/slack-models";
+import {
+  containsTag,
+  getBotId,
+  getUserId,
+  getUserIdByCallbackId,
+  getUserName
+} from "../slack/slack-utils";
+import { WebClientSingleton } from "../WebClient/web-client.service";
+import {
+  getRemainingTime,
+  getTimeString,
+  getTimeToMuzzle,
+  isRandomEven
+} from "./muzzle-utilities";
+// Store for the muzzled users.
+export const muzzled: Map<string, IMuzzled> = new Map();
+// Store for people who are muzzling others.
+export const requestors: Map<string, IRequestor> = new Map();
+
+export class MuzzleService {
+  public ABUSE_PENALTY_TIME = 300000;
+  public web = WebClientSingleton;
+  private MAX_MUZZLE_TIME = 3600000;
+  private MAX_TIME_BETWEEN_MUZZLES = 3600000;
+  private MAX_SUPPRESSIONS = 7;
+  private MAX_MUZZLES = 2;
+  private muzzled: Map<string, IMuzzled> = new Map();
+  private requestors: Map<string, IRequestor> = new Map();
+
+  /**
+   * Takes in text and randomly muzzles certain words.
+   */
+  public muzzle(text: string, muzzleId: number) {
+    const replacementText = " ..mMm... ";
+    let returnText = "";
+    const words = text.split(" ");
+    let wordsSuppressed = 0;
+    let charactersSuppressed = 0;
+    let replacementWord;
+    for (const word of words) {
+      replacementWord =
+        isRandomEven() && !containsTag(word) ? ` *${word}* ` : replacementText;
+      if (replacementWord === replacementText) {
+        wordsSuppressed++;
+        charactersSuppressed += word.length;
+      }
+      returnText += replacementWord;
+    }
+    incrementMessageSuppressions(muzzleId);
+    incrementCharacterSuppressions(muzzleId, charactersSuppressed);
+    incrementWordSuppressions(muzzleId, wordsSuppressed);
+    return returnText;
+  }
+  /**
+   * Adds the specified amount of time to a specified muzzled user.
+   */
+  public addMuzzleTime(userId: string, timeToAdd: number) {
+    if (userId && this.muzzled.has(userId)) {
+      const removalFn = this.muzzled.get(userId)!.removalFn;
+      const newTime = getRemainingTime(removalFn) + timeToAdd;
+      const muzzleId = this.muzzled.get(userId)!.id;
+      incrementMuzzleTime(muzzleId, this.ABUSE_PENALTY_TIME);
+      clearTimeout(this.muzzled.get(userId)!.removalFn);
+      console.log(`Setting ${getUserName(userId)}'s muzzle time to ${newTime}`);
+      this.muzzled.set(userId, {
+        suppressionCount: this.muzzled.get(userId)!.suppressionCount,
+        muzzledBy: this.muzzled.get(userId)!.muzzledBy,
+        id: this.muzzled.get(userId)!.id,
+        removalFn: setTimeout(() => this.removeMuzzle(userId), newTime)
+      });
+    }
+  }
+  /**
+   * Gets the corresponding database ID for the user's current muzzle.
+   */
+  public getMuzzleId(userId: string) {
+    return this.muzzled.get(userId)!.id;
+  }
+
+  /**
+   * Retrieves the specified user from the muzzled map by slack id.
+   */
+  public getMuzzledUserById(slackId: string) {
+    return this.muzzled.get(slackId);
+  }
+
+  /**
+   * Retrieves the specified user from the requestors map by slack id.
+   */
+  public getRequestorById(slackId: string) {
+    return this.requestors.get(slackId);
+  }
+
+  /**
+   * Returns boolean whether user is muzzled or not.
+   */
+  public isUserMuzzled(userId: string) {
+    return this.muzzled.has(userId);
+  }
+
+  /**
+   * Returns boolean whether user is a requestor or not.
+   */
+  public isUserRequestor(userId: string) {
+    return this.requestors.has(userId);
+  }
+  /**
+   * Determines whether or not a bot message should be removed.
+   */
+  public shouldBotMessageBeMuzzled(request: IEventRequest) {
+    let userIdByEventText;
+    let userIdByAttachmentText;
+    let userIdByAttachmentPretext;
+    let userIdByCallbackId;
+
+    if (request.event.text) {
+      userIdByEventText = getUserId(request.event.text);
+    } else if (request.event.attachments && request.event.attachments.length) {
+      userIdByAttachmentText = getUserId(request.event.attachments[0].text);
+      userIdByAttachmentPretext = getUserId(
+        request.event.attachments[0].pretext
+      );
+
+      if (request.event.attachments[0].callback_id) {
+        userIdByCallbackId = getUserIdByCallbackId(
+          request.event.attachments[0].callback_id
+        );
+      }
+    }
+
+    const finalUserId = getBotId(
+      userIdByEventText,
+      userIdByAttachmentText,
+      userIdByAttachmentPretext,
+      userIdByCallbackId
+    );
+
+    return (
+      request.event.subtype === "bot_message" &&
+      request.event.attachments &&
+      finalUserId &&
+      this.isUserMuzzled(finalUserId) &&
+      request.event.username !== "muzzle"
+    );
+  }
+
+  /**
+   * Adds a user to the muzzled map and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
+   */
+  public addUserToMuzzled(userId: string, requestorId: string) {
+    const userName = getUserName(userId);
+    const requestorName = getUserName(requestorId);
+    return new Promise(async (resolve, reject) => {
+      if (!userId) {
+        reject(
+          `Invalid username passed in. You can only muzzle existing slack users`
+        );
+      } else if (this.isUserMuzzled(userId)) {
+        console.error(
+          `${requestorName} | ${requestorId} attempted to muzzle ${userName} | ${userId} but ${userName} | ${userId} is already muzzled.`
+        );
+        reject(`${userName} is already muzzled!`);
+      } else if (this.isUserMuzzled(requestorId)) {
+        console.error(
+          `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId}  is currently muzzled`
+        );
+        reject(`You can't muzzle someone if you are already muzzled!`);
+      } else if (this.isMaxMuzzlesReached(requestorId)) {
+        console.error(
+          `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId} has reached maximum muzzle of ${
+            this.MAX_MUZZLES
+          }`
+        );
+        reject(
+          `You're doing that too much. Only ${
+            this.MAX_MUZZLES
+          } muzzles are allowed per hour.`
+        );
+      } else {
+        const timeToMuzzle = getTimeToMuzzle();
+        const muzzleFromDb = await addMuzzleToDb(
+          requestorId,
+          userId,
+          timeToMuzzle
+        ).catch((e: any) => {
+          console.error(e);
+          reject(`Muzzle failed!`);
+        });
+
+        if (muzzleFromDb) {
+          this.muzzleUser(userId, requestorId, muzzleFromDb.id, timeToMuzzle);
+          this.setRequestorCount(requestorId);
+          resolve(
+            `Succesfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`
+          );
+        }
+      }
+    });
+  }
+
+  /**
+   * Decrements the muzzleCount on a requestor.
+   */
+  public decrementMuzzleCount(requestorId: string) {
+    if (this.requestors.has(requestorId)) {
+      const decrementedMuzzle = --this.requestors.get(requestorId)!.muzzleCount;
+      this.requestors.set(requestorId, {
+        muzzleCount: decrementedMuzzle,
+        muzzleCountRemover: this.requestors.get(requestorId)!.muzzleCountRemover
+      });
+      console.log(
+        `Successfully decremented ${getUserName(
+          requestorId
+        )} | ${requestorId} muzzleCount to ${decrementedMuzzle}`
+      );
+    } else {
+      console.error(
+        `Attemped to decrement muzzle count for ${getUserName(
+          requestorId
+        )} | ${requestorId} but they did not exist!`
+      );
+    }
+  }
+
+  /**
+   * Wrapper for sendMessage that handles suppression in memory and, if max suppressions are reached, handles suppression storage to disk.
+   */
+  public sendMuzzledMessage(channel: string, userId: string, text: string) {
+    const muzzleId = this.muzzled.get(userId)!.id;
+    if (this.muzzled.get(userId)!.suppressionCount < this.MAX_SUPPRESSIONS) {
+      this.muzzled.set(userId, {
+        suppressionCount: ++this.muzzled.get(userId)!.suppressionCount,
+        muzzledBy: this.muzzled.get(userId)!.muzzledBy,
+        id: muzzleId,
+        removalFn: this.muzzled.get(userId)!.removalFn
+      });
+      this.web.sendMessage(
+        channel,
+        `<@${userId}> says "${this.muzzle(text, muzzleId)}"`
+      );
+    } else {
+      trackDeletedMessage(muzzleId, text);
+    }
+  }
+
+  /**
+   * Removes a muzzle from the specified user.
+   */
+  private removeMuzzle(userId: string) {
+    this.muzzled.delete(userId);
+    console.log(
+      `Removed ${getUserName(userId)} | ${userId}'s muzzle! He is free at last.`
+    );
+  }
+
+  /**
+   * Adds a userId to the muzzled map, and sets timeout for removeMuzzle.
+   */
+  private muzzleUser(
+    userId: string,
+    requestorId: string,
+    id: number,
+    timeToMuzzle: number
+  ) {
+    this.muzzled.set(userId, {
+      suppressionCount: 0,
+      muzzledBy: requestorId,
+      id,
+      removalFn: setTimeout(() => this.removeMuzzle(userId), timeToMuzzle)
+    });
+  }
+
+  /**
+   * Removes a requestor from the map.
+   */
+  private removeRequestor(userId: string) {
+    this.requestors.delete(userId);
+    console.log(
+      `${this.MAX_MUZZLE_TIME} has passed since ${getUserName(
+        userId
+      )} | ${userId} last successful muzzle. They have been removed from requestors.`
+    );
+  }
+  /**
+   * Adds a requestor to the requestors map with a muzzleCount to track how many muzzles have been performed, as well as a removal function.
+   */
+  private setRequestorCount(requestorId: string) {
+    const muzzleCount = this.requestors.has(requestorId)
+      ? ++this.requestors.get(requestorId)!.muzzleCount
+      : 1;
+
+    if (this.requestors.has(requestorId)) {
+      clearTimeout(this.requestors.get(requestorId)!
+        .muzzleCountRemover as NodeJS.Timeout);
+    }
+
+    const removalFunction =
+      this.requestors.has(requestorId) &&
+      this.requestors.get(requestorId)!.muzzleCount === this.MAX_MUZZLES
+        ? () => this.removeRequestor(requestorId)
+        : () => this.decrementMuzzleCount(requestorId);
+    this.requestors.set(requestorId, {
+      muzzleCount,
+      muzzleCountRemover: setTimeout(
+        removalFunction,
+        this.MAX_TIME_BETWEEN_MUZZLES
+      )
+    });
+  }
+
+  /**
+   * Returns boolean whether max muzzles have been reached.
+   */
+  private isMaxMuzzlesReached(userId: string) {
+    return (
+      this.requestors.has(userId) &&
+      this.requestors.get(userId)!.muzzleCount === this.MAX_MUZZLES
+    );
+  }
+}
+
+export const MuzzleManagerSingleton = new MuzzleService();
