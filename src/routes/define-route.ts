@@ -16,21 +16,21 @@ export const defineRoutes: Router = express.Router();
 
 defineRoutes.post("/define", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
-  try {
-    const defined: IUrbanDictionaryResponse = await define(request.text);
-    const response: IChannelResponse = {
-      response_type: "in_channel",
-      text: `*${capitalizeFirstLetter(request.text)}*`,
-      attachments: formatDefs(defined.list)
-    };
 
-    if (muzzled.has(request.user_id)) {
-      res.send(`Sorry, can't do that while muzzled.`);
-    } else {
+  if (muzzled.has(request.user_id)) {
+    res.send(`Sorry, can't do that while muzzled.`);
+  } else {
+    try {
+      const defined: IUrbanDictionaryResponse = await define(request.text);
+      const response: IChannelResponse = {
+        response_type: "in_channel",
+        text: `*${capitalizeFirstLetter(request.text)}*`,
+        attachments: formatDefs(defined.list)
+      };
       sendResponse(request.response_url, response);
       res.status(200).send();
+    } catch (e) {
+      res.send(`error: ${e.message}`);
     }
-  } catch (e) {
-    res.send(`error: ${e.message}`);
   }
 });
