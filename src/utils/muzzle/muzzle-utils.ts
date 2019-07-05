@@ -7,8 +7,7 @@ import {
   addMuzzleTransaction,
   incrementCharacterSuppressions,
   incrementMessageSuppressions,
-  incrementWordSuppressions,
-  updateSuppressions
+  incrementWordSuppressions
 } from "../../db/Muzzle/actions/muzzle-actions";
 import { IMuzzled, IMuzzler } from "../../shared/models/muzzle/muzzle-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
