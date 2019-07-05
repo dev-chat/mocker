@@ -245,7 +245,7 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
       );
     } else {
       const timeToMuzzle = getTimeToMuzzle();
-      const transaction = await addMuzzleToDb(
+      const muzzleFromDb = await addMuzzleToDb(
         requestorId,
         userId,
         timeToMuzzle
@@ -254,8 +254,8 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
         reject(`Muzzle failed!`);
       });
 
-      if (transaction) {
-        muzzleUser(userId, requestorId, transaction.id, timeToMuzzle);
+      if (muzzleFromDb) {
+        muzzleUser(userId, requestorId, muzzleFromDb.id, timeToMuzzle);
         setMuzzlerCount(requestorId);
         resolve(
           `Succesfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`
