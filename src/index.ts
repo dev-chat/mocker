@@ -6,7 +6,7 @@ import { config } from "./ormconfig";
 import { defineRoutes } from "./routes/define-route";
 import { mockRoutes } from "./routes/mock-route";
 import { muzzleRoutes } from "./routes/muzzle-route";
-import { getAllUsers } from "./utils/slack/slack-utils";
+import { getAllUsers } from "./utils/slack/slack.service";
 
 const app: Application = express();
 const PORT: number = 3000;

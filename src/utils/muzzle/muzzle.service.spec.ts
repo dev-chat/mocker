@@ -1,6 +1,6 @@
 import * as lolex from "lolex";
 import { ISlackUser } from "../../shared/models/slack/slack-models";
-import { setUserList } from "../slack/slack-utils";
+import { setUserList } from "../slack/slack.service";
 import { MuzzleService } from "./muzzle.service";
 
 describe("muzzle", () => {

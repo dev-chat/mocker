@@ -14,7 +14,7 @@ import {
   getUserId,
   getUserIdByCallbackId,
   getUserName
-} from "../slack/slack-utils";
+} from "../slack/slack.service";
 import { WebClientSingleton } from "../WebClient/web-client.service";
 import {
   getRemainingTime,

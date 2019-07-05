@@ -5,7 +5,7 @@ import {
 } from "../shared/models/slack/slack-models";
 import { mock } from "../utils/mock/mock-utils";
 import { MuzzleManagerSingleton } from "../utils/muzzle/muzzle.service";
-import { sendResponse } from "../utils/slack/slack-utils";
+import { sendResponse } from "../utils/slack/slack.service";
 
 export const mockRoutes: Router = express.Router();
 

@@ -11,7 +11,7 @@ import {
 } from "../utils/define/define-utils";
 
 import { MuzzleManagerSingleton } from "../utils/muzzle/muzzle.service";
-import { sendResponse } from "../utils/slack/slack-utils";
+import { sendResponse } from "../utils/slack/slack.service";
 
 export const defineRoutes: Router = express.Router();
 

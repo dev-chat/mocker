@@ -10,7 +10,7 @@ import {
   containsTag,
   getUserId,
   getUserName
-} from "../utils/slack/slack-utils";
+} from "../utils/slack/slack.service";
 
 export const muzzleRoutes: Router = express.Router();
 
