@@ -305,7 +305,7 @@ export function isRandomEven() {
   return Math.floor(Math.random() * 2) % 2 === 0;
 }
 
-export async function sendMuzzledMessage(
+export function sendMuzzledMessage(
   channel: string,
   userId: string,
   text: string
