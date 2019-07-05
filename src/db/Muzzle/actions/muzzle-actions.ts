@@ -12,7 +12,7 @@ export function addMuzzleTransaction(
   transaction.messagesSuppressed = 0;
   transaction.wordsSuppressed = 0;
   transaction.charactersSuppressed = 0;
-  transaction.time = time;
+  transaction.milliseconds = time;
   return getRepository(Muzzle).save(transaction);
 }
 

@@ -12,7 +12,7 @@ export class Muzzle {
   public muzzledId!: string;
 
   @Column()
-  public muzzleLengthMs!: number;
+  public milliseconds!: number;
 
   @Column()
   public messagesSuppressed!: number;
