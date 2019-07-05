@@ -64,19 +64,28 @@ export function incrementMessageSuppressions(muzzleId: number) {
   );
 }
 
-export function updateSuppressions(
-  muzzleId: number,
-  wordsSuppressed: number,
+export function incrementWordSuppressions(
+  transactionId: number,
+  wordSuppressions: number
+) {
+  return getRepository(Muzzle).increment(
+    {
+      id: transactionId
+    },
+    "wordsSuppressed",
+    wordSuppressions
+  );
+}
+
+export function incrementCharacterSuppressions(
+  transactionId: number,
   charactersSuppressed: number
 ) {
-  console.log("should update suppressions for: ", muzzleId);
-  console.log("wordsSuppressed", wordsSuppressed);
-  console.log("charactersSuppressed", charactersSuppressed);
-  return getRepository(Muzzle).update(
-    { id: muzzleId },
+  return getRepository(Muzzle).increment(
     {
-      wordsSuppressed,
-      charactersSuppressed
-    }
+      id: transactionId
+    },
+    "charactersSuppressed",
+    charactersSuppressed
   );
 }

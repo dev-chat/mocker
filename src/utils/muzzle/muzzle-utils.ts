@@ -5,7 +5,9 @@ import {
 } from "@slack/web-api";
 import {
   addMuzzleTransaction,
+  incrementCharacterSuppressions,
   incrementMessageSuppressions,
+  incrementWordSuppressions,
   updateSuppressions
 } from "../../db/Muzzle/actions/muzzle-actions";
 import { IMuzzled, IMuzzler } from "../../shared/models/muzzle/muzzle-models";
@@ -49,7 +51,8 @@ export function muzzle(text: string, transactionId: number) {
     returnText += replacementWord;
   }
   incrementMessageSuppressions(transactionId);
-  updateSuppressions(transactionId, wordsSuppressed, charactersSuppressed);
+  incrementCharacterSuppressions(transactionId, charactersSuppressed);
+  incrementWordSuppressions(transactionId, wordsSuppressed);
   return returnText;
 }
 
