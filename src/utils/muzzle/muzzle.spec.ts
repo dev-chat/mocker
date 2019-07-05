@@ -11,7 +11,7 @@ import {
   requestors
 } from "./muzzle";
 
-describe("muzzle-utils", () => {
+describe("muzzle", () => {
   const testData = {
     user: "123",
     user2: "456",
@@ -146,14 +146,14 @@ describe("muzzle-utils", () => {
     it("should always muzzle a tagged user", () => {
       const testSentence =
         "<@U2TKJ> <@JKDSF> <@SDGJSK> <@LSKJDSG> <@lkjdsa> <@LKSJDF> <@SDLJG> <@jrjrjr> <@fudka>";
-      expect(muzzle(testSentence)).to.equal(
+      expect(muzzle(testSentence, 1)).to.equal(
         " ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm.. "
       );
     });
 
     it("should always muzzle <!channel>", () => {
       const testSentence = "<!channel> hey guys";
-      expect(muzzle(testSentence).includes("<!channel>")).to.equal(false);
+      expect(muzzle(testSentence, 1).includes("<!channel>")).to.equal(false);
     });
   });
 });
