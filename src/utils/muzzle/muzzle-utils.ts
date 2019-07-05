@@ -310,7 +310,22 @@ export async function sendMuzzledMessage(
       removalFn: muzzled.get(userId)!.removalFn
     });
     sendMessage(channel, `<@${userId}> says "${muzzle(text, transactionId)}"`);
+  } else {
+    trackDeletedMessage(transactionId, text);
   }
+}
+
+function trackDeletedMessage(transactionId: number, text: string) {
+  const words = text.split(" ");
+  let wordsSuppressed = 0;
+  let charactersSuppressed = 0;
+  for (const word of words) {
+    wordsSuppressed++;
+    charactersSuppressed += word.length;
+  }
+  incrementMessageSuppressions(transactionId);
+  incrementWordSuppressions(transactionId, wordsSuppressed);
+  incrementCharacterSuppressions(transactionId, charactersSuppressed);
 }
 
 /**
