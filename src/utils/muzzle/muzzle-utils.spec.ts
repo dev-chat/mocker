@@ -8,7 +8,7 @@ import {
   muzzle,
   muzzled,
   removeMuzzle,
-  removeMuzzler,
+  removeRequestor,
   requestors
 } from "./muzzle-utils";
 
@@ -130,14 +130,14 @@ describe("muzzle-utils", () => {
     });
   });
 
-  describe("removeMuzzler()", () => {
+  describe("removeRequestor()", () => {
     it("should remove a user from the muzzler array", () => {
       addUserToMuzzled(testData.user, testData.requestor);
       expect(muzzled.size).to.equal(1);
       expect(muzzled.has(testData.user)).to.equal(true);
       expect(requestors.size).to.equal(1);
       expect(requestors.has(testData.requestor)).to.equal(true);
-      removeMuzzler(testData.requestor);
+      removeRequestor(testData.requestor);
       expect(requestors.has(testData.requestor)).to.equal(false);
       expect(requestors.size).to.equal(0);
     });

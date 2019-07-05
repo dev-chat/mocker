@@ -56,6 +56,9 @@ export function muzzle(text: string, muzzleId: number) {
   return returnText;
 }
 
+/**
+ * Adds the specified amount of time to a specified muzzled user.
+ */
 export function addMuzzleTime(userId: string, timeToAdd: number) {
   if (userId && muzzled.has(userId)) {
     const removalFn = muzzled.get(userId)!.removalFn;
@@ -73,12 +76,18 @@ export function addMuzzleTime(userId: string, timeToAdd: number) {
   }
 }
 
+/**
+ * Gets the amount of time remaining on a NodeJS Timeout.
+ */
 function getRemainingTime(timeout: any) {
   return Math.ceil(
     timeout._idleStart + timeout._idleTimeout - process.uptime() * 1000
   );
 }
 
+/**
+ * Gets the corresponding database ID for the user's current muzzle.
+ */
 export function getMuzzleId(userId: string) {
   return muzzled.get(userId)!.id;
 }
@@ -127,6 +136,9 @@ export function isUserMuzzled(userId: string) {
   return muzzled.has(userId);
 }
 
+/**
+ * Retrieves a Slack user id from the various fields in which a userId can exist inside of a bot response.
+ */
 function getBotId(
   fromText: string | undefined,
   fromAttachmentText: string | undefined,
@@ -175,7 +187,7 @@ export function shouldBotMessageBeMuzzled(request: IEventRequest) {
 }
 
 /**
- * Adds a requestor to the requestors array with a muzzleCount to track how many muzzles have been performed, as well as a removal funciton.
+ * Adds a requestor to the requestors array with a muzzleCount to track how many muzzles have been performed, as well as a removal function.
  */
 function setMuzzlerCount(requestorId: string) {
   const muzzleCount = requestors.has(requestorId)
@@ -190,7 +202,7 @@ function setMuzzlerCount(requestorId: string) {
   const removalFunction =
     requestors.has(requestorId) &&
     requestors.get(requestorId)!.muzzleCount === MAX_MUZZLES
-      ? () => removeMuzzler(requestorId)
+      ? () => removeRequestor(requestorId)
       : () => decrementMuzzleCount(requestorId);
   requestors.set(requestorId, {
     muzzleCount,
@@ -264,7 +276,9 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
     }
   });
 }
-
+/**
+ * Decrements the muzzleCount on a requestor.
+ */
 export function decrementMuzzleCount(requestorId: string) {
   if (requestors.has(requestorId)) {
     const decrementedMuzzle = --requestors.get(requestorId)!.muzzleCount;
@@ -286,7 +300,10 @@ export function decrementMuzzleCount(requestorId: string) {
   }
 }
 
-export function removeMuzzler(userId: string) {
+/**
+ * Removes a requestor from the map.
+ */
+export function removeRequestor(userId: string) {
   requestors.delete(userId);
   console.log(
     `${MAX_MUZZLE_TIME} has passed since ${getUserName(
@@ -295,6 +312,9 @@ export function removeMuzzler(userId: string) {
   );
 }
 
+/**
+ * Removes a muzzle from the specified user.
+ */
 export function removeMuzzle(userId: string) {
   muzzled.delete(userId);
   console.log(
@@ -302,10 +322,16 @@ export function removeMuzzle(userId: string) {
   );
 }
 
+/**
+ * Generates a random number tells us if it is event.
+ */
 export function isRandomEven() {
   return Math.floor(Math.random() * 2) % 2 === 0;
 }
 
+/**
+ * Wrapper for sendMessage that handles suppression in memory and, if max suppressions are reached, handles suppression storage to disk.
+ */
 export function sendMuzzledMessage(
   channel: string,
   userId: string,
@@ -325,17 +351,16 @@ export function sendMuzzledMessage(
   }
 }
 
+/**
+ * Determines suppression counts for messages that are ONLY deleted and not muzzled.
+ * Used when a muzzled user has hit their max suppressions or when they have tagged channel.
+ */
 export function trackDeletedMessage(muzzleId: number, text: string) {
-  const words = text.split(" ");
-  let wordsSuppressed = 0;
-  let charactersSuppressed = 0;
-  for (const word of words) {
-    wordsSuppressed++;
-    charactersSuppressed += word.length;
-  }
+  const words = text.split(" ").length;
+  const characters = text.split("").length;
   incrementMessageSuppressions(muzzleId);
-  incrementWordSuppressions(muzzleId, wordsSuppressed);
-  incrementCharacterSuppressions(muzzleId, charactersSuppressed);
+  incrementWordSuppressions(muzzleId, words);
+  incrementCharacterSuppressions(muzzleId, characters);
 }
 
 /**
