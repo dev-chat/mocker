@@ -55,3 +55,22 @@ export function getMostMuzzledByDateRange(startDate: Date, endDate: Date) {
   console.log(startDate, endDate);
   return "test";
 }
+
+export function incrementMessageSuppressions(muzzleId: number) {
+  return getRepository(Muzzle).increment(
+    { id: muzzleId },
+    "messagesSuppressed",
+    1
+  );
+}
+
+export function updateSuppressions(
+  muzzleId: number,
+  wordsSuppressed: number,
+  charactersSuppressed: number
+) {
+  return getRepository(Muzzle).update(muzzleId, {
+    wordsSuppressed,
+    charactersSuppressed
+  });
+}

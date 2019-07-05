@@ -3,7 +3,11 @@ import {
   ChatPostMessageArguments,
   WebClient
 } from "@slack/web-api";
-import { addMuzzleTransaction } from "../../db/Muzzle/actions/muzzle-actions";
+import {
+  addMuzzleTransaction,
+  incrementMessageSuppressions,
+  updateSuppressions
+} from "../../db/Muzzle/actions/muzzle-actions";
 import { IMuzzled, IMuzzler } from "../../shared/models/muzzle/muzzle-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
 import {
@@ -28,13 +32,24 @@ export const web: WebClient = new WebClient(process.env.muzzleBotToken);
 /**
  * Takes in text and randomly muzzles certain words.
  */
-export function muzzle(text: string) {
+export function muzzle(text: string, transactionId: number) {
+  const replacementText = " ..mMm... ";
   let returnText = "";
   const words = text.split(" ");
+  let wordsSuppressed = 0;
+  let charactersSuppressed = 0;
+  let replacementWord;
   for (const word of words) {
-    returnText +=
-      isRandomEven() && !containsTag(word) ? ` *${word}* ` : " ..mMm.. ";
+    replacementWord =
+      isRandomEven() && !containsTag(word) ? ` *${word}* ` : replacementText;
+    if (replacementWord === replacementText) {
+      wordsSuppressed++;
+      charactersSuppressed += word.length;
+    }
+    returnText += replacementWord;
   }
+  incrementMessageSuppressions(transactionId);
+  updateSuppressions(transactionId, wordsSuppressed, charactersSuppressed);
   return returnText;
 }
 
@@ -47,6 +62,7 @@ export function addMuzzleTime(userId: string) {
     muzzled.set(userId, {
       suppressionCount: muzzled.get(userId)!.suppressionCount,
       muzzledBy: muzzled.get(userId)!.muzzledBy,
+      transactionId: muzzled.get(userId)!.transactionId,
       removalFn: setTimeout(() => removeMuzzle(userId), newTime)
     });
   }
@@ -174,10 +190,16 @@ function setMuzzlerCount(requestorId: string) {
 /**
  * Adds a userId to the muzzled array, and sets timeout for removeMuzzle.
  */
-function muzzleUser(userId: string, requestorId: string, timeToMuzzle: number) {
+function muzzleUser(
+  userId: string,
+  requestorId: string,
+  transactionId: number,
+  timeToMuzzle: number
+) {
   muzzled.set(userId, {
     suppressionCount: 0,
     muzzledBy: requestorId,
+    transactionId,
     removalFn: setTimeout(() => removeMuzzle(userId), timeToMuzzle)
   });
 }
@@ -211,22 +233,21 @@ export function addUserToMuzzled(userId: string, requestorId: string) {
         `You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`
       );
     } else {
-      const timeToMuzzle = getTimeToMuzzle();
-      muzzleUser(userId, requestorId, timeToMuzzle);
-      setMuzzlerCount(requestorId);
       try {
-        console.log(
-          await addMuzzleTransaction(requestorId, userId, timeToMuzzle)
+        const timeToMuzzle = getTimeToMuzzle();
+        const transaction = await addMuzzleTransaction(
+          requestorId,
+          userId,
+          timeToMuzzle
         );
+        muzzleUser(userId, requestorId, transaction.id, timeToMuzzle);
+        setMuzzlerCount(requestorId);
         resolve(
           `Succesfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`
         );
       } catch (e) {
         console.error(e);
-        resolve(`Succesfully muzzled ${userName} for ${getTimeString(
-          timeToMuzzle
-        )}
-        Warning: Your muzzle was not logged in the DB due to server-related issues`);
+        resolve(`Warning: Muzzle succeeded but logging did not.`);
       }
     }
   });
@@ -273,18 +294,20 @@ export function isRandomEven() {
   return Math.floor(Math.random() * 2) % 2 === 0;
 }
 
-export function sendMuzzledMessage(
+export async function sendMuzzledMessage(
   channel: string,
   userId: string,
   text: string
 ) {
+  const transactionId = muzzled.get(userId)!.transactionId;
   if (muzzled.get(userId)!.suppressionCount < MAX_SUPPRESSIONS) {
     muzzled.set(userId, {
       suppressionCount: ++muzzled.get(userId)!.suppressionCount,
       muzzledBy: muzzled.get(userId)!.muzzledBy,
+      transactionId,
       removalFn: muzzled.get(userId)!.removalFn
     });
-    sendMessage(channel, `<@${userId}> says "${muzzle(text)}"`);
+    sendMessage(channel, `<@${userId}> says "${muzzle(text, transactionId)}"`);
   }
 }
 
