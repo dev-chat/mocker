@@ -12,7 +12,7 @@ export class Muzzle {
   public muzzledId!: string;
 
   @Column()
-  public time!: number;
+  public muzzleLengthMs!: number;
 
   @Column()
   public messagesSuppressed!: number;
@@ -23,6 +23,6 @@ export class Muzzle {
   @Column()
   public charactersSuppressed!: number;
 
-  @Column()
+  @Column({ type: "datetime", default: () => "CURRENT_TIMESTAMP" })
   public date!: Date;
 }
