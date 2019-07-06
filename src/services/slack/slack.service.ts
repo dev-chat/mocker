@@ -3,11 +3,21 @@ import {
   IChannelResponse,
   ISlackUser
 } from "../../shared/models/slack/slack-models";
-import { WebClientSingleton } from "../WebClient/web-client.service";
+import { WebClientService } from "../WebClient/web-client.service";
 
 export class SlackService {
+  public static getInstance() {
+    if (!SlackService.instance) {
+      SlackService.instance = new SlackService();
+    }
+    return SlackService.instance;
+  }
+  private static instance: SlackService;
   private userIdRegEx = /[<]@\w+/gm;
   private userList: ISlackUser[] = [];
+  private web: WebClientService = WebClientService.getInstance();
+
+  private constructor() {}
 
   public sendResponse(responseUrl: string, response: IChannelResponse): void {
     axios
@@ -64,7 +74,8 @@ export class SlackService {
   }
 
   public getAllUsers() {
-    WebClientSingleton.getAllUsers()
+    this.web
+      .getAllUsers()
       .then(resp => (this.userList = resp.members as ISlackUser[]))
       .catch(e => {
         console.error("Failed to retrieve users", e);
@@ -73,5 +84,3 @@ export class SlackService {
       });
   }
 }
-
-export const SlackServiceSingleton = new SlackService();

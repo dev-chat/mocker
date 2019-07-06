@@ -4,8 +4,17 @@ import {
   WebClient
 } from "@slack/web-api";
 
-class WebClientService {
+export class WebClientService {
+  public static getInstance() {
+    if (!WebClientService.instance) {
+      WebClientService.instance = new WebClientService();
+    }
+    return WebClientService.instance;
+  }
+  private static instance: WebClientService;
   private web: WebClient = new WebClient(process.env.muzzleBotToken);
+
+  private constructor() {}
 
   /**
    * Handles deletion of messages.
@@ -47,5 +56,3 @@ class WebClientService {
     return this.web.users.list();
   }
 }
-
-export const WebClientSingleton: WebClientService = new WebClientService();

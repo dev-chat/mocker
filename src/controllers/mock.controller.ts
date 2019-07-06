@@ -1,7 +1,7 @@
 import express, { Router } from "express";
 import { mock } from "../services/mock/mock-utils";
-import { MuzzleManagerSingleton } from "../services/muzzle/muzzle.service";
-import { SlackServiceSingleton } from "../services/slack/slack.service";
+import { MuzzleService } from "../services/muzzle/muzzle.service";
+import { SlackService } from "../services/slack/slack.service";
 import {
   IChannelResponse,
   ISlashCommandRequest
@@ -9,9 +9,12 @@ import {
 
 export const mockController: Router = express.Router();
 
+const muzzleService = MuzzleService.getInstance();
+const slackService = SlackService.getInstance();
+
 mockController.post("/mock", (req, res) => {
   const request: ISlashCommandRequest = req.body;
-  if (MuzzleManagerSingleton.isUserMuzzled(request.user_id)) {
+  if (muzzleService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     const mocked: string = mock(request.text);
@@ -24,7 +27,7 @@ mockController.post("/mock", (req, res) => {
       response_type: "in_channel",
       text: `<@${request.user_id}>`
     };
-    SlackServiceSingleton.sendResponse(request.response_url, response);
+    slackService.sendResponse(request.response_url, response);
     res.status(200).send();
   }
 });

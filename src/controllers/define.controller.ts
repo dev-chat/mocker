@@ -10,15 +10,17 @@ import {
   ISlashCommandRequest
 } from "../shared/models/slack/slack-models";
 
-import { MuzzleManagerSingleton } from "../services/muzzle/muzzle.service";
-import { SlackServiceSingleton } from "../services/slack/slack.service";
+import { MuzzleService } from "../services/muzzle/muzzle.service";
+import { SlackService } from "../services/slack/slack.service";
 
 export const defineController: Router = express.Router();
+const muzzleService = MuzzleService.getInstance();
+const slackService = SlackService.getInstance();
 
 defineController.post("/define", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
 
-  if (MuzzleManagerSingleton.isUserMuzzled(request.user_id)) {
+  if (muzzleService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     try {
@@ -28,7 +30,7 @@ defineController.post("/define", async (req: Request, res: Response) => {
         text: `*${capitalizeFirstLetter(request.text)}*`,
         attachments: formatDefs(defined.list)
       };
-      SlackServiceSingleton.sendResponse(request.response_url, response);
+      slackService.sendResponse(request.response_url, response);
       res.status(200).send();
     } catch (e) {
       res.send(`error: ${e.message}`);
