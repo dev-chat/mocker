@@ -3,7 +3,7 @@ import { ISlackUser } from "../../shared/models/slack/slack-models";
 import { SlackService } from "../slack/slack.service";
 import { MuzzleService } from "./muzzle.service";
 
-describe("muzzle", () => {
+describe("MuzzleService", () => {
   const testData = {
     user: "123",
     user2: "456",
@@ -19,12 +19,12 @@ describe("muzzle", () => {
   beforeEach(() => {
     muzzleInstance = MuzzleService.getInstance();
     slackInstance = SlackService.getInstance();
-    setUserList([
+    slackInstance.userList = [
       { id: "123", name: "test123" },
       { id: "456", name: "test456" },
       { id: "789", name: "test789" },
       { id: "666", name: "requestor" }
-    ] as ISlackUser[]);
+    ] as ISlackUser[];
   });
 
   afterEach(() => {
