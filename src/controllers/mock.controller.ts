@@ -1,5 +1,5 @@
 import express, { Router } from "express";
-import { mock } from "../services/mock/mock-utils";
+import { mock } from "../services/mock/mock.service";
 import { MuzzleService } from "../services/muzzle/muzzle.service";
 import { SlackService } from "../services/slack/slack.service";
 import {
