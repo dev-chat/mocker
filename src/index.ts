@@ -2,20 +2,20 @@ import bodyParser from "body-parser";
 import express, { Application } from "express";
 import "reflect-metadata";
 import { createConnection } from "typeorm";
+import { defineController } from "./controllers/define.controller";
+import { mockController } from "./controllers/mock.controller";
+import { muzzleController } from "./controllers/muzzle.controller";
 import { config } from "./ormconfig";
-import { defineRoutes } from "./routes/define-route";
-import { mockRoutes } from "./routes/mock-route";
-import { muzzleRoutes } from "./routes/muzzle-route";
-import { SlackServiceSingleton } from "./utils/slack/slack.service";
+import { SlackServiceSingleton } from "./services/slack/slack.service";
 
 const app: Application = express();
 const PORT: number = 3000;
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(mockRoutes);
-app.use(muzzleRoutes);
-app.use(defineRoutes);
+app.use(mockController);
+app.use(muzzleController);
+app.use(defineController);
 
 createConnection(config)
   .then(connection => {

@@ -8,13 +8,7 @@ import {
 } from "../../db/Muzzle/actions/muzzle-actions";
 import { IMuzzled, IRequestor } from "../../shared/models/muzzle/muzzle-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
-import {
-  containsTag,
-  getBotId,
-  getUserId,
-  getUserIdByCallbackId,
-  getUserName
-} from "../slack/slack.service";
+import { SlackServiceSingleton } from "../slack/slack.service";
 import { WebClientSingleton } from "../WebClient/web-client.service";
 import {
   getRemainingTime,
@@ -49,7 +43,9 @@ export class MuzzleService {
     let replacementWord;
     for (const word of words) {
       replacementWord =
-        isRandomEven() && !containsTag(word) ? ` *${word}* ` : replacementText;
+        isRandomEven() && !SlackServiceSingleton.containsTag(word)
+          ? ` *${word}* `
+          : replacementText;
       if (replacementWord === replacementText) {
         wordsSuppressed++;
         charactersSuppressed += word.length;
@@ -71,7 +67,11 @@ export class MuzzleService {
       const muzzleId = this.muzzled.get(userId)!.id;
       incrementMuzzleTime(muzzleId, this.ABUSE_PENALTY_TIME);
       clearTimeout(this.muzzled.get(userId)!.removalFn);
-      console.log(`Setting ${getUserName(userId)}'s muzzle time to ${newTime}`);
+      console.log(
+        `Setting ${SlackServiceSingleton.getUserName(
+          userId
+        )}'s muzzle time to ${newTime}`
+      );
       this.muzzled.set(userId, {
         suppressionCount: this.muzzled.get(userId)!.suppressionCount,
         muzzledBy: this.muzzled.get(userId)!.muzzledBy,
@@ -124,21 +124,23 @@ export class MuzzleService {
     let userIdByCallbackId;
 
     if (request.event.text) {
-      userIdByEventText = getUserId(request.event.text);
+      userIdByEventText = SlackServiceSingleton.getUserId(request.event.text);
     } else if (request.event.attachments && request.event.attachments.length) {
-      userIdByAttachmentText = getUserId(request.event.attachments[0].text);
-      userIdByAttachmentPretext = getUserId(
+      userIdByAttachmentText = SlackServiceSingleton.getUserId(
+        request.event.attachments[0].text
+      );
+      userIdByAttachmentPretext = SlackServiceSingleton.getUserId(
         request.event.attachments[0].pretext
       );
 
       if (request.event.attachments[0].callback_id) {
-        userIdByCallbackId = getUserIdByCallbackId(
+        userIdByCallbackId = SlackServiceSingleton.getUserIdByCallbackId(
           request.event.attachments[0].callback_id
         );
       }
     }
 
-    const finalUserId = getBotId(
+    const finalUserId = SlackServiceSingleton.getBotId(
       userIdByEventText,
       userIdByAttachmentText,
       userIdByAttachmentPretext,
@@ -158,8 +160,8 @@ export class MuzzleService {
    * Adds a user to the muzzled map and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
    */
   public addUserToMuzzled(userId: string, requestorId: string) {
-    const userName = getUserName(userId);
-    const requestorName = getUserName(requestorId);
+    const userName = SlackServiceSingleton.getUserName(userId);
+    const requestorName = SlackServiceSingleton.getUserName(requestorId);
     return new Promise(async (resolve, reject) => {
       if (!userId) {
         reject(
@@ -219,13 +221,13 @@ export class MuzzleService {
         muzzleCountRemover: this.requestors.get(requestorId)!.muzzleCountRemover
       });
       console.log(
-        `Successfully decremented ${getUserName(
+        `Successfully decremented ${SlackServiceSingleton.getUserName(
           requestorId
         )} | ${requestorId} muzzleCount to ${decrementedMuzzle}`
       );
     } else {
       console.error(
-        `Attemped to decrement muzzle count for ${getUserName(
+        `Attemped to decrement muzzle count for ${SlackServiceSingleton.getUserName(
           requestorId
         )} | ${requestorId} but they did not exist!`
       );
@@ -259,7 +261,9 @@ export class MuzzleService {
   private removeMuzzle(userId: string) {
     this.muzzled.delete(userId);
     console.log(
-      `Removed ${getUserName(userId)} | ${userId}'s muzzle! He is free at last.`
+      `Removed ${SlackServiceSingleton.getUserName(
+        userId
+      )} | ${userId}'s muzzle! He is free at last.`
     );
   }
 
@@ -286,7 +290,9 @@ export class MuzzleService {
   private removeRequestor(userId: string) {
     this.requestors.delete(userId);
     console.log(
-      `${this.MAX_MUZZLE_TIME} has passed since ${getUserName(
+      `${
+        this.MAX_MUZZLE_TIME
+      } has passed since ${SlackServiceSingleton.getUserName(
         userId
       )} | ${userId} last successful muzzle. They have been removed from requestors.`
     );

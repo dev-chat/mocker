@@ -1,21 +1,21 @@
 import express, { Request, Response, Router } from "express";
+import {
+  capitalizeFirstLetter,
+  define,
+  formatDefs
+} from "../services/define/define-utils";
 import { IUrbanDictionaryResponse } from "../shared/models/define/define-models";
 import {
   IChannelResponse,
   ISlashCommandRequest
 } from "../shared/models/slack/slack-models";
-import {
-  capitalizeFirstLetter,
-  define,
-  formatDefs
-} from "../utils/define/define-utils";
 
-import { MuzzleManagerSingleton } from "../utils/muzzle/muzzle.service";
-import { SlackServiceSingleton } from "../utils/slack/slack.service";
+import { MuzzleManagerSingleton } from "../services/muzzle/muzzle.service";
+import { SlackServiceSingleton } from "../services/slack/slack.service";
 
-export const defineRoutes: Router = express.Router();
+export const defineController: Router = express.Router();
 
-defineRoutes.post("/define", async (req: Request, res: Response) => {
+defineController.post("/define", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
 
   if (MuzzleManagerSingleton.isUserMuzzled(request.user_id)) {
