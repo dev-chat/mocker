@@ -3,7 +3,7 @@ import { trackDeletedMessage } from "../db/Muzzle/actions/muzzle-actions";
 import { getTimeString } from "../services/muzzle/muzzle-utilities";
 import { MuzzleService } from "../services/muzzle/muzzle.service";
 import { SlackService } from "../services/slack/slack.service";
-import { WebClientService } from "../services/WebClient/web-client.service";
+import { WebService } from "../services/web/web.service";
 import {
   IEventRequest,
   ISlashCommandRequest
@@ -13,7 +13,7 @@ export const muzzleController: Router = express.Router();
 
 const muzzleService = MuzzleService.getInstance();
 const slackService = SlackService.getInstance();
-const webService = WebClientService.getInstance();
+const webService = WebService.getInstance();
 
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;

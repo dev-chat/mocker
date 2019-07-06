@@ -3,7 +3,7 @@ import {
   IChannelResponse,
   ISlackUser
 } from "../../shared/models/slack/slack-models";
-import { WebClientService } from "../WebClient/web-client.service";
+import { WebService } from "../web/web.service";
 
 export class SlackService {
   public static getInstance() {
@@ -13,9 +13,9 @@ export class SlackService {
     return SlackService.instance;
   }
   private static instance: SlackService;
+  public userList: ISlackUser[] = [];
   private userIdRegEx = /[<]@\w+/gm;
-  private userList: ISlackUser[] = [];
-  private web: WebClientService = WebClientService.getInstance();
+  private web: WebService = WebService.getInstance();
 
   private constructor() {}
 
@@ -30,11 +30,18 @@ export class SlackService {
       );
   }
 
-  public getUserName(user: string): string {
-    const userObj: ISlackUser | undefined = this.getUserById(user);
+  /**
+   * Gets the username of the user by id.
+   */
+  public getUserName(userId: string): string {
+    const userObj: ISlackUser | undefined = this.getUserById(userId);
     return userObj ? userObj.name : "";
   }
 
+  /**
+   * Retrieves the user id from a string.
+   * Expected format is <@U235KLKJ>
+   */
   public getUserId(user: string) {
     if (!user) {
       return "";
@@ -43,13 +50,22 @@ export class SlackService {
     return regArray ? regArray[0].slice(2) : "";
   }
 
+  /**
+   * Returns the user object by id
+   */
   public getUserById(userId: string) {
     return this.userList.find((user: ISlackUser) => user.id === userId);
   }
 
-  // This will really only work for SpoilerBot since it stores userId here and nowhere else.
+  /**
+   * Kind of a janky way to get the requesting users ID via callback id.
+   */
   public getUserIdByCallbackId(callbackId: string) {
-    return callbackId.slice(callbackId.indexOf("_") + 1, callbackId.length);
+    if (callbackId.includes("_")) {
+      return callbackId.slice(callbackId.indexOf("_") + 1, callbackId.length);
+    } else {
+      return "";
+    }
   }
   /**
    * Retrieves a Slack user id from the various fields in which a userId can exist inside of a bot response.
@@ -73,14 +89,17 @@ export class SlackService {
     );
   }
 
-  public getAllUsers() {
-    this.web
+  /**
+   * Retrieves a list of all users.
+   */
+  public async getAllUsers() {
+    this.userList = (await this.web
       .getAllUsers()
-      .then(resp => (this.userList = resp.members as ISlackUser[]))
+      .then(resp => resp.members as ISlackUser[])
       .catch(e => {
         console.error("Failed to retrieve users", e);
         console.error("Retrying in 5 seconds");
         setTimeout(() => this.getAllUsers(), 5000);
-      });
+      })) as ISlackUser[];
   }
 }

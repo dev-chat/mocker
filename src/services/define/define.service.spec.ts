@@ -4,7 +4,7 @@ import {
   define,
   formatDefs,
   formatUrbanD
-} from "./define-utils";
+} from "./define.service";
 
 describe("define-utils", () => {
   describe("capitalizeFirstLetter()", () => {

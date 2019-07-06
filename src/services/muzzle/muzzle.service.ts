@@ -9,7 +9,7 @@ import {
 import { IMuzzled, IRequestor } from "../../shared/models/muzzle/muzzle-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
 import { SlackService } from "../slack/slack.service";
-import { WebClientService } from "../WebClient/web-client.service";
+import { WebService } from "../web/web.service";
 import {
   getRemainingTime,
   getTimeString,
@@ -31,7 +31,7 @@ export class MuzzleService {
 
   private static instance: MuzzleService;
   public ABUSE_PENALTY_TIME = 300000;
-  private webService = WebClientService.getInstance();
+  private webService = WebService.getInstance();
   private slackService = SlackService.getInstance();
   private MAX_MUZZLE_TIME = 3600000;
   private MAX_TIME_BETWEEN_MUZZLES = 3600000;

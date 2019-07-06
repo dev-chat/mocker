@@ -1,11 +1,37 @@
+import { ISlackUser } from "../../shared/models/slack/slack-models";
 import { SlackService } from "./slack.service";
 
 describe("slack-utils", () => {
   let slackService: SlackService;
 
   beforeEach(() => {
-    slackService = new SlackService();
+    slackService = SlackService.getInstance();
+    slackService.userList = [
+      {
+        id: "123",
+        name: "test_user123"
+      },
+      {
+        id: "456",
+        name: "test_user456"
+      },
+      {
+        id: "789",
+        name: "test_user789"
+      }
+    ] as ISlackUser[];
   });
+
+  describe("getUserName()", () => {
+    it("should return the user.name property of a known user by id", () => {
+      expect(slackService.getUserName("123")).toBe("test_user123");
+    });
+
+    it("should return an empty string for a user that does not exist", () => {
+      expect(slackService.getUserName("1010")).toBe("");
+    });
+  });
+
   describe("getUserId()", () => {
     it("should return a userId when one is passed in without a username", () => {
       expect(slackService.getUserId("<@U2TYNKJ>")).toBe("U2TYNKJ");
@@ -21,6 +47,16 @@ describe("slack-utils", () => {
 
     it("should return '' when no userId exists", () => {
       expect(slackService.getUserId("total waste of time")).toBe("");
+    });
+  });
+
+  describe("getUserById()", () => {
+    it("should return a user object when given a valid id", () => {
+      expect(slackService.getUserById("123")).toEqual(slackService.userList[0]);
+    });
+
+    it("should return undefined when given an invalid id", () => {
+      expect(slackService.getUserById("1010")).toBeUndefined();
     });
   });
 
@@ -48,6 +84,66 @@ describe("slack-utils", () => {
     it("should return true if a word has a tagged user", () => {
       const testUser = "<@UTJFJKL>";
       expect(slackService.containsTag(testUser)).toBe(true);
+    });
+  });
+
+  describe("getUserIdByCallbackId()", () => {
+    it("should return a userId when there is one present", () => {
+      const callbackId = "JSLKDJLFJ_U25JKLMN";
+      expect(slackService.getUserIdByCallbackId(callbackId)).toBe("U25JKLMN");
+    });
+
+    it("should return an empty string when there is no id present", () => {
+      const callbackId = "LJKSDLFJSF";
+      expect(slackService.getUserIdByCallbackId(callbackId)).toBe("");
+    });
+
+    it("should handle an empty string callbackId", () => {
+      expect(slackService.getUserIdByCallbackId("")).toBe("");
+    });
+  });
+
+  describe("getBotId()", () => {
+    it("should return an id fromText if it is the only id present", () => {
+      expect(
+        slackService.getBotId("12345", undefined, undefined, undefined)
+      ).toBe("12345");
+    });
+
+    it("should return an id fromAttachmentText if it is the only id present", () => {
+      expect(
+        slackService.getBotId(undefined, "12345", undefined, undefined)
+      ).toBe("12345");
+    });
+
+    it("should return an id fromPretext if it is the only id present", () => {
+      expect(
+        slackService.getBotId(undefined, undefined, "12345", undefined)
+      ).toBe("12345");
+    });
+
+    it("should return an id fromCallBackId if it is the only id present", () => {
+      expect(
+        slackService.getBotId(undefined, undefined, undefined, "12345")
+      ).toBe("12345");
+    });
+
+    it("should return the first available id - fromText", () => {
+      expect(slackService.getBotId("1", "2", "3", "4")).toBe("1");
+    });
+
+    it("should return the first available id - fromAttachmentText", () => {
+      expect(slackService.getBotId(undefined, "2", "3", "4")).toBe("2");
+    });
+
+    it("should return the first available id - fromPretext", () => {
+      expect(slackService.getBotId(undefined, undefined, "3", "4")).toBe("3");
+    });
+
+    it("should return the first available id - fromCallbackId", () => {
+      expect(slackService.getBotId(undefined, undefined, undefined, "4")).toBe(
+        "4"
+      );
     });
   });
 });

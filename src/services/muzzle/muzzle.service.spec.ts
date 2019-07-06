@@ -1,6 +1,6 @@
 import * as lolex from "lolex";
 import { ISlackUser } from "../../shared/models/slack/slack-models";
-import { setUserList } from "../slack/slack.service";
+import { SlackService } from "../slack/slack.service";
 import { MuzzleService } from "./muzzle.service";
 
 describe("muzzle", () => {
@@ -14,9 +14,11 @@ describe("muzzle", () => {
   const clock = lolex.install();
 
   let muzzleInstance: MuzzleService;
+  let slackInstance: SlackService;
 
   beforeEach(() => {
-    muzzleInstance = new MuzzleService();
+    muzzleInstance = MuzzleService.getInstance();
+    slackInstance = SlackService.getInstance();
     setUserList([
       { id: "123", name: "test123" },
       { id: "456", name: "test456" },

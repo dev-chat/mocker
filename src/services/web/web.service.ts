@@ -4,14 +4,14 @@ import {
   WebClient
 } from "@slack/web-api";
 
-export class WebClientService {
+export class WebService {
   public static getInstance() {
-    if (!WebClientService.instance) {
-      WebClientService.instance = new WebClientService();
+    if (!WebService.instance) {
+      WebService.instance = new WebService();
     }
-    return WebClientService.instance;
+    return WebService.instance;
   }
-  private static instance: WebClientService;
+  private static instance: WebService;
   private web: WebClient = new WebClient(process.env.muzzleBotToken);
 
   private constructor() {}
