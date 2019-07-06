@@ -35,7 +35,7 @@ describe("MuzzleService", () => {
     clock.uninstall();
   });
 
-  describe("muzzleInstance.addUserToMuzzled()", () => {
+  describe("addUserToMuzzled()", () => {
     describe("muzzled", () => {
       it("should add a user to the muzzled map", async () => {
         await muzzleInstance.addUserToMuzzled(
@@ -154,25 +154,6 @@ describe("MuzzleService", () => {
             )
           );
       });
-    });
-  });
-
-  describe("removeMuzzle()", () => {
-    it("should remove a user from the muzzled array", async () => {
-      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
-      expect(muzzleInstance.isUserMuzzled(testData.user)).toBe(true);
-      removeMuzzle(testData.user);
-      expect(muzzleInstance.isUserMuzzled(testData.user)).toBe(false);
-    });
-  });
-
-  describe("removeRequestor()", () => {
-    it("should remove a user from the muzzler array", async () => {
-      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
-      expect(muzzleInstance.isUserMuzzled(testData.user)).toBe(true);
-      expect(muzzleInstance.isUserRequestor(testData.requestor)).toBe(true);
-      removeRequestor(testData.requestor);
-      expect(muzzleInstance.isUserRequestor(testData.requestor)).toBe(false);
     });
   });
 

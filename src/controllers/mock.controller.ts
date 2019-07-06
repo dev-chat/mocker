@@ -1,5 +1,5 @@
 import express, { Router } from "express";
-import { mock } from "../services/mock/mock.service";
+import { MockService } from "../services/mock/mock.service";
 import { MuzzleService } from "../services/muzzle/muzzle.service";
 import { SlackService } from "../services/slack/slack.service";
 import {
@@ -11,13 +11,14 @@ export const mockController: Router = express.Router();
 
 const muzzleService = MuzzleService.getInstance();
 const slackService = SlackService.getInstance();
+const mockService = MockService.getInstance();
 
 mockController.post("/mock", (req, res) => {
   const request: ISlashCommandRequest = req.body;
   if (muzzleService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
-    const mocked: string = mock(request.text);
+    const mocked: string = mockService.mock(request.text);
     const response: IChannelResponse = {
       attachments: [
         {

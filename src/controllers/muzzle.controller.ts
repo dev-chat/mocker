@@ -1,6 +1,6 @@
 import express, { Request, Response, Router } from "express";
-import { trackDeletedMessage } from "../db/Muzzle/actions/muzzle-actions";
 import { getTimeString } from "../services/muzzle/muzzle-utilities";
+import { MuzzlePersistenceService } from "../services/muzzle/muzzle.persistence.service";
 import { MuzzleService } from "../services/muzzle/muzzle.service";
 import { SlackService } from "../services/slack/slack.service";
 import { WebService } from "../services/web/web.service";
@@ -14,6 +14,7 @@ export const muzzleController: Router = express.Router();
 const muzzleService = MuzzleService.getInstance();
 const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
+const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
@@ -49,7 +50,7 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
       muzzleService.ABUSE_PENALTY_TIME
     );
     webService.deleteMessage(request.event.channel, request.event.ts);
-    trackDeletedMessage(muzzleId, request.event.text);
+    muzzlePersistenceService.trackDeletedMessage(muzzleId, request.event.text);
     webService.sendMessage(
       request.event.channel,
       `:rotating_light: <@${

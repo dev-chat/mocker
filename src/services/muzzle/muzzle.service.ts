@@ -1,11 +1,3 @@
-import {
-  addMuzzleToDb,
-  incrementCharacterSuppressions,
-  incrementMessageSuppressions,
-  incrementMuzzleTime,
-  incrementWordSuppressions,
-  trackDeletedMessage
-} from "../../db/Muzzle/actions/muzzle-actions";
 import { IMuzzled, IRequestor } from "../../shared/models/muzzle/muzzle-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
 import { SlackService } from "../slack/slack.service";
@@ -16,10 +8,7 @@ import {
   getTimeToMuzzle,
   isRandomEven
 } from "./muzzle-utilities";
-// Store for the muzzled users.
-export const muzzled: Map<string, IMuzzled> = new Map();
-// Store for people who are muzzling others.
-export const requestors: Map<string, IRequestor> = new Map();
+import { MuzzlePersistenceService } from "./muzzle.persistence.service";
 
 export class MuzzleService {
   public static getInstance() {
@@ -33,6 +22,7 @@ export class MuzzleService {
   public ABUSE_PENALTY_TIME = 300000;
   private webService = WebService.getInstance();
   private slackService = SlackService.getInstance();
+  private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
   private MAX_MUZZLE_TIME = 3600000;
   private MAX_TIME_BETWEEN_MUZZLES = 3600000;
   private MAX_SUPPRESSIONS = 7;
@@ -62,9 +52,15 @@ export class MuzzleService {
       }
       returnText += replacementWord;
     }
-    incrementMessageSuppressions(muzzleId);
-    incrementCharacterSuppressions(muzzleId, charactersSuppressed);
-    incrementWordSuppressions(muzzleId, wordsSuppressed);
+    this.muzzlePersistenceService.incrementMessageSuppressions(muzzleId);
+    this.muzzlePersistenceService.incrementCharacterSuppressions(
+      muzzleId,
+      charactersSuppressed
+    );
+    this.muzzlePersistenceService.incrementWordSuppressions(
+      muzzleId,
+      wordsSuppressed
+    );
     return returnText;
   }
   /**
@@ -75,7 +71,10 @@ export class MuzzleService {
       const removalFn = this.muzzled.get(userId)!.removalFn;
       const newTime = getRemainingTime(removalFn) + timeToAdd;
       const muzzleId = this.muzzled.get(userId)!.id;
-      incrementMuzzleTime(muzzleId, this.ABUSE_PENALTY_TIME);
+      this.muzzlePersistenceService.incrementMuzzleTime(
+        muzzleId,
+        this.ABUSE_PENALTY_TIME
+      );
       clearTimeout(this.muzzled.get(userId)!.removalFn);
       console.log(
         `Setting ${this.slackService.getUserName(
@@ -200,14 +199,12 @@ export class MuzzleService {
         );
       } else {
         const timeToMuzzle = getTimeToMuzzle();
-        const muzzleFromDb = await addMuzzleToDb(
-          requestorId,
-          userId,
-          timeToMuzzle
-        ).catch((e: any) => {
-          console.error(e);
-          reject(`Muzzle failed!`);
-        });
+        const muzzleFromDb = await this.muzzlePersistenceService
+          .addMuzzleToDb(requestorId, userId, timeToMuzzle)
+          .catch((e: any) => {
+            console.error(e);
+            reject(`Muzzle failed!`);
+          });
 
         if (muzzleFromDb) {
           this.muzzleUser(userId, requestorId, muzzleFromDb.id, timeToMuzzle);
@@ -261,7 +258,7 @@ export class MuzzleService {
         `<@${userId}> says "${this.muzzle(text, muzzleId)}"`
       );
     } else {
-      trackDeletedMessage(muzzleId, text);
+      this.muzzlePersistenceService.trackDeletedMessage(muzzleId, text);
     }
   }
 
