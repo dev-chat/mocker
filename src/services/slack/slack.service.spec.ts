@@ -30,6 +30,10 @@ describe("slack-utils", () => {
     it("should return an empty string for a user that does not exist", () => {
       expect(slackService.getUserName("1010")).toBe("");
     });
+
+    it("should handle empty strings values", () => {
+      expect(slackService.getUserName("")).toBe("");
+    });
   });
 
   describe("getUserId()", () => {
@@ -45,7 +49,7 @@ describe("slack-utils", () => {
       expect(slackService.getUserId("<@U2TYNKJ|jrjrjr>")).toBe("U2TYNKJ");
     });
 
-    it("should return '' when no userId exists", () => {
+    it("should return empty string when no userId exists", () => {
       expect(slackService.getUserId("total waste of time")).toBe("");
     });
   });
@@ -104,46 +108,68 @@ describe("slack-utils", () => {
   });
 
   describe("getBotId()", () => {
-    it("should return an id fromText if it is the only id present", () => {
-      expect(
-        slackService.getBotId("12345", undefined, undefined, undefined)
-      ).toBe("12345");
+    describe("it should handle undefined values", () => {
+      it("should return an id fromText if it is the only id present", () => {
+        expect(
+          slackService.getBotId("12345", undefined, undefined, undefined)
+        ).toBe("12345");
+      });
+
+      it("should return an id fromAttachmentText if it is the only id present", () => {
+        expect(
+          slackService.getBotId(undefined, "12345", undefined, undefined)
+        ).toBe("12345");
+      });
+
+      it("should return an id fromPretext if it is the only id present", () => {
+        expect(
+          slackService.getBotId(undefined, undefined, "12345", undefined)
+        ).toBe("12345");
+      });
+
+      it("should return an id fromCallBackId if it is the only id present", () => {
+        expect(
+          slackService.getBotId(undefined, undefined, undefined, "12345")
+        ).toBe("12345");
+      });
     });
 
-    it("should return an id fromAttachmentText if it is the only id present", () => {
-      expect(
-        slackService.getBotId(undefined, "12345", undefined, undefined)
-      ).toBe("12345");
+    describe("it should handle empty strings", () => {
+      it("should return an id fromText if it is the only id present", () => {
+        expect(slackService.getBotId("12345", "", "", "")).toBe("12345");
+      });
+
+      it("should return an id fromAttachmentText if it is the only id present", () => {
+        expect(slackService.getBotId("", "12345", "", "")).toBe("12345");
+      });
+
+      it("should return an id fromPretext if it is the only id present", () => {
+        expect(slackService.getBotId("", "", "12345", "")).toBe("12345");
+      });
+
+      it("should return an id fromCallBackId if it is the only id present", () => {
+        expect(slackService.getBotId("", "", "", "12345")).toBe("12345");
+      });
     });
 
-    it("should return an id fromPretext if it is the only id present", () => {
-      expect(
-        slackService.getBotId(undefined, undefined, "12345", undefined)
-      ).toBe("12345");
-    });
+    describe("it should return in the proper order", () => {
+      it("should return the first available id - fromText", () => {
+        expect(slackService.getBotId("1", "2", "3", "4")).toBe("1");
+      });
 
-    it("should return an id fromCallBackId if it is the only id present", () => {
-      expect(
-        slackService.getBotId(undefined, undefined, undefined, "12345")
-      ).toBe("12345");
-    });
+      it("should return the first available id - fromAttachmentText", () => {
+        expect(slackService.getBotId(undefined, "2", "3", "4")).toBe("2");
+      });
 
-    it("should return the first available id - fromText", () => {
-      expect(slackService.getBotId("1", "2", "3", "4")).toBe("1");
-    });
+      it("should return the first available id - fromPretext", () => {
+        expect(slackService.getBotId(undefined, undefined, "3", "4")).toBe("3");
+      });
 
-    it("should return the first available id - fromAttachmentText", () => {
-      expect(slackService.getBotId(undefined, "2", "3", "4")).toBe("2");
-    });
-
-    it("should return the first available id - fromPretext", () => {
-      expect(slackService.getBotId(undefined, undefined, "3", "4")).toBe("3");
-    });
-
-    it("should return the first available id - fromCallbackId", () => {
-      expect(slackService.getBotId(undefined, undefined, undefined, "4")).toBe(
-        "4"
-      );
+      it("should return the first available id - fromCallbackId", () => {
+        expect(
+          slackService.getBotId(undefined, undefined, undefined, "4")
+        ).toBe("4");
+      });
     });
   });
 });

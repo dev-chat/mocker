@@ -134,7 +134,9 @@ export class MuzzleService {
 
     if (request.event.text) {
       userIdByEventText = this.slackService.getUserId(request.event.text);
-    } else if (request.event.attachments && request.event.attachments.length) {
+    }
+
+    if (request.event.attachments && request.event.attachments.length) {
       userIdByAttachmentText = this.slackService.getUserId(
         request.event.attachments[0].text
       );
@@ -156,9 +158,8 @@ export class MuzzleService {
       userIdByCallbackId
     );
 
-    return (
+    return !!(
       request.event.subtype === "bot_message" &&
-      request.event.attachments &&
       finalUserId &&
       this.isUserMuzzled(finalUserId) &&
       request.event.username !== "muzzle"
@@ -218,30 +219,6 @@ export class MuzzleService {
   }
 
   /**
-   * Decrements the muzzleCount on a requestor.
-   */
-  public decrementMuzzleCount(requestorId: string) {
-    if (this.requestors.has(requestorId)) {
-      const decrementedMuzzle = --this.requestors.get(requestorId)!.muzzleCount;
-      this.requestors.set(requestorId, {
-        muzzleCount: decrementedMuzzle,
-        muzzleCountRemover: this.requestors.get(requestorId)!.muzzleCountRemover
-      });
-      console.log(
-        `Successfully decremented ${this.slackService.getUserName(
-          requestorId
-        )} | ${requestorId} muzzleCount to ${decrementedMuzzle}`
-      );
-    } else {
-      console.error(
-        `Attemped to decrement muzzle count for ${this.slackService.getUserName(
-          requestorId
-        )} | ${requestorId} but they did not exist!`
-      );
-    }
-  }
-
-  /**
    * Wrapper for sendMessage that handles suppression in memory and, if max suppressions are reached, handles suppression storage to disk.
    */
   public sendMuzzledMessage(channel: string, userId: string, text: string) {
@@ -259,6 +236,30 @@ export class MuzzleService {
       );
     } else {
       this.muzzlePersistenceService.trackDeletedMessage(muzzleId, text);
+    }
+  }
+
+  /**
+   * Decrements the muzzleCount on a requestor.
+   */
+  private decrementMuzzleCount(requestorId: string) {
+    if (this.requestors.has(requestorId)) {
+      const decrementedMuzzle = --this.requestors.get(requestorId)!.muzzleCount;
+      this.requestors.set(requestorId, {
+        muzzleCount: decrementedMuzzle,
+        muzzleCountRemover: this.requestors.get(requestorId)!.muzzleCountRemover
+      });
+      console.log(
+        `Successfully decremented ${this.slackService.getUserName(
+          requestorId
+        )} | ${requestorId} muzzleCount to ${decrementedMuzzle}`
+      );
+    } else {
+      console.error(
+        `Attemped to decrement muzzle count for ${this.slackService.getUserName(
+          requestorId
+        )} | ${requestorId} but they did not exist!`
+      );
     }
   }
 
