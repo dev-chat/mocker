@@ -35,7 +35,7 @@ export class MuzzleService {
    * Takes in text and randomly muzzles certain words.
    */
   public muzzle(text: string, muzzleId: number) {
-    const replacementText = " ..mMm... ";
+    const replacementText = " ..mMm.. ";
     let returnText = "";
     const words = text.split(" ");
     let wordsSuppressed = 0;
