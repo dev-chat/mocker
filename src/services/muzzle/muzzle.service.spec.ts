@@ -218,10 +218,92 @@ describe("MuzzleService", () => {
     });
 
     it("should always muzzle <!channel>", () => {
-      const testSentence = "<!channel> hey guys";
-      expect(
-        muzzleInstance.muzzle(testSentence, 1).includes("<!channel>")
-      ).toBe(false);
+      const testSentence = "<!channel>";
+      expect(muzzleInstance.muzzle(testSentence, 1)).toBe(" ..mMm.. ");
+    });
+
+    it("should always muzzle <!here>", () => {
+      const testSentence = "<!here>";
+      expect(muzzleInstance.muzzle(testSentence, 1)).toBe(" ..mMm.. ");
+    });
+  });
+
+  describe("getMuzzleId()", () => {
+    it("should return the database id of the muzzledUser by id", async () => {
+      const mockMuzzle = { id: 1 };
+      jest
+        .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
+        .mockResolvedValue(mockMuzzle as Muzzle);
+      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
+      expect(muzzleInstance.getMuzzleId("123")).toBe(1);
+    });
+  });
+
+  describe("getMuzzledUserById()", () => {
+    beforeEach(async () => {
+      const mockMuzzle = { id: 1 };
+      jest
+        .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
+        .mockResolvedValue(mockMuzzle as Muzzle);
+      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
+    });
+
+    it("should return the muzzled user when a valid id is passed in", async () => {
+      const muzzledUser = muzzleInstance.getMuzzledUserById("123");
+      expect(muzzledUser!.id).toBe(1);
+      expect(muzzledUser!.muzzledBy).toBe("666");
+      expect(muzzledUser!.removalFn).toBeDefined();
+      expect(muzzledUser!.suppressionCount).toBe(0);
+    });
+  });
+
+  describe("getRequestorById()", () => {
+    beforeEach(async () => {
+      const mockMuzzle = { id: 1 };
+      jest
+        .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
+        .mockResolvedValue(mockMuzzle as Muzzle);
+      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
+    });
+    it("should return the requestor when a valid id is passed in", async () => {
+      const requestor = muzzleInstance.getRequestorById("666");
+      expect(requestor!.muzzleCount).toBe(1);
+      expect(requestor!.muzzleCountRemover).toBeDefined();
+    });
+  });
+
+  describe("isUserMuzzled()", () => {
+    beforeEach(async () => {
+      const mockMuzzle = { id: 1 };
+      jest
+        .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
+        .mockResolvedValue(mockMuzzle as Muzzle);
+      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
+    });
+    it("should return true when a muzzled userId is passed in", async () => {
+      expect(muzzleInstance.isUserMuzzled(testData.user)).toBe(true);
+    });
+
+    it("should return false when an unmuzzled userId is passed in", async () => {
+      expect(muzzleInstance.isUserMuzzled(testData.user2)).toBe(false);
+    });
+  });
+
+  describe("isUserRequestor()", () => {
+    beforeEach(async () => {
+      const mockMuzzle = { id: 1 };
+      jest
+        .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
+        .mockResolvedValue(mockMuzzle as Muzzle);
+      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
+    });
+
+    it("should return true when a requestor userId is passed in", () => {
+      expect(muzzleInstance.isUserRequestor(testData.requestor)).toBe(true);
+    });
+
+    it("should return false when a non-requestor userId is passed in", () => {
+      expect(muzzleInstance.isUserRequestor(testData.user)).toBe(false);
     });
   });
 });
