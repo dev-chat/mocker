@@ -247,8 +247,8 @@ export class MuzzlePersistenceService {
         //   "CAST((COUNT(muzzle.messagesSuppressed > 0) / COUNT(*)) AS DECIMAL(4,3))",
         //   "kdr"
         // )
-        // .groupBy("muzzle.requestorId")
-        // .orderBy("kdr", "DESC")
+        .groupBy("muzzle.requestorId")
+        .orderBy("muzzle.messagesSuppressed", "DESC")
         .getRawMany()
     );
   }
