@@ -92,13 +92,10 @@ export class MuzzlePersistenceService {
 
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
-      .select([
-        "muzzle.muzzledId AS muzzledId",
-        "muzzle.wordsSuppressed AS wordsSuppressed"
-      ])
-      .addSelect("COUNT(wordsSuppressed) as count")
+      .select("*")
+      .addSelect("SUM(wordsSuppressed) AS totalWordsSuppressed")
       .groupBy("muzzle.muzzledId")
-      .orderBy("count", "DESC")
+      .orderBy("totalWordsSuppressed", "DESC")
       .getRawMany();
   }
 }
