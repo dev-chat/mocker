@@ -243,10 +243,10 @@ export class MuzzlePersistenceService {
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
       .addSelect(
-        "SUM(CASE muzzle.messagesSuppressed > 0, 1, 0)/COUNT(*)",
+        "SUM(IF(muzzle.messagesSuppressed > 0, 1, null))/COUNT(*)",
         "kdr"
       )
-      .addSelect("SUM(CASE muzzle.messagesSuppressed > 0, 1, 0)", "kills")
+      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, null))", "kills")
       .addSelect("COUNT(*)", "deaths")
       .groupBy("muzzle.requestorId")
       .orderBy("kdr", "DESC")
