@@ -69,11 +69,11 @@ export class MuzzlePersistenceService {
     const mostMuzzledByChars = await this.getMostMuzzledByChars();
     const mostMuzzledByTime = await this.getMostMuzzledByTime();
 
-    const muzzlerByInstances = await this.getMuzzlerByInstances;
-    const muzzlerByMessages = await this.getMuzzlerByMessages;
-    const muzzlerByWords = await this.getMuzzlerByWords;
-    const muzzlerByChars = await this.getMuzzlerByChars;
-    const muzzlerByTime = await this.getMuzzlerByTime;
+    const muzzlerByInstances = await this.getMuzzlerByInstances();
+    const muzzlerByMessages = await this.getMuzzlerByMessages();
+    const muzzlerByWords = await this.getMuzzlerByWords();
+    const muzzlerByChars = await this.getMuzzlerByChars();
+    const muzzlerByTime = await this.getMuzzlerByTime();
     return {
       muzzled: {
         byInstances: mostMuzzledByInstances,
