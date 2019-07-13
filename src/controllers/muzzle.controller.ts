@@ -85,5 +85,6 @@ muzzleController.get("/muzzle/stats", async (req: Request, res: Response) => {
   console.log("request");
   const report = await muzzlePersistenceService.retrieveWeeklyMuzzleReport();
   console.log(req.body.muzzle);
+  console.log(report);
   res.send(report);
 });
