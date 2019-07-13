@@ -248,6 +248,7 @@ export class MuzzlePersistenceService {
         //   "kdr"
         // )
         .addSelect("COUNT(muzzle.messagesSuppressed > 0)", "kdr")
+        .addSelect("COUNT(*)", "total")
         .groupBy("muzzle.requestorId")
         .orderBy("kdr", "DESC")
         .getRawMany()
