@@ -263,8 +263,8 @@ export class MuzzlePersistenceService {
       .addSelect("muzzle.muzzledId", "opponent")
       .addSelect("COUNT(*)", "nemesisCount")
       .groupBy("muzzle.requestorId")
-      .addGroupBy("muzzle.muzzledId")
       .orderBy("nemesisCount", "DESC")
+      .addOrderBy("opponent", "DESC")
       .getRawMany();
   }
 }
