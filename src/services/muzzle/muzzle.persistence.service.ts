@@ -242,12 +242,10 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
-      .addSelect(
-        "COUNT(IF(muzzle.messagesSuppressed > 0))/COUNT(muzzle.requestorId)",
-        "kdr"
-      )
+      .addSelect("COUNT(*)", "deaths")
+      .addSelect("COUNT(IF(muzzle.messagesSuppressed > 0))", "kills")
       .groupBy("muzzle.requestorId")
-      .orderBy("kdr")
+      .orderBy("kills/deaths")
       .getRawMany();
   }
 }
