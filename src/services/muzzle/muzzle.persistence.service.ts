@@ -92,7 +92,6 @@ export class MuzzlePersistenceService {
 
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
-      .select("*")
       .addSelect("SUM(wordsSuppressed) AS totalWordsSuppressed")
       .groupBy("muzzle.muzzledId")
       .orderBy("totalWordsSuppressed", "DESC")
