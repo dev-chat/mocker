@@ -95,7 +95,6 @@ export class MuzzlePersistenceService {
       .select("muzzle.muzzledId")
       .addSelect("SUM(muzzle.wordsSuppressed)", "totalWordsSuppressed")
       .groupBy("muzzle.muzzledId")
-      .addGroupBy("totalWordsSuppressed")
       .orderBy("totalWordsSuppressed", "DESC")
       .getRawMany();
   }
