@@ -245,7 +245,7 @@ export class MuzzlePersistenceService {
       .addSelect("COUNT(*)", "deaths")
       .addSelect("COUNT(IF(muzzle.messagesSuppressed > 0))", "kills")
       .groupBy("muzzle.requestorId")
-      .orderBy("kills/deaths")
+      .orderBy("kills/deaths", "DESC")
       .getRawMany();
   }
 }
