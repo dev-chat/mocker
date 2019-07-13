@@ -64,7 +64,11 @@ export class MuzzlePersistenceService {
   /** Wrapper to generate a generic muzzle report in */
   public async retrieveWeeklyMuzzleReport() {
     const mostMuzzledByInstances = await this.getMostMuzzledByInstances();
-    return mostMuzzledByInstances;
+    const mostMuzzledByWords = await this.getMostMuzzledByWords();
+    return {
+      byInstances: mostMuzzledByInstances,
+      byWords: mostMuzzledByWords
+    };
   }
 
   private getMostMuzzledByInstances(range?: string) {
@@ -75,6 +79,20 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.muzzledId AS muzzleId")
+      .addSelect("COUNT(*) as count")
+      .groupBy("muzzle.muzzledId")
+      .orderBy("count", "DESC")
+      .getRawMany();
+  }
+
+  private getMostMuzzledByWords(range?: string) {
+    if (range) {
+      console.log(range);
+    }
+
+    return getRepository(Muzzle)
+      .createQueryBuilder("muzzle")
+      .select("muzzle.muzzledId AS muzzledId, muzzle.wordsSuppressed")
       .addSelect("COUNT(*) as count")
       .groupBy("muzzle.muzzledId")
       .orderBy("count", "DESC")
