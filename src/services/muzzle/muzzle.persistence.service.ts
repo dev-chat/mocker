@@ -73,9 +73,10 @@ export class MuzzlePersistenceService {
     }
 
     return getRepository(Muzzle)
-      .createQueryBuilder("muzzles")
-      .select("*")
-      .groupBy("muzzledId")
-      .getManyAndCount();
+      .createQueryBuilder("muzzle")
+      .select("muzzle.muzzledId AS muzzleId")
+      .addSelect("COUNT(*) as count")
+      .groupBy("muzzle.muzzledId")
+      .getRawMany();
   }
 }
