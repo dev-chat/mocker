@@ -112,8 +112,8 @@ export class MuzzlePersistenceService {
     }
 
     return getRepository(Muzzle)
-      .createQueryBuilder("muzzler")
-      .select("muzzle.requestorId", "muzzler")
+      .createQueryBuilder("muzzle")
+      .select("muzzle.requestorId")
       .addSelect("COUNT(*)", "instanceCount")
       .groupBy("muzzle.requestorId")
       .orderBy("instanceCount", "DESC")
@@ -127,9 +127,9 @@ export class MuzzlePersistenceService {
 
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
-      .select("muzzle.requestorId", "muzzlerId")
+      .select("muzzle.requestorId")
       .addSelect("SUM(muzzle.messagesSuppressed)", "messagesSuppressed")
-      .groupBy("muzzlerId")
+      .groupBy("muzzle.requestorId")
       .orderBy("messagesSuppressed", "DESC")
       .getRawMany();
   }
