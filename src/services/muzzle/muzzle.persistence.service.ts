@@ -245,6 +245,8 @@ export class MuzzlePersistenceService {
       .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))/COUNT(*)", "kdr")
       .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))", "kills")
       .addSelect("COUNT(*)", "deaths")
+      .addSelect("muzzle.muzzledId", "nemesis")
+      .addSelect("COUNT(*)", "nemesisCount")
       .groupBy("muzzle.requestorId")
       .orderBy("kdr", "DESC")
       .getRawMany();
