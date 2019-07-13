@@ -234,12 +234,12 @@ export class MuzzlePersistenceService {
       .getRawMany();
   }
 
-  private async getKdr(range?: string) {
+  private getKdr(range?: string) {
     if (range) {
       console.log(range);
     }
 
-    const kdr = await getRepository(Muzzle)
+    return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
       .addSelect(
@@ -249,7 +249,5 @@ export class MuzzlePersistenceService {
       .groupBy("muzzle.requestorId")
       .orderBy("kdr", "DESC")
       .getRawMany();
-
-    return kdr;
   }
 }
