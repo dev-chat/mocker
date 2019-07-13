@@ -244,13 +244,16 @@ export class MuzzlePersistenceService {
       .select("muzzle.requestorId")
       .where("muzzle.messagesSuppressed > 0")
       .addSelect("COUNT(*)", "kills")
+      .groupBy("muzzle.requestorId")
+      .orderBy("kills", "DESC")
       .getRawMany();
+
     const deaths = getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
       .addSelect("COUNT(*)", "deaths")
       .groupBy("muzzle.requestorId")
-      .orderBy("kdr", "DESC")
+      .orderBy("deaths", "DESC")
       .getRawMany();
 
     return { kills, deaths };
