@@ -69,12 +69,26 @@ export class MuzzlePersistenceService {
     const mostMuzzledByChars = await this.getMostMuzzledByChars();
     const mostMuzzledByTime = await this.getMostMuzzledByTime();
 
+    const muzzlerByInstances = await this.getMuzzlerByInstances;
+    const muzzlerByMessages = await this.getMuzzlerByMessages;
+    const muzzlerByWords = await this.getMuzzlerByWords;
+    const muzzlerByChars = await this.getMuzzlerByChars;
+    const muzzlerByTime = await this.getMuzzlerByTime;
     return {
-      byInstances: mostMuzzledByInstances,
-      byMessages: mostMuzzledByMessages,
-      byWords: mostMuzzledByWords,
-      byChars: mostMuzzledByChars,
-      byTime: mostMuzzledByTime
+      muzzled: {
+        byInstances: mostMuzzledByInstances,
+        byMessages: mostMuzzledByMessages,
+        byWords: mostMuzzledByWords,
+        byChars: mostMuzzledByChars,
+        byTime: mostMuzzledByTime
+      },
+      muzzlers: {
+        byInstances: muzzlerByInstances,
+        byMessages: muzzlerByMessages,
+        byWords: muzzlerByWords,
+        byChars: muzzlerByChars,
+        byTime: muzzlerByTime
+      }
     };
   }
 
@@ -89,6 +103,34 @@ export class MuzzlePersistenceService {
       .addSelect("COUNT(*) as count")
       .groupBy("muzzle.muzzledId")
       .orderBy("count", "DESC")
+      .getRawMany();
+  }
+
+  private getMuzzlerByInstances(range?: string) {
+    if (range) {
+      console.log(range);
+    }
+
+    return getRepository(Muzzle)
+      .createQueryBuilder("muzzler")
+      .select("muzzle.requestorId", "muzzler")
+      .addSelect("COUNT(*)", "instanceCount")
+      .groupBy("muzzle.requestorId")
+      .orderBy("instanceCount", "DESC")
+      .getRawMany();
+  }
+
+  private getMuzzlerByMessages(range?: string) {
+    if (range) {
+      console.log(range);
+    }
+
+    return getRepository(Muzzle)
+      .createQueryBuilder("muzzle")
+      .select("muzzle.requestorId", "muzzlerId")
+      .addSelect("SUM(muzzle.messagesSuppressed)", "messagesSuppressed")
+      .groupBy("muzzlerId")
+      .orderBy("messagesSuppressed", "DESC")
       .getRawMany();
   }
 
@@ -120,6 +162,20 @@ export class MuzzlePersistenceService {
       .getRawMany();
   }
 
+  private getMuzzlerByWords(range?: string) {
+    if (range) {
+      console.log(range);
+    }
+
+    return getRepository(Muzzle)
+      .createQueryBuilder("muzzle")
+      .select("muzzle.requestorId")
+      .addSelect("SUM(muzzle.wordsSuppressed)", "totalWordsSuppressed")
+      .groupBy("muzzle.requestorId")
+      .orderBy("totalWordsSuppressed", "DESC")
+      .getRawMany();
+  }
+
   private getMostMuzzledByChars(range?: string) {
     if (range) {
       console.log(range);
@@ -134,6 +190,20 @@ export class MuzzlePersistenceService {
       .getRawMany();
   }
 
+  private getMuzzlerByChars(range?: string) {
+    if (range) {
+      console.log(range);
+    }
+
+    return getRepository(Muzzle)
+      .createQueryBuilder("muzzle")
+      .select("muzzle.requestorId")
+      .addSelect("SUM(muzzle.charactersSuppressed)", "totalCharsSuppressed")
+      .groupBy("muzzle.requestorId")
+      .orderBy("totalCharsSuppressed", "DESC")
+      .getRawMany();
+  }
+
   private getMostMuzzledByTime(range?: string) {
     if (range) {
       console.log(range);
@@ -143,6 +213,19 @@ export class MuzzlePersistenceService {
       .select("muzzle.muzzledId")
       .addSelect("SUM(muzzle.milliseconds)", "muzzleTime")
       .groupBy("muzzle.muzzledId")
+      .orderBy("muzzleTime", "DESC")
+      .getRawMany();
+  }
+
+  private getMuzzlerByTime(range?: string) {
+    if (range) {
+      console.log(range);
+    }
+    return getRepository(Muzzle)
+      .createQueryBuilder("muzzle")
+      .select("muzzle.requestorId")
+      .addSelect("SUM(muzzle.milliseconds)", "muzzleTime")
+      .groupBy("muzzle.requestorId")
       .orderBy("muzzleTime", "DESC")
       .getRawMany();
   }
