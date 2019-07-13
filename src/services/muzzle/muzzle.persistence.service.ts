@@ -239,7 +239,7 @@ export class MuzzlePersistenceService {
       console.log(range);
     }
 
-    const kills = getRepository(Muzzle)
+    const kills = await getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
       .where("muzzle.messagesSuppressed > 0")
@@ -248,7 +248,7 @@ export class MuzzlePersistenceService {
       .orderBy("kills", "DESC")
       .getRawMany();
 
-    const deaths = getRepository(Muzzle)
+    const deaths = await getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
       .addSelect("COUNT(*)", "deaths")
