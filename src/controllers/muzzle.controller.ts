@@ -80,3 +80,10 @@ muzzleController.post("/muzzle", async (req: Request, res: Response) => {
     res.send(results);
   }
 });
+
+muzzleController.get("/muzzle/stats", async (req: Request, res: Response) => {
+  console.log("request");
+  const report = await muzzlePersistenceService.retrieveWeeklyMuzzleReport();
+  console.log(req.body.muzzle);
+  res.send(report);
+});

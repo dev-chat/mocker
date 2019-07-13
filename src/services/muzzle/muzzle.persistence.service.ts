@@ -60,4 +60,21 @@ export class MuzzlePersistenceService {
     this.incrementWordSuppressions(muzzleId, words);
     this.incrementCharacterSuppressions(muzzleId, characters);
   }
+
+  /** Wrapper to generate a generic muzzle report in */
+  public async retrieveWeeklyMuzzleReport() {
+    const mostMuzzledByInstances = await this.getMostMuzzledByInstances();
+    return mostMuzzledByInstances;
+  }
+
+  private getMostMuzzledByInstances(range?: string) {
+    if (range) {
+      console.log(range);
+    }
+
+    return getRepository(Muzzle)
+      .createQueryBuilder("muzzles")
+      .groupBy("muzzles.muzzledId")
+      .getCount();
+  }
 }
