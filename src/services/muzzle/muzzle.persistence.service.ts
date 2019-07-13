@@ -265,6 +265,7 @@ export class MuzzlePersistenceService {
       .groupBy("muzzle.muzzledId")
       .addGroupBy("muzzle.requestorId")
       .orderBy("nemesisCount", "DESC")
+      .limit(1)
       .getRawMany();
   }
 }
