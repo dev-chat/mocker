@@ -242,10 +242,11 @@ export class MuzzlePersistenceService {
     const kdr = await getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
-      .addSelect(
-        "COUNT(muzzle.messagesSuppressed > 0) / COUNT(muzzle.messagesSuppressed >= 0)",
-        "kdr"
-      )
+      .addSelect("COUNT(*)", "deaths")
+      .addSelect("muzzle.requestorId")
+      .where("muzzle.messagesSuppressed > 0")
+      .addSelect("COUNT(*)", "kills")
+      .addSelect("kills/deaths", "kdr")
       .groupBy("muzzle.requestorId")
       .orderBy("kdr", "DESC")
       .getRawMany();
