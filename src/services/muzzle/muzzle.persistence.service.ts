@@ -243,7 +243,7 @@ export class MuzzlePersistenceService {
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
       .addSelect(
-        "COUNT(muzzle.messagesSuppressed > 0) / COUNT(muzzle.messagesSuppresd >= 0)",
+        "COUNT(muzzle.messagesSuppressed > 0) / COUNT(muzzle.messagesSuppressed >= 0)",
         "kdr"
       )
       .groupBy("muzzle.requestorId")
