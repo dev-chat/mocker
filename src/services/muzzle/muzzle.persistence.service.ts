@@ -74,6 +74,8 @@ export class MuzzlePersistenceService {
     const muzzlerByWords = await this.getMuzzlerByWords();
     const muzzlerByChars = await this.getMuzzlerByChars();
     const muzzlerByTime = await this.getMuzzlerByTime();
+
+    const kdr = await this.getKdr();
     return {
       muzzled: {
         byInstances: mostMuzzledByInstances,
@@ -88,7 +90,9 @@ export class MuzzlePersistenceService {
         byWords: muzzlerByWords,
         byChars: muzzlerByChars,
         byTime: muzzlerByTime
-      }
+      },
+      kdr,
+      relationships: {}
     };
   }
 
@@ -227,6 +231,21 @@ export class MuzzlePersistenceService {
       .addSelect("SUM(muzzle.milliseconds)", "muzzleTime")
       .groupBy("muzzle.requestorId")
       .orderBy("muzzleTime", "DESC")
+      .getRawMany();
+  }
+
+  private async getKdr(range?: string) {
+    if (range) {
+      console.log(range);
+    }
+
+    return getRepository(Muzzle)
+      .createQueryBuilder("muzzle")
+      .select("muzzle.requestorId")
+      .addSelect("COUNT(muzzle.messagesSuppressed > 0)", "successfulMuzzles")
+      .addSelect("COUNT(*)", "totalMuzzles")
+      .groupBy("muzzle.requestorId")
+      .orderBy("successfulMuzzles/totalMuzzles")
       .getRawMany();
   }
 }
