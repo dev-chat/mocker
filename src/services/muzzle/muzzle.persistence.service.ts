@@ -260,12 +260,13 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId", "requestor")
+      .limit(1)
       .addSelect("muzzle.muzzledId", "opponent")
       .addSelect("COUNT(*)", "nemesisCount")
       .groupBy("muzzle.muzzledId")
       .addGroupBy("muzzle.requestorId")
       .orderBy("nemesisCount", "DESC")
-      .limit(1)
+
       .getRawMany();
   }
 }
