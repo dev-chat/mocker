@@ -239,12 +239,20 @@ export class MuzzlePersistenceService {
       console.log(range);
     }
 
-    return getRepository(Muzzle)
+    const kills = getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
-      .addSelect("COUNT(IF(muzzle.messagesSuppressed > 0))/COUNT(*)", "kdr")
+      .where("muzzle.messagesSuppressed > 0")
+      .addSelect("COUNT(*)", "kills")
+      .getRawMany();
+    const deaths = getRepository(Muzzle)
+      .createQueryBuilder("muzzle")
+      .select("muzzle.requestorId")
+      .addSelect("COUNT(*)", "deaths")
       .groupBy("muzzle.requestorId")
       .orderBy("kdr", "DESC")
       .getRawMany();
+
+    return { kills, deaths };
   }
 }
