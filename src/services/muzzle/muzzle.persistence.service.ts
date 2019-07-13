@@ -244,8 +244,9 @@ export class MuzzlePersistenceService {
       .select("muzzle.requestorId")
       .addSelect("COUNT(muzzle.messagesSuppressed > 0)", "successfulMuzzles")
       .addSelect("COUNT(*)", "totalMuzzles")
+      .addSelect("successfulMuzzles/totalMuzzles", "kdr")
       .groupBy("muzzle.requestorId")
-      .orderBy("successfulMuzzles/totalMuzzles")
+      .orderBy("kdr")
       .getRawMany();
   }
 }
