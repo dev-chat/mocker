@@ -77,6 +77,7 @@ export class MuzzlePersistenceService {
       .select("muzzle.muzzledId AS muzzleId")
       .addSelect("COUNT(*) as count")
       .groupBy("muzzle.muzzledId")
+      .orderBy("count")
       .getRawMany();
   }
 }
