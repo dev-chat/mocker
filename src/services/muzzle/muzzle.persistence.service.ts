@@ -258,7 +258,7 @@ export class MuzzlePersistenceService {
     }
 
     return getRepository(Muzzle).query(
-      "SELECT MAX(Total) FROM (SELECT COUNT(*) AS Total FROM muzzle GROUP BY requestorId) AS Results"
+      "SELECT MAX(Total) FROM (SELECT COUNT(*) AS Total, requestorId, muzzledId FROM muzzle GROUP BY requestorId) AS Results"
     );
     // return getRepository(Muzzle)
     //   .createQueryBuilder("muzzle")
