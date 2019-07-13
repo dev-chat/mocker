@@ -242,9 +242,7 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
-      .addSelect("COUNT(muzzle.messagesSuppressed > 0)", "successfulMuzzles")
-      .addSelect("COUNT(*)", "totalMuzzles")
-      .addSelect("successfulMuzzles/totalMuzzles", "kdr")
+      .addSelect("COUNT(muzzle.messagesSuppressed > 0)/COUNT(*)", "kdr")
       .groupBy("muzzle.requestorId")
       .orderBy("kdr")
       .getRawMany();
