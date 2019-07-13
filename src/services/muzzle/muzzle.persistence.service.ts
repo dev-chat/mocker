@@ -239,15 +239,17 @@ export class MuzzlePersistenceService {
       console.log(range);
     }
 
-    return getRepository(Muzzle)
-      .createQueryBuilder("muzzle")
-      .select("muzzle.requestorId")
-      .addSelect(
-        "CAST((COUNT(muzzle.messagesSuppressed > 0) / (COUNT(*) * 1.0)) AS DECIMAL(4,2))",
-        "kdr"
-      )
-      .groupBy("muzzle.requestorId")
-      .orderBy("kdr", "DESC")
-      .getRawMany();
+    return (
+      getRepository(Muzzle)
+        .createQueryBuilder("muzzle")
+        .select("muzzle.requestorId")
+        // .addSelect(
+        //   "CAST((COUNT(muzzle.messagesSuppressed > 0) / COUNT(*)) AS DECIMAL(4,3))",
+        //   "kdr"
+        // )
+        // .groupBy("muzzle.requestorId")
+        // .orderBy("kdr", "DESC")
+        .getRawMany()
+    );
   }
 }
