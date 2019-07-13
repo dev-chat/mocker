@@ -261,7 +261,7 @@ export class MuzzlePersistenceService {
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId", "requestor")
       .addSelect("muzzle.muzzledId", "opponent")
-      .addSelect("COUNT(*)", "nemesisCount")
+      .addSelect("MAX(COUNT(*))", "nemesisCount")
       .groupBy("opponent")
       .addGroupBy("requestor")
       .orderBy("nemesisCount", "DESC")
