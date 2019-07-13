@@ -74,7 +74,6 @@ export class MuzzlePersistenceService {
 
     return getRepository(Muzzle)
       .createQueryBuilder("muzzles")
-      .groupBy("muzzles.muzzledId")
       .getManyAndCount();
   }
 }
