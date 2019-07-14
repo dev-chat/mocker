@@ -120,7 +120,12 @@ export class MuzzlePersistenceService {
       text: report.nemesis
     };
 
-    const attachments = [top10MuzzledByInstances, top10Muzzlers];
+    const attachments = [
+      top10MuzzledByInstances,
+      top10Muzzlers,
+      topKdr,
+      nemesis
+    ];
     return attachments;
   }
 
