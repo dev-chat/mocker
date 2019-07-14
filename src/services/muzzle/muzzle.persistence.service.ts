@@ -257,7 +257,7 @@ export class MuzzlePersistenceService {
       console.log(range);
     }
 
-    const getNemesisSqlQuery = `SELECT a.requestorId, a.muzzledId, MAX(a.count) 
+    const getNemesisSqlQuery = `SELECT a.requestorId, a.muzzledId, MAX(a.count) as killCount
     FROM (SELECT requestorId, muzzledId, COUNT(*) as count FROM muzzle GROUP BY requestorId, muzzledId) AS a 
     INNER JOIN(SELECT muzzledId, MAX(count) AS count
     FROM (SELECT requestorId, muzzledId, COUNT(*) AS count FROM muzzle GROUP BY requestorId, muzzledId) AS c 
