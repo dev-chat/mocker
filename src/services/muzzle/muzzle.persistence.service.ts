@@ -257,6 +257,10 @@ export class MuzzlePersistenceService {
       console.log(range);
     }
 
+    return getRepository(Muzzle).query(
+      "SELECT DISTINCT requestorId AS requestor, muzzledId AS opponent, COUNT(*) AS nemesisCount GROUP BY muzzledId, requestor ORDER BY nemesisCount from muzzle;"
+    );
+
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select(`DISTINCT ("muzzle.requestorId")`, "requestor")
