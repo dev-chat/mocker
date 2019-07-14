@@ -1,3 +1,4 @@
+import * as Table from "cli-table";
 import { getRepository } from "typeorm";
 import { Muzzle } from "../../shared/db/models/Muzzle";
 import { IAttachment } from "../../shared/models/slack/slack-models";
@@ -126,6 +127,7 @@ export class MuzzlePersistenceService {
       topKdr,
       nemesis
     ];
+
     return attachments;
   }
 

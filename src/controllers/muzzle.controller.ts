@@ -94,6 +94,6 @@ muzzleController.get("/muzzle/stats", async (req: Request, res: Response) => {
     text: "Muzzle Report",
     attachments: muzzlePersistenceService.generateFormattedReport(report)
   };
-  res.send(response);
+  res.send(report);
   // slackService.sendResponse(request.response_url, response);
 });
