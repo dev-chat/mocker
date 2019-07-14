@@ -258,22 +258,22 @@ export class MuzzlePersistenceService {
     }
 
     return getRepository(Muzzle).query(
-      `SELECT muzzle.*, 
+      `SELECT *, 
         count(muzzle.muzzledId) AS number_of_muzzled
         FROM muzzle LEFT JOIN muzzle
         ON (muzzle.requestorId = muzzle.muzzledId)
         GROUP BY muzzle.requestorId`
     );
 
-    return getRepository(Muzzle)
-      .createQueryBuilder("muzzle")
-      .select("muzzle.requestorId", "requestor")
-      .addSelect("muzzle.muzzledId", "opponent")
-      .addSelect("COUNT(*)", "nemesisCount")
-      .groupBy("muzzle.muzzledId")
-      .addGroupBy("muzzle.requestorId")
-      .orderBy("nemesisCount", "DESC")
+    // return getRepository(Muzzle)
+    //   .createQueryBuilder("muzzle")
+    //   .select("muzzle.requestorId", "requestor")
+    //   .addSelect("muzzle.muzzledId", "opponent")
+    //   .addSelect("COUNT(*)", "nemesisCount")
+    //   .groupBy("muzzle.muzzledId")
+    //   .addGroupBy("muzzle.requestorId")
+    //   .orderBy("nemesisCount", "DESC")
 
-      .getRawMany();
+    //   .getRawMany();
   }
 }
