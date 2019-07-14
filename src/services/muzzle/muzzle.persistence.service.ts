@@ -257,18 +257,15 @@ export class MuzzlePersistenceService {
       console.log(range);
     }
 
-    return getRepository(Muzzle).query(
-      "SELECT DISTINCT requestorId AS requestor, muzzledId AS opponent, COUNT(*) AS nemesisCount GROUP BY muzzledId, requestor ORDER BY nemesisCount from muzzle;"
-    );
+    const getNemesisSqlQuery = `SELECT a.requestorId, a.muzzledId, MAX(a.count) 
+    FROM (SELECT requestorId, muzzledId, COUNT(*) as count FROM muzzle GROUP BY requestorId, muzzledId) AS a 
+    INNER JOIN(SELECT muzzledId, MAX(count) AS count
+    FROM (SELECT requestorId, muzzledId, COUNT(*) AS count FROM muzzle GROUP BY requestorId, muzzledId) AS c 
+    GROUP BY c.muzzledId) AS b 
+    ON a.muzzledId = b.muzzledId AND a.count = b.count
+    GROUP BY a.requestorId, a.muzzledId
+    ORDER BY a.count DESC;`;
 
-    return getRepository(Muzzle)
-      .createQueryBuilder("muzzle")
-      .select(`DISTINCT ("muzzle.requestorId")`, "requestor")
-      .addSelect("muzzle.muzzledId", "opponent")
-      .addSelect("COUNT(*)", "nemesisCount")
-      .groupBy("muzzle.muzzledId")
-      .addGroupBy("requestor")
-      .orderBy("nemesisCount", "DESC")
-      .getRawMany();
+    return getRepository(Muzzle).query(getNemesisSqlQuery);
   }
 }
