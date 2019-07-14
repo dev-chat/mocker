@@ -259,7 +259,7 @@ export class MuzzlePersistenceService {
 
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
-      .select("DISTINCT muzzle.requestorId", "requestor")
+      .select("DISTINCT ON(muzzle.requestorId) muzzle.requestorId", "requestor")
       .addSelect("muzzle.muzzledId", "opponent")
       .addSelect("COUNT(*)", "nemesisCount")
       .groupBy("muzzle.muzzledId")
