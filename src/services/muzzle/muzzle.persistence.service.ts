@@ -1,5 +1,6 @@
 import { getRepository } from "typeorm";
 import { Muzzle } from "../../shared/db/models/Muzzle";
+import { IAttachment } from "../../shared/models/slack/slack-models";
 
 export class MuzzlePersistenceService {
   public static getInstance() {
@@ -96,6 +97,31 @@ export class MuzzlePersistenceService {
       kdr,
       nemesis
     };
+  }
+
+  public generateFormattedReport(report: any): IAttachment[] {
+    const top10MuzzledByInstances = {
+      pretext: "Top Muzzled by Times Muzzled",
+      text: report.muzzled.byInstances
+    };
+
+    const top10Muzzlers = {
+      pretext: "Top Muzzlers",
+      text: report.muzzlers.byInstances
+    };
+
+    const topKdr = {
+      pretext: "Top KDR",
+      text: report.kdr
+    };
+
+    const nemesis = {
+      pretext: "Top Nemesis",
+      text: report.nemesis
+    };
+
+    const attachments = [top10MuzzledByInstances, top10Muzzlers];
+    return attachments;
   }
 
   private getMostMuzzledByInstances(range?: string) {

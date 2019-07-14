@@ -5,6 +5,7 @@ import { MuzzleService } from "../services/muzzle/muzzle.service";
 import { SlackService } from "../services/slack/slack.service";
 import { WebService } from "../services/web/web.service";
 import {
+  IChannelResponse,
   IEventRequest,
   ISlashCommandRequest
 } from "../shared/models/slack/slack-models";
@@ -82,8 +83,17 @@ muzzleController.post("/muzzle", async (req: Request, res: Response) => {
 });
 
 muzzleController.get("/muzzle/stats", async (req: Request, res: Response) => {
-  console.log("request");
+  const request: ISlashCommandRequest = req.body;
+  const userId: any = slackService.getUserId(request.text);
+  if (muzzleService.isUserMuzzled(userId)) {
+    res.send(`Sorry! Can't do that while muzzled.`);
+  }
   const report = await muzzlePersistenceService.retrieveWeeklyMuzzleReport();
-  console.log(req.body.muzzle);
-  res.send(report);
+  const response: IChannelResponse = {
+    response_type: "in_channel",
+    text: "Muzzle Report",
+    attachments: muzzlePersistenceService.generateFormattedReport(report)
+  };
+  res.send(response);
+  // slackService.sendResponse(request.response_url, response);
 });
