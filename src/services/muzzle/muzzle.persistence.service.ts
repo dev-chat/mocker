@@ -118,7 +118,7 @@ export class MuzzlePersistenceService {
       head: ["TH 1 User", "TH 2 Times Muzzling Others"]
     });
 
-    report.muzzlers.ByInstances.forEach((instance: any) => {
+    report.muzzlers.byInstances.forEach((instance: any) => {
       topMuzzlersTable.push([
         instance.muzzle_requestorId,
         instance.instanceCount
