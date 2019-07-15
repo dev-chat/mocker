@@ -1,3 +1,4 @@
+import Table from "cli-table";
 import { getRepository } from "typeorm";
 import { Muzzle } from "../../shared/db/models/Muzzle";
 import { IAttachment } from "../../shared/models/slack/slack-models";
@@ -100,29 +101,53 @@ export class MuzzlePersistenceService {
   }
 
   public generateFormattedReport(report: any): IAttachment[] {
-    const top10MuzzledByInstances = {
+    const topMuzzledByInstancesTable = new Table({
+      head: ["TH 1 User", "TH 2 Times Muzzled"]
+    });
+
+    topMuzzledByInstancesTable.push(report.muzzled.byInstances);
+
+    const topMuzzledByInstances = {
       pretext: "Top Muzzled by Times Muzzled",
-      text: report.muzzled.byInstances
+      text: topMuzzledByInstancesTable.toString()
     };
 
-    const top10Muzzlers = {
+    const topMuzzlersTable = new Table({
+      head: ["TH 1 User", "TH 2 Times Muzzling Others"]
+    });
+
+    topMuzzlersTable.push(report.muzzlers.byInstances);
+
+    const topMuzzlersByInstances = {
       pretext: "Top Muzzlers",
-      text: report.muzzlers.byInstances
+      text: topMuzzlersTable.toString()
     };
+
+    const topKdrTable = new Table({
+      head: ["TH1 User", "TH2 KDR", "TH3 Kills", "TH4 Deaths"]
+    });
+
+    topKdrTable.push(report.kdr);
 
     const topKdr = {
       pretext: "Top KDR",
-      text: report.kdr
+      text: topKdrTable.toString()
     };
+
+    const nemesisTable = new Table({
+      head: ["TH1 Muzzler", "TH2 Muzzled", "TH3 Times"]
+    });
+
+    nemesisTable.push(report.nemesis);
 
     const nemesis = {
       pretext: "Top Nemesis",
-      text: report.nemesis
+      text: nemesisTable.toString()
     };
 
     const attachments = [
-      top10MuzzledByInstances,
-      top10Muzzlers,
+      topMuzzledByInstances,
+      topMuzzlersByInstances,
       topKdr,
       nemesis
     ];
