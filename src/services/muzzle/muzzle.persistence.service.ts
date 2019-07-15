@@ -105,7 +105,9 @@ export class MuzzlePersistenceService {
       head: ["TH 1 User", "TH 2 Times Muzzled"]
     });
 
-    topMuzzledByInstancesTable.push(report.muzzled.byInstances);
+    report.muzzled.byInstances.forEach((instance: any) => {
+      topMuzzledByInstancesTable.push([instance.muzzledId, instance.count]);
+    });
 
     const topMuzzledByInstances = {
       pretext: "Top Muzzled by Times Muzzled",
@@ -116,7 +118,12 @@ export class MuzzlePersistenceService {
       head: ["TH 1 User", "TH 2 Times Muzzling Others"]
     });
 
-    topMuzzlersTable.push(report.muzzlers.byInstances);
+    report.muzzlers.ByInstances((instance: any) => {
+      topMuzzlersTable.push([
+        instance.muzzle_requestorId,
+        instance.instanceCount
+      ]);
+    });
 
     const topMuzzlersByInstances = {
       pretext: "Top Muzzlers",
@@ -127,7 +134,14 @@ export class MuzzlePersistenceService {
       head: ["TH1 User", "TH2 KDR", "TH3 Kills", "TH4 Deaths"]
     });
 
-    topKdrTable.push(report.kdr);
+    report.kdr.forEach((instance: any) => {
+      topKdrTable.push([
+        instance.muzzle_requestorId,
+        instance.kdr,
+        instance.kills,
+        instance.deaths
+      ]);
+    });
 
     const topKdr = {
       pretext: "Top KDR",
@@ -138,7 +152,13 @@ export class MuzzlePersistenceService {
       head: ["TH1 Muzzler", "TH2 Muzzled", "TH3 Times"]
     });
 
-    nemesisTable.push(report.nemesis);
+    report.nemesis.forEach((instance: any) => {
+      nemesisTable.push([
+        instance.requestorId,
+        instance.muzzledId,
+        instance.killCount
+      ]);
+    });
 
     const nemesis = {
       pretext: "Top Nemesis",
