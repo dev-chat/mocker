@@ -91,7 +91,7 @@ muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
   const report = await muzzlePersistenceService.retrieveWeeklyMuzzleReport();
   const response: IChannelResponse = {
     response_type: "in_channel",
-    text: "Muzzle Report",
+    text: "*Muzzle Report*",
     attachments: muzzlePersistenceService.generateFormattedReport(report)
   };
 

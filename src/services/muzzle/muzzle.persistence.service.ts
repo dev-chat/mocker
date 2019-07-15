@@ -102,22 +102,22 @@ export class MuzzlePersistenceService {
 
   public generateFormattedReport(report: any): IAttachment[] {
     const topMuzzledByInstances = {
-      pretext: "Top Muzzled by Times Muzzled",
+      pretext: "*Top Muzzled by Times Muzzled*",
       text: `\`\`\`${Table.print(report.muzzled.byInstances)}\`\`\``
     };
 
     const topMuzzlersByInstances = {
-      pretext: "Top Muzzlers",
+      pretext: "*Top Muzzlers*",
       text: `\`\`\`${Table.print(report.muzzlers.byInstances)}\`\`\``
     };
 
     const topKdr = {
-      pretext: "Top KDR",
+      pretext: "*Top KDR*",
       text: `\`\`\`${Table.print(report.kdr)}\`\`\``
     };
 
     const nemesis = {
-      pretext: "Top Nemesis",
+      pretext: "*Top Nemesis*",
       text: `\`\`\`${Table.print(report.nemesis)}\`\`\``
     };
 
