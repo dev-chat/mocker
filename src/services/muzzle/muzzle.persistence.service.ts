@@ -1,4 +1,4 @@
-import Table from "cli-table";
+import Table from "easy-table";
 import { getRepository } from "typeorm";
 import { Muzzle } from "../../shared/db/models/Muzzle";
 import { IAttachment } from "../../shared/models/slack/slack-models";
@@ -101,68 +101,24 @@ export class MuzzlePersistenceService {
   }
 
   public generateFormattedReport(report: any): IAttachment[] {
-    const topMuzzledByInstancesTable = new Table({
-      head: ["User", "Times Muzzled"]
-    });
-
-    report.muzzled.byInstances.forEach((instance: any) => {
-      topMuzzledByInstancesTable.push([instance.muzzledId, instance.count]);
-    });
-
     const topMuzzledByInstances = {
       pretext: "Top Muzzled by Times Muzzled",
-      text: topMuzzledByInstancesTable.toString()
+      text: Table.print(report.muzzled.byInstances)
     };
-
-    const topMuzzlersTable = new Table({
-      head: ["User", "Times Muzzling Others"]
-    });
-
-    report.muzzlers.byInstances.forEach((instance: any) => {
-      topMuzzlersTable.push([
-        instance.muzzle_requestorId,
-        instance.instanceCount
-      ]);
-    });
 
     const topMuzzlersByInstances = {
       pretext: "Top Muzzlers",
-      text: topMuzzlersTable.toString()
+      text: Table.print(report.muzzlers.byInstances)
     };
-
-    const topKdrTable = new Table({
-      head: ["User", "KDR", "Kills", "Deaths"]
-    });
-
-    report.kdr.forEach((instance: any) => {
-      topKdrTable.push([
-        instance.muzzle_requestorId,
-        instance.kdr,
-        instance.kills,
-        instance.deaths
-      ]);
-    });
 
     const topKdr = {
       pretext: "Top KDR",
-      text: topKdrTable.toString()
+      text: Table.print(report.kdr)
     };
-
-    const nemesisTable = new Table({
-      head: ["Muzzler", "Muzzled", "Times"]
-    });
-
-    report.nemesis.forEach((instance: any) => {
-      nemesisTable.push([
-        instance.requestorId,
-        instance.muzzledId,
-        instance.killCount
-      ]);
-    });
 
     const nemesis = {
       pretext: "Top Nemesis",
-      text: nemesisTable.toString()
+      text: Table.print(report.nemesis)
     };
 
     const attachments = [
