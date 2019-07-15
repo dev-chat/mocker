@@ -138,10 +138,10 @@ export class MuzzlePersistenceService {
 
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
-      .select("muzzle.muzzledId AS muzzledId")
-      .addSelect("COUNT(*) as count")
+      .select("muzzle.muzzledId AS Muzzled")
+      .addSelect("COUNT(*) as Muzzles")
       .groupBy("muzzle.muzzledId")
-      .orderBy("count", "DESC")
+      .orderBy("Muzzles", "DESC")
       .getRawMany();
   }
 
@@ -152,10 +152,10 @@ export class MuzzlePersistenceService {
 
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
-      .select("muzzle.requestorId")
-      .addSelect("COUNT(*)", "instanceCount")
+      .select("muzzle.requestorId AS Muzzler")
+      .addSelect("COUNT(*)", "Muzzles")
       .groupBy("muzzle.requestorId")
-      .orderBy("instanceCount", "DESC")
+      .orderBy("Muzzles", "DESC")
       .getRawMany();
   }
 
@@ -277,11 +277,14 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
-      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))/COUNT(*)", "kdr")
-      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))", "kills")
-      .addSelect("COUNT(*)", "deaths")
+      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))/COUNT(*)", "KDR")
+      .addSelect(
+        "SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))",
+        "Successful Muzzles"
+      )
+      .addSelect("COUNT(*)", "Muzzle Attempts")
       .groupBy("muzzle.requestorId")
-      .orderBy("kdr", "DESC")
+      .orderBy("KDR", "DESC")
       .getRawMany();
   }
 
@@ -290,7 +293,7 @@ export class MuzzlePersistenceService {
       console.log(range);
     }
 
-    const getNemesisSqlQuery = `SELECT a.requestorId, a.muzzledId, MAX(a.count) as killCount
+    const getNemesisSqlQuery = `SELECT a.requestorId AS Muzzler, a.muzzledId as Muzzled, MAX(a.count) as Times Muzzled
     FROM (SELECT requestorId, muzzledId, COUNT(*) as count FROM muzzle GROUP BY requestorId, muzzledId) AS a 
     INNER JOIN(SELECT muzzledId, MAX(count) AS count
     FROM (SELECT requestorId, muzzledId, COUNT(*) AS count FROM muzzle GROUP BY requestorId, muzzledId) AS c 
