@@ -2,16 +2,20 @@ import Table from "easy-table";
 import { getRepository } from "typeorm";
 import { Muzzle } from "../../shared/db/models/Muzzle";
 import { IAttachment } from "../../shared/models/slack/slack-models";
+import { SlackService } from "../slack/slack.service";
 
 export class MuzzlePersistenceService {
   public static getInstance() {
     if (!MuzzlePersistenceService.instance) {
       MuzzlePersistenceService.instance = new MuzzlePersistenceService();
+      MuzzlePersistenceService.slackService = SlackService.getInstance();
     }
     return MuzzlePersistenceService.instance;
   }
 
   private static instance: MuzzlePersistenceService;
+  private static slackService: SlackService;
+
   private constructor() {}
 
   public addMuzzleToDb(requestorId: string, muzzledId: string, time: number) {
@@ -101,24 +105,25 @@ export class MuzzlePersistenceService {
   }
 
   public generateFormattedReport(report: any): IAttachment[] {
+    const formattedReport = this.formatReport(report);
     const topMuzzledByInstances = {
       pretext: "*Top Muzzled by Times Muzzled*",
-      text: `\`\`\`${Table.print(report.muzzled.byInstances)}\`\`\``
+      text: `\`\`\`${Table.print(formattedReport.muzzled.byInstances)}\`\`\``
     };
 
     const topMuzzlersByInstances = {
       pretext: "*Top Muzzlers*",
-      text: `\`\`\`${Table.print(report.muzzlers.byInstances)}\`\`\``
+      text: `\`\`\`${Table.print(formattedReport.muzzlers.byInstances)}\`\`\``
     };
 
     const topKdr = {
       pretext: "*Top KDR*",
-      text: `\`\`\`${Table.print(report.kdr)}\`\`\``
+      text: `\`\`\`${Table.print(formattedReport.KDR)}\`\`\``
     };
 
     const nemesis = {
       pretext: "*Top Nemesis*",
-      text: `\`\`\`${Table.print(report.nemesis)}\`\`\``
+      text: `\`\`\`${Table.print(formattedReport.nemesis)}\`\`\``
     };
 
     const attachments = [
@@ -131,6 +136,54 @@ export class MuzzlePersistenceService {
     return attachments;
   }
 
+  private formatReport(report: any) {
+    const reportFormatted = {
+      muzzled: {
+        byInstances: report.muzzled.byInstances.map((instance: any) => {
+          return {
+            user: MuzzlePersistenceService.slackService.getUserById(
+              instance.muzzledId
+            )!.name,
+            timeMuzzled: instance.count
+          };
+        })
+      },
+      muzzlers: {
+        byInstances: report.muzzlers.byInstances.map((instance: any) => {
+          return {
+            muzzler: MuzzlePersistenceService.slackService.getUserById(
+              instance.muzzle_requestorId
+            )!.name,
+            muzzlesIssued: instance.instanceCount
+          };
+        })
+      },
+      KDR: report.kdr.map((instance: any) => {
+        return {
+          muzzler: MuzzlePersistenceService.slackService.getUserById(
+            instance.muzzle_requestorId
+          )!.name,
+          kdr: instance.kdr,
+          successfulMuzzles: instance.kills,
+          totalMuzzles: instance.deaths
+        };
+      }),
+      nemesis: report.nemesis.map((instance: any) => {
+        return {
+          muzzler: MuzzlePersistenceService.slackService.getUserById(
+            instance.requestorId
+          )!.name,
+          muzzled: MuzzlePersistenceService.slackService.getUserById(
+            instance.muzzledId
+          )!.name,
+          timesMuzzled: instance.killCount
+        };
+      })
+    };
+
+    return reportFormatted;
+  }
+
   private getMostMuzzledByInstances(range?: string) {
     if (range) {
       console.log(range);
@@ -138,10 +191,10 @@ export class MuzzlePersistenceService {
 
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
-      .select("muzzle.muzzledId AS Muzzled")
-      .addSelect("COUNT(*) as Muzzles")
+      .select("muzzle.muzzledId AS muzzledId")
+      .addSelect("COUNT(*) as count")
       .groupBy("muzzle.muzzledId")
-      .orderBy("Muzzles", "DESC")
+      .orderBy("count", "DESC")
       .getRawMany();
   }
 
@@ -152,10 +205,10 @@ export class MuzzlePersistenceService {
 
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
-      .select("muzzle.requestorId AS Muzzler")
-      .addSelect("COUNT(*)", "Muzzles")
+      .select("muzzle.requestorId")
+      .addSelect("COUNT(*)", "instanceCount")
       .groupBy("muzzle.requestorId")
-      .orderBy("Muzzles", "DESC")
+      .orderBy("instanceCount", "DESC")
       .getRawMany();
   }
 
@@ -277,14 +330,11 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
-      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))/COUNT(*)", "KDR")
-      .addSelect(
-        "SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))",
-        "Successful Muzzles"
-      )
-      .addSelect("COUNT(*)", "Muzzle Attempts")
+      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))/COUNT(*)", "kdr")
+      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))", "kills")
+      .addSelect("COUNT(*)", "deaths")
       .groupBy("muzzle.requestorId")
-      .orderBy("KDR", "DESC")
+      .orderBy("kdr", "DESC")
       .getRawMany();
   }
 
@@ -293,7 +343,7 @@ export class MuzzlePersistenceService {
       console.log(range);
     }
 
-    const getNemesisSqlQuery = `SELECT a.requestorId AS Muzzler, a.muzzledId as Muzzled, MAX(a.count) as Times Muzzled
+    const getNemesisSqlQuery = `SELECT a.requestorId, a.muzzledId, MAX(a.count) as killCount
     FROM (SELECT requestorId, muzzledId, COUNT(*) as count FROM muzzle GROUP BY requestorId, muzzledId) AS a 
     INNER JOIN(SELECT muzzledId, MAX(count) AS count
     FROM (SELECT requestorId, muzzledId, COUNT(*) AS count FROM muzzle GROUP BY requestorId, muzzledId) AS c 
