@@ -102,7 +102,7 @@ export class MuzzlePersistenceService {
 
   public generateFormattedReport(report: any): IAttachment[] {
     const topMuzzledByInstancesTable = new Table({
-      head: ["TH 1 User", "TH 2 Times Muzzled"]
+      head: ["User", "Times Muzzled"]
     });
 
     report.muzzled.byInstances.forEach((instance: any) => {
@@ -115,7 +115,7 @@ export class MuzzlePersistenceService {
     };
 
     const topMuzzlersTable = new Table({
-      head: ["TH 1 User", "TH 2 Times Muzzling Others"]
+      head: ["User", "Times Muzzling Others"]
     });
 
     report.muzzlers.byInstances.forEach((instance: any) => {
@@ -131,7 +131,7 @@ export class MuzzlePersistenceService {
     };
 
     const topKdrTable = new Table({
-      head: ["TH1 User", "TH2 KDR", "TH3 Kills", "TH4 Deaths"]
+      head: ["User", "KDR", "Kills", "Deaths"]
     });
 
     report.kdr.forEach((instance: any) => {
@@ -149,7 +149,7 @@ export class MuzzlePersistenceService {
     };
 
     const nemesisTable = new Table({
-      head: ["TH1 Muzzler", "TH2 Muzzled", "TH3 Times"]
+      head: ["Muzzler", "Muzzled", "Times"]
     });
 
     report.nemesis.forEach((instance: any) => {
