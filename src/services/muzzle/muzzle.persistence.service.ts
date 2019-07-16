@@ -1,20 +1,15 @@
-import Table from "easy-table";
 import { getRepository } from "typeorm";
 import { Muzzle } from "../../shared/db/models/Muzzle";
-import { IAttachment } from "../../shared/models/slack/slack-models";
-import { SlackService } from "../slack/slack.service";
 
 export class MuzzlePersistenceService {
   public static getInstance() {
     if (!MuzzlePersistenceService.instance) {
       MuzzlePersistenceService.instance = new MuzzlePersistenceService();
-      MuzzlePersistenceService.slackService = SlackService.getInstance();
     }
     return MuzzlePersistenceService.instance;
   }
 
   private static instance: MuzzlePersistenceService;
-  private static slackService: SlackService;
 
   private constructor() {}
 
@@ -68,7 +63,7 @@ export class MuzzlePersistenceService {
   }
 
   /** Wrapper to generate a generic muzzle report in */
-  public async retrieveWeeklyMuzzleReport() {
+  public async retrieveMuzzleReport() {
     const mostMuzzledByInstances = await this.getMostMuzzledByInstances();
     const mostMuzzledByMessages = await this.getMostMuzzledByMessages();
     const mostMuzzledByWords = await this.getMostMuzzledByWords();
@@ -102,90 +97,6 @@ export class MuzzlePersistenceService {
       kdr,
       nemesis
     };
-  }
-
-  public generateFormattedReport(report: any): IAttachment[] {
-    const formattedReport = this.formatReport(report);
-    const topMuzzledByInstances = {
-      pretext: "*Top Muzzled by Times Muzzled*",
-      text: `\`\`\`${Table.print(formattedReport.muzzled.byInstances)}\`\`\``,
-      mrkdwn_in: ["text", "pretext"]
-    };
-
-    const topMuzzlersByInstances = {
-      pretext: "*Top Muzzlers*",
-      text: `\`\`\`${Table.print(formattedReport.muzzlers.byInstances)}\`\`\``,
-      mrkdwn_in: ["text", "pretext"]
-    };
-
-    const topKdr = {
-      pretext: "*Top KDR*",
-      text: `\`\`\`${Table.print(formattedReport.KDR)}\`\`\``,
-      mrkdwn_in: ["text", "pretext"]
-    };
-
-    const nemesis = {
-      pretext: "*Top Nemesis*",
-      text: `\`\`\`${Table.print(formattedReport.nemesis)}\`\`\``,
-      mrkdwn_in: ["text", "pretext"]
-    };
-
-    const attachments = [
-      topMuzzledByInstances,
-      topMuzzlersByInstances,
-      topKdr,
-      nemesis
-    ];
-
-    return attachments;
-  }
-
-  private formatReport(report: any) {
-    const reportFormatted = {
-      muzzled: {
-        byInstances: report.muzzled.byInstances.map((instance: any) => {
-          return {
-            user: MuzzlePersistenceService.slackService.getUserById(
-              instance.muzzledId
-            )!.name,
-            timeMuzzled: instance.count
-          };
-        })
-      },
-      muzzlers: {
-        byInstances: report.muzzlers.byInstances.map((instance: any) => {
-          return {
-            muzzler: MuzzlePersistenceService.slackService.getUserById(
-              instance.muzzle_requestorId
-            )!.name,
-            muzzlesIssued: instance.instanceCount
-          };
-        })
-      },
-      KDR: report.kdr.map((instance: any) => {
-        return {
-          muzzler: MuzzlePersistenceService.slackService.getUserById(
-            instance.muzzle_requestorId
-          )!.name,
-          kdr: instance.kdr,
-          successfulMuzzles: instance.kills,
-          totalMuzzles: instance.deaths
-        };
-      }),
-      nemesis: report.nemesis.map((instance: any) => {
-        return {
-          muzzler: MuzzlePersistenceService.slackService.getUserById(
-            instance.requestorId
-          )!.name,
-          muzzled: MuzzlePersistenceService.slackService.getUserById(
-            instance.muzzledId
-          )!.name,
-          timesMuzzled: instance.killCount
-        };
-      })
-    };
-
-    return reportFormatted;
   }
 
   private getMostMuzzledByInstances(range?: string) {

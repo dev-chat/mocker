@@ -2,6 +2,7 @@ import express, { Request, Response, Router } from "express";
 import { getTimeString } from "../services/muzzle/muzzle-utilities";
 import { MuzzlePersistenceService } from "../services/muzzle/muzzle.persistence.service";
 import { MuzzleService } from "../services/muzzle/muzzle.service";
+import { ReportService } from "../services/report/report.service";
 import { SlackService } from "../services/slack/slack.service";
 import { WebService } from "../services/web/web.service";
 import {
@@ -16,6 +17,7 @@ const muzzleService = MuzzleService.getInstance();
 const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
+const reportService = new ReportService();
 
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
@@ -87,14 +89,15 @@ muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
   const userId: any = slackService.getUserId(request.text);
   if (muzzleService.isUserMuzzled(userId)) {
     res.send(`Sorry! Can't do that while muzzled.`);
-  }
-  const report = await muzzlePersistenceService.retrieveWeeklyMuzzleReport();
-  const response: IChannelResponse = {
-    response_type: "in_channel",
-    text: "*Muzzle Report*",
-    attachments: muzzlePersistenceService.generateFormattedReport(report)
-  };
+  } else {
+    const report = await reportService.getReport();
+    const response: IChannelResponse = {
+      response_type: "in_channel",
+      text: "*Muzzle Report*",
+      attachments: report
+    };
 
-  slackService.sendResponse(request.response_url, response);
-  res.send("Report sent!");
+    slackService.sendResponse(request.response_url, response);
+    res.status(200).send();
+  }
 });

@@ -22,9 +22,7 @@ export class SlackService {
   public sendResponse(responseUrl: string, response: IChannelResponse): void {
     axios
       .post(responseUrl, response)
-      .then(() =>
-        console.log(`Successfully responded to: ${responseUrl}`, response)
-      )
+      .then(() => console.log(`Successfully responded to: ${responseUrl}`))
       .catch((e: Error) =>
         console.error(`Error responding: ${e.message} at ${responseUrl}`)
       );
