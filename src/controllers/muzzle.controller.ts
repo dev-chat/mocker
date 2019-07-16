@@ -6,7 +6,6 @@ import { ReportService } from "../services/report/report.service";
 import { SlackService } from "../services/slack/slack.service";
 import { WebService } from "../services/web/web.service";
 import {
-  IChannelResponse,
   IEventRequest,
   ISlashCommandRequest
 } from "../shared/models/slack/slack-models";
@@ -91,13 +90,7 @@ muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
     res.send(`Sorry! Can't do that while muzzled.`);
   } else {
     const report = await reportService.getReport();
-    const response: IChannelResponse = {
-      response_type: "in_channel",
-      text: "*Muzzle Report*",
-      attachments: report
-    };
-
-    slackService.sendResponse(request.response_url, response);
+    webService.uploadFile(req.body.channel, report);
     res.status(200).send();
   }
 });

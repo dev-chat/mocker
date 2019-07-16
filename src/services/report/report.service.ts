@@ -12,40 +12,22 @@ export class ReportService {
     return this.generateFormattedReport(muzzleReport);
   }
 
-  private generateFormattedReport(report: any): IAttachment[] {
+  private generateFormattedReport(report: any): string {
     const formattedReport = this.formatReport(report);
-    const topMuzzledByInstances = {
-      pretext: "*Top Muzzled by Times Muzzled*",
-      text: `\`\`\`${Table.print(formattedReport.muzzled.byInstances)}\`\`\``,
-      mrkdwn_in: ["text", "pretext"]
-    };
+    return `
+      *Top Muzzled by Times Muzzled*
+      \`\`\`${Table.print(formattedReport.muzzled.byInstances)}\`\`\`
 
-    const topMuzzlersByInstances = {
-      pretext: "*Top Muzzlers*",
-      text: `\`\`\`${Table.print(formattedReport.muzzlers.byInstances)}\`\`\``,
-      mrkdwn_in: ["text", "pretext"]
-    };
+      *Top Muzzlers*
+      \`\`\`${Table.print(formattedReport.muzzlers.byInstances)}\`\`\`
+      
+      *Top KDR*
+      \`\`\`${Table.print(formattedReport.KDR)}\`\`\`
 
-    const topKdr = {
-      pretext: "*Top KDR*",
-      text: `\`\`\`${Table.print(formattedReport.KDR)}\`\`\``,
-      mrkdwn_in: ["text", "pretext"]
-    };
+      *Top Nemesis*
+      \`\`\`${Table.print(formattedReport.nemesis)}\`\`\`
 
-    const nemesis = {
-      pretext: "*Top Nemesis*",
-      text: `\`\`\`${Table.print(formattedReport.nemesis)}\`\`\``,
-      mrkdwn_in: ["text", "pretext"]
-    };
-
-    const attachments = [
-      topMuzzledByInstances,
-      topMuzzlersByInstances,
-      topKdr,
-      nemesis
-    ];
-
-    return attachments;
+      `;
   }
 
   private formatReport(report: any) {

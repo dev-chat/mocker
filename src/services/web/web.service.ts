@@ -1,6 +1,7 @@
 import {
   ChatDeleteArguments,
   ChatPostMessageArguments,
+  FilesUploadArguments,
   WebClient
 } from "@slack/web-api";
 
@@ -54,5 +55,18 @@ export class WebService {
 
   public getAllUsers() {
     return this.web.users.list();
+  }
+
+  public uploadFile(channel: string, content: string) {
+    const muzzleToken: any = process.env.muzzleBotToken;
+    const uploadRequest: FilesUploadArguments = {
+      channels: channel,
+      content,
+      filename: "Muzzle Report",
+      title: "Muzzle Report",
+      token: muzzleToken
+    };
+
+    this.web.files.upload(uploadRequest).catch(e => console.error(e));
   }
 }
