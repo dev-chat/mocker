@@ -108,22 +108,26 @@ export class MuzzlePersistenceService {
     const formattedReport = this.formatReport(report);
     const topMuzzledByInstances = {
       pretext: "*Top Muzzled by Times Muzzled*",
-      text: `\`\`\`${Table.print(formattedReport.muzzled.byInstances)}\`\`\``
+      text: `\`\`\`${Table.print(formattedReport.muzzled.byInstances)}\`\`\``,
+      mrkdwn_in: ["text", "pretext"]
     };
 
     const topMuzzlersByInstances = {
       pretext: "*Top Muzzlers*",
-      text: `\`\`\`${Table.print(formattedReport.muzzlers.byInstances)}\`\`\``
+      text: `\`\`\`${Table.print(formattedReport.muzzlers.byInstances)}\`\`\``,
+      mrkdwn_in: ["text", "pretext"]
     };
 
     const topKdr = {
       pretext: "*Top KDR*",
-      text: `\`\`\`${Table.print(formattedReport.KDR)}\`\`\``
+      text: `\`\`\`${Table.print(formattedReport.KDR)}\`\`\``,
+      mrkdwn_in: ["text", "pretext"]
     };
 
     const nemesis = {
       pretext: "*Top Nemesis*",
-      text: `\`\`\`${Table.print(formattedReport.nemesis)}\`\`\``
+      text: `\`\`\`${Table.print(formattedReport.nemesis)}\`\`\``,
+      mrkdwn_in: ["text", "pretext"]
     };
 
     const attachments = [
