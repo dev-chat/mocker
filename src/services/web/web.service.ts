@@ -62,7 +62,6 @@ export class WebService {
     const uploadRequest: FilesUploadArguments = {
       channels: channel,
       content,
-      filename: "Muzzle Report",
       title: "Muzzle Report",
       token: muzzleToken
     };
