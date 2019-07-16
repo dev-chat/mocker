@@ -16,17 +16,24 @@ export class ReportService {
     return `
       # Muzzle Report
       ## Top Muzzled by Times Muzzled
+      \`\`\`
       ${Table.print(formattedReport.muzzled.byInstances)}
+      \`\`\`
 
-      ## Top Muzzlers*
+      ## Top Muzzlers
+      \`\`\`
       ${Table.print(formattedReport.muzzlers.byInstances)}
+      \`\`\`
       
-      ## Top KDR*
+      ## Top KDR
+      \`\`\`
       ${Table.print(formattedReport.KDR)}
+      \`\`\`
 
-      ## Top Nemesis*
+      ## Top Nemesis
+      \`\`\`
       ${Table.print(formattedReport.nemesis)}
-
+      \`\`\`
       `;
   }
 
