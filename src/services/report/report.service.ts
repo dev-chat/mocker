@@ -14,26 +14,19 @@ export class ReportService {
   private generateFormattedReport(report: any): string {
     const formattedReport = this.formatReport(report);
     return `
-      # Muzzle Report
-      ## Top Muzzled by Times Muzzled
-      \`\`\`
-      ${Table.print(formattedReport.muzzled.byInstances)}
-      \`\`\`
-
-      ## Top Muzzlers
-      \`\`\`
-      ${Table.print(formattedReport.muzzlers.byInstances)}
-      \`\`\`
+      Muzzle Report
       
-      ## Top KDR
-      \`\`\`
+      Top Muzzled by Times Muzzled
+      ${Table.print(formattedReport.muzzled.byInstances)}
+
+      Top Muzzlers
+      ${Table.print(formattedReport.muzzlers.byInstances)}
+      
+      Top KDR
       ${Table.print(formattedReport.KDR)}
-      \`\`\`
 
       ## Top Nemesis
-      \`\`\`
       ${Table.print(formattedReport.nemesis)}
-      \`\`\`
       `;
   }
 
