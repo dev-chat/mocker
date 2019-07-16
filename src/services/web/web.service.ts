@@ -62,7 +62,9 @@ export class WebService {
     const uploadRequest: FilesUploadArguments = {
       channels: channel,
       content,
+      filetype: "markdown",
       title: "Muzzle Report",
+      initial_comment: "A New Muzzle Report has been Generated",
       token: muzzleToken
     };
 
