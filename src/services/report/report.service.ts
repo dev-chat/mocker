@@ -15,7 +15,7 @@ export class ReportService {
     const formattedReport = this.formatReport(report);
     return `
       Muzzle Report
-      
+
       Top Muzzled by Times Muzzled
       ${Table.print(formattedReport.muzzled.byInstances)}
 
@@ -25,7 +25,7 @@ export class ReportService {
       Top KDR
       ${Table.print(formattedReport.KDR)}
 
-      ## Top Nemesis
+      Top Nemesis
       ${Table.print(formattedReport.nemesis)}
       `;
   }
