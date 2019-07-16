@@ -1,5 +1,4 @@
 import Table from "easy-table";
-import { IAttachment } from "../../shared/models/slack/slack-models";
 import { MuzzlePersistenceService } from "../muzzle/muzzle.persistence.service";
 import { SlackService } from "../slack/slack.service";
 
