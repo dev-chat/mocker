@@ -54,7 +54,8 @@ export class DefineService {
       formattedArr.push({
         text: this.formatUrbanD(
           `${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition)}`
-        )
+        ),
+        mrkdown_in: ["text"]
       });
     }
     return formattedArr;

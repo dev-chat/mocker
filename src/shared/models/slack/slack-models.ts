@@ -41,6 +41,8 @@ export interface IEvent {
 
 export interface IAttachment {
   text: string;
+  pretext?: string;
+  mrkdown_in?: string[];
 }
 
 export interface ISlackUser {
