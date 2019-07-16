@@ -91,7 +91,7 @@ muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
     res.send(`Sorry! Can't do that while muzzled.`);
   } else {
     const report = await reportService.getReport();
-    webService.uploadFile(req.body.channel, report);
+    webService.uploadFile(req.body.channel_id, report);
     res.status(200).send();
   }
 });
