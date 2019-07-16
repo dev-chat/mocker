@@ -66,6 +66,9 @@ export class WebService {
       token: muzzleToken
     };
 
-    this.web.files.upload(uploadRequest).catch(e => console.error(e));
+    this.web.files
+      .upload(uploadRequest)
+      .then(result => console.log(result))
+      .catch(e => console.error(e));
   }
 }
