@@ -2,6 +2,7 @@ import bodyParser from "body-parser";
 import express, { Application } from "express";
 import "reflect-metadata";
 import { createConnection } from "typeorm";
+import { clapController } from "./controllers/clap.controller";
 import { defineController } from "./controllers/define.controller";
 import { mockController } from "./controllers/mock.controller";
 import { muzzleController } from "./controllers/muzzle.controller";
@@ -16,6 +17,7 @@ app.use(bodyParser.json());
 app.use(mockController);
 app.use(muzzleController);
 app.use(defineController);
+app.use(clapController);
 
 const slackService = SlackService.getInstance();
 
