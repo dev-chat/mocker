@@ -1,5 +1,5 @@
 import express, { Router } from "express";
-import { MockService } from "../services/mock/mock.service";
+import { ClapService } from "../services/clap/clap.service";
 import { MuzzleService } from "../services/muzzle/muzzle.service";
 import { SlackService } from "../services/slack/slack.service";
 import {
@@ -7,24 +7,24 @@ import {
   ISlashCommandRequest
 } from "../shared/models/slack/slack-models";
 
-export const mockController: Router = express.Router();
+export const clapController: Router = express.Router();
 
 const muzzleService = MuzzleService.getInstance();
 const slackService = SlackService.getInstance();
-const mockService = MockService.getInstance();
+const clapService = new ClapService();
 
-mockController.post("/mock", (req, res) => {
+clapController.post("/clap", (req, res) => {
   const request: ISlashCommandRequest = req.body;
   if (muzzleService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
-    res.send("Sorry, you must send a message to mock.");
+    res.send("Sorry, you must send a message to clap.");
   } else {
-    const mocked: string = mockService.mock(request.text);
+    const clapped: string = clapService.clap(request.text);
     const response: IChannelResponse = {
       attachments: [
         {
-          text: mocked
+          text: clapped
         }
       ],
       response_type: "in_channel",
