@@ -266,7 +266,7 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
-      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)), kills")
+      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))", "kills")
       .addSelect("muzzle.muzzledId")
       .addSelect("COUNT(*)", "deaths")
       .groupBy("muzzle.requestorId")
