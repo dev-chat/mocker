@@ -263,15 +263,19 @@ export class MuzzlePersistenceService {
       console.log(range);
     }
 
-    return getRepository(Muzzle)
-      .createQueryBuilder("muzzle")
-      .select("muzzle.requestorId")
-      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))", "kills")
-      .addSelect("muzzle.muzzledId")
-      .addSelect("COUNT(*)", "deaths")
-      .groupBy("muzzle.requestorId")
-      .addGroupBy("muzzle.muzzledId")
-      .getRawMany();
+    const getKdrQuery = `
+      SELECT a.requestorId, a.count AS deaths, b.count as kills
+      FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle GROUP BY muzzledId) as a
+      INNER JOIN (
+        SELECT requestorId, COUNT(*) as count
+        FROM muzzle
+        GROUP BY requestorId
+      ) AS b
+      ON a.requestorId = b.requestorId
+      GROUP BY a.requestorId
+      ORDER BY b.count DEC;
+    `;
+    return getRepository(Muzzle).query(getKdrQuery);
   }
 
   private getNemesis(range?: string) {
@@ -279,11 +283,22 @@ export class MuzzlePersistenceService {
       console.log(range);
     }
 
-    const getNemesisSqlQuery = `SELECT a.requestorId, a.muzzledId, MAX(a.count) as killCount
-    FROM (SELECT requestorId, muzzledId, COUNT(*) as count FROM muzzle GROUP BY requestorId, muzzledId) AS a 
-    INNER JOIN(SELECT muzzledId, MAX(count) AS count
-    FROM (SELECT requestorId, muzzledId, COUNT(*) AS count FROM muzzle GROUP BY requestorId, muzzledId) AS c 
-    GROUP BY c.muzzledId) AS b 
+    const getNemesisSqlQuery = `
+    SELECT a.requestorId, a.muzzledId, MAX(a.count) as killCount
+    FROM (
+      SELECT requestorId, muzzledId, COUNT(*) as count
+      FROM muzzle
+      GROUP BY requestorId, muzzledId
+    ) AS a 
+    INNER JOIN(
+      SELECT muzzledId, MAX(count) AS count
+      FROM (
+        SELECT requestorId, muzzledId, COUNT(*) AS count 
+        FROM muzzle
+        GROUP BY requestorId, muzzledId
+      ) AS c 
+      GROUP BY c.muzzledId
+    ) AS b 
     ON a.muzzledId = b.muzzledId AND a.count = b.count
     GROUP BY a.requestorId, a.muzzledId
     ORDER BY a.count DESC;`;
