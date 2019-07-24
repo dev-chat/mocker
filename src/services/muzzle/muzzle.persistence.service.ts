@@ -76,6 +76,7 @@ export class MuzzlePersistenceService {
     const muzzlerByChars = await this.getMuzzlerByChars();
     const muzzlerByTime = await this.getMuzzlerByTime();
 
+    const accuracy = await this.getAccuracy();
     const kdr = await this.getKdr();
     const nemesis = await this.getNemesis();
 
@@ -94,6 +95,7 @@ export class MuzzlePersistenceService {
         byChars: muzzlerByChars,
         byTime: muzzlerByTime
       },
+      accuracy,
       kdr,
       nemesis
     };
@@ -237,6 +239,25 @@ export class MuzzlePersistenceService {
       .getRawMany();
   }
 
+  private getAccuracy(range?: string) {
+    if (range) {
+      console.log(range);
+    }
+
+    return getRepository(Muzzle)
+      .createQueryBuilder("muzzle")
+      .select("muzzle.requestorId")
+      .addSelect(
+        "SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))/COUNT(*)",
+        "accuracy"
+      )
+      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))", "kills")
+      .addSelect("COUNT(*)", "deaths")
+      .groupBy("muzzle.requestorId")
+      .orderBy("accuracy", "DESC")
+      .getRawMany();
+  }
+
   private getKdr(range?: string) {
     if (range) {
       console.log(range);
@@ -245,8 +266,8 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle)
       .createQueryBuilder("muzzle")
       .select("muzzle.requestorId")
-      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))/COUNT(*)", "kdr")
-      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0))", "kills")
+      .addSelect("SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)), kills")
+      .addSelect("muzzle.muzzledId")
       .addSelect("COUNT(*)", "deaths")
       .groupBy("muzzle.requestorId")
       .orderBy("kdr", "DESC")
