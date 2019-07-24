@@ -273,7 +273,7 @@ export class MuzzlePersistenceService {
       ) AS b
       ON a.requestorId = b.requestorId
       GROUP BY a.requestorId
-      ORDER BY b.count DEC;
+      ORDER BY b.count DESC;
     `;
     return getRepository(Muzzle).query(getKdrQuery);
   }
