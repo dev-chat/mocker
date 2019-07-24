@@ -270,6 +270,7 @@ export class MuzzlePersistenceService {
       .addSelect("muzzle.muzzledId")
       .addSelect("COUNT(*)", "deaths")
       .groupBy("muzzle.requestorId")
+      .addGroupBy("muzzle.muzzledId")
       .getRawMany();
   }
 
