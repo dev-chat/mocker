@@ -265,15 +265,15 @@ export class MuzzlePersistenceService {
     }
 
     const getKdrQuery = `
-      SELECT a.requestorId, a.count AS deaths, b.count as kills
-      FROM (SELECT requestorId, muzzledId, COUNT(*) as count FROM muzzle GROUP BY requestorId, muzzledId) as a
+      SELECT b.requestorId, a.count AS deaths, b.count as kills
+      FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle GROUP BY muzzledId) as a
       INNER JOIN (
         SELECT requestorId, muzzledId, COUNT(*) as count
         FROM muzzle
         GROUP BY requestorId, muzzledId
       ) AS b
-      ON a.requestorId = b.muzzledId
-      GROUP BY requestorId, a.count, b.count
+      ON a.muzzledId = b.requestorId
+      GROUP BY b.requestorId, a.count, b.count
       ORDER BY b.count DESC;
     `;
     return getRepository(Muzzle).query(getKdrQuery);
