@@ -268,9 +268,9 @@ export class MuzzlePersistenceService {
       SELECT a.requestorId, a.count AS deaths, b.count as kills
       FROM (SELECT requestorId, muzzledId, COUNT(*) as count FROM muzzle GROUP BY requestorId, muzzledId) as a
       INNER JOIN (
-        SELECT requestorId, COUNT(*) as count
+        SELECT requestorId, muzzledId, COUNT(*) as count
         FROM muzzle
-        GROUP BY requestorId
+        GROUP BY requestorId, muzzledId
       ) AS b
       ON a.requestorId = b.muzzledId
       GROUP BY requestorId
