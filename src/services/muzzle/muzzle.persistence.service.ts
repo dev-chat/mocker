@@ -271,7 +271,7 @@ export class MuzzlePersistenceService {
         FROM muzzle
         GROUP BY requestorId
       ) AS b
-      ON requestorId = b.requestorId
+      ON a.requestorId = b.requestorId
       GROUP BY requestorId
       ORDER BY b.count DESC;
     `;
