@@ -78,6 +78,7 @@ export class MuzzlePersistenceService {
 
     const accuracy = await this.getAccuracy();
     const kdr = await this.getKdr();
+    console.log(kdr);
     const nemesis = await this.getNemesis();
 
     return {
