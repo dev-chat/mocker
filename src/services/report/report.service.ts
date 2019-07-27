@@ -63,8 +63,7 @@ ${Table.print(formattedReport.nemesis)}
       }),
       KDR: report.kdr.map((instance: any) => {
         return {
-          muzzler: this.slackService.getUserById(instance.muzzle_requestorId)!
-            .name,
+          muzzler: this.slackService.getUserById(instance.requestorId)!.name,
           kdr: instance.kdr,
           successfulMuzzles: instance.kills,
           timesMuzzled: instance.deaths
