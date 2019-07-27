@@ -66,7 +66,7 @@ ${Table.print(formattedReport.nemesis)}
           muzzler: this.slackService.getUserById(instance.requestorId)!.name,
           kdr: instance.kdr,
           successfulMuzzles: instance.kills,
-          timesMuzzled: instance.deaths
+          successfulMuzzled: instance.deaths
         };
       }),
       nemesis: report.nemesis.map((instance: any) => {
