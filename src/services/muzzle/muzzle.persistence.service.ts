@@ -270,7 +270,9 @@ export class MuzzlePersistenceService {
     INNER JOIN (
     SELECT requestorId, COUNT(*) as count
     FROM muzzle
-    GROUP BY requestorId) AS b
+    WHERE messagesSuppressed > 0
+    GROUP BY requestorId
+    ) AS b
     ON a.muzzledId = b.requestorId
     GROUP BY b.requestorId, a.count, b.count, kdr
     ORDER BY kdr DESC;
