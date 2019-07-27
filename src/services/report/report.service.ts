@@ -28,8 +28,11 @@ ${Table.print(formattedReport.accuracy)}
 Top KDR
 ${Table.print(formattedReport.KDR)}
 
-Top Nemesis
-${Table.print(formattedReport.nemesis)}
+Top Nemesis (Raw)
+${Table.print(formattedReport.rawNemesis)}
+
+Top Nemesis (Only Successful)
+${Table.print(formattedReport.successNemesis)}
 `;
   }
 
@@ -38,42 +41,49 @@ ${Table.print(formattedReport.nemesis)}
       muzzled: {
         byInstances: report.muzzled.byInstances.map((instance: any) => {
           return {
-            user: this.slackService.getUserById(instance.muzzledId)!.name,
-            timesMuzzled: instance.count
+            User: this.slackService.getUserById(instance.muzzledId)!.name,
+            ["Times Muzzled"]: instance.count
           };
         })
       },
       muzzlers: {
         byInstances: report.muzzlers.byInstances.map((instance: any) => {
           return {
-            muzzler: this.slackService.getUserById(instance.muzzle_requestorId)!
+            User: this.slackService.getUserById(instance.muzzle_requestorId)!
               .name,
-            muzzlesIssued: instance.instanceCount
+            ["Muzzles Issued"]: instance.instanceCount
           };
         })
       },
       accuracy: report.accuracy.map((instance: any) => {
         return {
-          muzzler: this.slackService.getUserById(instance.muzzle_requestorId)!
+          User: this.slackService.getUserById(instance.muzzle_requestorId)!
             .name,
-          accuracy: instance.accuracy,
-          successfulMuzzles: instance.kills,
-          totalMuzzles: instance.deaths
+          Accuracy: instance.accuracy,
+          Kills: instance.kills,
+          Deaths: instance.deaths
         };
       }),
       KDR: report.kdr.map((instance: any) => {
         return {
-          muzzler: this.slackService.getUserById(instance.requestorId)!.name,
-          kdr: instance.kdr,
-          successfulMuzzles: instance.kills,
-          successfulMuzzled: instance.deaths
+          User: this.slackService.getUserById(instance.requestorId)!.name,
+          KDR: instance.kdr,
+          Kills: instance.kills,
+          Deaths: instance.deaths
         };
       }),
-      nemesis: report.nemesis.map((instance: any) => {
+      rawNemesis: report.rawNemesis.map((instance: any) => {
         return {
-          muzzler: this.slackService.getUserById(instance.requestorId)!.name,
-          muzzled: this.slackService.getUserById(instance.muzzledId)!.name,
-          timesMuzzled: instance.killCount
+          Killer: this.slackService.getUserById(instance.requestorId)!.name,
+          Victim: this.slackService.getUserById(instance.muzzledId)!.name,
+          ["Muzzle Attempts"]: instance.killCount
+        };
+      }),
+      successNemesis: report.successNemesis.map((instance: any) => {
+        return {
+          Killer: this.slackService.getUserById(instance.requestorId)!.name,
+          Victim: this.slackService.getUserById(instance.muzzledId)!.name,
+          ["Successful Muzzles"]: instance.killCount
         };
       })
     };

@@ -78,8 +78,9 @@ export class MuzzlePersistenceService {
 
     const accuracy = await this.getAccuracy();
     const kdr = await this.getKdr();
-    console.log(kdr);
-    const nemesis = await this.getNemesis();
+
+    const rawNemesis = await this.getNemesisByRaw();
+    const successNemesis = await this.getNemesisBySuccessful();
 
     return {
       muzzled: {
@@ -98,7 +99,8 @@ export class MuzzlePersistenceService {
       },
       accuracy,
       kdr,
-      nemesis
+      rawNemesis,
+      successNemesis
     };
   }
 
@@ -280,7 +282,7 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle).query(getKdrQuery);
   }
 
-  private getNemesis(range?: string) {
+  private getNemesisByRaw(range?: string) {
     if (range) {
       console.log(range);
     }
@@ -306,5 +308,35 @@ export class MuzzlePersistenceService {
     ORDER BY a.count DESC;`;
 
     return getRepository(Muzzle).query(getNemesisSqlQuery);
+  }
+
+  private getNemesisBySuccessful(range?: string) {
+    if (range) {
+      console.log(range);
+    }
+
+    const query = `
+      SELECT a.requestorId, a.muzzledId, MAX(a.count) as killCount
+      FROM (
+        SELECT requestorId, muzzledId, COUNT(*) as count
+        FROM muzzle
+        WHERE messagesSuppressed > 0
+        GROUP BY requestorId, muzzledId
+      ) AS a 
+      INNER JOIN(
+        SELECT muzzledId, MAX(count) AS count
+        FROM (
+          SELECT requestorId, muzzledId, COUNT(*) AS count 
+          FROM muzzle
+          WHERE messagesSuppressed > 0
+          GROUP BY requestorId, muzzledId
+        ) AS c 
+        GROUP BY c.muzzledId
+      ) AS b 
+      ON a.muzzledId = b.muzzledId AND a.count = b.count
+      GROUP BY a.requestorId, a.muzzledId
+      ORDER BY a.count DESC;`;
+
+    return getRepository(Muzzle).query(query);
   }
 }
