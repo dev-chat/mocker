@@ -266,7 +266,7 @@ export class MuzzlePersistenceService {
 
     const getKdrQuery = `
     SELECT b.requestorId, a.count AS deaths, b.count as kills, b.count/a.count as kdr
-    FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle GROUP BY muzzledId) as a
+    FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 GROUP BY muzzledId) as a
     INNER JOIN (
     SELECT requestorId, COUNT(*) as count
     FROM muzzle
