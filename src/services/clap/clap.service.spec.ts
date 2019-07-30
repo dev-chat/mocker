@@ -8,13 +8,9 @@ describe("ClapService", () => {
   });
 
   describe("clap()", () => {
-    it("should clap a users input with a single word", () => {
-      expect(clapService.clap("test")).toBe("test :clap: ");
-    });
-
     it("should clap a users input with multiple words", () => {
       expect(clapService.clap("test this out")).toBe(
-        "test :clap: this :clap: out :clap: "
+        "test :clap: this :clap: out"
       );
     });
 

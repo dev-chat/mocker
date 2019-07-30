@@ -9,3 +9,11 @@ export interface IRequestor {
   muzzleCount: number;
   muzzleCountRemover?: NodeJS.Timeout;
 }
+
+export enum ReportType {
+  Week = "week",
+  Day = "day",
+  Month = "month",
+  Year = "year",
+  AllTime = "all"
+}

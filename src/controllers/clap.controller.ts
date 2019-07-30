@@ -19,6 +19,8 @@ clapController.post("/clap", (req, res) => {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send("Sorry, you must send a message to clap.");
+  } else if (request.text.split(" ").length === 1) {
+    res.send("Sorry, you need more than one words to use clapper.");
   } else {
     const clapped: string = clapService.clap(request.text);
     const response: IChannelResponse = {

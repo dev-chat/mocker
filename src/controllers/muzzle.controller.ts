@@ -5,6 +5,7 @@ import { MuzzleService } from "../services/muzzle/muzzle.service";
 import { ReportService } from "../services/report/report.service";
 import { SlackService } from "../services/slack/slack.service";
 import { WebService } from "../services/web/web.service";
+import { ReportType } from "../shared/models/muzzle/muzzle-models";
 import {
   IEventRequest,
   ISlashCommandRequest
@@ -87,6 +88,7 @@ muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
   console.log(req.body);
   const userId: any = slackService.getUserId(request.text);
+  const reportType: ReportType = getReportType();
   if (muzzleService.isUserMuzzled(userId)) {
     res.send(`Sorry! Can't do that while muzzled.`);
   } else {
