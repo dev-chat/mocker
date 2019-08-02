@@ -1,9 +1,6 @@
 import Table from "easy-table";
 import moment from "moment";
-import {
-  IReportRange,
-  ReportType
-} from "../../shared/models/muzzle/muzzle-models";
+import { ReportType } from "../../shared/models/muzzle/muzzle-models";
 import { MuzzlePersistenceService } from "../muzzle/muzzle.persistence.service";
 import { SlackService } from "../slack/slack.service";
 
@@ -29,45 +26,6 @@ export class ReportService {
     );
   }
 
-  public getRange(reportType: ReportType) {
-    const range: IReportRange = {
-      reportType
-    };
-    if (reportType === ReportType.AllTime) {
-      range.reportType = ReportType.AllTime;
-    } else if (reportType === ReportType.Day) {
-      range.start = moment()
-        .startOf("day")
-        .format("YYYY-MM-DD HH:mm:ss");
-      range.end = moment()
-        .endOf("day")
-        .format("YYYY-MM-DD HH:mm:ss");
-    } else if (reportType === ReportType.Week) {
-      range.start = moment()
-        .startOf("week")
-        .format("YYYY-MM-DD HH:mm:ss");
-      range.end = moment()
-        .endOf("week")
-        .format("YYYY-MM-DD HH:mm:ss");
-    } else if (reportType === ReportType.Month) {
-      range.start = moment()
-        .startOf("month")
-        .format("YYYY-MM-DD HH:mm:ss");
-      range.end = moment()
-        .endOf("month")
-        .format("YYYY-MM-DD HH:mm:ss");
-    } else if (reportType === ReportType.Year) {
-      range.start = moment()
-        .startOf("year")
-        .format("YYYY-MM-DD HH:mm:ss");
-      range.end = moment()
-        .endOf("year")
-        .format("YYYY-MM-DD HH:mm:ss");
-    }
-
-    return range;
-  }
-
   public getReportType(type: string): ReportType {
     const lowerCaseType: string = type.toLowerCase();
     if (
@@ -83,7 +41,7 @@ export class ReportService {
   }
 
   public getReportTitle(type: ReportType) {
-    const range = this.getRange(type);
+    const range = this.muzzlePersistenceService.getRange(type);
     const titles = {
       [ReportType.Day]: `Daily Muzzle Report for ${moment(range.start).format(
         "MM-DD-YYYY"
