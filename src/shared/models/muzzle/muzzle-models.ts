@@ -17,3 +17,9 @@ export enum ReportType {
   Year = "year",
   AllTime = "all"
 }
+
+export interface IReportRange {
+  start?: string;
+  end?: string;
+  reportType: ReportType;
+}

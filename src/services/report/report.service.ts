@@ -1,4 +1,5 @@
 import Table from "easy-table";
+import { ReportType } from "../../shared/models/muzzle/muzzle-models";
 import { MuzzlePersistenceService } from "../muzzle/muzzle.persistence.service";
 import { SlackService } from "../slack/slack.service";
 
@@ -6,9 +7,25 @@ export class ReportService {
   private slackService = SlackService.getInstance();
   private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 
-  public async getReport() {
-    const muzzleReport = await this.muzzlePersistenceService.retrieveMuzzleReport();
+  public async getReport(reportType: ReportType) {
+    const muzzleReport = await this.muzzlePersistenceService.retrieveMuzzleReport(
+      reportType
+    );
     return this.generateFormattedReport(muzzleReport);
+  }
+
+  public getReportType(type: string): ReportType {
+    const lowerCaseType: string = type.toLowerCase();
+    if (
+      lowerCaseType === ReportType.Day ||
+      lowerCaseType === ReportType.Week ||
+      lowerCaseType === ReportType.Month ||
+      lowerCaseType === ReportType.Year ||
+      lowerCaseType === ReportType.AllTime
+    ) {
+      return lowerCaseType as ReportType;
+    }
+    return ReportType.AllTime;
   }
 
   private generateFormattedReport(report: any): string {

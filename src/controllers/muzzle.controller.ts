@@ -87,12 +87,16 @@ muzzleController.post("/muzzle", async (req: Request, res: Response) => {
 muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
   console.log(req.body);
-  const userId: any = slackService.getUserId(request.text);
-  const reportType: ReportType = getReportType();
+  const userId: any = slackService.getUserId(request.user_id);
   if (muzzleService.isUserMuzzled(userId)) {
     res.send(`Sorry! Can't do that while muzzled.`);
+  } else if (request.text.split(" ").length > 1) {
+    res.send(
+      `Sorry! No support for multiple parameters at this time. Please choose one of: \`day\`, \`week\`, \`month\`, \`year\`, \`all\``
+    );
   } else {
-    const report = await reportService.getReport();
+    const reportType: ReportType = reportService.getReportType(request.text);
+    const report = await reportService.getReport(reportType);
     webService.uploadFile(req.body.channel_id, report);
     res.status(200).send();
   }
