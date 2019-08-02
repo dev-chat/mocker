@@ -54,6 +54,7 @@ ${Table.print(formattedReport.successNemesis)}
   }
 
   private formatReport(report: any) {
+    console.log(report);
     const reportFormatted = {
       muzzled: {
         byInstances: report.muzzled.byInstances.map((instance: any) => {
@@ -66,16 +67,14 @@ ${Table.print(formattedReport.successNemesis)}
       muzzlers: {
         byInstances: report.muzzlers.byInstances.map((instance: any) => {
           return {
-            User: this.slackService.getUserById(instance.muzzle_requestorId)!
-              .name,
+            User: this.slackService.getUserById(instance.requestorId)!.name,
             ["Muzzles Issued"]: instance.instanceCount
           };
         })
       },
       accuracy: report.accuracy.map((instance: any) => {
         return {
-          User: this.slackService.getUserById(instance.muzzle_requestorId)!
-            .name,
+          User: this.slackService.getUserById(instance.requestorId)!.name,
           Accuracy: instance.accuracy,
           Kills: instance.kills,
           Deaths: instance.deaths
