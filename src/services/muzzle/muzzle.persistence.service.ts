@@ -313,7 +313,9 @@ export class MuzzlePersistenceService {
         `
         : `
         SELECT b.requestorId, a.count AS deaths, b.count as kills, b.count/a.count as kdr
-        FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 GROUP BY muzzledId) as a
+        FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 AND createdAt >= '${
+          range.start
+        }' AND createdAt < '${range.end}' GROUP BY muzzledId) as a
         INNER JOIN (
         SELECT requestorId, COUNT(*) as count
         FROM muzzle
