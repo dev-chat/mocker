@@ -1,10 +1,10 @@
-import moment from "moment";
 import { getRepository } from "typeorm";
 import { Muzzle } from "../../shared/db/models/Muzzle";
 import {
   IReportRange,
   ReportType
 } from "../../shared/models/muzzle/muzzle-models";
+import { ReportService } from "../report/report.service";
 
 export class MuzzlePersistenceService {
   public static getInstance() {
@@ -15,6 +15,7 @@ export class MuzzlePersistenceService {
   }
 
   private static instance: MuzzlePersistenceService;
+  private reportService = new ReportService();
 
   private constructor() {}
 
@@ -71,7 +72,7 @@ export class MuzzlePersistenceService {
   public async retrieveMuzzleReport(
     reportType: ReportType = ReportType.AllTime
   ) {
-    const range: IReportRange = this.getRange(reportType);
+    const range: IReportRange = this.reportService.getRange(reportType);
 
     const mostMuzzledByInstances = await this.getMostMuzzledByInstances(range);
     const mostMuzzledByMessages = await this.getMostMuzzledByMessages(range);
@@ -111,45 +112,6 @@ export class MuzzlePersistenceService {
       rawNemesis,
       successNemesis
     };
-  }
-
-  private getRange(reportType: ReportType) {
-    const range: IReportRange = {
-      reportType
-    };
-    if (reportType === ReportType.AllTime) {
-      range.reportType = ReportType.AllTime;
-    } else if (reportType === ReportType.Day) {
-      range.start = moment()
-        .startOf("day")
-        .format("YYYY-MM-DD HH:mm:ss");
-      range.end = moment()
-        .endOf("day")
-        .format("YYYY-MM-DD HH:mm:ss");
-    } else if (reportType === ReportType.Week) {
-      range.start = moment()
-        .startOf("week")
-        .format("YYYY-MM-DD HH:mm:ss");
-      range.end = moment()
-        .endOf("week")
-        .format("YYYY-MM-DD HH:mm:ss");
-    } else if (reportType === ReportType.Month) {
-      range.start = moment()
-        .startOf("month")
-        .format("YYYY-MM-DD HH:mm:ss");
-      range.end = moment()
-        .endOf("month")
-        .format("YYYY-MM-DD HH:mm:ss");
-    } else if (reportType === ReportType.Year) {
-      range.start = moment()
-        .startOf("year")
-        .format("YYYY-MM-DD HH:mm:ss");
-      range.end = moment()
-        .endOf("year")
-        .format("YYYY-MM-DD HH:mm:ss");
-    }
-
-    return range;
   }
 
   private getMostMuzzledByInstances(range: IReportRange) {

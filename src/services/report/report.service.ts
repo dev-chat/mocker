@@ -1,5 +1,9 @@
 import Table from "easy-table";
-import { ReportType } from "../../shared/models/muzzle/muzzle-models";
+import moment from "moment";
+import {
+  IReportRange,
+  ReportType
+} from "../../shared/models/muzzle/muzzle-models";
 import { MuzzlePersistenceService } from "../muzzle/muzzle.persistence.service";
 import { SlackService } from "../slack/slack.service";
 
@@ -11,7 +15,7 @@ export class ReportService {
     const muzzleReport = await this.muzzlePersistenceService.retrieveMuzzleReport(
       reportType
     );
-    return this.generateFormattedReport(muzzleReport);
+    return this.generateFormattedReport(muzzleReport, reportType);
   }
 
   // There has got to be a better way to do this. This is sooo ugly and requires added maintenance
@@ -23,6 +27,45 @@ export class ReportService {
       type === ReportType.Year ||
       type === ReportType.AllTime
     );
+  }
+
+  public getRange(reportType: ReportType) {
+    const range: IReportRange = {
+      reportType
+    };
+    if (reportType === ReportType.AllTime) {
+      range.reportType = ReportType.AllTime;
+    } else if (reportType === ReportType.Day) {
+      range.start = moment()
+        .startOf("day")
+        .format("YYYY-MM-DD HH:mm:ss");
+      range.end = moment()
+        .endOf("day")
+        .format("YYYY-MM-DD HH:mm:ss");
+    } else if (reportType === ReportType.Week) {
+      range.start = moment()
+        .startOf("week")
+        .format("YYYY-MM-DD HH:mm:ss");
+      range.end = moment()
+        .endOf("week")
+        .format("YYYY-MM-DD HH:mm:ss");
+    } else if (reportType === ReportType.Month) {
+      range.start = moment()
+        .startOf("month")
+        .format("YYYY-MM-DD HH:mm:ss");
+      range.end = moment()
+        .endOf("month")
+        .format("YYYY-MM-DD HH:mm:ss");
+    } else if (reportType === ReportType.Year) {
+      range.start = moment()
+        .startOf("year")
+        .format("YYYY-MM-DD HH:mm:ss");
+      range.end = moment()
+        .endOf("year")
+        .format("YYYY-MM-DD HH:mm:ss");
+    }
+
+    return range;
   }
 
   public getReportType(type: string): ReportType {
@@ -39,10 +82,31 @@ export class ReportService {
     return ReportType.AllTime;
   }
 
-  private generateFormattedReport(report: any): string {
+  public getReportTitle(type: ReportType) {
+    const range = this.getRange(type);
+    const titles = {
+      [ReportType.Day]: `Daily Muzzle Report for ${moment(range.start).format(
+        "MM-DD-YYYY"
+      )}`,
+      [ReportType.Week]: `Weekly Muzzle Report for ${moment(range.start).format(
+        "MM-DD-YYYY"
+      )} - ${moment(range.end).format("MM-DD-YYYY")}`,
+      [ReportType.Month]: `Monthly Muzzle Report for ${moment(
+        range.start
+      ).format("MM-DD-YYYY")} - ${moment(range.end).format("MM-DD-YYYY")}`,
+      [ReportType.Year]: `Annual Muzzle Report for ${moment(range.start).format(
+        "MM-DD-YYYY"
+      )} - ${moment(range.end).format("MM-DD-YYYY")}`,
+      [ReportType.AllTime]: "All Time Muzzle Report"
+    };
+
+    return titles[type];
+  }
+
+  private generateFormattedReport(report: any, reportType: ReportType): string {
     const formattedReport = this.formatReport(report);
     return `
-Muzzle Report
+${this.getReportTitle(reportType)}
 
 Top Muzzled by Times Muzzled
 ${Table.print(formattedReport.muzzled.byInstances)}
