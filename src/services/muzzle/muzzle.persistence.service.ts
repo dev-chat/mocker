@@ -156,11 +156,11 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT muzzledId, COUNT(*) as count FROM muzzle GROUP BY muzzledId ORDER BY count DESC;`
-        : `SELECT muzzledId, COUNT(*) as count WHERE createdAt >= '${
+        : `SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${
             range.start
           }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY muzzledId ORDER BY count DESC`;
+          }' GROUP BY muzzledId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -169,11 +169,11 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId, COUNT(*) as instanceCount FROM muzzle GROUP BY requestorId ORDER BY instanceCount DESC;`
-        : `SELECT requestorId, COUNT(*) as instanceCount WHERE createdAt >= '${
+        : `SELECT requestorId, COUNT(*) as instanceCount FROM muzzle WHERE createdAt >= '${
             range.start
           }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY requestorId ORDER BY instanceCount DESC`;
+          }' GROUP BY requestorId ORDER BY instanceCount DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -182,11 +182,11 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId, SUM(messagesSuppressed) as messagesSuppressed FROM muzzle GROUP BY requestorId ORDER BY messagesSuppressed DESC;`
-        : `SELECT requestorId, SUM(messagesSuppressed) as messagesSuppressed WHERE createdAt >= '${
+        : `SELECT requestorId, SUM(messagesSuppressed) as messagesSuppressed FROM muzzle WHERE createdAt >= '${
             range.start
           }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY requestorId ORDER BY messagesSuppressed DESC`;
+          }' GROUP BY requestorId ORDER BY messagesSuppressed DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -195,11 +195,11 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT muzzledId, SUM(messagesSuppressed) as messagesSuppressed FROM muzzle GROUP BY muzzledId ORDER BY messagesSuppressed DESC;`
-        : `SELECT muzzledId, SUM(messagesSuppressed) as messagesSuppressed WHERE createdAt >= '${
+        : `SELECT muzzledId, SUM(messagesSuppressed) as messagesSuppressed FROM muzzle WHERE createdAt >= '${
             range.start
           }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY muzzledId ORDER BY messagesSuppressed DESC`;
+          }' GROUP BY muzzledId ORDER BY messagesSuppressed DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -208,11 +208,11 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT muzzledId, SUM(wordsSuppressed) as wordsSuppressed FROM muzzle GROUP BY muzzledId ORDER BY wordsSuppressed DESC;`
-        : `SELECT muzzledId, SUM(wordsSuppressed) as wordsSuppressed WHERE createdAt >= '${
+        : `SELECT muzzledId, SUM(wordsSuppressed) as wordsSuppressed FROM muzzle WHERE createdAt >= '${
             range.start
           }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY muzzledId ORDER BY wordsSuppressed DESC`;
+          }' GROUP BY muzzledId ORDER BY wordsSuppressed DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -221,11 +221,11 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId, SUM(wordsSuppressed) as wordsSuppressed FROM muzzle GROUP BY requestorId ORDER BY wordsSuppressed DESC;`
-        : `SELECT requestorId, SUM(wordsSuppressed) as wordsSuppressed WHERE createdAt >= '${
+        : `SELECT requestorId, SUM(wordsSuppressed) as wordsSuppressed FROM muzzle WHERE createdAt >= '${
             range.start
           }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY requestorId ORDER BY wordsSuppressed DESC`;
+          }' GROUP BY requestorId ORDER BY wordsSuppressed DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -234,11 +234,11 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT muzzledId, SUM(charactersSuppressed) as charactersSuppressed FROM muzzle GROUP BY muzzledId ORDER BY charactersSuppressed DESC;`
-        : `SELECT muzzledId, SUM(charactersSuppressed) as charactersSuppressed WHERE createdAt >= '${
+        : `SELECT muzzledId, SUM(charactersSuppressed) as charactersSuppressed FROM muzzle WHERE createdAt >= '${
             range.start
           }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY muzzledId ORDER BY charactersSuppressed DESC`;
+          }' GROUP BY muzzledId ORDER BY charactersSuppressed DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -247,11 +247,11 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId, SUM(charactersSuppressed) as charactersSuppressed FROM muzzle GROUP BY requestorId ORDER BY charactersSuppressed DESC;`
-        : `SELECT requestorId, SUM(charactersSuppressed) as charactersSuppressed WHERE createdAt >= '${
+        : `SELECT requestorId, SUM(charactersSuppressed) as charactersSuppressed FROM muzzle WHERE createdAt >= '${
             range.start
           }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY requestorId ORDER BY charactersSuppressed DESC`;
+          }' GROUP BY requestorId ORDER BY charactersSuppressed DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -260,11 +260,11 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT muzzledId, SUM(milliseconds) as muzzleTime FROM muzzle GROUP BY muzzledId ORDER BY muzzleTime DESC;`
-        : `SELECT muzzledId, SUM(milliseconds) as muzzleTime WHERE createdAt >= '${
+        : `SELECT muzzledId, SUM(milliseconds) as muzzleTime FROM muzzle WHERE createdAt >= '${
             range.start
           }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY muzzledId ORDER BY muzzleTime DESC`;
+          }' GROUP BY muzzledId ORDER BY muzzleTime DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -273,11 +273,11 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId, SUM(milliseconds) as muzzleTime FROM muzzle GROUP BY requestorId ORDER BY muzzleTime DESC;`
-        : `SELECT requestorId, SUM(milliseconds) as muzzleTime WHERE createdAt >= '${
+        : `SELECT requestorId, SUM(milliseconds) as muzzleTime FROM muzzle WHERE createdAt >= '${
             range.start
           }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY requestorId ORDER BY muzzleTime DESC`;
+          }' GROUP BY requestorId ORDER BY muzzleTime DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -287,10 +287,11 @@ export class MuzzlePersistenceService {
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths
            FROM muzzle GROUP BY requestorId ORDER BY accuracy DESC;`
-        : `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths
-        WHERE createdAt >= '${range.start}' AND createdAt < '${
+        : `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths FROM muzzle WHERE createdAt >= '${
+            range.start
+          }' AND createdAt < '${
             range.end
-          }' FROM muzzle GROUP BY requestorId ORDER BY accuracy DESC`;
+          }' GROUP BY requestorId ORDER BY accuracy DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -417,7 +418,7 @@ export class MuzzlePersistenceService {
           FROM muzzle
           WHERE createdAt >= '${range.start}' AND createdAt < '${
             range.end
-          }'  AND messagesSuppressed > 0
+          }' AND messagesSuppressed > 0
           GROUP BY requestorId, muzzledId
         ) AS c 
         GROUP BY c.muzzledId
