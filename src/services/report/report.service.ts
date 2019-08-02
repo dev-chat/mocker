@@ -48,13 +48,13 @@ export class ReportService {
       )}`,
       [ReportType.Week]: `Weekly Muzzle Report for ${moment(range.start).format(
         "MM-DD-YYYY"
-      )} - ${moment(range.end).format("MM-DD-YYYY")}`,
+      )} to ${moment(range.end).format("MM-DD-YYYY")}`,
       [ReportType.Month]: `Monthly Muzzle Report for ${moment(
         range.start
-      ).format("MM-DD-YYYY")} - ${moment(range.end).format("MM-DD-YYYY")}`,
+      ).format("MM-DD-YYYY")} to ${moment(range.end).format("MM-DD-YYYY")}`,
       [ReportType.Year]: `Annual Muzzle Report for ${moment(range.start).format(
         "MM-DD-YYYY"
-      )} - ${moment(range.end).format("MM-DD-YYYY")}`,
+      )} to ${moment(range.end).format("MM-DD-YYYY")}`,
       [ReportType.AllTime]: "All Time Muzzle Report"
     };
 
