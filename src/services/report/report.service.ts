@@ -17,12 +17,13 @@ export class ReportService {
 
   // There has got to be a better way to do this. This is sooo ugly and requires added maintenance
   public isValidReportType(type: string) {
+    const lowerCaseType = type.toLowerCase();
     return (
-      type === ReportType.Day ||
-      type === ReportType.Week ||
-      type === ReportType.Month ||
-      type === ReportType.Year ||
-      type === ReportType.AllTime
+      lowerCaseType === ReportType.Day ||
+      lowerCaseType === ReportType.Week ||
+      lowerCaseType === ReportType.Month ||
+      lowerCaseType === ReportType.Year ||
+      lowerCaseType === ReportType.AllTime
     );
   }
 
