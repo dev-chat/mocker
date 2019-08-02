@@ -94,6 +94,12 @@ muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
     res.send(
       `Sorry! No support for multiple parameters at this time. Please choose one of: \`day\`, \`week\`, \`month\`, \`year\`, \`all\``
     );
+  } else if (!reportService.isValidReportType(request.text)) {
+    res.send(
+      `Sorry! You passed in ${
+        request.text
+      } but we can only generate reports for the following values: \`day\`, \`week\`, \`month\`, \`year\`, \`all\``
+    );
   } else {
     const reportType: ReportType = reportService.getReportType(request.text);
     const report = await reportService.getReport(reportType);

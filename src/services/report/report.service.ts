@@ -14,6 +14,17 @@ export class ReportService {
     return this.generateFormattedReport(muzzleReport);
   }
 
+  // There has got to be a better way to do this. This is sooo ugly and requires added maintenance
+  public isValidReportType(type: string) {
+    return (
+      type === ReportType.Day ||
+      type === ReportType.Week ||
+      type === ReportType.Month ||
+      type === ReportType.Year ||
+      type === ReportType.AllTime
+    );
+  }
+
   public getReportType(type: string): ReportType {
     const lowerCaseType: string = type.toLowerCase();
     if (
@@ -54,7 +65,6 @@ ${Table.print(formattedReport.successNemesis)}
   }
 
   private formatReport(report: any) {
-    console.log(report);
     const reportFormatted = {
       muzzled: {
         byInstances: report.muzzled.byInstances.map((instance: any) => {
