@@ -67,23 +67,23 @@ export class ReportService {
     return `
 ${this.getReportTitle(reportType)}
 
-Top Muzzled by Times Muzzled
-${Table.print(formattedReport.muzzled.byInstances)}
+  Top Muzzled by Times Muzzled
+  ${Table.print(formattedReport.muzzled.byInstances)}
 
-Top Muzzlers
-${Table.print(formattedReport.muzzlers.byInstances)}
+  Top Muzzlers
+  ${Table.print(formattedReport.muzzlers.byInstances)}
       
-Top Accuracy
-${Table.print(formattedReport.accuracy)}
+  Top Accuracy
+  ${Table.print(formattedReport.accuracy)}
 
-Top KDR
-${Table.print(formattedReport.KDR)}
+  Top KDR
+  ${Table.print(formattedReport.KDR)}
 
-Top Nemesis (Raw)
-${Table.print(formattedReport.rawNemesis)}
+  Top Nemesis (Raw)
+  ${Table.print(formattedReport.rawNemesis)}
 
-Top Nemesis (Only Successful)
-${Table.print(formattedReport.successNemesis)}
+  Top Nemesis (Only Successful)
+  ${Table.print(formattedReport.successNemesis)}
 `;
   }
 
