@@ -300,7 +300,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `
-        SELECT b.requestorId, a.count AS deaths, b.count as kills, b.count/a.count as kdr
+        SELECT b.requestorId, a.count AS deaths, b.count as kills, b.count/GREATEST(a.count, 1) as kdr
         FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 GROUP BY muzzledId) as a
         INNER JOIN (
         SELECT requestorId, COUNT(*) as count
@@ -312,7 +312,7 @@ export class MuzzlePersistenceService {
         ORDER BY kdr DESC;
         `
         : `
-        SELECT b.requestorId, a.count AS deaths, b.count as kills, b.count/a.count as kdr
+        SELECT b.requestorId, a.count AS deaths, b.count as kills, b.count/GREATEST(a.count, 1) as kdr
         FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 AND createdAt >= '${
           range.start
         }' AND createdAt < '${range.end}' GROUP BY muzzledId) as a
