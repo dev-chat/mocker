@@ -8,7 +8,7 @@ export const confessionController: Router = express.Router();
 const muzzleService = MuzzleService.getInstance();
 const webService = WebService.getInstance();
 
-confessionController.post("/clap", (req, res) => {
+confessionController.post("/confess", (req, res) => {
   const request: ISlashCommandRequest = req.body;
   if (muzzleService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
