@@ -79,10 +79,10 @@ ${this.getReportTitle(reportType)}
   Top KDR
   ${Table.print(formattedReport.KDR)}
 
-  Top Nemesis (Raw)
+  Top Nemesis by Attempts
   ${Table.print(formattedReport.rawNemesis)}
 
-  Top Nemesis (Only Successful)
+  Top Nemesis by Kills
   ${Table.print(formattedReport.successNemesis)}
 `;
   }

@@ -86,7 +86,6 @@ muzzleController.post("/muzzle", async (req: Request, res: Response) => {
 
 muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
-  console.log(req.body);
   const userId: any = slackService.getUserId(request.user_id);
   if (muzzleService.isUserMuzzled(userId)) {
     res.send(`Sorry! Can't do that while muzzled.`);
