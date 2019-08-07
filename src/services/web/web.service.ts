@@ -70,7 +70,7 @@ export class WebService {
 
     this.web.files
       .upload(uploadRequest)
-      .then(result => console.log(result))
+      .then(() => console.log("Uploaded new report successfully!"))
       .catch(e => console.error(e));
   }
 }
