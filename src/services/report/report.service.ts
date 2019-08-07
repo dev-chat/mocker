@@ -67,7 +67,7 @@ export class ReportService {
     return `
 ${this.getReportTitle(reportType)}
 
-  Top Muzzled by Times Muzzled
+  Top Muzzled
   ${Table.print(formattedReport.muzzled.byInstances)}
 
   Top Muzzlers
@@ -93,7 +93,7 @@ ${this.getReportTitle(reportType)}
         byInstances: report.muzzled.byInstances.map((instance: any) => {
           return {
             User: this.slackService.getUserById(instance.muzzledId)!.name,
-            ["Times Muzzled"]: instance.count
+            Muzzles: instance.count
           };
         })
       },
@@ -110,7 +110,7 @@ ${this.getReportTitle(reportType)}
           User: this.slackService.getUserById(instance.requestorId)!.name,
           Accuracy: instance.accuracy,
           Kills: instance.kills,
-          Deaths: instance.deaths
+          Attempts: instance.deaths
         };
       }),
       KDR: report.kdr.map((instance: any) => {
@@ -125,14 +125,14 @@ ${this.getReportTitle(reportType)}
         return {
           Killer: this.slackService.getUserById(instance.requestorId)!.name,
           Victim: this.slackService.getUserById(instance.muzzledId)!.name,
-          ["Muzzle Attempts"]: instance.killCount
+          Attempts: instance.killCount
         };
       }),
       successNemesis: report.successNemesis.map((instance: any) => {
         return {
           Killer: this.slackService.getUserById(instance.requestorId)!.name,
           Victim: this.slackService.getUserById(instance.muzzledId)!.name,
-          ["Successful Muzzles"]: instance.killCount
+          Kills: instance.killCount
         };
       })
     };
