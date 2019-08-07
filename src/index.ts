@@ -3,6 +3,7 @@ import express, { Application } from "express";
 import "reflect-metadata";
 import { createConnection } from "typeorm";
 import { clapController } from "./controllers/clap.controller";
+import { confessionController } from "./controllers/confession.controller";
 import { defineController } from "./controllers/define.controller";
 import { mockController } from "./controllers/mock.controller";
 import { muzzleController } from "./controllers/muzzle.controller";
@@ -18,6 +19,7 @@ app.use(mockController);
 app.use(muzzleController);
 app.use(defineController);
 app.use(clapController);
+app.use(confessionController);
 
 const slackService = SlackService.getInstance();
 
