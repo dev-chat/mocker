@@ -329,7 +329,6 @@ export class MuzzlePersistenceService {
         ORDER BY kdr DESC;
         `;
 
-    console.log(query);
     return getRepository(Muzzle).query(query);
   }
 
