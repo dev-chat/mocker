@@ -9,7 +9,7 @@ export class List {
   public requestorId!: string;
 
   @Column()
-  public item!: string;
+  public text!: string;
 
   @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   public createdAt!: Date;
