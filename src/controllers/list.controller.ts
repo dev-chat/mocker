@@ -39,13 +39,8 @@ listController.post("/list/add", (req, res) => {
   } else {
     listPersistenceService.store(request.user_id, request.text);
     const response: IChannelResponse = {
-      attachments: [
-        {
-          text: request.text
-        }
-      ],
       response_type: "in_channel",
-      text: `<@${request.user_id}> listed:`
+      text: `${request.text} is now \`listed\``
     };
     slackService.sendResponse(request.response_url, response);
     res.status(200).send();
@@ -64,9 +59,7 @@ listController.post("/list/remove", (req, res) => {
       .then(() => {
         const response: IChannelResponse = {
           response_type: "in_channel",
-          text: `<@${request.user_id}> removed \`${
-            request.text
-          }\` from The List`
+          text: `\`${request.text}\` has been removed from \`The List\``
         };
         slackService.sendResponse(request.response_url, response);
         res.status(200).send();
