@@ -67,9 +67,8 @@ listController.post("/list/remove", (req, res) => {
           } from The List`
         };
         slackService.sendResponse(request.response_url, response);
+        res.status(200).send();
       })
-      .catch(e => console.error(e));
-
-    res.status(200).send();
+      .catch(e => res.send(e));
   }
 });
