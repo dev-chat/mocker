@@ -30,7 +30,7 @@ export class ListPersistenceService {
       if (item) {
         return resolve(getRepository(List).remove(item));
       }
-      reject(`Unable to find \`${item}\``);
+      reject(`Unable to find \`${text}\``);
     });
   }
 }
