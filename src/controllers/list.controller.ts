@@ -40,7 +40,7 @@ listController.post("/list/add", (req, res) => {
     listPersistenceService.store(request.user_id, request.text);
     const response: IChannelResponse = {
       response_type: "in_channel",
-      text: `${request.text} is now \`listed\``
+      text: `\`${request.text}\` has been \`listed\``
     };
     slackService.sendResponse(request.response_url, response);
     res.status(200).send();
