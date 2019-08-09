@@ -55,16 +55,16 @@ listController.post("/list/remove", (req, res) => {
   if (muzzleService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
-    res.send("Sorry, you must send an id to remove.");
+    res.send("Sorry, you must send the item you wish to remove.");
   } else {
     listPersistenceService
       .remove(request.text)
       .then(() => {
         const response: IChannelResponse = {
           response_type: "in_channel",
-          text: `<@${request.user_id}> removed item# ${
+          text: `<@${request.user_id}> removed \`${
             request.text
-          } from The List`
+          }\` from The List`
         };
         slackService.sendResponse(request.response_url, response);
         res.status(200).send();

@@ -66,9 +66,8 @@ export class ReportService {
   private formatListReport(report: any) {
     const reportWithoutDate = report.map((listItem: List) => {
       return {
-        "Item#": listItem.id,
-        "Added By": this.slackService.getUserName(listItem.requestorId),
-        Item: listItem.text
+        Item: listItem.text,
+        "Added By": this.slackService.getUserName(listItem.requestorId)
       };
     });
 

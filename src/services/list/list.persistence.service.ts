@@ -24,13 +24,13 @@ export class ListPersistenceService {
     return getRepository(List).find();
   }
 
-  public remove(itemId: string) {
+  public remove(text: string) {
     return new Promise(async (resolve, reject) => {
-      const item = await getRepository(List).findOne(itemId);
+      const item = await getRepository(List).findOne({ text });
       if (item) {
         return resolve(getRepository(List).remove(item));
       }
-      reject(`Unable to find item by id ${itemId}`);
+      reject(`Unable to find \`${item}\``);
     });
   }
 }
