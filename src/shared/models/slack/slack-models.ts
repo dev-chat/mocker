@@ -1,7 +1,7 @@
 export interface IChannelResponse {
   response_type: string;
   text: string;
-  attachments: IAttachment[];
+  attachments?: IAttachment[];
 }
 
 export interface ISlashCommandRequest {

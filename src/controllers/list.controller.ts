@@ -1,7 +1,9 @@
 import express, { Router } from "express";
 import { ListPersistenceService } from "../services/list/list.persistence.service";
 import { MuzzleService } from "../services/muzzle/muzzle.service";
+import { ReportService } from "../services/report/report.service";
 import { SlackService } from "../services/slack/slack.service";
+import { WebService } from "../services/web/web.service";
 import {
   IChannelResponse,
   ISlashCommandRequest
@@ -11,9 +13,22 @@ export const listController: Router = express.Router();
 
 const muzzleService = MuzzleService.getInstance();
 const slackService = SlackService.getInstance();
+const webService = WebService.getInstance();
 const listPersistenceService = ListPersistenceService.getInstance();
+const reportService = new ReportService();
 
-listController.post("/list", (req, res) => {
+listController.post("/list/retrieve", async (req, res) => {
+  const request: ISlashCommandRequest = req.body;
+  if (muzzleService.isUserMuzzled(request.user_id)) {
+    res.send(`Sorry, can't do that while muzzled.`);
+  } else {
+    const report = await reportService.getListReport();
+    webService.uploadFile(req.body.channel_id, report, "The List");
+    res.status(200).send();
+  }
+});
+
+listController.post("/list/add", (req, res) => {
   const request: ISlashCommandRequest = req.body;
   if (muzzleService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
@@ -31,6 +46,30 @@ listController.post("/list", (req, res) => {
       text: `<@${request.user_id}> listed:`
     };
     slackService.sendResponse(request.response_url, response);
+    res.status(200).send();
+  }
+});
+
+listController.post("/list/remove", (req, res) => {
+  const request: ISlashCommandRequest = req.body;
+  if (muzzleService.isUserMuzzled(request.user_id)) {
+    res.send(`Sorry, can't do that while muzzled.`);
+  } else if (!request.text) {
+    res.send("Sorry, you must send an id to remove.");
+  } else {
+    listPersistenceService
+      .remove(request.text)
+      .then(() => {
+        const response: IChannelResponse = {
+          response_type: "in_channel",
+          text: `<@${request.user_id}> removed item# ${
+            request.text
+          } from The List`
+        };
+        slackService.sendResponse(request.response_url, response);
+      })
+      .catch(e => console.error(e));
+
     res.status(200).send();
   }
 });

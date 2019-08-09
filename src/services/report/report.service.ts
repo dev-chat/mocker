@@ -1,21 +1,28 @@
 import Table from "easy-table";
 import moment from "moment";
+import { List } from "../../shared/db/models/List";
 import { ReportType } from "../../shared/models/muzzle/muzzle-models";
+import { ListPersistenceService } from "../list/list.persistence.service";
 import { MuzzlePersistenceService } from "../muzzle/muzzle.persistence.service";
 import { SlackService } from "../slack/slack.service";
 
 export class ReportService {
   private slackService = SlackService.getInstance();
   private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
+  private listPersistenceService = ListPersistenceService.getInstance();
 
-  public async getReport(reportType: ReportType) {
+  public async getListReport() {
+    const listReport = await this.listPersistenceService.retrieve();
+    return this.formatListReport(listReport);
+  }
+
+  public async getMuzzleReport(reportType: ReportType) {
     const muzzleReport = await this.muzzlePersistenceService.retrieveMuzzleReport(
       reportType
     );
     return this.generateFormattedReport(muzzleReport, reportType);
   }
 
-  // There has got to be a better way to do this. This is sooo ugly and requires added maintenance
   public isValidReportType(type: string) {
     const lowerCaseType = type.toLowerCase();
     return (
@@ -29,13 +36,7 @@ export class ReportService {
 
   public getReportType(type: string): ReportType {
     const lowerCaseType: string = type.toLowerCase();
-    if (
-      lowerCaseType === ReportType.Day ||
-      lowerCaseType === ReportType.Week ||
-      lowerCaseType === ReportType.Month ||
-      lowerCaseType === ReportType.Year ||
-      lowerCaseType === ReportType.AllTime
-    ) {
+    if (this.isValidReportType(type)) {
       return lowerCaseType as ReportType;
     }
     return ReportType.AllTime;
@@ -62,6 +63,21 @@ export class ReportService {
     return titles[type];
   }
 
+  private formatListReport(report: any) {
+    const reportWithoutDate = report.map((listItem: List) => {
+      return {
+        "Item#": listItem.id,
+        "Added By": this.slackService.getUserById(listItem.requestorId),
+        Item: listItem.text
+      };
+    });
+
+    return `
+The List
+    
+${Table.print(reportWithoutDate)}
+`;
+  }
   private generateFormattedReport(report: any, reportType: ReportType): string {
     const formattedReport = this.formatReport(report);
     return `

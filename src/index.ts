@@ -5,6 +5,7 @@ import { createConnection } from "typeorm";
 import { clapController } from "./controllers/clap.controller";
 import { confessionController } from "./controllers/confession.controller";
 import { defineController } from "./controllers/define.controller";
+import { listController } from "./controllers/list.controller";
 import { mockController } from "./controllers/mock.controller";
 import { muzzleController } from "./controllers/muzzle.controller";
 import { config } from "./ormconfig";
@@ -20,6 +21,7 @@ app.use(muzzleController);
 app.use(defineController);
 app.use(clapController);
 app.use(confessionController);
+app.use(listController);
 
 const slackService = SlackService.getInstance();
 
