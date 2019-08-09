@@ -34,6 +34,8 @@ listController.post("/list/add", (req, res) => {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send("Sorry, you must send a message to list something.");
+  } else if (request.text.length >= 255) {
+    res.send("Sorry, items added to The List must be less than 255 characters");
   } else {
     listPersistenceService.store(request.user_id, request.text);
     const response: IChannelResponse = {
