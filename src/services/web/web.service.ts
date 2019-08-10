@@ -63,7 +63,7 @@ export class WebService {
       channels: channel,
       content,
       filetype: "markdown",
-      title: "Muzzle Report",
+      title,
       initial_comment: title,
       token: muzzleToken
     };
