@@ -12,7 +12,6 @@ export interface IRequestor {
 
 export enum ReportType {
   Week = "week",
-  Day = "day",
   Month = "month",
   Year = "year",
   AllTime = "all"

@@ -51,13 +51,6 @@ export class MuzzlePersistenceService {
     };
     if (reportType === ReportType.AllTime) {
       range.reportType = ReportType.AllTime;
-    } else if (reportType === ReportType.Day) {
-      range.start = moment()
-        .startOf("day")
-        .format("YYYY-MM-DD HH:mm:ss");
-      range.end = moment()
-        .endOf("day")
-        .format("YYYY-MM-DD HH:mm:ss");
     } else if (reportType === ReportType.Week) {
       range.start = moment()
         .startOf("week")

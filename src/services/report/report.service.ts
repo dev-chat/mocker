@@ -26,7 +26,6 @@ export class ReportService {
   public isValidReportType(type: string) {
     const lowerCaseType = type.toLowerCase();
     return (
-      lowerCaseType === ReportType.Day ||
       lowerCaseType === ReportType.Week ||
       lowerCaseType === ReportType.Month ||
       lowerCaseType === ReportType.Year ||
@@ -45,9 +44,6 @@ export class ReportService {
   public getReportTitle(type: ReportType) {
     const range = this.muzzlePersistenceService.getRange(type);
     const titles = {
-      [ReportType.Day]: `Daily Muzzle Report for ${moment(range.start).format(
-        "MM-DD-YYYY"
-      )}`,
       [ReportType.Week]: `Weekly Muzzle Report for ${moment(range.start).format(
         "MM-DD-YYYY"
       )} to ${moment(range.end).format("MM-DD-YYYY")}`,
