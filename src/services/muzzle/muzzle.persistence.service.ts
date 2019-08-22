@@ -49,21 +49,26 @@ export class MuzzlePersistenceService {
     const range: IReportRange = {
       reportType
     };
+
     if (reportType === ReportType.AllTime) {
       range.reportType = ReportType.AllTime;
     } else if (reportType === ReportType.Week) {
       range.start = moment()
         .startOf("week")
+        .subtract(1, "week")
         .format("YYYY-MM-DD HH:mm:ss");
       range.end = moment()
         .endOf("week")
+        .subtract(1, "week")
         .format("YYYY-MM-DD HH:mm:ss");
     } else if (reportType === ReportType.Month) {
       range.start = moment()
         .startOf("month")
+        .subtract(1, "month")
         .format("YYYY-MM-DD HH:mm:ss");
       range.end = moment()
         .endOf("month")
+        .subtract(1, "month")
         .format("YYYY-MM-DD HH:mm:ss");
     } else if (reportType === ReportType.Year) {
       range.start = moment()
