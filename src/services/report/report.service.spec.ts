@@ -8,6 +8,17 @@ describe("ReportService", () => {
   });
   describe("getReportType()", () => {
     describe(" - with valid report types", () => {
+      it("should return ReportType.trailing30 when trailing30 is passed in with any case", () => {
+        expect(mockService.getReportType("trailing30")).toBe(
+          ReportType.Trailing30
+        );
+        expect(mockService.getReportType("Trailing30")).toBe(
+          ReportType.Trailing30
+        );
+        expect(mockService.getReportType("TRAILING30")).toBe(
+          ReportType.Trailing30
+        );
+      });
       it("should return ReportType.Week when week is passed in with any case", () => {
         expect(mockService.getReportType("week")).toBe(ReportType.Week);
         expect(mockService.getReportType("Week")).toBe(ReportType.Week);
@@ -38,6 +49,11 @@ describe("ReportService", () => {
   });
 
   describe("isValidReportType()", () => {
+    it("should return true when Trailing30 is passed in with any case", () => {
+      expect(mockService.isValidReportType("trailing30")).toBe(true);
+      expect(mockService.isValidReportType("Trailing30")).toBe(true);
+      expect(mockService.isValidReportType("TRAILING30")).toBe(true);
+    });
     it("should return true when week is passed in with any case", () => {
       expect(mockService.isValidReportType("week")).toBe(true);
       expect(mockService.isValidReportType("Week")).toBe(true);
