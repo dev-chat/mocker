@@ -1,6 +1,10 @@
 import { getRepository } from "typeorm";
 import { List } from "../../shared/db/models/List";
 
+interface ILister {
+  count: number;
+}
+
 export class ListPersistenceService {
   public static getInstance() {
     if (!ListPersistenceService.instance) {
@@ -10,6 +14,8 @@ export class ListPersistenceService {
   }
 
   private static instance: ListPersistenceService;
+
+  private listersToday: Map<string, ILister> = new Map();
 
   private constructor() {}
 
@@ -32,5 +38,14 @@ export class ListPersistenceService {
       }
       reject(`Unable to find \`${text}\``);
     });
+  }
+
+  private countLister(requestorId: string) {
+    const isListerPresent = this.listersToday.has(requestorId);
+    const count = isListerPresent
+      ? ++this.listersToday.get(requestorId)!.count
+      : 1;
+
+    this.listersToday.set(requestorId, { count });
   }
 }

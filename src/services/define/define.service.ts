@@ -28,7 +28,10 @@ export class DefineService {
    * Returns a promise to look up a definition on urban dictionary.
    */
   public define(word: string): Promise<IUrbanDictionaryResponse> {
-    return Axios.get(`http://api.urbandictionary.com/v0/define?term=${word}`)
+    const formattedWord = word.split(" ").join("+");
+    return Axios.get(
+      `http://api.urbandictionary.com/v0/define?term=${formattedWord}`
+    )
       .then((res: AxiosResponse<IUrbanDictionaryResponse>) => {
         return res.data;
       })
