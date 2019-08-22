@@ -26,6 +26,7 @@ export class ReportService {
   public isValidReportType(type: string) {
     const lowerCaseType = type.toLowerCase();
     return (
+      lowerCaseType === ReportType.Trailing30 ||
       lowerCaseType === ReportType.Week ||
       lowerCaseType === ReportType.Month ||
       lowerCaseType === ReportType.Year ||
@@ -48,6 +49,9 @@ export class ReportService {
         "MM-DD-YYYY"
       )} to ${moment(range.end).format("MM-DD-YYYY")}`,
       [ReportType.Month]: `Monthly Muzzle Report for ${moment(
+        range.start
+      ).format("MM-DD-YYYY")} to ${moment(range.end).format("MM-DD-YYYY")}`,
+      [ReportType.Trailing30]: `Trailing 30 Days Report for ${moment(
         range.start
       ).format("MM-DD-YYYY")} to ${moment(range.end).format("MM-DD-YYYY")}`,
       [ReportType.Year]: `Annual Muzzle Report for ${moment(range.start).format(
