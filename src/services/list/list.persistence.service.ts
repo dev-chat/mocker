@@ -1,10 +1,6 @@
 import { getRepository } from "typeorm";
 import { List } from "../../shared/db/models/List";
 
-interface ILister {
-  count: number;
-}
-
 export class ListPersistenceService {
   public static getInstance() {
     if (!ListPersistenceService.instance) {
@@ -14,8 +10,6 @@ export class ListPersistenceService {
   }
 
   private static instance: ListPersistenceService;
-
-  private listersToday: Map<string, ILister> = new Map();
 
   private constructor() {}
 
