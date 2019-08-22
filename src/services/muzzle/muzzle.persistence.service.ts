@@ -70,6 +70,12 @@ export class MuzzlePersistenceService {
         .endOf("month")
         .subtract(1, "month")
         .format("YYYY-MM-DD HH:mm:ss");
+    } else if (reportType === ReportType.Trailing30) {
+      range.start = moment()
+        .startOf("day")
+        .subtract(30, "days")
+        .format("YYYY-MM-DD HH:mm:ss");
+      range.end = moment().format("YYYY-MM-DD HH:mm:ss");
     } else if (reportType === ReportType.Year) {
       range.start = moment()
         .startOf("year")

@@ -11,6 +11,7 @@ export interface IRequestor {
 }
 
 export enum ReportType {
+  Trailing30 = "trailing30",
   Week = "week",
   Month = "month",
   Year = "year",
