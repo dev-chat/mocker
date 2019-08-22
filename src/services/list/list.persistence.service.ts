@@ -39,13 +39,4 @@ export class ListPersistenceService {
       reject(`Unable to find \`${text}\``);
     });
   }
-
-  private countLister(requestorId: string) {
-    const isListerPresent = this.listersToday.has(requestorId);
-    const count = isListerPresent
-      ? ++this.listersToday.get(requestorId)!.count
-      : 1;
-
-    this.listersToday.set(requestorId, { count });
-  }
 }
