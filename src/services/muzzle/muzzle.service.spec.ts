@@ -57,6 +57,7 @@ describe("MuzzleService", () => {
         )
         .mockResolvedValue(mockResolve as UpdateResult);
     });
+
     it("should always muzzle a tagged user", () => {
       const testSentence =
         "<@U2TKJ> <@JKDSF> <@SDGJSK> <@LSKJDSG> <@lkjdsa> <@LKSJDF> <@SDLJG> <@jrjrjr> <@fudka>";
@@ -72,6 +73,11 @@ describe("MuzzleService", () => {
 
     it("should always muzzle <!here>", () => {
       const testSentence = "<!here>";
+      expect(muzzleInstance.muzzle(testSentence, 1)).toBe(" ..mMm.. ");
+    });
+
+    it("should always muzzle a word with length > 10", () => {
+      const testSentence = "this.is.a.way.to.game.the.system";
       expect(muzzleInstance.muzzle(testSentence, 1)).toBe(" ..mMm.. ");
     });
   });

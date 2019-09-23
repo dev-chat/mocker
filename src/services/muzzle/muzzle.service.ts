@@ -43,7 +43,9 @@ export class MuzzleService {
     let replacementWord;
     for (const word of words) {
       replacementWord =
-        isRandomEven() && !this.slackService.containsTag(word)
+        isRandomEven() &&
+        word.length < 10 &&
+        !this.slackService.containsTag(word)
           ? ` *${word}* `
           : replacementText;
       if (replacementWord === replacementText) {
