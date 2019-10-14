@@ -213,7 +213,9 @@ export class MuzzleService {
           this.muzzleUser(userId, requestorId, muzzleFromDb.id, timeToMuzzle);
           this.setRequestorCount(requestorId);
           resolve(
-            `Succesfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`
+            `Successfully muzzled ${userName} for ${getTimeString(
+              timeToMuzzle
+            )}`
           );
         }
       }
