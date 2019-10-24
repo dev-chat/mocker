@@ -1,18 +1,15 @@
 import path from "path";
 
 export const getBoilerPlateController = (serviceName: string) => {
-  const relMuzzleService = path.relative(
-    `src/services/${serviceName}.service.ts`,
-    "./src/services/muzzle/muzzle.service.ts"
-  );
-  const relSlackService = path.relative(
-    `src/services/${serviceName}.service.ts`,
-    "./src/services/slack/slack.service.ts"
-  );
-  const relSlackModels = path.relative(
-    `src/services/${serviceName}.service.ts`,
-    "./src/shared/models/slack/slack-models.ts"
-  );
+  const relMuzzleService = path
+    .relative(`src/controllers`, "src/services/muzzle/muzzle.service.ts")
+    .slice(0, -3);
+  const relSlackService = path
+    .relative(`src/controllers`, "src/services/slack/slack.service.ts")
+    .slice(0, -3);
+  const relSlackModels = path
+    .relative(`src/controllers`, "src/shared/models/slack/slack-models.ts")
+    .slice(0, -3);
 
   const boilerPlateController = `
   import express, { Router } from "express";
