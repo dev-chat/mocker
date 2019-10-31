@@ -309,6 +309,7 @@ export class MuzzlePersistenceService {
         RIGHT JOIN (
         SELECT requestorId, COUNT(*) as count
         FROM muzzle
+        WHERE messagesSuppressed > 0
         GROUP BY requestorId
         ) AS b
         ON a.muzzledId = b.requestorId
