@@ -95,6 +95,7 @@ export class MuzzleService {
         muzzledBy: this.muzzled.get(userId)!.muzzledBy,
         id: this.muzzled.get(userId)!.id,
         isBackfire: this.muzzled.get(userId)!.isBackfire,
+        attemptedToMuzzle: this.muzzled.get(userId)!.attemptedToMuzzle,
         removalFn: setTimeout(() => this.removeMuzzle(userId), newTime)
       });
     }
