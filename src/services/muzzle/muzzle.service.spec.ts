@@ -5,6 +5,7 @@ import {
   ISlackUser
 } from "../../shared/models/slack/slack-models";
 import { SlackService } from "../slack/slack.service";
+import * as muzzleUtils from "./muzzle-utilities";
 import { MuzzlePersistenceService } from "./muzzle.persistence.service";
 import { MuzzleService } from "./muzzle.service";
 
@@ -61,24 +62,24 @@ describe("MuzzleService", () => {
     it("should always muzzle a tagged user", () => {
       const testSentence =
         "<@U2TKJ> <@JKDSF> <@SDGJSK> <@LSKJDSG> <@lkjdsa> <@LKSJDF> <@SDLJG> <@jrjrjr> <@fudka>";
-      expect(muzzleInstance.muzzle(testSentence, 1)).toBe(
+      expect(muzzleInstance.muzzle(testSentence, 1, false)).toBe(
         " ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm.. "
       );
     });
 
     it("should always muzzle <!channel>", () => {
       const testSentence = "<!channel>";
-      expect(muzzleInstance.muzzle(testSentence, 1)).toBe(" ..mMm.. ");
+      expect(muzzleInstance.muzzle(testSentence, 1, false)).toBe(" ..mMm.. ");
     });
 
     it("should always muzzle <!here>", () => {
       const testSentence = "<!here>";
-      expect(muzzleInstance.muzzle(testSentence, 1)).toBe(" ..mMm.. ");
+      expect(muzzleInstance.muzzle(testSentence, 1, false)).toBe(" ..mMm.. ");
     });
 
     it("should always muzzle a word with length > 10", () => {
       const testSentence = "this.is.a.way.to.game.the.system";
-      expect(muzzleInstance.muzzle(testSentence, 1)).toBe(" ..mMm.. ");
+      expect(muzzleInstance.muzzle(testSentence, 1, false)).toBe(" ..mMm.. ");
     });
   });
 
@@ -88,6 +89,7 @@ describe("MuzzleService", () => {
       jest
         .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
         .mockResolvedValue(mockMuzzle as Muzzle);
+      jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
       await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
       expect(muzzleInstance.getMuzzleId("123")).toBe(1);
     });
@@ -99,6 +101,7 @@ describe("MuzzleService", () => {
       jest
         .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
         .mockResolvedValue(mockMuzzle as Muzzle);
+      jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
       await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
     });
 
@@ -117,6 +120,7 @@ describe("MuzzleService", () => {
       jest
         .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
         .mockResolvedValue(mockMuzzle as Muzzle);
+      jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
       await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
     });
     it("should return the requestor when a valid id is passed in", async () => {
@@ -132,6 +136,7 @@ describe("MuzzleService", () => {
       jest
         .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
         .mockResolvedValue(mockMuzzle as Muzzle);
+      jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
       await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
     });
     it("should return true when a muzzled userId is passed in", async () => {
@@ -149,6 +154,7 @@ describe("MuzzleService", () => {
       jest
         .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
         .mockResolvedValue(mockMuzzle as Muzzle);
+      jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
       await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
     });
 
@@ -180,7 +186,7 @@ describe("MuzzleService", () => {
         }
       } as IEventRequest;
     });
-    describe("positive path", () => {
+    describe("when a user is muzzled", () => {
       beforeEach(async () => {
         await muzzleInstance.addUserToMuzzled(
           testData.user,
@@ -268,6 +274,10 @@ describe("MuzzleService", () => {
           jest
             .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
             .mockResolvedValue(mockMuzzle as Muzzle);
+
+          jest
+            .spyOn(muzzleUtils, "shouldBackfire")
+            .mockImplementation(() => false);
         });
 
         it("should add a user to the muzzled map", async () => {
@@ -302,6 +312,9 @@ describe("MuzzleService", () => {
           jest
             .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
             .mockResolvedValue(mockMuzzle as Muzzle);
+          jest
+            .spyOn(muzzleUtils, "shouldBackfire")
+            .mockImplementation(() => false);
           await muzzleInstance.addUserToMuzzled(
             testData.user,
             testData.requestor
@@ -349,6 +362,9 @@ describe("MuzzleService", () => {
           jest
             .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
             .mockResolvedValue(mockMuzzle as Muzzle);
+          jest
+            .spyOn(muzzleUtils, "shouldBackfire")
+            .mockImplementation(() => false);
         });
         it("should add a user to the requestors map", async () => {
           await muzzleInstance.addUserToMuzzled(
@@ -391,8 +407,8 @@ describe("MuzzleService", () => {
             .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
             .mockResolvedValueOnce(mockMuzzle as Muzzle);
           jest
-            .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
-            .mockResolvedValueOnce(mockMuzzle as Muzzle);
+            .spyOn(muzzleUtils, "shouldBackfire")
+            .mockImplementation(() => false);
         });
         it("should prevent a requestor from muzzling on their third count", async () => {
           await muzzleInstance.addUserToMuzzled(

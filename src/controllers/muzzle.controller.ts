@@ -21,14 +21,17 @@ const reportService = new ReportService();
 
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
-  if (
-    muzzleService.isUserMuzzled(request.event.user) &&
-    !slackService.containsTag(request.event.text)
-  ) {
+  const isUserMuzzled = muzzleService.isUserMuzzled(request.event.user);
+  const isUserBackfired = muzzleService.getIsBackfire(request.event.user);
+  const isUsersFirstMuzzledMessage = muzzleService.getIsMuzzledFirstMessage(
+    request.event.user
+  );
+  const containsTag = slackService.containsTag(request.event.text);
+  const userName = slackService.getUserName(request.event.user);
+
+  if (isUserMuzzled && !containsTag) {
     console.log(
-      `${slackService.getUserName(request.event.user)} | ${
-        request.event.user
-      } is muzzled! Suppressing his voice...`
+      `${userName} | ${request.event.user} is muzzled! Suppressing his voice...`
     );
     webService.deleteMessage(request.event.channel, request.event.ts);
     muzzleService.sendMuzzledMessage(
@@ -36,25 +39,37 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
       request.event.user,
       request.event.text
     );
-  } else if (
-    muzzleService.isUserMuzzled(request.event.user) &&
-    slackService.containsTag(request.event.text) &&
-    !request.event.subtype
-  ) {
+    if (isUserBackfired && isUsersFirstMuzzledMessage) {
+      const attemptedToMuzzle = muzzleService.getAttemptedToMuzzle(
+        request.event.user
+      );
+      webService.sendMessage(
+        request.event.channel,
+        `:boom: <@${
+          request.event.user
+        }> attempted to muzzle <@${attemptedToMuzzle}> but it backfired! :boom:`
+      );
+    }
+  } else if (isUserMuzzled && containsTag && !request.event.subtype) {
     const muzzleId = muzzleService.getMuzzleId(request.event.user);
     console.log(
       `${slackService.getUserName(
         request.event.user
-      )} atttempted to tag someone. Muzzle increased by ${
+      )} attempted to tag someone. Muzzle increased by ${
         muzzleService.ABUSE_PENALTY_TIME
       }!`
     );
     muzzleService.addMuzzleTime(
       request.event.user,
-      muzzleService.ABUSE_PENALTY_TIME
+      muzzleService.ABUSE_PENALTY_TIME,
+      isUserBackfired
     );
     webService.deleteMessage(request.event.channel, request.event.ts);
-    muzzlePersistenceService.trackDeletedMessage(muzzleId, request.event.text);
+    muzzlePersistenceService.trackDeletedMessage(
+      muzzleId,
+      request.event.text,
+      isUserBackfired
+    );
     webService.sendMessage(
       request.event.channel,
       `:rotating_light: <@${

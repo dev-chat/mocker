@@ -35,7 +35,7 @@ export class MuzzleService {
   /**
    * Takes in text and randomly muzzles certain words.
    */
-  public muzzle(text: string, muzzleId: number) {
+  public muzzle(text: string, muzzleId: number, isBackfire: boolean) {
     const replacementText = " ..mMm.. ";
     let returnText = "";
     const words = text.split(" ");
@@ -55,28 +55,34 @@ export class MuzzleService {
       }
       returnText += replacementWord;
     }
-    this.muzzlePersistenceService.incrementMessageSuppressions(muzzleId);
+    this.muzzlePersistenceService.incrementMessageSuppressions(
+      muzzleId,
+      isBackfire
+    );
     this.muzzlePersistenceService.incrementCharacterSuppressions(
       muzzleId,
-      charactersSuppressed
+      charactersSuppressed,
+      isBackfire
     );
     this.muzzlePersistenceService.incrementWordSuppressions(
       muzzleId,
-      wordsSuppressed
+      wordsSuppressed,
+      isBackfire
     );
     return returnText;
   }
   /**
    * Adds the specified amount of time to a specified muzzled user.
    */
-  public addMuzzleTime(userId: string, timeToAdd: number) {
+  public addMuzzleTime(userId: string, timeToAdd: number, isBackfire: boolean) {
     if (userId && this.muzzled.has(userId)) {
       const removalFn = this.muzzled.get(userId)!.removalFn;
       const newTime = getRemainingTime(removalFn) + timeToAdd;
       const muzzleId = this.muzzled.get(userId)!.id;
       this.muzzlePersistenceService.incrementMuzzleTime(
         muzzleId,
-        this.ABUSE_PENALTY_TIME
+        this.ABUSE_PENALTY_TIME,
+        isBackfire
       );
       clearTimeout(this.muzzled.get(userId)!.removalFn);
       console.log(
@@ -88,6 +94,7 @@ export class MuzzleService {
         suppressionCount: this.muzzled.get(userId)!.suppressionCount,
         muzzledBy: this.muzzled.get(userId)!.muzzledBy,
         id: this.muzzled.get(userId)!.id,
+        isBackfire: this.muzzled.get(userId)!.isBackfire,
         removalFn: setTimeout(() => this.removeMuzzle(userId), newTime)
       });
     }
@@ -97,6 +104,29 @@ export class MuzzleService {
    */
   public getMuzzleId(userId: string) {
     return this.muzzled.get(userId)!.id;
+  }
+
+  /**
+   * Retrieves whether or not a muzzle is backfired.
+   */
+  public getIsBackfire(userId: string) {
+    return this.muzzled.has(userId) && this.muzzled.get(userId)!.isBackfire;
+  }
+
+  public getAttemptedToMuzzle(userId: string) {
+    return (
+      this.muzzled.has(userId) && this.muzzled.get(userId)!.attemptedToMuzzle
+    );
+  }
+
+  /**
+   * Tells us whether or not this is the users first muzzled message.
+   */
+  public getIsMuzzledFirstMessage(userId: string) {
+    return (
+      this.muzzled.has(userId) &&
+      this.muzzled.get(userId)!.suppressionCount === 0
+    );
   }
 
   /**
@@ -181,27 +211,6 @@ export class MuzzleService {
         reject(
           `Invalid username passed in. You can only muzzle existing slack users`
         );
-      } else if (shouldBackFire) {
-        console.log(
-          `Backfiring on ${requestorName} for attempting to muzzle ${userName}`
-        );
-        const timeToMuzzle = getTimeToMuzzle();
-        const backfireFromDb = await this.muzzlePersistenceService
-          .addBackfireToDb(requestorId, timeToMuzzle)
-          .catch((e: any) => {
-            console.error(e);
-            reject(`Muzzle failed!`);
-          });
-
-        if (backfireFromDb) {
-          this.muzzleUser(userId, requestorId, backfireFromDb.id, timeToMuzzle);
-          this.setRequestorCount(requestorId);
-          resolve(
-            `Successfully muzzled ${userName} for ${getTimeString(
-              timeToMuzzle
-            )}`
-          );
-        }
       } else if (this.isUserMuzzled(userId)) {
         console.error(
           `${requestorName} | ${requestorId} attempted to muzzle ${userName} | ${userId} but ${userName} | ${userId} is already muzzled.`
@@ -223,6 +232,33 @@ export class MuzzleService {
             this.MAX_MUZZLES
           } muzzles are allowed per hour.`
         );
+      } else if (shouldBackFire) {
+        console.log(
+          `Backfiring on ${requestorName} for attempting to muzzle ${userName}`
+        );
+        const timeToMuzzle = getTimeToMuzzle();
+        const backfireFromDb = await this.muzzlePersistenceService
+          .addBackfireToDb(requestorId, timeToMuzzle)
+          .catch((e: any) => {
+            console.error(e);
+            reject(`Muzzle failed!`);
+          });
+
+        if (backfireFromDb) {
+          const attemptedToMuzzle = userId;
+          this.backfireUser(
+            requestorId,
+            attemptedToMuzzle,
+            backfireFromDb.id,
+            timeToMuzzle
+          );
+          this.setRequestorCount(requestorId);
+          resolve(
+            `Successfully muzzled ${userName} for ${getTimeString(
+              timeToMuzzle
+            )}`
+          );
+        }
       } else {
         const timeToMuzzle = getTimeToMuzzle();
         const muzzleFromDb = await this.muzzlePersistenceService
@@ -250,19 +286,25 @@ export class MuzzleService {
    */
   public sendMuzzledMessage(channel: string, userId: string, text: string) {
     const muzzleId = this.muzzled.get(userId)!.id;
+    const isBackfire = this.muzzled.get(userId)!.isBackfire;
     if (this.muzzled.get(userId)!.suppressionCount < this.MAX_SUPPRESSIONS) {
       this.muzzled.set(userId, {
         suppressionCount: ++this.muzzled.get(userId)!.suppressionCount,
         muzzledBy: this.muzzled.get(userId)!.muzzledBy,
         id: muzzleId,
+        isBackfire,
         removalFn: this.muzzled.get(userId)!.removalFn
       });
       this.webService.sendMessage(
         channel,
-        `<@${userId}> says "${this.muzzle(text, muzzleId)}"`
+        `<@${userId}> says "${this.muzzle(text, muzzleId, isBackfire)}"`
       );
     } else {
-      this.muzzlePersistenceService.trackDeletedMessage(muzzleId, text);
+      this.muzzlePersistenceService.trackDeletedMessage(
+        muzzleId,
+        text,
+        isBackfire
+      );
     }
   }
 
@@ -315,6 +357,23 @@ export class MuzzleService {
       suppressionCount: 0,
       muzzledBy: requestorId,
       id,
+      isBackfire: false,
+      removalFn: setTimeout(() => this.removeMuzzle(userId), timeToMuzzle)
+    });
+  }
+
+  private backfireUser(
+    userId: string,
+    attemptedToMuzzle: string,
+    id: number,
+    timeToMuzzle: number
+  ) {
+    this.muzzled.set(userId, {
+      suppressionCount: 0,
+      muzzledBy: userId,
+      attemptedToMuzzle,
+      id,
+      isBackfire: true,
       removalFn: setTimeout(() => this.removeMuzzle(userId), timeToMuzzle)
     });
   }

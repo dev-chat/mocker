@@ -41,16 +41,28 @@ export class MuzzlePersistenceService {
     return getRepository(Backfire).save(backfire);
   }
 
-  public incrementMuzzleTime(id: number, ms: number) {
-    return getRepository(Muzzle).increment({ id }, "milliseconds", ms);
+  public incrementMuzzleTime(id: number, ms: number, isBackfire: boolean) {
+    return getRepository(isBackfire ? Backfire : Muzzle).increment(
+      { id },
+      "milliseconds",
+      ms
+    );
   }
 
-  public incrementMessageSuppressions(id: number) {
-    return getRepository(Muzzle).increment({ id }, "messagesSuppressed", 1);
+  public incrementMessageSuppressions(id: number, isBackfire: boolean) {
+    return getRepository(isBackfire ? Backfire : Muzzle).increment(
+      { id },
+      "messagesSuppressed",
+      1
+    );
   }
 
-  public incrementWordSuppressions(id: number, suppressions: number) {
-    return getRepository(Muzzle).increment(
+  public incrementWordSuppressions(
+    id: number,
+    suppressions: number,
+    isBackfire: boolean
+  ) {
+    return getRepository(isBackfire ? Backfire : Muzzle).increment(
       { id },
       "wordsSuppressed",
       suppressions
@@ -102,9 +114,10 @@ export class MuzzlePersistenceService {
 
   public incrementCharacterSuppressions(
     id: number,
-    charactersSuppressed: number
+    charactersSuppressed: number,
+    isBackfire: boolean
   ) {
-    return getRepository(Muzzle).increment(
+    return getRepository(isBackfire ? Backfire : Muzzle).increment(
       { id },
       "charactersSuppressed",
       charactersSuppressed
@@ -114,12 +127,16 @@ export class MuzzlePersistenceService {
    * Determines suppression counts for messages that are ONLY deleted and not muzzled.
    * Used when a muzzled user has hit their max suppressions or when they have tagged channel.
    */
-  public trackDeletedMessage(muzzleId: number, text: string) {
+  public trackDeletedMessage(
+    muzzleId: number,
+    text: string,
+    isBackfire: boolean
+  ) {
     const words = text.split(" ").length;
     const characters = text.split("").length;
-    this.incrementMessageSuppressions(muzzleId);
-    this.incrementWordSuppressions(muzzleId, words);
-    this.incrementCharacterSuppressions(muzzleId, characters);
+    this.incrementMessageSuppressions(muzzleId, isBackfire);
+    this.incrementWordSuppressions(muzzleId, words, isBackfire);
+    this.incrementCharacterSuppressions(muzzleId, characters, isBackfire);
   }
 
   /** Wrapper to generate a generic muzzle report in */
