@@ -185,7 +185,23 @@ export class MuzzleService {
         console.log(
           `Backfiring on ${requestorName} for attempting to muzzle ${userName}`
         );
-        reject(`Bad luck! Your muzzle backfired.`);
+        const timeToMuzzle = getTimeToMuzzle();
+        const backfireFromDb = await this.muzzlePersistenceService
+          .addBackfireToDb(requestorId, timeToMuzzle)
+          .catch((e: any) => {
+            console.error(e);
+            reject(`Muzzle failed!`);
+          });
+
+        if (backfireFromDb) {
+          this.muzzleUser(userId, requestorId, backfireFromDb.id, timeToMuzzle);
+          this.setRequestorCount(requestorId);
+          resolve(
+            `Successfully muzzled ${userName} for ${getTimeString(
+              timeToMuzzle
+            )}`
+          );
+        }
       } else if (this.isUserMuzzled(userId)) {
         console.error(
           `${requestorName} | ${requestorId} attempted to muzzle ${userName} | ${userId} but ${userName} | ${userId} is already muzzled.`

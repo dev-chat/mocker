@@ -21,7 +21,6 @@ const reportService = new ReportService();
 
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
-  console.log(request);
   if (
     muzzleService.isUserMuzzled(request.event.user) &&
     !slackService.containsTag(request.event.text)

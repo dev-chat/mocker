@@ -1,5 +1,6 @@
 import moment from "moment";
 import { getRepository } from "typeorm";
+import { Backfire } from "../../shared/db/models/Backfire";
 import { Muzzle } from "../../shared/db/models/Muzzle";
 import {
   IReportRange,
@@ -27,6 +28,17 @@ export class MuzzlePersistenceService {
     muzzle.charactersSuppressed = 0;
     muzzle.milliseconds = time;
     return getRepository(Muzzle).save(muzzle);
+  }
+
+  public addBackfireToDb(muzzledId: string, time: number) {
+    const backfire = new Backfire();
+    backfire.muzzledId = muzzledId;
+    backfire.messagesSuppressed = 0;
+    backfire.wordsSuppressed = 0;
+    backfire.charactersSuppressed = 0;
+    backfire.milliseconds = time;
+
+    return getRepository(Backfire).save(backfire);
   }
 
   public incrementMuzzleTime(id: number, ms: number) {
