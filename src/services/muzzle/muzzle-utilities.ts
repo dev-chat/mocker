@@ -31,3 +31,11 @@ export function getTimeString(time: number) {
 export function isRandomEven() {
   return Math.floor(Math.random() * 2) % 2 === 0;
 }
+
+export function shouldBackfire() {
+  const chanceOfBackfire = (Math.random() * (0.01 - 0.05) + 0.05).toFixed(2);
+  const randomRoll = (Math.random() * (0.0 - 1.0) + 1.0).toFixed(2);
+  console.log("chance", chanceOfBackfire);
+  console.log("randomRoll", randomRoll);
+  return randomRoll <= chanceOfBackfire;
+}

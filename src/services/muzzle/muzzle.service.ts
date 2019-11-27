@@ -6,7 +6,8 @@ import {
   getRemainingTime,
   getTimeString,
   getTimeToMuzzle,
-  isRandomEven
+  isRandomEven,
+  shouldBackfire
 } from "./muzzle-utilities";
 import { MuzzlePersistenceService } from "./muzzle.persistence.service";
 
@@ -172,6 +173,7 @@ export class MuzzleService {
    * Adds a user to the muzzled map and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
    */
   public addUserToMuzzled(userId: string, requestorId: string) {
+    const shouldBackFire = shouldBackfire();
     const userName = this.slackService.getUserName(userId);
     const requestorName = this.slackService.getUserName(requestorId);
     return new Promise(async (resolve, reject) => {
@@ -179,6 +181,11 @@ export class MuzzleService {
         reject(
           `Invalid username passed in. You can only muzzle existing slack users`
         );
+      } else if (shouldBackFire) {
+        console.log(
+          `Backfiring on ${requestorName} for attempting to muzzle ${userName}`
+        );
+        reject(`Bad luck! Your muzzle backfired.`);
       } else if (this.isUserMuzzled(userId)) {
         console.error(
           `${requestorName} | ${requestorId} attempted to muzzle ${userName} | ${userId} but ${userName} | ${userId} is already muzzled.`

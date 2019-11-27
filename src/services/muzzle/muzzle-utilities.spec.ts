@@ -1,4 +1,8 @@
-import { getTimeString, getTimeToMuzzle } from "./muzzle-utilities";
+import {
+  getTimeString,
+  getTimeToMuzzle,
+  shouldBackfire
+} from "./muzzle-utilities";
 
 describe("muzzle-utilities", () => {
   describe("getTimeToMuzzle()", () => {
@@ -23,6 +27,12 @@ describe("muzzle-utilities", () => {
 
     it("should return 2m00s when 120000.999 is passed in", () => {
       expect(getTimeString(120000.999)).toBe("2m00s");
+    });
+  });
+
+  describe("shouldBackfire()", () => {
+    it("should backFire", () => {
+      expect(shouldBackfire()).toBe(true);
     });
   });
 });
