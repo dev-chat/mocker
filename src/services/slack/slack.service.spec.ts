@@ -75,6 +75,14 @@ describe("slack-utils", () => {
       expect(slackService.containsTag(testWord)).toBe(false);
     });
 
+    it("should return false if no text is passed in", () => {
+      expect(slackService.containsTag("")).toBe(false);
+    });
+
+    it("should return false if undefined is passed in", () => {
+      expect(slackService.containsTag(undefined)).toBe(false);
+    });
+
     it("should return true if a word has <!channel> in it", () => {
       const testWord = "<!channel>";
       expect(slackService.containsTag(testWord)).toBe(true);

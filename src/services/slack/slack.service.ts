@@ -78,7 +78,11 @@ export class SlackService {
   /**
    * Determines whether or not a user is trying to @user, @channel or @here while muzzled.
    */
-  public containsTag(text: string): boolean {
+  public containsTag(text: string | undefined): boolean {
+    if (!text) {
+      return false;
+    }
+
     return (
       text.includes("<!channel>") ||
       text.includes("<!here>") ||
