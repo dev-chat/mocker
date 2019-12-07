@@ -41,7 +41,7 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
     );
     if (isUserBackfired && isUsersFirstMuzzledMessage) {
       const attemptedToMuzzle = muzzleService.getAttemptedToMuzzle(
-        request.event.user
+        request.event.text
       );
       webService.sendMessage(
         request.event.channel,
