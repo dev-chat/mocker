@@ -90,7 +90,11 @@ describe("MuzzleService", () => {
         .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
         .mockResolvedValue(mockMuzzle as Muzzle);
       jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
-      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
+      await muzzleInstance.addUserToMuzzled(
+        testData.user,
+        testData.requestor,
+        "test"
+      );
       expect(muzzleInstance.getMuzzleId("123")).toBe(1);
     });
   });
@@ -102,7 +106,11 @@ describe("MuzzleService", () => {
         .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
         .mockResolvedValue(mockMuzzle as Muzzle);
       jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
-      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
+      await muzzleInstance.addUserToMuzzled(
+        testData.user,
+        testData.requestor,
+        "test"
+      );
     });
 
     it("should return the muzzled user when a valid id is passed in", async () => {
@@ -121,7 +129,11 @@ describe("MuzzleService", () => {
         .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
         .mockResolvedValue(mockMuzzle as Muzzle);
       jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
-      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
+      await muzzleInstance.addUserToMuzzled(
+        testData.user,
+        testData.requestor,
+        "test"
+      );
     });
     it("should return the requestor when a valid id is passed in", async () => {
       const requestor = muzzleInstance.getRequestorById("666");
@@ -137,7 +149,11 @@ describe("MuzzleService", () => {
         .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
         .mockResolvedValue(mockMuzzle as Muzzle);
       jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
-      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
+      await muzzleInstance.addUserToMuzzled(
+        testData.user,
+        testData.requestor,
+        "test"
+      );
     });
     it("should return true when a muzzled userId is passed in", async () => {
       expect(muzzleInstance.isUserMuzzled(testData.user)).toBe(true);
@@ -155,7 +171,11 @@ describe("MuzzleService", () => {
         .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
         .mockResolvedValue(mockMuzzle as Muzzle);
       jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
-      await muzzleInstance.addUserToMuzzled(testData.user, testData.requestor);
+      await muzzleInstance.addUserToMuzzled(
+        testData.user,
+        testData.requestor,
+        "test"
+      );
     });
 
     it("should return true when a requestor userId is passed in", () => {
@@ -190,7 +210,8 @@ describe("MuzzleService", () => {
       beforeEach(async () => {
         await muzzleInstance.addUserToMuzzled(
           testData.user,
-          testData.requestor
+          testData.requestor,
+          "test"
         );
       });
       it("should return true if an id is present in the event.text ", () => {
@@ -283,7 +304,8 @@ describe("MuzzleService", () => {
         it("should add a user to the muzzled map", async () => {
           await muzzleInstance.addUserToMuzzled(
             testData.user,
-            testData.requestor
+            testData.requestor,
+            "test"
           );
           expect(muzzleInstance.isUserMuzzled(testData.user)).toBe(true);
         });
@@ -291,7 +313,8 @@ describe("MuzzleService", () => {
         it("should return an added user with IMuzzled attributes", async () => {
           await muzzleInstance.addUserToMuzzled(
             testData.user,
-            testData.requestor
+            testData.requestor,
+            "test"
           );
           expect(
             muzzleInstance.getMuzzledUserById(testData.user)!.suppressionCount
@@ -317,11 +340,12 @@ describe("MuzzleService", () => {
             .mockImplementation(() => false);
           await muzzleInstance.addUserToMuzzled(
             testData.user,
-            testData.requestor
+            testData.requestor,
+            "test"
           );
           expect(muzzleInstance.isUserMuzzled(testData.user)).toBe(true);
           await muzzleInstance
-            .addUserToMuzzled(testData.user, testData.requestor)
+            .addUserToMuzzled(testData.user, testData.requestor, "test")
             .catch(e => {
               expect(e).toBe("test123 is already muzzled!");
             });
@@ -329,7 +353,7 @@ describe("MuzzleService", () => {
 
         it("should reject if a user tries to muzzle a user that does not exist", async () => {
           await muzzleInstance
-            .addUserToMuzzled("", testData.requestor)
+            .addUserToMuzzled("", testData.requestor, "test")
             .catch(e => {
               expect(e).toBe(
                 `Invalid username passed in. You can only muzzle existing slack users`
@@ -341,11 +365,12 @@ describe("MuzzleService", () => {
         it("should reject if a requestor tries to muzzle someone while the requestor is muzzled", async () => {
           await muzzleInstance.addUserToMuzzled(
             testData.user,
-            testData.requestor
+            testData.requestor,
+            "test"
           );
           expect(muzzleInstance.isUserMuzzled(testData.user)).toBe(true);
           await muzzleInstance
-            .addUserToMuzzled(testData.requestor, testData.user)
+            .addUserToMuzzled(testData.requestor, testData.user, "test")
             .catch(e => {
               expect(e).toBe(
                 `You can't muzzle someone if you are already muzzled!`
@@ -369,7 +394,8 @@ describe("MuzzleService", () => {
         it("should add a user to the requestors map", async () => {
           await muzzleInstance.addUserToMuzzled(
             testData.user,
-            testData.requestor
+            testData.requestor,
+            "test"
           );
           expect(muzzleInstance.isUserRequestor(testData.requestor)).toBe(true);
         });
@@ -377,7 +403,8 @@ describe("MuzzleService", () => {
         it("should return an added user with IMuzzler attributes", async () => {
           await muzzleInstance.addUserToMuzzled(
             testData.user,
-            testData.requestor
+            testData.requestor,
+            "test"
           );
           expect(
             muzzleInstance.getRequestorById(testData.requestor)!.muzzleCount
@@ -387,11 +414,13 @@ describe("MuzzleService", () => {
         it("should increment a requestors muzzle count on a second muzzleInstance.addUserToMuzzled() call", async () => {
           await muzzleInstance.addUserToMuzzled(
             testData.user,
-            testData.requestor
+            testData.requestor,
+            "test"
           );
           await muzzleInstance.addUserToMuzzled(
             testData.user2,
-            testData.requestor
+            testData.requestor,
+            "test"
           );
           expect(muzzleInstance.isUserRequestor(testData.requestor)).toBe(true);
           expect(
@@ -413,14 +442,16 @@ describe("MuzzleService", () => {
         it("should prevent a requestor from muzzling on their third count", async () => {
           await muzzleInstance.addUserToMuzzled(
             testData.user,
-            testData.requestor
+            testData.requestor,
+            "test"
           );
           await muzzleInstance.addUserToMuzzled(
             testData.user2,
-            testData.requestor
+            testData.requestor,
+            "test"
           );
           await muzzleInstance
-            .addUserToMuzzled(testData.user3, testData.requestor)
+            .addUserToMuzzled(testData.user3, testData.requestor, "test")
             .catch(e =>
               expect(e).toBe(
                 `You're doing that too much. Only 2 muzzles are allowed per hour.`

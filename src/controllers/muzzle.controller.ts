@@ -23,9 +23,6 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
   const isUserMuzzled = muzzleService.isUserMuzzled(request.event.user);
   const isUserBackfired = muzzleService.getIsBackfire(request.event.user);
-  const isUsersFirstMuzzledMessage = muzzleService.getIsMuzzledFirstMessage(
-    request.event.user
-  );
   const containsTag = slackService.containsTag(request.event.text);
   const userName = slackService.getUserName(request.event.user);
 
@@ -39,17 +36,6 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
       request.event.user,
       request.event.text
     );
-    if (isUserBackfired && isUsersFirstMuzzledMessage) {
-      const attemptedToMuzzle = muzzleService.getAttemptedToMuzzle(
-        request.event.text
-      );
-      webService.sendMessage(
-        request.event.channel,
-        `:boom: <@${
-          request.event.user
-        }> attempted to muzzle <@${attemptedToMuzzle}> but it backfired! :boom:`
-      );
-    }
   } else if (isUserMuzzled && containsTag && !request.event.subtype) {
     const muzzleId = muzzleService.getMuzzleId(request.event.user);
     console.log(
@@ -92,7 +78,7 @@ muzzleController.post("/muzzle", async (req: Request, res: Response) => {
   console.log(request);
   const userId: any = slackService.getUserId(request.text);
   const results = await muzzleService
-    .addUserToMuzzled(userId, request.user_id)
+    .addUserToMuzzled(userId, request.user_id, request.channel_name)
     .catch(e => {
       res.send(e);
     });
