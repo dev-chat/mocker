@@ -56,16 +56,6 @@ export class MuzzlePersistenceService {
     });
   }
 
-  public backfireUser(userId: string, id: number, timeToMuzzle: number) {
-    this.muzzled.set(userId, {
-      suppressionCount: 0,
-      muzzledBy: userId,
-      id,
-      isBackfire: true,
-      removalFn: setTimeout(() => this.removeMuzzle(userId), timeToMuzzle)
-    });
-  }
-
   /**
    * Adds a requestor to the requestors map with a muzzleCount to track how many muzzles have been performed, as well as a removal function.
    */
@@ -99,7 +89,7 @@ export class MuzzlePersistenceService {
     );
   }
 
-  public addBackfireToDb(muzzledId: string, time: number) {
+  public addBackfire(muzzledId: string, time: number) {
     const backfire = new Backfire();
     backfire.muzzledId = muzzledId;
     backfire.messagesSuppressed = 0;
@@ -107,7 +97,18 @@ export class MuzzlePersistenceService {
     backfire.charactersSuppressed = 0;
     backfire.milliseconds = time;
 
-    return getRepository(Backfire).save(backfire);
+    return getRepository(Backfire)
+      .save(backfire)
+      .then(backfireFromDb => {
+        this.muzzled.set(muzzledId, {
+          suppressionCount: 0,
+          muzzledBy: muzzledId,
+          id: backfireFromDb.id,
+          isBackfire: true,
+          removalFn: setTimeout(() => this.removeMuzzle(muzzledId), time)
+        });
+        this.setRequestorCount(muzzledId);
+      });
   }
 
   /**

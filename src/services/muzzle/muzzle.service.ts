@@ -138,27 +138,21 @@ export class MuzzleService {
         console.log(
           `Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`
         );
+        // REFACTOR THE MUZZLE PERSISSTENCE CALLS TO BE ONE METHOD INSTEAD OF TWO
         const timeToMuzzle = getTimeToMuzzle();
-        const backfireFromDb = await this.muzzlePersistenceService
-          .addBackfireToDb(requestorId, timeToMuzzle)
+        await this.muzzlePersistenceService
+          .addBackfire(requestorId, timeToMuzzle)
+          .then(() => {
+            this.webService.sendMessage(
+              channel,
+              `:boom: <@${requestorId}> attempted to muzzle <@${userId}> but it backfired! :boom:`
+            );
+            resolve(`:boom: Backfired! Better luck next time... :boom:`);
+          })
           .catch((e: any) => {
             console.error(e);
             reject(`Muzzle failed!`);
           });
-
-        if (backfireFromDb) {
-          this.muzzlePersistenceService.backfireUser(
-            requestorId,
-            backfireFromDb.id,
-            timeToMuzzle
-          );
-          this.muzzlePersistenceService.setRequestorCount(requestorId);
-          this.webService.sendMessage(
-            channel,
-            `:boom: <@${requestorId}> attempted to muzzle <@${userId}> but it backfired! :boom:`
-          );
-          resolve(`:boom: Backfired! Better luck next time... :boom:`);
-        }
       } else {
         const timeToMuzzle = getTimeToMuzzle();
         await this.muzzlePersistenceService
