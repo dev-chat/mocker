@@ -5,7 +5,7 @@ import { ISlashCommandRequest } from "../shared/models/slack/slack-models";
 
 export const confessionController: Router = express.Router();
 
-const muzzleService = MuzzleService.getInstance();
+const muzzleService = new MuzzleService();
 const webService = WebService.getInstance();
 
 confessionController.post("/confess", (req, res) => {

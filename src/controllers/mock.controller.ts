@@ -9,7 +9,7 @@ import {
 
 export const mockController: Router = express.Router();
 
-const muzzleService = MuzzleService.getInstance();
+const muzzleService = new MuzzleService();
 const slackService = SlackService.getInstance();
 const mockService = MockService.getInstance();
 

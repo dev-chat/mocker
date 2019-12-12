@@ -14,7 +14,7 @@ import {
 
 export const muzzleController: Router = express.Router();
 
-const muzzleService = MuzzleService.getInstance();
+const muzzleService = new MuzzleService();
 const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();

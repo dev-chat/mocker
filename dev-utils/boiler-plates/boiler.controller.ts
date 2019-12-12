@@ -22,7 +22,7 @@ export const getBoilerPlateController = (serviceName: string) => {
 
   export const ${serviceName}Controller: Router = express.Router();
 
-  const muzzleService = MuzzleService.getInstance();
+  const muzzleService = new MuzzleService();
   const slackService = SlackService.getInstance();
 
   ${serviceName}Controller.post("/${serviceName}", (req, res) => {

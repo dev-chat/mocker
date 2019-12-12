@@ -19,21 +19,12 @@ import {
 import { MuzzlePersistenceService } from "./muzzle.persistence.service";
 
 export class MuzzleService {
-  public static getInstance() {
-    if (!MuzzleService.instance) {
-      MuzzleService.instance = new MuzzleService();
-    }
-    return MuzzleService.instance;
-  }
-
-  private static instance: MuzzleService;
   private webService = WebService.getInstance();
   private slackService = SlackService.getInstance();
   private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
   private muzzled: Map<string, IMuzzled> = new Map();
   private requestors: Map<string, IRequestor> = new Map();
 
-  private constructor() {}
   /**
    * Takes in text and randomly muzzles certain words.
    */

@@ -10,7 +10,7 @@ import { MuzzleService } from "../services/muzzle/muzzle.service";
 import { SlackService } from "../services/slack/slack.service";
 
 export const defineController: Router = express.Router();
-const muzzleService = MuzzleService.getInstance();
+const muzzleService = new MuzzleService();
 const slackService = SlackService.getInstance();
 const defineService = DefineService.getInstance();
 

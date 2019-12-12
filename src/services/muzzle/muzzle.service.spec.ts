@@ -21,7 +21,7 @@ describe("MuzzleService", () => {
   let slackInstance: SlackService;
 
   beforeEach(() => {
-    muzzleInstance = MuzzleService.getInstance();
+    muzzleInstance = new MuzzleService();
     slackInstance = SlackService.getInstance();
     slackInstance.userList = [
       { id: "123", name: "test123" },
