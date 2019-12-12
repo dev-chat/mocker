@@ -138,7 +138,6 @@ export class MuzzleService {
         console.log(
           `Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`
         );
-        // REFACTOR THE MUZZLE PERSISSTENCE CALLS TO BE ONE METHOD INSTEAD OF TWO
         const timeToMuzzle = getTimeToMuzzle();
         await this.muzzlePersistenceService
           .addBackfire(requestorId, timeToMuzzle)
