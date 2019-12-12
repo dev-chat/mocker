@@ -10,9 +10,16 @@ export const getBoilerPlateController = (serviceName: string) => {
   const relSlackModels = path
     .relative(`src/controllers`, "src/shared/models/slack/slack-models.ts")
     .slice(0, -3);
+  const relMuzzPersist = path
+    .relative(
+      `src/controllers`,
+      "src/services/muzzle/muzzle.persistence.service.ts"
+    )
+    .slice(0, -3);
 
   const boilerPlateController = `
   import express, { Router } from "express";
+  import { MuzzlePersistenceService } from "${relMuzzPersist}";
   import { MuzzleService } from "${relMuzzleService}";
   import { SlackService } from "${relSlackService}";
   import {
@@ -27,7 +34,7 @@ export const getBoilerPlateController = (serviceName: string) => {
 
   ${serviceName}Controller.post("/${serviceName}", (req, res) => {
     const request: ISlashCommandRequest = req.body;
-    if (muzzleService.isUserMuzzled(request.user_id)) {
+    if (muzzlePersistenceService.isUserMuzzled(request.user_id)) {
       res.send("Sorry, can't do that while muzzled.");
     } else if (!request.text) {
       res.send("Sorry, you must send a message to use this service.");

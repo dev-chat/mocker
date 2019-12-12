@@ -99,49 +99,6 @@ describe("MuzzleService", () => {
     });
   });
 
-  describe("getMuzzledUserById()", () => {
-    beforeEach(async () => {
-      const mockMuzzle = { id: 1 };
-      jest
-        .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
-        .mockResolvedValue(mockMuzzle as Muzzle);
-      jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
-      await muzzleInstance.addUserToMuzzled(
-        testData.user,
-        testData.requestor,
-        "test"
-      );
-    });
-
-    it("should return the muzzled user when a valid id is passed in", async () => {
-      const muzzledUser = muzzleInstance.getMuzzledUserById("123");
-      expect(muzzledUser!.id).toBe(1);
-      expect(muzzledUser!.muzzledBy).toBe("666");
-      expect(muzzledUser!.removalFn).toBeDefined();
-      expect(muzzledUser!.suppressionCount).toBe(0);
-    });
-  });
-
-  describe("getRequestorById()", () => {
-    beforeEach(async () => {
-      const mockMuzzle = { id: 1 };
-      jest
-        .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
-        .mockResolvedValue(mockMuzzle as Muzzle);
-      jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
-      await muzzleInstance.addUserToMuzzled(
-        testData.user,
-        testData.requestor,
-        "test"
-      );
-    });
-    it("should return the requestor when a valid id is passed in", async () => {
-      const requestor = muzzleInstance.getRequestorById("666");
-      expect(requestor!.muzzleCount).toBe(1);
-      expect(requestor!.muzzleCountRemover).toBeDefined();
-    });
-  });
-
   describe("isUserMuzzled()", () => {
     beforeEach(async () => {
       const mockMuzzle = { id: 1 };
@@ -161,29 +118,6 @@ describe("MuzzleService", () => {
 
     it("should return false when an unmuzzled userId is passed in", async () => {
       expect(muzzleInstance.isUserMuzzled(testData.user2)).toBe(false);
-    });
-  });
-
-  describe("isUserRequestor()", () => {
-    beforeEach(async () => {
-      const mockMuzzle = { id: 1 };
-      jest
-        .spyOn(MuzzlePersistenceService.getInstance(), "addMuzzleToDb")
-        .mockResolvedValue(mockMuzzle as Muzzle);
-      jest.spyOn(muzzleUtils, "shouldBackfire").mockImplementation(() => false);
-      await muzzleInstance.addUserToMuzzled(
-        testData.user,
-        testData.requestor,
-        "test"
-      );
-    });
-
-    it("should return true when a requestor userId is passed in", () => {
-      expect(muzzleInstance.isUserRequestor(testData.requestor)).toBe(true);
-    });
-
-    it("should return false when a non-requestor userId is passed in", () => {
-      expect(muzzleInstance.isUserRequestor(testData.user)).toBe(false);
     });
   });
 

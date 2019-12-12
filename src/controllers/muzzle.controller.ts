@@ -22,8 +22,12 @@ const reportService = new ReportService();
 
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
-  const isUserMuzzled = muzzleService.isUserMuzzled(request.event.user);
-  const isUserBackfired = muzzleService.getIsBackfire(request.event.user);
+  const isUserMuzzled = muzzlePersistenceService.isUserMuzzled(
+    request.event.user
+  );
+  const isUserBackfired = muzzlePersistenceService.getIsBackfire(
+    request.event.user
+  );
   const containsTag = slackService.containsTag(request.event.text);
   const userName = slackService.getUserName(request.event.user);
 
@@ -31,20 +35,20 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
     console.log(
       `${userName} | ${request.event.user} is muzzled! Suppressing his voice...`
     );
-    webService.deleteMessage(request.event.channel, request.event.ts);
     muzzleService.sendMuzzledMessage(
       request.event.channel,
       request.event.user,
-      request.event.text
+      request.event.text,
+      request.event.ts
     );
   } else if (isUserMuzzled && containsTag && !request.event.subtype) {
-    const muzzleId = muzzleService.getMuzzleId(request.event.user);
+    const muzzleId = muzzlePersistenceService.getMuzzleId(request.event.user);
     console.log(
       `${slackService.getUserName(
         request.event.user
       )} attempted to tag someone. Muzzle increased by ${ABUSE_PENALTY_TIME}!`
     );
-    muzzleService.addMuzzleTime(
+    muzzlePersistenceService.addMuzzleTime(
       request.event.user,
       ABUSE_PENALTY_TIME,
       isUserBackfired
@@ -90,7 +94,7 @@ muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
   const userId: string = request.user_id;
   console.log(request);
-  if (muzzleService.isUserMuzzled(userId)) {
+  if (muzzlePersistenceService.isUserMuzzled(userId)) {
     res.send(`Sorry! Can't do that while muzzled.`);
   } else if (request.text.split(" ").length > 1) {
     res.send(

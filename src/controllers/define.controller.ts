@@ -1,23 +1,22 @@
 import express, { Request, Response, Router } from "express";
 import { DefineService } from "../services/define/define.service";
+import { MuzzlePersistenceService } from "../services/muzzle/muzzle.persistence.service";
+import { SlackService } from "../services/slack/slack.service";
 import { IUrbanDictionaryResponse } from "../shared/models/define/define-models";
 import {
   IChannelResponse,
   ISlashCommandRequest
 } from "../shared/models/slack/slack-models";
 
-import { MuzzleService } from "../services/muzzle/muzzle.service";
-import { SlackService } from "../services/slack/slack.service";
-
 export const defineController: Router = express.Router();
-const muzzleService = new MuzzleService();
+const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const slackService = SlackService.getInstance();
 const defineService = DefineService.getInstance();
 
 defineController.post("/define", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
 
-  if (muzzleService.isUserMuzzled(request.user_id)) {
+  if (muzzlePersistenceService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     const defined: IUrbanDictionaryResponse = (await defineService

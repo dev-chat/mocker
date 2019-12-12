@@ -1,6 +1,6 @@
 import express, { Router } from "express";
 import { ListPersistenceService } from "../services/list/list.persistence.service";
-import { MuzzleService } from "../services/muzzle/muzzle.service";
+import { MuzzlePersistenceService } from "../services/muzzle/muzzle.persistence.service";
 import { ReportService } from "../services/report/report.service";
 import { SlackService } from "../services/slack/slack.service";
 import { WebService } from "../services/web/web.service";
@@ -11,7 +11,7 @@ import {
 
 export const listController: Router = express.Router();
 
-const muzzleService = new MuzzleService();
+const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
 const listPersistenceService = ListPersistenceService.getInstance();
@@ -19,7 +19,7 @@ const reportService = new ReportService();
 
 listController.post("/list/retrieve", async (req, res) => {
   const request: ISlashCommandRequest = req.body;
-  if (muzzleService.isUserMuzzled(request.user_id)) {
+  if (muzzlePersistenceService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     const report = await reportService.getListReport();
@@ -30,7 +30,7 @@ listController.post("/list/retrieve", async (req, res) => {
 
 listController.post("/list/add", (req, res) => {
   const request: ISlashCommandRequest = req.body;
-  if (muzzleService.isUserMuzzled(request.user_id)) {
+  if (muzzlePersistenceService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send("Sorry, you must send a message to list something.");
@@ -49,7 +49,7 @@ listController.post("/list/add", (req, res) => {
 
 listController.post("/list/remove", (req, res) => {
   const request: ISlashCommandRequest = req.body;
-  if (muzzleService.isUserMuzzled(request.user_id)) {
+  if (muzzlePersistenceService.isUserMuzzled(request.user_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send("Sorry, you must send the item you wish to remove.");
