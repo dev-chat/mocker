@@ -1,4 +1,5 @@
 import express, { Request, Response, Router } from "express";
+import { ABUSE_PENALTY_TIME } from "../services/muzzle/constants";
 import { getTimeString } from "../services/muzzle/muzzle-utilities";
 import { MuzzlePersistenceService } from "../services/muzzle/muzzle.persistence.service";
 import { MuzzleService } from "../services/muzzle/muzzle.service";
@@ -41,13 +42,11 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
     console.log(
       `${slackService.getUserName(
         request.event.user
-      )} attempted to tag someone. Muzzle increased by ${
-        muzzleService.ABUSE_PENALTY_TIME
-      }!`
+      )} attempted to tag someone. Muzzle increased by ${ABUSE_PENALTY_TIME}!`
     );
     muzzleService.addMuzzleTime(
       request.event.user,
-      muzzleService.ABUSE_PENALTY_TIME,
+      ABUSE_PENALTY_TIME,
       isUserBackfired
     );
     webService.deleteMessage(request.event.channel, request.event.ts);
@@ -61,7 +60,7 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
       `:rotating_light: <@${
         request.event.user
       }> attempted to @ while muzzled! Muzzle increased by ${getTimeString(
-        muzzleService.ABUSE_PENALTY_TIME
+        ABUSE_PENALTY_TIME
       )} :rotating_light:`
     );
   } else if (muzzleService.shouldBotMessageBeMuzzled(request)) {

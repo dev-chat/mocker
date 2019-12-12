@@ -3,6 +3,13 @@ import { IEventRequest } from "../../shared/models/slack/slack-models";
 import { SlackService } from "../slack/slack.service";
 import { WebService } from "../web/web.service";
 import {
+  ABUSE_PENALTY_TIME,
+  MAX_MUZZLE_TIME,
+  MAX_MUZZLES,
+  MAX_SUPPRESSIONS,
+  MAX_TIME_BETWEEN_MUZZLES
+} from "./constants";
+import {
   getRemainingTime,
   getTimeString,
   getTimeToMuzzle,
@@ -20,14 +27,9 @@ export class MuzzleService {
   }
 
   private static instance: MuzzleService;
-  public ABUSE_PENALTY_TIME = 300000;
   private webService = WebService.getInstance();
   private slackService = SlackService.getInstance();
   private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
-  private MAX_MUZZLE_TIME = 3600000;
-  private MAX_TIME_BETWEEN_MUZZLES = 3600000;
-  private MAX_SUPPRESSIONS = 7;
-  private MAX_MUZZLES = 2;
   private muzzled: Map<string, IMuzzled> = new Map();
   private requestors: Map<string, IRequestor> = new Map();
 
@@ -81,7 +83,7 @@ export class MuzzleService {
       const muzzleId = this.muzzled.get(userId)!.id;
       this.muzzlePersistenceService.incrementMuzzleTime(
         muzzleId,
-        this.ABUSE_PENALTY_TIME,
+        ABUSE_PENALTY_TIME,
         isBackfire
       );
       clearTimeout(this.muzzled.get(userId)!.removalFn);
@@ -211,14 +213,10 @@ export class MuzzleService {
         reject(`You can't muzzle someone if you are already muzzled!`);
       } else if (this.isMaxMuzzlesReached(requestorId)) {
         console.error(
-          `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId} has reached maximum muzzle of ${
-            this.MAX_MUZZLES
-          }`
+          `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId} has reached maximum muzzle of ${MAX_MUZZLES}`
         );
         reject(
-          `You're doing that too much. Only ${
-            this.MAX_MUZZLES
-          } muzzles are allowed per hour.`
+          `You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`
         );
       } else if (shouldBackFire) {
         console.log(
@@ -269,7 +267,7 @@ export class MuzzleService {
   public sendMuzzledMessage(channel: string, userId: string, text: string) {
     const muzzleId = this.muzzled.get(userId)!.id;
     const isBackfire = this.muzzled.get(userId)!.isBackfire;
-    if (this.muzzled.get(userId)!.suppressionCount < this.MAX_SUPPRESSIONS) {
+    if (this.muzzled.get(userId)!.suppressionCount < MAX_SUPPRESSIONS) {
       this.muzzled.set(userId, {
         suppressionCount: ++this.muzzled.get(userId)!.suppressionCount,
         muzzledBy: this.muzzled.get(userId)!.muzzledBy,
@@ -360,7 +358,7 @@ export class MuzzleService {
   private removeRequestor(userId: string) {
     this.requestors.delete(userId);
     console.log(
-      `${this.MAX_MUZZLE_TIME} has passed since ${this.slackService.getUserName(
+      `${MAX_MUZZLE_TIME} has passed since ${this.slackService.getUserName(
         userId
       )} | ${userId} last successful muzzle. They have been removed from requestors.`
     );
@@ -380,15 +378,12 @@ export class MuzzleService {
 
     const removalFunction =
       this.requestors.has(requestorId) &&
-      this.requestors.get(requestorId)!.muzzleCount === this.MAX_MUZZLES
+      this.requestors.get(requestorId)!.muzzleCount === MAX_MUZZLES
         ? () => this.removeRequestor(requestorId)
         : () => this.decrementMuzzleCount(requestorId);
     this.requestors.set(requestorId, {
       muzzleCount,
-      muzzleCountRemover: setTimeout(
-        removalFunction,
-        this.MAX_TIME_BETWEEN_MUZZLES
-      )
+      muzzleCountRemover: setTimeout(removalFunction, MAX_TIME_BETWEEN_MUZZLES)
     });
   }
 
@@ -398,7 +393,7 @@ export class MuzzleService {
   private isMaxMuzzlesReached(userId: string) {
     return (
       this.requestors.has(userId) &&
-      this.requestors.get(userId)!.muzzleCount === this.MAX_MUZZLES
+      this.requestors.get(userId)!.muzzleCount === MAX_MUZZLES
     );
   }
 }
