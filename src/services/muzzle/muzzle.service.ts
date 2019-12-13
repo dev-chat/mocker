@@ -90,7 +90,6 @@ export class MuzzleService {
       userIdByAttachmentPretext,
       userIdByCallbackId
     );
-
     return !!(
       request.event.subtype === "bot_message" &&
       finalUserId &&
@@ -183,26 +182,28 @@ export class MuzzleService {
     const muzzle:
       | IMuzzled
       | undefined = this.muzzlePersistenceService.getMuzzle(userId);
-    const isBackfire = muzzle!.isBackfire;
-    this.webService.deleteMessage(channel, timestamp);
-    if (muzzle!.suppressionCount < MAX_SUPPRESSIONS) {
-      this.muzzlePersistenceService.setMuzzle(userId, {
-        suppressionCount: ++muzzle!.suppressionCount,
-        muzzledBy: muzzle!.muzzledBy,
-        id: muzzle!.id,
-        isBackfire,
-        removalFn: muzzle!.removalFn
-      });
-      this.webService.sendMessage(
-        channel,
-        `<@${userId}> says "${this.muzzle(text, muzzle!.id, isBackfire)}"`
-      );
-    } else {
-      this.muzzlePersistenceService.trackDeletedMessage(
-        muzzle!.id,
-        text,
-        isBackfire
-      );
+    if (muzzle) {
+      const isBackfire = muzzle!.isBackfire;
+      this.webService.deleteMessage(channel, timestamp);
+      if (muzzle!.suppressionCount < MAX_SUPPRESSIONS) {
+        this.muzzlePersistenceService.setMuzzle(userId, {
+          suppressionCount: ++muzzle!.suppressionCount,
+          muzzledBy: muzzle!.muzzledBy,
+          id: muzzle!.id,
+          isBackfire,
+          removalFn: muzzle!.removalFn
+        });
+        this.webService.sendMessage(
+          channel,
+          `<@${userId}> says "${this.muzzle(text, muzzle!.id, isBackfire)}"`
+        );
+      } else {
+        this.muzzlePersistenceService.trackDeletedMessage(
+          muzzle!.id,
+          text,
+          isBackfire
+        );
+      }
     }
   }
 }
