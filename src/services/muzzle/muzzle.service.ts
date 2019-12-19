@@ -221,7 +221,7 @@ export class MuzzleService {
       word.length < 10 &&
       word !== " " &&
       !this.slackService.containsTag(word)
-        ? word
+        ? `*${word}*`
         : replacementText;
 
     if ((isFirstWord && !isLastWord) || (!isFirstWord && !isLastWord)) {
