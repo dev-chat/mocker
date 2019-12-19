@@ -1,11 +1,14 @@
 import { when } from "jest-when";
 import { UpdateResult } from "typeorm";
 import { Muzzle } from "../../shared/db/models/Muzzle";
+import { IMuzzled } from "../../shared/models/muzzle/muzzle-models";
 import {
   IEventRequest,
   ISlackUser
 } from "../../shared/models/slack/slack-models";
 import { SlackService } from "../slack/slack.service";
+import { WebService } from "../web/web.service";
+import { MAX_SUPPRESSIONS } from "./constants";
 import * as muzzleUtils from "./muzzle-utilities";
 import { MuzzlePersistenceService } from "./muzzle.persistence.service";
 import { MuzzleService } from "./muzzle.service";
@@ -326,8 +329,85 @@ describe("MuzzleService", () => {
   });
 
   describe("sendMuzzledMessage", () => {
-    it("waste of time test suite", () => {
-      expect(true).toBeTruthy();
+    let persistenceService: MuzzlePersistenceService;
+    let webService: WebService;
+
+    beforeEach(() => {
+      persistenceService = MuzzlePersistenceService.getInstance();
+      webService = WebService.getInstance();
+    });
+
+    describe("if a user is already muzzled", () => {
+      let mockMuzzle: IMuzzled;
+      let mockSetMuzzle: jest.SpyInstance;
+      let mockSendMessage: jest.SpyInstance;
+      let mockTrackDeleted: jest.SpyInstance;
+
+      beforeEach(() => {
+        jest.clearAllMocks();
+        mockMuzzle = {
+          suppressionCount: 0,
+          muzzledBy: "test",
+          id: 1234,
+          isBackfire: false,
+          removalFn: setTimeout(() => 1234, 5000)
+        };
+
+        mockSetMuzzle = jest.spyOn(persistenceService, "setMuzzle");
+        mockSendMessage = jest
+          .spyOn(webService, "sendMessage")
+          .mockImplementation(() => true);
+        mockTrackDeleted = jest.spyOn(
+          persistenceService,
+          "trackDeletedMessage"
+        );
+
+        jest.spyOn(persistenceService, "getMuzzle").mockReturnValue(mockMuzzle);
+      });
+
+      it("should call muzzlePersistenceService.setMuzzle and webService.sendMessage if suppressionCount is 0", () => {
+        muzzleService.sendMuzzledMessage("test", "test", "test", "test");
+        expect(mockSetMuzzle).toHaveBeenCalled();
+        expect(mockSendMessage).toHaveBeenCalled();
+      });
+
+      it("should not call setMuzzle, not call sendMessage, but call trackDeletedMessage if suppressionCount >= MAX_SUPPRESSIONS", () => {
+        mockMuzzle.suppressionCount = MAX_SUPPRESSIONS;
+        muzzleService.sendMuzzledMessage("test", "test", "test", "test");
+        expect(mockSetMuzzle).not.toHaveBeenCalled();
+        expect(mockSendMessage).not.toHaveBeenCalled();
+        expect(mockTrackDeleted).toHaveBeenCalled();
+      });
+    });
+
+    describe("if a user is not muzzled", () => {
+      let mockSetMuzzle: jest.SpyInstance;
+      let mockSendMessage: jest.SpyInstance;
+      let mockTrackDeleted: jest.SpyInstance;
+      let mockGetMuzzle: jest.SpyInstance;
+
+      beforeEach(() => {
+        jest.clearAllMocks();
+        mockSetMuzzle = jest.spyOn(persistenceService, "setMuzzle");
+        mockSendMessage = jest
+          .spyOn(webService, "sendMessage")
+          .mockImplementation(() => true);
+        mockTrackDeleted = jest.spyOn(
+          persistenceService,
+          "trackDeletedMessage"
+        );
+
+        mockGetMuzzle = jest
+          .spyOn(persistenceService, "getMuzzle")
+          .mockReturnValue(undefined);
+      });
+      it("should not call any methods except getMuzzle", () => {
+        muzzleService.sendMuzzledMessage("test", "test", "test", "test");
+        expect(mockGetMuzzle).toHaveBeenCalled();
+        expect(mockSetMuzzle).not.toHaveBeenCalled();
+        expect(mockSendMessage).not.toHaveBeenCalled();
+        expect(mockTrackDeleted).not.toHaveBeenCalled();
+      });
     });
   });
 });
