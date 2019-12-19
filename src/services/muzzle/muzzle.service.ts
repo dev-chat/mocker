@@ -20,22 +20,24 @@ export class MuzzleService {
    * Takes in text and randomly muzzles certain words.
    */
   public muzzle(text: string, muzzleId: number, isBackfire: boolean) {
-    const replacementText = " ..mMm.. ";
-    let returnText = "";
+    const replacementText = "..mMm..";
     const words = text.split(" ");
+
+    let returnText = "";
     let wordsSuppressed = 0;
     let charactersSuppressed = 0;
     let replacementWord;
-    for (const word of words) {
-      replacementWord =
-        isRandomEven() &&
-        word.length < 10 &&
-        !this.slackService.containsTag(word)
-          ? ` *${word}* `
-          : replacementText;
+
+    for (let i = 0; i < words.length; i++) {
+      replacementWord = this.getReplacementWord(
+        words[i],
+        i === 0,
+        i === words.length - 1,
+        replacementText
+      );
       if (replacementWord === replacementText) {
         wordsSuppressed++;
-        charactersSuppressed += word.length;
+        charactersSuppressed += words[i].length;
       }
       returnText += replacementWord;
     }
@@ -205,6 +207,28 @@ export class MuzzleService {
           isBackfire
         );
       }
+    }
+  }
+
+  private getReplacementWord(
+    word: string,
+    isFirstWord: boolean,
+    isLastWord: boolean,
+    replacementText: string
+  ) {
+    if (
+      isRandomEven() &&
+      word.length < 10 &&
+      word !== " " &&
+      !this.slackService.containsTag(word)
+    ) {
+      return `*${word}*`;
+    } else if (isFirstWord && !isLastWord) {
+      return `${replacementText} `;
+    } else if (isLastWord) {
+      return replacementText;
+    } else {
+      return `${replacementText} `;
     }
   }
 }

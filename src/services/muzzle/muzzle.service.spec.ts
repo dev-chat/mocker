@@ -67,23 +67,23 @@ describe("MuzzleService", () => {
       const testSentence =
         "<@U2TKJ> <@JKDSF> <@SDGJSK> <@LSKJDSG> <@lkjdsa> <@LKSJDF> <@SDLJG> <@jrjrjr> <@fudka>";
       expect(muzzleService.muzzle(testSentence, 1, false)).toBe(
-        " ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm..  ..mMm.. "
+        "..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.."
       );
     });
 
     it("should always muzzle <!channel>", () => {
       const testSentence = "<!channel>";
-      expect(muzzleService.muzzle(testSentence, 1, false)).toBe(" ..mMm.. ");
+      expect(muzzleService.muzzle(testSentence, 1, false)).toBe("..mMm..");
     });
 
     it("should always muzzle <!here>", () => {
       const testSentence = "<!here>";
-      expect(muzzleService.muzzle(testSentence, 1, false)).toBe(" ..mMm.. ");
+      expect(muzzleService.muzzle(testSentence, 1, false)).toBe("..mMm..");
     });
 
     it("should always muzzle a word with length > 10", () => {
       const testSentence = "this.is.a.way.to.game.the.system";
-      expect(muzzleService.muzzle(testSentence, 1, false)).toBe(" ..mMm.. ");
+      expect(muzzleService.muzzle(testSentence, 1, false)).toBe("..mMm..");
     });
   });
 
