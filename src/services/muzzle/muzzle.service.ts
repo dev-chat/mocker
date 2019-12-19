@@ -224,12 +224,9 @@ export class MuzzleService {
         ? word
         : replacementText;
 
-    if (isFirstWord && !isLastWord) {
-      return `${text} `;
-    } else if (isLastWord) {
-      return text;
-    } else {
+    if ((isFirstWord && !isLastWord) || (!isFirstWord && !isLastWord)) {
       return `${text} `;
     }
+    return text;
   }
 }
