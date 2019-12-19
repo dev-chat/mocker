@@ -35,7 +35,7 @@ export class MuzzleService {
         i === words.length - 1,
         replacementText
       );
-      if (replacementWord === replacementText) {
+      if (replacementWord.includes(replacementText)) {
         wordsSuppressed++;
         charactersSuppressed += words[i].length;
       }
@@ -216,19 +216,20 @@ export class MuzzleService {
     isLastWord: boolean,
     replacementText: string
   ) {
-    if (
+    const text =
       isRandomEven() &&
       word.length < 10 &&
       word !== " " &&
       !this.slackService.containsTag(word)
-    ) {
-      return `*${word}*`;
-    } else if (isFirstWord && !isLastWord) {
-      return `${replacementText} `;
+        ? word
+        : replacementText;
+
+    if (isFirstWord && !isLastWord) {
+      return `${text} `;
     } else if (isLastWord) {
-      return replacementText;
+      return text;
     } else {
-      return `${replacementText} `;
+      return `${text} `;
     }
   }
 }
