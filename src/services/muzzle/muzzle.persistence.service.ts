@@ -149,7 +149,7 @@ export class MuzzlePersistenceService {
   /**
    * Returns boolean whether user is muzzled or not.
    */
-  public isUserMuzzled(userId: string) {
+  public isUserMuzzled(userId: string): boolean {
     return this.muzzled.has(userId);
   }
 

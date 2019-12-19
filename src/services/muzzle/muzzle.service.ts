@@ -90,6 +90,7 @@ export class MuzzleService {
       userIdByAttachmentPretext,
       userIdByCallbackId
     );
+
     return !!(
       request.event.subtype === "bot_message" &&
       finalUserId &&

@@ -20,11 +20,13 @@
   "license": "ISC",
   "dependencies": {
     "@slack/web-api": "^5.0.1",
+    "@types/jest-when": "^2.7.0",
     "axios": "^0.18.1",
     "body-parser": "^1.18.3",
     "easy-table": "^1.1.1",
     "enquirer": "^2.3.2",
     "express": "^4.16.4",
+    "jest-when": "^2.7.0",
     "moment": "^2.24.0",
     "mysql": "^2.17.1",
     "reflect-metadata": "^0.1.13",
