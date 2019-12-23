@@ -103,7 +103,7 @@ export class SlackService {
       })
       .catch(e => {
         console.error("Failed to retrieve users", e);
-        console.error("Retrying in 5 seconds");
+        console.error("Retrying in 5 seconds...");
         setTimeout(() => this.getAllUsers(), 5000);
       })) as ISlackUser[];
   }

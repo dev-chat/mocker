@@ -1,5 +1,7 @@
 import { IMuzzled } from "../../shared/models/muzzle/muzzle-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
+import { CounterPersistenceService } from "../counter/counter.persistence.service";
+import { CounterService } from "../counter/counter.service";
 import { SlackService } from "../slack/slack.service";
 import { WebService } from "../web/web.service";
 import { MAX_MUZZLES, MAX_SUPPRESSIONS } from "./constants";
@@ -14,7 +16,9 @@ import { MuzzlePersistenceService } from "./muzzle.persistence.service";
 export class MuzzleService {
   private webService = WebService.getInstance();
   private slackService = SlackService.getInstance();
+  private counterService = new CounterService();
   private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
+  private counterPersistenceService = CounterPersistenceService.getInstance();
 
   /**
    * Takes in text and randomly muzzles certain words.
@@ -112,6 +116,10 @@ export class MuzzleService {
     const shouldBackFire = shouldBackfire();
     const userName = this.slackService.getUserName(userId);
     const requestorName = this.slackService.getUserName(requestorId);
+    const isCounterPresent = this.counterPersistenceService.getCounterByRequestorAndUserId(
+      userId,
+      requestorId
+    );
     return new Promise(async (resolve, reject) => {
       if (!userId) {
         reject(
@@ -136,6 +144,12 @@ export class MuzzleService {
         reject(
           `You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`
         );
+      } else if (isCounterPresent) {
+        console.log(
+          `${requestorId} attempted to muzzle ${userId} but was countered!`
+        );
+        this.counterService.removeCounter(isCounterPresent, true, channel);
+        reject(`You've been countered! Better luck next time...`);
       } else if (shouldBackFire) {
         console.log(
           `Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`
@@ -194,6 +208,7 @@ export class MuzzleService {
           muzzledBy: muzzle!.muzzledBy,
           id: muzzle!.id,
           isBackfire,
+          isCounter: muzzle!.isCounter,
           removalFn: muzzle!.removalFn
         });
         this.webService.sendMessage(

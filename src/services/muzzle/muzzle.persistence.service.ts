@@ -14,7 +14,7 @@ import {
   MAX_MUZZLES,
   MAX_TIME_BETWEEN_MUZZLES
 } from "./constants";
-import { getRemainingTime } from "./muzzle-utilities";
+import { getRemainingTime, getTimeToMuzzle } from "./muzzle-utilities";
 
 export class MuzzlePersistenceService {
   public static getInstance() {
@@ -47,6 +47,7 @@ export class MuzzlePersistenceService {
             muzzledBy: requestorId,
             id: muzzleFromDb.id,
             isBackfire: false,
+            isCounter: false,
             removalFn: setTimeout(() => this.removeMuzzle(muzzledId), time)
           });
           this.setRequestorCount(requestorId);
@@ -79,6 +80,35 @@ export class MuzzlePersistenceService {
       muzzleCountRemover: setTimeout(removalFunction, MAX_TIME_BETWEEN_MUZZLES)
     });
   }
+
+  public muzzleAndRemovePrivileges(
+    requestorId: string,
+    userId: string,
+    counterId: number
+  ) {
+    const muzzleTime = getTimeToMuzzle();
+    this.muzzled.set(userId, {
+      suppressionCount: 0,
+      muzzledBy: requestorId,
+      id: counterId,
+      isBackfire: false,
+      isCounter: true,
+      removalFn: setTimeout(() => this.removeMuzzle(userId), muzzleTime)
+    });
+    const requestorObj: IRequestor | undefined = this.requestors.get(userId);
+    if (requestorObj) {
+      clearTimeout(this.requestors.get(userId)!
+        .muzzleCountRemover as NodeJS.Timeout);
+    }
+
+    this.requestors.set(userId, {
+      muzzleCount: MAX_MUZZLES,
+      muzzleCountRemover: setTimeout(
+        () => this.removeRequestor(userId),
+        MAX_TIME_BETWEEN_MUZZLES
+      )
+    });
+  }
   /**
    * Returns boolean whether max muzzles have been reached.
    */
@@ -105,6 +135,7 @@ export class MuzzlePersistenceService {
           muzzledBy: muzzledId,
           id: backfireFromDb.id,
           isBackfire: true,
+          isCounter: false,
           removalFn: setTimeout(() => this.removeMuzzle(muzzledId), time)
         });
         this.setRequestorCount(muzzledId);
@@ -127,6 +158,7 @@ export class MuzzlePersistenceService {
         muzzledBy: this.muzzled.get(userId)!.muzzledBy,
         id: this.muzzled.get(userId)!.id,
         isBackfire: this.muzzled.get(userId)!.isBackfire,
+        isCounter: false,
         removalFn: setTimeout(() => this.removeMuzzle(userId), newTime)
       });
     }
