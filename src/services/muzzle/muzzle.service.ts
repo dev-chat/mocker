@@ -116,10 +116,11 @@ export class MuzzleService {
       userId,
       requestorId
     );
+
     return new Promise(async (resolve, reject) => {
       if (!userId) {
         reject(
-          `Invalid username passed in. You can only muzzle existing slack users`
+          `Invalid username passed in. You can only muzzle existing slack users.`
         );
       } else if (this.muzzlePersistenceService.isUserMuzzled(userId)) {
         console.error(

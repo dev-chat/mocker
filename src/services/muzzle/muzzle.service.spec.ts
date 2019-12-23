@@ -66,24 +66,24 @@ describe("MuzzleService", () => {
     it("should always muzzle a tagged user", () => {
       const testSentence =
         "<@U2TKJ> <@JKDSF> <@SDGJSK> <@LSKJDSG> <@lkjdsa> <@LKSJDF> <@SDLJG> <@jrjrjr> <@fudka>";
-      expect(muzzleService.muzzle(testSentence, 1, false)).toBe(
+      expect(muzzleService.muzzle(testSentence, 1)).toBe(
         "..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.."
       );
     });
 
     it("should always muzzle <!channel>", () => {
       const testSentence = "<!channel>";
-      expect(muzzleService.muzzle(testSentence, 1, false)).toBe("..mMm..");
+      expect(muzzleService.muzzle(testSentence, 1)).toBe("..mMm..");
     });
 
     it("should always muzzle <!here>", () => {
       const testSentence = "<!here>";
-      expect(muzzleService.muzzle(testSentence, 1, false)).toBe("..mMm..");
+      expect(muzzleService.muzzle(testSentence, 1)).toBe("..mMm..");
     });
 
     it("should always muzzle a word with length > 10", () => {
       const testSentence = "this.is.a.way.to.game.the.system";
-      expect(muzzleService.muzzle(testSentence, 1, false)).toBe("..mMm..");
+      expect(muzzleService.muzzle(testSentence, 1)).toBe("..mMm..");
     });
   });
 
@@ -251,7 +251,7 @@ describe("MuzzleService", () => {
             .addUserToMuzzled("", testData.requestor, "test")
             .catch(e => {
               expect(e).toBe(
-                `Invalid username passed in. You can only muzzle existing slack users`
+                `Invalid username passed in. You can only muzzle existing slack users.`
               );
             });
         });
@@ -349,7 +349,7 @@ describe("MuzzleService", () => {
           suppressionCount: 0,
           muzzledBy: "test",
           id: 1234,
-          isBackfire: false,
+          isCounter: false,
           removalFn: setTimeout(() => 1234, 5000)
         };
 

@@ -11,9 +11,9 @@ export class BackfireService {
   private backfirePersistenceService = BackFirePersistenceService.getInstance();
 
   /**
-   * Takes in text and randomly muzzles certain words.
+   * Takes in text and randomly muzzles words.
    */
-  public backfireMessage(text: string, muzzleId: number) {
+  public backfireMessage(text: string, backfireId: number) {
     const words = text.split(" ");
 
     let returnText = "";
@@ -34,13 +34,13 @@ export class BackfireService {
       }
       returnText += replacementWord;
     }
-    this.backfirePersistenceService.incrementMessageSuppressions(muzzleId);
+    this.backfirePersistenceService.incrementMessageSuppressions(backfireId);
     this.backfirePersistenceService.incrementCharacterSuppressions(
-      muzzleId,
+      backfireId,
       charactersSuppressed
     );
     this.backfirePersistenceService.incrementWordSuppressions(
-      muzzleId,
+      backfireId,
       wordsSuppressed
     );
     return returnText;

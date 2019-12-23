@@ -38,7 +38,7 @@ export class BackFirePersistenceService {
 
   public removeBackfire(userId: string) {
     this.backfires.delete(userId);
-    console.log(`Backfire has expired for ${userId}`);
+    console.log(`Backfire has expired and been removed for ${userId}`);
   }
 
   public isBackfire(userId: string): boolean {
