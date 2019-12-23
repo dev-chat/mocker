@@ -1,8 +1,7 @@
 export interface IMuzzled {
   suppressionCount: number;
   muzzledBy: string;
-  id: number; // Refers to either a muzzleID or backfireID or counterId from the database. Dependent on isBackfire.
-  isBackfire: boolean;
+  id: number;
   isCounter: boolean;
   removalFn: NodeJS.Timeout;
 }

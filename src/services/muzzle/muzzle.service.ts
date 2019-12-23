@@ -1,10 +1,11 @@
 import { IMuzzled } from "../../shared/models/muzzle/muzzle-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
+import { BackFirePersistenceService } from "../backfire/backfire.persistence.service";
 import { CounterPersistenceService } from "../counter/counter.persistence.service";
 import { CounterService } from "../counter/counter.service";
 import { SlackService } from "../slack/slack.service";
 import { WebService } from "../web/web.service";
-import { MAX_MUZZLES, MAX_SUPPRESSIONS } from "./constants";
+import { MAX_MUZZLES, MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from "./constants";
 import {
   getTimeString,
   getTimeToMuzzle,
@@ -17,14 +18,14 @@ export class MuzzleService {
   private webService = WebService.getInstance();
   private slackService = SlackService.getInstance();
   private counterService = new CounterService();
+  private backfirePersistenceService = BackFirePersistenceService.getInstance();
   private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
   private counterPersistenceService = CounterPersistenceService.getInstance();
 
   /**
    * Takes in text and randomly muzzles certain words.
    */
-  public muzzle(text: string, muzzleId: number, isBackfire: boolean) {
-    const replacementText = "..mMm..";
+  public muzzle(text: string, muzzleId: number) {
     const words = text.split(" ");
 
     let returnText = "";
@@ -37,27 +38,22 @@ export class MuzzleService {
         words[i],
         i === 0,
         i === words.length - 1,
-        replacementText
+        REPLACEMENT_TEXT
       );
-      if (replacementWord.includes(replacementText)) {
+      if (replacementWord.includes(REPLACEMENT_TEXT)) {
         wordsSuppressed++;
         charactersSuppressed += words[i].length;
       }
       returnText += replacementWord;
     }
-    this.muzzlePersistenceService.incrementMessageSuppressions(
-      muzzleId,
-      isBackfire
-    );
+    this.muzzlePersistenceService.incrementMessageSuppressions(muzzleId);
     this.muzzlePersistenceService.incrementCharacterSuppressions(
       muzzleId,
-      charactersSuppressed,
-      isBackfire
+      charactersSuppressed
     );
     this.muzzlePersistenceService.incrementWordSuppressions(
       muzzleId,
-      wordsSuppressed,
-      isBackfire
+      wordsSuppressed
     );
     return returnText;
   }
@@ -116,7 +112,7 @@ export class MuzzleService {
     const shouldBackFire = shouldBackfire();
     const userName = this.slackService.getUserName(userId);
     const requestorName = this.slackService.getUserName(requestorId);
-    const isCounterPresent = this.counterPersistenceService.getCounterByRequestorAndUserId(
+    const counter = this.counterPersistenceService.getCounterByRequestorAndUserId(
       userId,
       requestorId
     );
@@ -144,20 +140,21 @@ export class MuzzleService {
         reject(
           `You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`
         );
-      } else if (isCounterPresent) {
+      } else if (counter) {
         console.log(
           `${requestorId} attempted to muzzle ${userId} but was countered!`
         );
-        this.counterService.removeCounter(isCounterPresent, true, channel);
+        this.counterService.removeCounter(counter, true, channel);
         reject(`You've been countered! Better luck next time...`);
       } else if (shouldBackFire) {
         console.log(
           `Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`
         );
         const timeToMuzzle = getTimeToMuzzle();
-        await this.muzzlePersistenceService
+        await this.backfirePersistenceService
           .addBackfire(requestorId, timeToMuzzle)
           .then(() => {
+            this.muzzlePersistenceService.setRequestorCount(requestorId);
             this.webService.sendMessage(
               channel,
               `:boom: <@${requestorId}> attempted to muzzle <@${userId}> but it backfired! :boom:`
@@ -200,27 +197,21 @@ export class MuzzleService {
       | IMuzzled
       | undefined = this.muzzlePersistenceService.getMuzzle(userId);
     if (muzzle) {
-      const isBackfire = muzzle!.isBackfire;
       this.webService.deleteMessage(channel, timestamp);
       if (muzzle!.suppressionCount < MAX_SUPPRESSIONS) {
         this.muzzlePersistenceService.setMuzzle(userId, {
           suppressionCount: ++muzzle!.suppressionCount,
           muzzledBy: muzzle!.muzzledBy,
           id: muzzle!.id,
-          isBackfire,
           isCounter: muzzle!.isCounter,
           removalFn: muzzle!.removalFn
         });
         this.webService.sendMessage(
           channel,
-          `<@${userId}> says "${this.muzzle(text, muzzle!.id, isBackfire)}"`
+          `<@${userId}> says "${this.muzzle(text, muzzle!.id)}"`
         );
       } else {
-        this.muzzlePersistenceService.trackDeletedMessage(
-          muzzle!.id,
-          text,
-          isBackfire
-        );
+        this.muzzlePersistenceService.trackDeletedMessage(muzzle!.id, text);
       }
     }
   }

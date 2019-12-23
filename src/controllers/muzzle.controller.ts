@@ -1,4 +1,6 @@
 import express, { Request, Response, Router } from "express";
+import { BackFirePersistenceService } from "../services/backfire/backfire.persistence.service";
+import { BackfireService } from "../services/backfire/backfire.service";
 import { ABUSE_PENALTY_TIME } from "../services/muzzle/constants";
 import { getTimeString } from "../services/muzzle/muzzle-utilities";
 import { MuzzlePersistenceService } from "../services/muzzle/muzzle.persistence.service";
@@ -15,9 +17,11 @@ import {
 export const muzzleController: Router = express.Router();
 
 const muzzleService = new MuzzleService();
+const backfireService = new BackfireService();
 const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
+const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const reportService = new ReportService();
 
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
@@ -31,53 +35,92 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const isUserMuzzled = muzzlePersistenceService.isUserMuzzled(
     request.event.user
   );
-  const isUserBackfired = muzzlePersistenceService.getIsBackfire(
+  const isUserBackfired = backfirePersistenceService.isBackfire(
     request.event.user
   );
   const containsTag = slackService.containsTag(request.event.text);
   const userName = slackService.getUserName(request.event.user);
 
-  if (isUserMuzzled && !containsTag) {
-    console.log(
-      `${userName} | ${request.event.user} is muzzled! Suppressing his voice...`
-    );
-    muzzleService.sendMuzzledMessage(
-      request.event.channel,
-      request.event.user,
-      request.event.text,
-      request.event.ts
-    );
-  } else if (isUserMuzzled && containsTag && !request.event.subtype) {
-    const muzzleId = muzzlePersistenceService.getMuzzleId(request.event.user);
-    console.log(
-      `${slackService.getUserName(
-        request.event.user
-      )} attempted to tag someone. Muzzle increased by ${ABUSE_PENALTY_TIME}!`
-    );
-    muzzlePersistenceService.addMuzzleTime(
-      request.event.user,
-      ABUSE_PENALTY_TIME,
-      isUserBackfired
-    );
-    webService.deleteMessage(request.event.channel, request.event.ts);
-    muzzlePersistenceService.trackDeletedMessage(
-      muzzleId,
-      request.event.text,
-      isUserBackfired
-    );
-    webService.sendMessage(
-      request.event.channel,
-      `:rotating_light: <@${
-        request.event.user
-      }> attempted to @ while muzzled! Muzzle increased by ${getTimeString(
+  if (isUserMuzzled) {
+    if (!containsTag) {
+      console.log(
+        `${userName} | ${
+          request.event.user
+        } is muzzled! Suppressing his voice...`
+      );
+      muzzleService.sendMuzzledMessage(
+        request.event.channel,
+        request.event.user,
+        request.event.text,
+        request.event.ts
+      );
+    } else if (containsTag && !request.event.subtype) {
+      const muzzleId = muzzlePersistenceService.getMuzzleId(request.event.user);
+      console.log(
+        `${slackService.getUserName(
+          request.event.user
+        )} attempted to tag someone. Muzzle increased by ${ABUSE_PENALTY_TIME}!`
+      );
+      muzzlePersistenceService.addMuzzleTime(
+        request.event.user,
         ABUSE_PENALTY_TIME
-      )} :rotating_light:`
-    );
-  } else if (muzzleService.shouldBotMessageBeMuzzled(request)) {
-    console.log(
-      `A user is muzzled and tried to send a bot message! Suppressing...`
-    );
-    webService.deleteMessage(request.event.channel, request.event.ts);
+      );
+      webService.deleteMessage(request.event.channel, request.event.ts);
+      muzzlePersistenceService.trackDeletedMessage(
+        muzzleId,
+        request.event.text
+      );
+      webService.sendMessage(
+        request.event.channel,
+        `:rotating_light: <@${
+          request.event.user
+        }> attempted to @ while muzzled! Muzzle increased by ${getTimeString(
+          ABUSE_PENALTY_TIME
+        )} :rotating_light:`
+      );
+    } else if (muzzleService.shouldBotMessageBeMuzzled(request)) {
+      console.log(
+        `A user is muzzled and tried to send a bot message! Suppressing...`
+      );
+      webService.deleteMessage(request.event.channel, request.event.ts);
+    }
+  } else if (isUserBackfired) {
+    if (!containsTag) {
+      console.log(
+        `${userName} | ${
+          request.event.user
+        } is backfired! Suppressing his voice...`
+      );
+      backfireService.sendBackfiredMessage(
+        request.event.channel,
+        request.event.user,
+        request.event.text,
+        request.event.ts
+      );
+    } else if (containsTag && !request.event.subtype) {
+      const backfireId = backfireService.getBackfire(request.event.user)!.id;
+      console.log(
+        `${slackService.getUserName(
+          request.event.user
+        )} attempted to tag someone. Backfire increased by ${ABUSE_PENALTY_TIME}!`
+      );
+      backfireService.addBackfireTime(request.event.user, ABUSE_PENALTY_TIME);
+      webService.deleteMessage(request.event.channel, request.event.ts);
+      backfireService.trackDeletedMessage(backfireId, request.event.text);
+      webService.sendMessage(
+        request.event.channel,
+        `:rotating_light: <@${
+          request.event.user
+        }> attempted to @ while muzzled! Muzzle increased by ${getTimeString(
+          ABUSE_PENALTY_TIME
+        )} :rotating_light:`
+      );
+    } else if (muzzleService.shouldBotMessageBeMuzzled(request)) {
+      console.log(
+        `A user is muzzled and tried to send a bot message! Suppressing...`
+      );
+      webService.deleteMessage(request.event.channel, request.event.ts);
+    }
   }
   res.send({ challenge: request.challenge });
 });

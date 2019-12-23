@@ -68,7 +68,7 @@ export class CounterService {
         counter!.counteredId,
         id
       );
-      // Should send message to chat indicating that the counter failed
+
       this.webService.sendMessage(
         "#general",
         `:flesh: <@${counter!.requestorId}> lives in fear of <@${
