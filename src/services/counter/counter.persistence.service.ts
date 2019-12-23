@@ -1,6 +1,10 @@
 import { getRepository } from "typeorm";
 import { Counter } from "../../shared/db/models/Counter";
-import { ICounter } from "../../shared/models/counter/counter-models";
+import {
+  ICounter,
+  ICounterMuzzle
+} from "../../shared/models/counter/counter-models";
+import { getRemainingTime, getTimeToMuzzle } from "../muzzle/muzzle-utilities";
 import { COUNTER_TIME } from "./constants";
 
 export class CounterPersistenceService {
@@ -13,6 +17,7 @@ export class CounterPersistenceService {
 
   private static instance: CounterPersistenceService;
   private counters: Map<number, ICounter> = new Map();
+  private counterMuzzles: Map<string, ICounterMuzzle> = new Map();
 
   private constructor() {}
 
@@ -37,6 +42,24 @@ export class CounterPersistenceService {
     });
   }
 
+  public addCounterMuzzleTime(userId: string, timeToAdd: number) {
+    if (userId && this.counterMuzzles.has(userId)) {
+      const removalFn = this.counterMuzzles.get(userId)!.removalFn;
+      const newTime = getRemainingTime(removalFn) + timeToAdd;
+      clearTimeout(this.counterMuzzles.get(userId)!.removalFn);
+      console.log(`Setting ${userId}'s muzzle time to ${newTime}`);
+      this.counterMuzzles.set(userId, {
+        suppressionCount: this.counterMuzzles.get(userId)!.suppressionCount,
+        counterId: this.counterMuzzles.get(userId)!.counterId,
+        removalFn: setTimeout(() => this.removeCounterMuzzle(userId), newTime)
+      });
+    }
+  }
+
+  public setCounterMuzzle(userId: string, options: ICounterMuzzle) {
+    this.counterMuzzles.set(userId, options);
+  }
+
   public async setCounteredToTrue(id: number) {
     const counter = await getRepository(Counter).findOne(id);
     counter!.countered = true;
@@ -45,6 +68,23 @@ export class CounterPersistenceService {
 
   public getCounter(counterId: number): ICounter | undefined {
     return this.counters.get(counterId);
+  }
+
+  public isCounterMuzzled(userId: string) {
+    return this.counterMuzzles.has(userId);
+  }
+
+  public getCounterMuzzle(userId: string) {
+    return this.counterMuzzles.get(userId);
+  }
+
+  public counterMuzzle(userId: string, counterId: number) {
+    const muzzleTime = getTimeToMuzzle();
+    this.counterMuzzles.set(userId, {
+      suppressionCount: 0,
+      counterId,
+      removalFn: setTimeout(() => this.removeCounterMuzzle(userId), muzzleTime)
+    });
   }
 
   /**
@@ -76,6 +116,10 @@ export class CounterPersistenceService {
     } else {
       this.counters.delete(id);
     }
+  }
+
+  private removeCounterMuzzle(userId: string) {
+    this.counterMuzzles.delete(userId);
   }
 
   private setCounterState(

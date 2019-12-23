@@ -13,7 +13,7 @@ import {
   MAX_MUZZLES,
   MAX_TIME_BETWEEN_MUZZLES
 } from "./constants";
-import { getRemainingTime, getTimeToMuzzle } from "./muzzle-utilities";
+import { getRemainingTime } from "./muzzle-utilities";
 
 export class MuzzlePersistenceService {
   public static getInstance() {
@@ -55,6 +55,23 @@ export class MuzzlePersistenceService {
     });
   }
 
+  public removeMuzzlePrivileges(requestorId: string) {
+    const requestorObj: IRequestor | undefined = this.requestors.get(
+      requestorId
+    );
+    if (requestorObj) {
+      clearTimeout(this.requestors.get(requestorId)!
+        .muzzleCountRemover as NodeJS.Timeout);
+    }
+
+    this.requestors.set(requestorId, {
+      muzzleCount: MAX_MUZZLES,
+      muzzleCountRemover: setTimeout(
+        () => this.removeRequestor(requestorId),
+        MAX_TIME_BETWEEN_MUZZLES
+      )
+    });
+  }
   /**
    * Adds a requestor to the requestors map with a muzzleCount to track how many muzzles have been performed, as well as a removal function.
    */
@@ -79,33 +96,6 @@ export class MuzzlePersistenceService {
     });
   }
 
-  public muzzleAndRemovePrivileges(
-    requestorId: string,
-    userId: string,
-    counterId: number
-  ) {
-    const muzzleTime = getTimeToMuzzle();
-    this.muzzled.set(userId, {
-      suppressionCount: 0,
-      muzzledBy: requestorId,
-      id: counterId,
-      isCounter: true,
-      removalFn: setTimeout(() => this.removeMuzzle(userId), muzzleTime)
-    });
-    const requestorObj: IRequestor | undefined = this.requestors.get(userId);
-    if (requestorObj) {
-      clearTimeout(this.requestors.get(userId)!
-        .muzzleCountRemover as NodeJS.Timeout);
-    }
-
-    this.requestors.set(userId, {
-      muzzleCount: MAX_MUZZLES,
-      muzzleCountRemover: setTimeout(
-        () => this.removeRequestor(userId),
-        MAX_TIME_BETWEEN_MUZZLES
-      )
-    });
-  }
   /**
    * Returns boolean whether max muzzles have been reached.
    */

@@ -1,4 +1,5 @@
 import { IBackfire } from "../../shared/models/backfire/backfire.model";
+import { IEventRequest } from "../../shared/models/slack/slack-models";
 import { MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from "../muzzle/constants";
 import { isRandomEven } from "../muzzle/muzzle-utilities";
 import { SlackService } from "../slack/slack.service";
@@ -83,6 +84,49 @@ export class BackfireService {
 
   public trackDeletedMessage(id: number, text: string) {
     this.backfirePersistenceService.trackDeletedMessage(id, text);
+  }
+
+  /**
+   * Determines whether or not a bot message should be removed.
+   */
+  public shouldBotMessageBeMuzzled(request: IEventRequest) {
+    let userIdByEventText;
+    let userIdByAttachmentText;
+    let userIdByAttachmentPretext;
+    let userIdByCallbackId;
+
+    if (request.event.text) {
+      userIdByEventText = this.slackService.getUserId(request.event.text);
+    }
+
+    if (request.event.attachments && request.event.attachments.length) {
+      userIdByAttachmentText = this.slackService.getUserId(
+        request.event.attachments[0].text
+      );
+      userIdByAttachmentPretext = this.slackService.getUserId(
+        request.event.attachments[0].pretext
+      );
+
+      if (request.event.attachments[0].callback_id) {
+        userIdByCallbackId = this.slackService.getUserIdByCallbackId(
+          request.event.attachments[0].callback_id
+        );
+      }
+    }
+
+    const finalUserId = this.slackService.getBotId(
+      userIdByEventText,
+      userIdByAttachmentText,
+      userIdByAttachmentPretext,
+      userIdByCallbackId
+    );
+
+    return !!(
+      request.event.subtype === "bot_message" &&
+      finalUserId &&
+      this.backfirePersistenceService.isBackfire(finalUserId) &&
+      request.event.username !== "muzzle"
+    );
   }
 
   private getReplacementWord(

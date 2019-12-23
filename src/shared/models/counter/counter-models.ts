@@ -3,3 +3,9 @@ export interface ICounter {
   counteredId: string;
   removalFn: NodeJS.Timeout;
 }
+
+export interface ICounterMuzzle {
+  counterId: number;
+  suppressionCount: number;
+  removalFn: NodeJS.Timeout;
+}
