@@ -22,6 +22,12 @@ const reportService = new ReportService();
 
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
+  const isNewUserAdded = request.type === "team_join";
+
+  if (isNewUserAdded) {
+    slackService.getAllUsers();
+  }
+
   const isUserMuzzled = muzzlePersistenceService.isUserMuzzled(
     request.event.user
   );

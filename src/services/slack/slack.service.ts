@@ -94,9 +94,13 @@ export class SlackService {
    * Retrieves a list of all users.
    */
   public async getAllUsers() {
+    console.log("Retrieving new user list...");
     this.userList = (await this.web
       .getAllUsers()
-      .then(resp => resp.members as ISlackUser[])
+      .then(resp => {
+        console.log("New user list has been retrieved!");
+        return resp.members as ISlackUser[];
+      })
       .catch(e => {
         console.error("Failed to retrieve users", e);
         console.error("Retrying in 5 seconds");
