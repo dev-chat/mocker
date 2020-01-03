@@ -4,6 +4,7 @@ import "reflect-metadata";
 import { createConnection } from "typeorm";
 import { clapController } from "./controllers/clap.controller";
 import { confessionController } from "./controllers/confession.controller";
+import { counterController } from "./controllers/counter.controller";
 import { defineController } from "./controllers/define.controller";
 import { listController } from "./controllers/list.controller";
 import { mockController } from "./controllers/mock.controller";
@@ -16,6 +17,7 @@ const PORT: number = 3000;
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.use(counterController);
 app.use(mockController);
 app.use(muzzleController);
 app.use(defineController);

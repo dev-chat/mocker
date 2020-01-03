@@ -29,12 +29,9 @@ counterController.post("/counter", async (req, res) => {
     counterService.removeCounter(counter, true, request.channel_name);
     res.send("Sorry, your counter has been countered.");
   } else {
-    const counterResult = await counterService
+    await counterService
       .createCounter(request.text, request.user_id)
+      .then(value => res.send(value))
       .catch(e => res.send(e));
-
-    if (counterResult) {
-      res.send(counterResult);
-    }
   }
 });
