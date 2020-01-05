@@ -4,7 +4,7 @@ import {
   ICounter,
   ICounterMuzzle
 } from "../../shared/models/counter/counter-models";
-import { getRemainingTime, getTimeToMuzzle } from "../muzzle/muzzle-utilities";
+import { getRemainingTime } from "../muzzle/muzzle-utilities";
 import { COUNTER_TIME } from "./constants";
 
 export class CounterPersistenceService {

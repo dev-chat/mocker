@@ -39,7 +39,7 @@ export class CounterService {
           .addCounter(requestorId, counteredId, false)
           .then(() => {
             resolve(
-              `You've successfully countered ${counterUserName} from muzzling you for the next ${COUNTER_TIME}ms`
+              `Counter set for ${counterUserName} for the next ${COUNTER_TIME}ms`
             );
           })
           .catch(e => reject(e));
