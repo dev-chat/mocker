@@ -36,7 +36,7 @@ export class CounterService {
         reject("You already have a counter for this user.");
       } else {
         await this.counterPersistenceService
-          .addCounter(requestorId, counteredId, false)
+          .addCounter(requestorId, counteredId, this.removeCounter)
           .then(() => {
             resolve(
               `Counter set for ${counterUserName} for the next ${getTimeString(
