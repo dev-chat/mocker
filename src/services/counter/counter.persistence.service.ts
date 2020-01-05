@@ -108,9 +108,8 @@ export class CounterPersistenceService {
 
   public async removeCounter(id: number, isUsed: boolean, channel?: string) {
     const counter = this.counters.get(id);
-
+    clearTimeout(counter!.removalFn);
     if (isUsed && channel) {
-      clearTimeout(counter!.removalFn);
       this.counters.delete(id);
       await this.setCounteredToTrue(id).catch(e =>
         console.error("Error during setCounteredToTrue", e)
