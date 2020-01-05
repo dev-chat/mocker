@@ -79,11 +79,13 @@ export class CounterPersistenceService {
   }
 
   public counterMuzzle(userId: string, counterId: number) {
-    const muzzleTime = getTimeToMuzzle();
     this.counterMuzzles.set(userId, {
       suppressionCount: 0,
       counterId,
-      removalFn: setTimeout(() => this.removeCounterMuzzle(userId), muzzleTime)
+      removalFn: setTimeout(
+        () => this.removeCounterMuzzle(userId),
+        COUNTER_TIME
+      )
     });
   }
 
