@@ -51,8 +51,8 @@ export class CounterService {
 
   public getCounterByRequestorAndUserId(requestorId: string, userId: string) {
     return this.counterPersistenceService.getCounterByRequestorAndUserId(
-      userId,
-      requestorId
+      requestorId,
+      userId
     );
   }
 
