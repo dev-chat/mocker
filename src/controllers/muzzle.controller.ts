@@ -31,7 +31,7 @@ const reportService = new ReportService();
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
   const isNewUserAdded = request.type === "team_join";
-
+  console.time("respond-to-event");
   if (isNewUserAdded) {
     slackService.getAllUsers();
   }
@@ -167,6 +167,7 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
       webService.deleteMessage(request.event.channel, request.event.ts);
     }
   }
+  console.timeEnd("respond-to-event");
   res.send({ challenge: request.challenge });
 });
 

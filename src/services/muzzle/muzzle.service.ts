@@ -194,6 +194,7 @@ export class MuzzleService {
     text: string,
     timestamp: string
   ) {
+    console.time("send-muzzled-message");
     const muzzle:
       | IMuzzled
       | undefined = this.muzzlePersistenceService.getMuzzle(userId);
@@ -215,6 +216,7 @@ export class MuzzleService {
         this.muzzlePersistenceService.trackDeletedMessage(muzzle!.id, text);
       }
     }
+    console.timeEnd("send-muzzled-message");
   }
 
   private getReplacementWord(
