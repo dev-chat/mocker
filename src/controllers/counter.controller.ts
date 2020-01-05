@@ -2,18 +2,21 @@ import express, { Router } from "express";
 import { BackFirePersistenceService } from "../services/backfire/backfire.persistence.service";
 import { CounterService } from "../services/counter/counter.service";
 import { MuzzlePersistenceService } from "../services/muzzle/muzzle.persistence.service";
+import { SlackService } from "../services/slack/slack.service";
 import { ISlashCommandRequest } from "../shared/models/slack/slack-models";
 
 export const counterController: Router = express.Router();
 
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backFirePersistenceService = BackFirePersistenceService.getInstance();
+const slackService = SlackService.getInstance();
 const counterService = new CounterService();
 
 counterController.post("/counter", async (req, res) => {
   const request: ISlashCommandRequest = req.body;
+  const userId = slackService.getUserId(request.text);
   const counter = counterService.getCounterByRequestorAndUserId(
-    request.text,
+    userId,
     request.user_id
   );
   if (
@@ -30,7 +33,7 @@ counterController.post("/counter", async (req, res) => {
     res.send("Sorry, your counter has been countered.");
   } else {
     await counterService
-      .createCounter(request.text, request.user_id)
+      .createCounter(userId, request.user_id)
       .then(value => res.send(value))
       .catch(e => res.send(e));
   }
