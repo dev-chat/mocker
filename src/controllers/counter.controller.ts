@@ -14,7 +14,9 @@ const counterService = new CounterService();
 
 counterController.post("/counter", async (req, res) => {
   const request: ISlashCommandRequest = req.body;
+  console.log(request.text);
   const userId = slackService.getUserId(request.text);
+  console.log(userId);
   const counter = counterService.getCounterByRequestorAndUserId(
     userId,
     request.user_id
