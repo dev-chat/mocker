@@ -5,6 +5,8 @@ import {
   ICounterMuzzle
 } from "../../shared/models/counter/counter-models";
 import { getRemainingTime } from "../muzzle/muzzle-utilities";
+import { MuzzlePersistenceService } from "../muzzle/muzzle.persistence.service";
+import { WebService } from "../web/web.service";
 import { COUNTER_TIME } from "./constants";
 
 export class CounterPersistenceService {
@@ -16,16 +18,14 @@ export class CounterPersistenceService {
   }
 
   private static instance: CounterPersistenceService;
+  private muzzlePersistenceService: MuzzlePersistenceService = MuzzlePersistenceService.getInstance();
+  private webService: WebService = WebService.getInstance();
   private counters: Map<number, ICounter> = new Map();
   private counterMuzzles: Map<string, ICounterMuzzle> = new Map();
 
   private constructor() {}
 
-  public addCounter(
-    requestorId: string,
-    counteredUserId: string,
-    removalFn: (id: number, isUsed: boolean, channel: string) => void
-  ) {
+  public addCounter(requestorId: string, counteredUserId: string) {
     return new Promise(async (resolve, reject) => {
       const counter = new Counter();
       counter.requestorId = requestorId;
@@ -35,12 +35,7 @@ export class CounterPersistenceService {
       await getRepository(Counter)
         .save(counter)
         .then(counterFromDb => {
-          this.setCounterState(
-            requestorId,
-            counteredUserId,
-            counterFromDb.id,
-            removalFn
-          );
+          this.setCounterState(requestorId, counteredUserId, counterFromDb.id);
           resolve();
         })
         .catch(e => reject(`Error on saving counter to DB: ${e}`));
@@ -121,7 +116,18 @@ export class CounterPersistenceService {
         console.error("Error during setCounteredToTrue", e)
       );
     } else {
+      // This whole section is an anti-pattern. Fix this.
       this.counters.delete(id);
+      this.counterMuzzle(counter!.requestorId, id);
+      this.muzzlePersistenceService.removeMuzzlePrivileges(
+        counter!.requestorId
+      );
+      this.webService.sendMessage(
+        "#general",
+        `:flesh: <@${counter!.requestorId}> lives in fear of <@${
+          counter!.counteredId
+        }> and is now muzzled and has lost muzzle privileges for one hour. :flesh:`
+      );
     }
   }
 
@@ -132,14 +138,13 @@ export class CounterPersistenceService {
   private setCounterState(
     requestorId: string,
     userId: string,
-    counterId: number,
-    removalFn: (id: number, isUsed: boolean, channel: string) => void
+    counterId: number
   ) {
     this.counters.set(counterId, {
       requestorId,
       counteredId: userId,
       removalFn: setTimeout(
-        () => removalFn(counterId, false, "#general"),
+        () => this.removeCounter(counterId, false, "#general"),
         COUNTER_TIME
       )
     });
