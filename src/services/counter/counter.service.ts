@@ -1,7 +1,7 @@
 import { ICounterMuzzle } from "../../shared/models/counter/counter-models";
 import { IEventRequest } from "../../shared/models/slack/slack-models";
 import { MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from "../muzzle/constants";
-import { isRandomEven } from "../muzzle/muzzle-utilities";
+import { getTimeString, isRandomEven } from "../muzzle/muzzle-utilities";
 import { MuzzlePersistenceService } from "../muzzle/muzzle.persistence.service";
 import { SlackService } from "../slack/slack.service";
 import { WebService } from "../web/web.service";
@@ -39,7 +39,9 @@ export class CounterService {
           .addCounter(requestorId, counteredId, false)
           .then(() => {
             resolve(
-              `Counter set for ${counterUserName} for the next ${COUNTER_TIME}ms`
+              `Counter set for ${counterUserName} for the next ${getTimeString(
+                COUNTER_TIME
+              )}`
             );
           })
           .catch(e => reject(e));
