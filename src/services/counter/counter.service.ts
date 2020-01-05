@@ -22,9 +22,8 @@ export class CounterService {
     requestorId: string
   ): Promise<string> {
     const counterUserName = this.slackService.getUserName(counteredId);
-    const requestorUserName = this.slackService.getUserName(requestorId);
     return new Promise(async (resolve, reject) => {
-      if (!counteredId || requestorId) {
+      if (!counteredId || !requestorId) {
         reject(
           `Invalid username passed in. You can only counter existing slack users.`
         );
@@ -40,7 +39,7 @@ export class CounterService {
           .addCounter(requestorId, counteredId, false)
           .then(() => {
             resolve(
-              `${requestorUserName} has countered ${counterUserName} from muzzling him for the next ${COUNTER_TIME}ms`
+              `You've successfully countered ${counterUserName} from muzzling you for the next ${COUNTER_TIME}ms`
             );
           })
           .catch(e => reject(e));
