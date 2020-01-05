@@ -172,9 +172,9 @@ export class CounterService {
       );
       this.webService.sendMessage(
         channel,
-        `:crossed_swords: $<@${
-          counter!.requestorId
-        }> successfully countered <@${counter!.counteredId}>! <@${
+        `:crossed_swords: <@${counter!.requestorId}> successfully countered <@${
+          counter!.counteredId
+        }>! <@${
           counter!.counteredId
         }> has lost muzzle privileges for one hour and is muzzled for the next 5 minutes! :crossed_swords:`
       );

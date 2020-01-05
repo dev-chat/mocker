@@ -24,18 +24,23 @@ export class CounterPersistenceService {
   public addCounter(
     requestorId: string,
     counteredUserId: string,
-    isSuccessful: boolean
+    removalFn: (id: number, isUsed: boolean, channel: string) => void
   ) {
     return new Promise(async (resolve, reject) => {
       const counter = new Counter();
       counter.requestorId = requestorId;
       counter.counteredId = counteredUserId;
-      counter.countered = isSuccessful;
+      counter.countered = false;
 
       await getRepository(Counter)
         .save(counter)
         .then(counterFromDb => {
-          this.setCounterState(requestorId, counteredUserId, counterFromDb.id);
+          this.setCounterState(
+            requestorId,
+            counteredUserId,
+            counterFromDb.id,
+            removalFn
+          );
           resolve();
         })
         .catch(e => reject(`Error on saving counter to DB: ${e}`));
@@ -127,13 +132,14 @@ export class CounterPersistenceService {
   private setCounterState(
     requestorId: string,
     userId: string,
-    counterId: number
+    counterId: number,
+    removalFn: (id: number, isUsed: boolean, channel: string) => void
   ) {
     this.counters.set(counterId, {
       requestorId,
       counteredId: userId,
       removalFn: setTimeout(
-        () => this.removeCounter(counterId, false),
+        () => removalFn(counterId, false, "#general"),
         COUNTER_TIME
       )
     });
