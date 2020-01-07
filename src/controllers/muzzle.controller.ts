@@ -30,7 +30,8 @@ const reportService = new ReportService();
 
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
-  const isNewUserAdded = request.type === "team_join";
+  const isNewUserAdded = request.event.type === "team_join";
+  console.log(request);
   console.time("respond-to-event");
   if (isNewUserAdded) {
     slackService.getAllUsers();
@@ -61,12 +62,15 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
         request.event.text,
         request.event.ts
       );
-    } else if (containsTag && !request.event.subtype) {
+    } else if (
+      containsTag &&
+      (!request.event.subtype || request.event.subtype === "channel_topic")
+    ) {
       const muzzleId = muzzlePersistenceService.getMuzzleId(request.event.user);
       console.log(
         `${slackService.getUserName(
           request.event.user
-        )} attempted to tag someone. Muzzle increased by ${ABUSE_PENALTY_TIME}!`
+        )} attempted to tag someone or change the channel topic. Muzzle increased by ${ABUSE_PENALTY_TIME}!`
       );
       muzzlePersistenceService.addMuzzleTime(
         request.event.user,
@@ -81,7 +85,7 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
         request.event.channel,
         `:rotating_light: <@${
           request.event.user
-        }> attempted to @ while muzzled! Muzzle increased by ${getTimeString(
+        }> attempted to @ while muzzled or change the channel topic! Muzzle increased by ${getTimeString(
           ABUSE_PENALTY_TIME
         )} :rotating_light:`
       );
