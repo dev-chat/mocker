@@ -31,7 +31,6 @@ const reportService = new ReportService();
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
   const isNewUserAdded = request.event.type === "team_join";
-  console.log(request);
   console.time("respond-to-event");
   if (isNewUserAdded) {
     slackService.getAllUsers();
@@ -50,6 +49,7 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const userName = slackService.getUserName(request.event.user);
 
   if (isUserMuzzled) {
+    console.log("isMuzzled");
     if (!containsTag) {
       console.log(
         `${userName} | ${
@@ -89,11 +89,6 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
           ABUSE_PENALTY_TIME
         )} :rotating_light:`
       );
-    } else if (muzzleService.shouldBotMessageBeMuzzled(request)) {
-      console.log(
-        `A user is muzzled and tried to send a bot message! Suppressing...`
-      );
-      webService.deleteMessage(request.event.channel, request.event.ts);
     }
   } else if (isUserBackfired) {
     if (!containsTag) {
@@ -126,11 +121,6 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
           ABUSE_PENALTY_TIME
         )} :rotating_light:`
       );
-    } else if (backfireService.shouldBotMessageBeMuzzled(request)) {
-      console.log(
-        `A user is muzzled and tried to send a bot message! Suppressing...`
-      );
-      webService.deleteMessage(request.event.channel, request.event.ts);
     }
   } else if (isUserCounterMuzzled) {
     if (!containsTag) {
@@ -165,12 +155,16 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
           ABUSE_PENALTY_TIME
         )} :rotating_light:`
       );
-    } else if (counterService.shouldBotMessageBeMuzzled(request)) {
-      console.log(
-        `A user is muzzled and tried to send a bot message! Suppressing...`
-      );
-      webService.deleteMessage(request.event.channel, request.event.ts);
     }
+  } else if (
+    muzzleService.shouldBotMessageBeMuzzled(request) ||
+    backfireService.shouldBotMessageBeMuzzled(request) ||
+    counterService.shouldBotMessageBeMuzzled(request)
+  ) {
+    console.log(
+      `A user is muzzled and tried to send a bot message! Suppressing...`
+    );
+    webService.deleteMessage(request.event.channel, request.event.ts);
   }
   console.timeEnd("respond-to-event");
   res.send({ challenge: request.challenge });
@@ -178,7 +172,6 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
 
 muzzleController.post("/muzzle", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
-  console.log(request);
   const userId: any = slackService.getUserId(request.text);
   const results = await muzzleService
     .addUserToMuzzled(userId, request.user_id, request.channel_name)
@@ -193,7 +186,6 @@ muzzleController.post("/muzzle", async (req: Request, res: Response) => {
 muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
   const userId: string = request.user_id;
-  console.log(request);
   if (muzzlePersistenceService.isUserMuzzled(userId)) {
     res.send(`Sorry! Can't do that while muzzled.`);
   } else if (request.text.split(" ").length > 1) {
