@@ -45,6 +45,8 @@ export interface IEvent {
   attachments: IEvent[];
   pretext: string;
   callback_id: string;
+  item_user: string;
+  reaction: string;
 }
 
 export interface IAttachment {
