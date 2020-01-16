@@ -1,36 +1,40 @@
+import { IEvent } from "../../shared/models/slack/slack-models";
 import { negativeReactions, positiveReactions } from "./constants";
 
 export class ReactionService {
-  public handleReaction(
-    reaction: string,
-    affectedUser: string,
-    user: string,
-    isAdded: boolean
-  ) {
-    if (user !== affectedUser) {
-      const isPositive = this.isReactionPositive(reaction);
-      const isNegative = this.isReactionNegative(reaction);
+  public handleReaction(event: IEvent, isAdded: boolean) {
+    if (event.user !== event.item_user) {
+      const isPositive = this.isReactionPositive(event.reaction);
+      const isNegative = this.isReactionNegative(event.reaction);
       if ((isAdded && isPositive) || (!isAdded && isNegative)) {
         // Log event to DB.
         // Add rep to affected user.
         console.log(
-          `Adding rep to ${affectedUser} for ${user}'s reaction: ${reaction}`
+          `Adding rep to ${event.item_user} for ${event.user}'s reaction: ${
+            event.reaction
+          }`
         );
       } else if ((isAdded && isNegative) || (!isAdded && isPositive)) {
         // Log event to DB.
         // Remove rep from affected_user.
         console.log(
-          `Removing rep from ${affectedUser} for ${user}'s reaction: ${reaction}`
+          `Removing rep from ${event.item_user} for ${event.user}'s reaction: ${
+            event.reaction
+          }`
         );
       } else {
         // Log event to DB.
         console.log(
-          `No rep changes for ${affectedUser} from ${user}. Reaction: ${reaction} was not positive or negative. `
+          `No rep changes for ${event.item_user} from ${
+            event.user
+          }. Reaction: ${event.reaction} was not positive or negative. `
         );
       }
     } else {
       console.log(
-        `${user} responded to ${affectedUser} message and no action was taken. This was a self-reaction.`
+        `${event.user} responded to ${
+          event.item_user
+        } message and no action was taken. This was a self-reaction.`
       );
     }
   }

@@ -158,9 +158,7 @@ function handleBotMessage(request: IEventRequest, res: Response) {
 
 function handleReaction(request: IEventRequest, res: Response) {
   reactionService.handleReaction(
-    request.event.reaction,
-    request.event.item_user,
-    request.event.user,
+    request.event,
     request.event.type === "reaction_added"
   );
   res.send(200);
@@ -174,10 +172,9 @@ function handleNewUserAdd(res: Response) {
 muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   const request: IEventRequest = req.body;
   const isNewUserAdded = request.event.type === "team_join";
-  const isMessage = request.event.type === "message";
   const isReaction =
     request.event.type === "reaction_added" ||
-    request.event.type === "reaction.removed";
+    request.event.type === "reaction_removed";
   const isMuzzled = muzzlePersistenceService.isUserMuzzled(request.event.user);
   const isUserBackfired = backfirePersistenceService.isBackfire(
     request.event.user
@@ -189,17 +186,17 @@ muzzleController.post("/muzzle/handle", (req: Request, res: Response) => {
   console.time("respond-to-event");
   if (isNewUserAdded) {
     handleNewUserAdd(res);
-  } else if (isMuzzled && isMessage) {
+  } else if (isMuzzled && !isReaction) {
     handleMuzzledMessage(request, res);
-  } else if (isUserBackfired && isMessage) {
+  } else if (isUserBackfired && !isReaction) {
     handleBackfire(request, res);
-  } else if (isUserCounterMuzzled && isMessage) {
+  } else if (isUserCounterMuzzled && !isReaction) {
     handleCounterMuzzle(request, res);
   } else if (
     (muzzleService.shouldBotMessageBeMuzzled(request) ||
       backfireService.shouldBotMessageBeMuzzled(request) ||
       counterService.shouldBotMessageBeMuzzled(request)) &&
-    isMessage
+    !isReaction
   ) {
     handleBotMessage(request, res);
   } else if (isReaction) {
