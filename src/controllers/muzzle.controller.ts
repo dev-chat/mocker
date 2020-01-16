@@ -160,6 +160,7 @@ function handleReaction(request: IEventRequest, res: Response) {
   reactionService.handleReaction(
     request.event.reaction,
     request.event.item_user,
+    request.event.user,
     request.event.type === "reaction_added"
   );
   res.send(200);
