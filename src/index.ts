@@ -6,6 +6,7 @@ import { clapController } from "./controllers/clap.controller";
 import { confessionController } from "./controllers/confession.controller";
 import { counterController } from "./controllers/counter.controller";
 import { defineController } from "./controllers/define.controller";
+import { eventController } from "./controllers/event.controller";
 import { listController } from "./controllers/list.controller";
 import { mockController } from "./controllers/mock.controller";
 import { muzzleController } from "./controllers/muzzle.controller";
@@ -24,6 +25,7 @@ app.use(defineController);
 app.use(clapController);
 app.use(confessionController);
 app.use(listController);
+app.use(eventController);
 
 const slackService = SlackService.getInstance();
 
