@@ -4,17 +4,17 @@
   "description": "Mock your friends",
   "main": "src/index.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "format:check": "prettier --check 'src/**/*.ts'",
     "format:fix": "prettier --write 'src/**/*.ts'",
     "lint": "tslint -c tslint.json 'src/**/*.ts'",
     "lint:fix": "tslint --fix -c tslint.json 'src/**/*.ts'",
     "create:feature": "ts-node ./dev-utils/generateFeature.ts",
     "start": "npm run start:dev",
-    "start:prod": "node ./dist/server.js",
+    "start:prod": "node dist/index.js",
     "start:dev": "nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.spec.ts' --exec 'ts-node' src/index.ts",
     "test": "jest --silent",
-    "test:watch": "jest --watch",
-    "tsc": "tsc"
+    "test:watch": "jest --watch"
   },
   "author": "",
   "license": "ISC",
