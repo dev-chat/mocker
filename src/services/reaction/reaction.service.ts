@@ -26,15 +26,14 @@ export class ReactionService {
     const isPositive = this.isReactionPositive(event.reaction);
     const isNegative = this.isReactionNegative(event.reaction);
     // Log event to DB.
-    this.reactionPersistenceService.saveReaction(
-      event,
-      isPositive ? 1 : isNegative ? -1 : 0
-    );
-    console.log(
-      `Adding rep to ${event.item_user} for ${event.user}'s reaction: ${
-        event.reaction
-      }`
-    );
+    if (isPositive || isNegative) {
+      console.log(
+        `Adding reaction to ${event.item_user} for ${event.user}'s reaction: ${
+          event.reaction
+        }, yielding him ${isPositive ? 1 : -1}`
+      );
+      this.reactionPersistenceService.saveReaction(event, isPositive ? 1 : -1);
+    }
   }
 
   private handleRemovedReaction(event: IEvent) {
