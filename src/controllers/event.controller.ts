@@ -24,7 +24,7 @@ const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const counterPersistenceService = CounterPersistenceService.getInstance();
 
-function handleMuzzledMessage(request: IEventRequest, res: Response) {
+function handleMuzzledMessage(request: IEventRequest) {
   const containsTag = slackService.containsTag(request.event.text);
   const userName = slackService.getUserName(request.event.user);
 
@@ -63,10 +63,9 @@ function handleMuzzledMessage(request: IEventRequest, res: Response) {
       )} :rotating_light:`
     );
   }
-  res.send(200);
 }
 
-function handleBackfire(request: IEventRequest, res: Response) {
+function handleBackfire(request: IEventRequest) {
   const containsTag = slackService.containsTag(request.event.text);
   const userName = slackService.getUserName(request.event.user);
   if (!containsTag) {
@@ -100,10 +99,9 @@ function handleBackfire(request: IEventRequest, res: Response) {
       )} :rotating_light:`
     );
   }
-  res.send(200);
 }
 
-function handleCounterMuzzle(request: IEventRequest, res: Response) {
+function handleCounterMuzzle(request: IEventRequest) {
   const containsTag = slackService.containsTag(request.event.text);
   const userName = slackService.getUserName(request.event.user);
   if (!containsTag) {
@@ -139,28 +137,24 @@ function handleCounterMuzzle(request: IEventRequest, res: Response) {
       )} :rotating_light:`
     );
   }
-  res.send(200);
 }
 
-function handleBotMessage(request: IEventRequest, res: Response) {
+function handleBotMessage(request: IEventRequest) {
   console.log(
     `A user is muzzled and tried to send a bot message! Suppressing...`
   );
   webService.deleteMessage(request.event.channel, request.event.ts);
-  res.send(200);
 }
 
-function handleReaction(request: IEventRequest, res: Response) {
+function handleReaction(request: IEventRequest) {
   reactionService.handleReaction(
     request.event,
     request.event.type === "reaction_added"
   );
-  res.send(200);
 }
 
-function handleNewUserAdd(res: Response) {
+function handleNewUserAdd() {
   slackService.getAllUsers();
-  res.send(200);
 }
 // Change route to /event/handle instead.
 eventController.post("/muzzle/handle", (req: Request, res: Response) => {
@@ -179,22 +173,22 @@ eventController.post("/muzzle/handle", (req: Request, res: Response) => {
 
   console.time("respond-to-event");
   if (isNewUserAdded) {
-    handleNewUserAdd(res);
+    handleNewUserAdd();
   } else if (isMuzzled && !isReaction) {
-    handleMuzzledMessage(request, res);
+    handleMuzzledMessage(request);
   } else if (isUserBackfired && !isReaction) {
-    handleBackfire(request, res);
+    handleBackfire(request);
   } else if (isUserCounterMuzzled && !isReaction) {
-    handleCounterMuzzle(request, res);
+    handleCounterMuzzle(request);
   } else if (
     (muzzleService.shouldBotMessageBeMuzzled(request) ||
       backfireService.shouldBotMessageBeMuzzled(request) ||
       counterService.shouldBotMessageBeMuzzled(request)) &&
     !isReaction
   ) {
-    handleBotMessage(request, res);
+    handleBotMessage(request);
   } else if (isReaction) {
-    handleReaction(request, res);
+    handleReaction(request);
   }
   console.timeEnd("respond-to-event");
   res.send({ challenge: request.challenge });
