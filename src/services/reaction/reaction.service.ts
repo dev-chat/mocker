@@ -38,13 +38,8 @@ export class ReactionService {
   }
 
   private handleRemovedReaction(event: IEvent) {
-    const isPositive = this.isReactionPositive(event.reaction);
-    const isNegative = this.isReactionNegative(event.reaction);
     // Log event to DB.
-    this.reactionPersistenceService.saveReaction(
-      event,
-      isPositive ? -1 : isNegative ? 1 : 0
-    );
+    this.reactionPersistenceService.removeReaction(event);
     console.log(
       `Removing rep from ${event.item_user} for ${event.user}'s reaction: ${
         event.reaction
