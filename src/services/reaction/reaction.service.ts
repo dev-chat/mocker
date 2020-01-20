@@ -7,7 +7,7 @@ export class ReactionService {
 
   public handleReaction(event: IEvent, isAdded: boolean) {
     console.log(event);
-    if (event.user !== event.item_user) {
+    if (event.user && event.item_user && event.user !== event.item_user) {
       if (isAdded) {
         this.handleAddedReaction(event);
       } else if (!isAdded) {
