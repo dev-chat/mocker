@@ -30,7 +30,13 @@ export class ReactionPersistenceService {
     });
   }
 
-  public removeReaction(event: IEvent, value: number) {
-    // Need more info on what a reaction_removed event looks like.
+  public async removeReaction(event: IEvent) {
+    await getRepository(Reaction)
+      .delete({
+        reaction: event.reaction,
+        affectedUser: event.item_user,
+        reactingUser: event.user
+      })
+      .catch(e => e);
   }
 }

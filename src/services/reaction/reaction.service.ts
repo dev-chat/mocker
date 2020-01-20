@@ -1,34 +1,16 @@
 import { IEvent } from "../../shared/models/slack/slack-models";
 import { negativeReactions, positiveReactions } from "./constants";
+import { ReactionPersistenceService } from "./reaction.persistence.service";
 
 export class ReactionService {
+  private reactionPersistenceService = ReactionPersistenceService.getInstance();
+
   public handleReaction(event: IEvent, isAdded: boolean) {
     if (event.user !== event.item_user) {
-      const isPositive = this.isReactionPositive(event.reaction);
-      const isNegative = this.isReactionNegative(event.reaction);
-      if ((isAdded && isPositive) || (!isAdded && isNegative)) {
-        // Log event to DB.
-        // Add rep to affected user.
-        console.log(
-          `Adding rep to ${event.item_user} for ${event.user}'s reaction: ${
-            event.reaction
-          }`
-        );
-      } else if ((isAdded && isNegative) || (!isAdded && isPositive)) {
-        // Log event to DB.
-        // Remove rep from affected_user.
-        console.log(
-          `Removing rep from ${event.item_user} for ${event.user}'s reaction: ${
-            event.reaction
-          }`
-        );
-      } else {
-        // Log event to DB.
-        console.log(
-          `No rep changes for ${event.item_user} from ${
-            event.user
-          }. Reaction: ${event.reaction} was not positive or negative. `
-        );
+      if (isAdded) {
+        this.handleAddedReaction(event);
+      } else if (!isAdded) {
+        this.handleRemovedReaction(event);
       }
     } else {
       console.log(
@@ -37,6 +19,36 @@ export class ReactionService {
         } message and no action was taken. This was a self-reaction.`
       );
     }
+  }
+
+  private handleAddedReaction(event: IEvent) {
+    const isPositive = this.isReactionPositive(event.reaction);
+    const isNegative = this.isReactionNegative(event.reaction);
+    // Log event to DB.
+    this.reactionPersistenceService.saveReaction(
+      event,
+      isPositive ? 1 : isNegative ? -1 : 0
+    );
+    console.log(
+      `Adding rep to ${event.item_user} for ${event.user}'s reaction: ${
+        event.reaction
+      }`
+    );
+  }
+
+  private handleRemovedReaction(event: IEvent) {
+    const isPositive = this.isReactionPositive(event.reaction);
+    const isNegative = this.isReactionNegative(event.reaction);
+    // Log event to DB.
+    this.reactionPersistenceService.saveReaction(
+      event,
+      isPositive ? -1 : isNegative ? 1 : 0
+    );
+    console.log(
+      `Removing rep from ${event.item_user} for ${event.user}'s reaction: ${
+        event.reaction
+      }`
+    );
   }
 
   private isReactionPositive(reaction: string) {
