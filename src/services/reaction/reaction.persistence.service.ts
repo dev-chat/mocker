@@ -21,7 +21,7 @@ export class ReactionPersistenceService {
       reaction.reactingUser = event.user;
       reaction.reaction = event.reaction;
       reaction.value = value;
-      // reaction.type = event.item.type;
+      reaction.type = event.item.type;
 
       await getRepository(Reaction)
         .save(reaction)
@@ -35,7 +35,8 @@ export class ReactionPersistenceService {
       .delete({
         reaction: event.reaction,
         affectedUser: event.item_user,
-        reactingUser: event.user
+        reactingUser: event.user,
+        type: event.item.type
       })
       .catch(e => e);
   }

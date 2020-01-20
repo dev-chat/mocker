@@ -47,6 +47,7 @@ export interface IEvent {
   callback_id: string;
   item_user: string;
   reaction: string;
+  item: any; // Needs work, not optional either.
 }
 
 export interface IAttachment {
