@@ -37,13 +37,17 @@ export class ReactionService {
   }
 
   private handleRemovedReaction(event: IEvent) {
-    // Log event to DB.
-    this.reactionPersistenceService.removeReaction(event);
-    console.log(
-      `Removing rep from ${event.item_user} for ${event.user}'s reaction: ${
-        event.reaction
-      }`
-    );
+    const isPositive = this.isReactionPositive(event.reaction);
+    const isNegative = this.isReactionNegative(event.reaction);
+    if (isPositive || isNegative) {
+      // Log event to DB.
+      this.reactionPersistenceService.removeReaction(event);
+      console.log(
+        `Removing rep from ${event.item_user} for ${event.user}'s reaction: ${
+          event.reaction
+        }`
+      );
+    }
   }
 
   private isReactionPositive(reaction: string) {
