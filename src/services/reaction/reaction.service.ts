@@ -1,5 +1,5 @@
 import { IEvent } from "../../shared/models/slack/slack-models";
-import { negativeReactions, positiveReactions } from "./constants";
+import { reactionValues } from "./constants";
 import { ReactionPersistenceService } from "./reaction.persistence.service";
 
 export class ReactionService {
@@ -22,24 +22,26 @@ export class ReactionService {
     }
   }
 
+  private shouldReactionBeLogged(reactionValue: number | undefined) {
+    return reactionValue === 1 || reactionValue === -1;
+  }
+
   private handleAddedReaction(event: IEvent) {
-    const isPositive = this.isReactionPositive(event.reaction);
-    const isNegative = this.isReactionNegative(event.reaction);
+    const reactionValue = reactionValues[event.reaction];
     // Log event to DB.
-    if (isPositive || isNegative) {
+    if (this.shouldReactionBeLogged(reactionValue)) {
       console.log(
         `Adding reaction to ${event.item_user} for ${event.user}'s reaction: ${
           event.reaction
-        }, yielding him ${isPositive ? 1 : -1}`
+        }, yielding him ${reactionValue}`
       );
-      this.reactionPersistenceService.saveReaction(event, isPositive ? 1 : -1);
+      this.reactionPersistenceService.saveReaction(event, reactionValue);
     }
   }
 
   private handleRemovedReaction(event: IEvent) {
-    const isPositive = this.isReactionPositive(event.reaction);
-    const isNegative = this.isReactionNegative(event.reaction);
-    if (isPositive || isNegative) {
+    const reactionValue = reactionValues[event.reaction];
+    if (this.shouldReactionBeLogged(reactionValue)) {
       // Log event to DB.
       this.reactionPersistenceService.removeReaction(event);
       console.log(
@@ -48,13 +50,5 @@ export class ReactionService {
         }`
       );
     }
-  }
-
-  private isReactionPositive(reaction: string) {
-    return positiveReactions.includes(reaction);
-  }
-
-  private isReactionNegative(reaction: string) {
-    return negativeReactions.includes(reaction);
   }
 }
