@@ -17,7 +17,7 @@ export class ReactionService {
       console.log(
         `${event.user} responded to ${
           event.item_user
-        } message and no action was taken. This was a self-reaction.`
+        } message and no action was taken. This was a self-reaction or a reaction to a bot message.`
       );
     }
   }
