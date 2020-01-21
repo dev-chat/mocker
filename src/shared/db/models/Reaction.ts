@@ -20,7 +20,7 @@ export class Reaction {
   @Column()
   public type!: string;
 
-  @Column()
+  @Column({ default: "NOT_AVAILABLE" })
   public channel!: string;
 
   @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
