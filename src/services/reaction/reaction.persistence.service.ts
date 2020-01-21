@@ -22,7 +22,7 @@ export class ReactionPersistenceService {
       reaction.reaction = event.reaction;
       reaction.value = value;
       reaction.type = event.item.type;
-      reaction.channel = event.channel;
+      reaction.channel = event.item.channel;
 
       await getRepository(Reaction)
         .save(reaction)
@@ -38,7 +38,7 @@ export class ReactionPersistenceService {
         affectedUser: event.item_user,
         reactingUser: event.user,
         type: event.item.type,
-        channel: event.channel
+        channel: event.item.channel
       })
       .catch(e => e);
   }
