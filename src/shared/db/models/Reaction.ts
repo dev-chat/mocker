@@ -20,6 +20,9 @@ export class Reaction {
   @Column()
   public type!: string;
 
+  @Column()
+  public channel!: string;
+
   @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   public createdAt!: Date;
 }
