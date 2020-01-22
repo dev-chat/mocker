@@ -52,6 +52,7 @@ export class ReactionPersistenceService {
         type: event.item.type,
         channel: event.item.channel
       })
+      .then(() => this.decrementRep(event.item_user))
       .catch(e => e);
   }
 
@@ -94,7 +95,7 @@ export class ReactionPersistenceService {
       if (isUserExisting) {
         // If it exists, decrement rep by one.
         return getRepository(Rep)
-          .increment({ user: affectedUser }, "rep", -1)
+          .decrement({ user: affectedUser }, "rep", -1)
           .then(() => resolve())
           .catch(e => reject(e));
       } else {
