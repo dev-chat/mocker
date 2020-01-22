@@ -1,5 +1,6 @@
 import { getRepository } from "typeorm";
 import { Reaction } from "../../shared/db/models/Reaction";
+import { Rep } from "../../shared/db/models/Rep";
 import { IEvent } from "../../shared/models/slack/slack-models";
 
 export class ReactionPersistenceService {
@@ -24,10 +25,21 @@ export class ReactionPersistenceService {
       reaction.type = event.item.type;
       reaction.channel = event.item.channel;
 
+      // Kind ugly dawg, wtf.
       await getRepository(Reaction)
         .save(reaction)
-        .then(() => resolve())
-        .catch(e => reject(e));
+        .then(async () => {
+          if (value === 1) {
+            await this.incrementRep(event.item_user)
+              .then(() => resolve())
+              .catch(e => reject(e));
+          } else {
+            await this.decrementRep(event.item_user)
+              .then(() => resolve())
+              .catch(e => reject(e));
+          }
+        })
+        .catch(e => console.error(e));
     });
   }
 
@@ -41,5 +53,60 @@ export class ReactionPersistenceService {
         channel: event.item.channel
       })
       .catch(e => e);
+  }
+
+  private async isRepUserPresent(affectedUser: string) {
+    return getRepository(Rep)
+      .findOne({ user: affectedUser })
+      .then(user => !!user)
+      .catch(e => console.error(e));
+  }
+
+  private incrementRep(affectedUser: string) {
+    return new Promise(async (resolve, reject) => {
+      // Check for affectedUser
+      const isUserExisting = await this.isRepUserPresent(affectedUser);
+
+      if (isUserExisting) {
+        // If it exists, increment rep by one.
+        return getRepository(Rep)
+          .increment({ user: affectedUser }, "rep", 1)
+          .then(() => resolve())
+          .catch(e => reject(e));
+      } else {
+        // If it does not exist, create a new user with a rep of 1.
+        const newRepUser = new Rep();
+        newRepUser.user = affectedUser;
+        newRepUser.rep = 1;
+        return getRepository(Rep)
+          .save(newRepUser)
+          .then(() => resolve())
+          .catch(e => reject(e));
+      }
+    });
+  }
+
+  private decrementRep(affectedUser: string) {
+    return new Promise(async (resolve, reject) => {
+      // Check for affectedUser
+      const isUserExisting = await this.isRepUserPresent(affectedUser);
+
+      if (isUserExisting) {
+        // If it exists, decrement rep by one.
+        return getRepository(Rep)
+          .increment({ user: affectedUser }, "rep", -1)
+          .then(() => resolve())
+          .catch(e => reject(e));
+      } else {
+        // If it does not exist, create a new user with a rep of -1.
+        const newRepUser = new Rep();
+        newRepUser.user = affectedUser;
+        newRepUser.rep = -1;
+        return getRepository(Rep)
+          .save(newRepUser)
+          .then(() => resolve())
+          .catch(e => reject(e));
+      }
+    });
   }
 }
