@@ -43,7 +43,7 @@ export class ReactionPersistenceService {
     });
   }
 
-  public async removeReaction(event: IEvent) {
+  public async removeReaction(event: IEvent, value: number) {
     await getRepository(Reaction)
       .delete({
         reaction: event.reaction,
@@ -52,7 +52,11 @@ export class ReactionPersistenceService {
         type: event.item.type,
         channel: event.item.channel
       })
-      .then(() => this.decrementRep(event.item_user))
+      .then(() => {
+        value === 1
+          ? this.decrementRep(event.item_user)
+          : this.incrementRep(event.item_user);
+      })
       .catch(e => e);
   }
 

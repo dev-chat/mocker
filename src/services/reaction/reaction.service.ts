@@ -43,7 +43,7 @@ export class ReactionService {
     const reactionValue = reactionValues[event.reaction];
     if (this.shouldReactionBeLogged(reactionValue)) {
       // Log event to DB.
-      this.reactionPersistenceService.removeReaction(event);
+      this.reactionPersistenceService.removeReaction(event, reactionValue);
       console.log(
         `Removing rep from ${event.item_user} for ${event.user}'s reaction: ${
           event.reaction
