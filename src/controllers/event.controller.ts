@@ -80,7 +80,10 @@ function handleBackfire(request: IEventRequest) {
       request.event.text,
       request.event.ts
     );
-  } else if (containsTag && !request.event.subtype) {
+  } else if (
+    containsTag &&
+    (!request.event.subtype || request.event.subtype === "channel_topic")
+  ) {
     const backfireId = backfireService.getBackfire(request.event.user)!.id;
     console.log(
       `${slackService.getUserName(
@@ -116,7 +119,10 @@ function handleCounterMuzzle(request: IEventRequest) {
       request.event.text,
       request.event.ts
     );
-  } else if (containsTag && !request.event.subtype) {
+  } else if (
+    containsTag &&
+    (!request.event.subtype || request.event.subtype === "channel_topic")
+  ) {
     console.log(
       `${slackService.getUserName(
         request.event.user
