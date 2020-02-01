@@ -5,14 +5,14 @@ import { MuzzlePersistenceService } from "../services/muzzle/muzzle.persistence.
 import { ReactionService } from "../services/reaction/reaction.service";
 import { ISlashCommandRequest } from "../shared/models/slack/slack-models";
 
-export const repController: Router = express.Router();
+export const reactionController: Router = express.Router();
 
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const counterPersistenceService = CounterPersistenceService.getInstance();
 const reactionService = new ReactionService();
 
-repController.post("/rep/get", async (req, res) => {
+reactionController.post("/rep/get", async (req, res) => {
   const request: ISlashCommandRequest = req.body;
   if (
     muzzlePersistenceService.isUserMuzzled(request.user_id) ||
