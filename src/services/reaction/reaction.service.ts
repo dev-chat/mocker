@@ -10,7 +10,13 @@ export class ReactionService {
       .getRep(userId)
       .then(value => {
         if (value) {
-          return `Your rep is currently ${value!.rep}.`;
+          const emoji =
+            value!.rep > 0
+              ? ":chart_with_upwards_trend:"
+              : value!.rep < 0
+              ? ":chart_with_downwards_trend:"
+              : ":zer0:";
+          return `${emoji} You currently have *${value!.rep}* rep. ${emoji}`;
         } else {
           return `You do not currently have any rep.`;
         }
