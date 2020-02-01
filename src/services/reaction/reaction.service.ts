@@ -5,6 +5,19 @@ import { ReactionPersistenceService } from "./reaction.persistence.service";
 export class ReactionService {
   private reactionPersistenceService = ReactionPersistenceService.getInstance();
 
+  public async getRep(userId: string) {
+    return this.reactionPersistenceService
+      .getRep(userId)
+      .then(value => {
+        if (value) {
+          return `Your rep is currently ${value!.rep}.`;
+        } else {
+          return `You do not currently have any rep.`;
+        }
+      })
+      .catch(() => `Unable to retrieve your rep due to an error!`);
+  }
+
   public handleReaction(event: IEvent, isAdded: boolean) {
     console.log(event);
     if (event.user && event.item_user && event.user !== event.item_user) {

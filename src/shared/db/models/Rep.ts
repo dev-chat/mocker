@@ -10,4 +10,7 @@ export class Rep {
 
   @Column()
   public rep!: number;
+
+  @Column({ default: () => 0 })
+  public timesChecked!: number;
 }
