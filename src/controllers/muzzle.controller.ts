@@ -1,4 +1,6 @@
 import express, { Request, Response, Router } from "express";
+import { BackFirePersistenceService } from "../services/backfire/backfire.persistence.service";
+import { CounterPersistenceService } from "../services/counter/counter.persistence.service";
 import { MuzzlePersistenceService } from "../services/muzzle/muzzle.persistence.service";
 import { MuzzleService } from "../services/muzzle/muzzle.service";
 import { ReportService } from "../services/report/report.service";
@@ -13,6 +15,8 @@ const muzzleService = new MuzzleService();
 const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
+const backfirePersistenceService = BackFirePersistenceService.getInstance();
+const counterPersistenceService = CounterPersistenceService.getInstance();
 const reportService = new ReportService();
 
 muzzleController.post("/muzzle", async (req: Request, res: Response) => {
@@ -31,7 +35,11 @@ muzzleController.post("/muzzle", async (req: Request, res: Response) => {
 muzzleController.post("/muzzle/stats", async (req: Request, res: Response) => {
   const request: ISlashCommandRequest = req.body;
   const userId: string = request.user_id;
-  if (muzzlePersistenceService.isUserMuzzled(userId)) {
+  if (
+    muzzlePersistenceService.isUserMuzzled(userId) ||
+    backfirePersistenceService.isBackfire(request.user_id) ||
+    counterPersistenceService.isCounterMuzzled(request.user_id)
+  ) {
     res.send(`Sorry! Can't do that while muzzled.`);
   } else if (request.text.split(" ").length > 1) {
     res.send(
