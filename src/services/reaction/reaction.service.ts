@@ -1,4 +1,4 @@
-import { ReactionByUser } from "../../shared/models/reaction/ReactionByUser.model";
+import { IReactionByUser } from "../../shared/models/reaction/ReactionByUser.model";
 import { IEvent } from "../../shared/models/slack/slack-models";
 import { SlackService } from "../slack/slack.service";
 import { reactionValues } from "./constants";
@@ -30,7 +30,7 @@ export class ReactionService {
   public getRepByUser(userId: string) {
     return this.reactionPersistenceService
       .getRepByUser(userId)
-      .then((perUserRep: ReactionByUser[] | undefined) =>
+      .then((perUserRep: IReactionByUser[] | undefined) =>
         this.formatRepByUser(perUserRep)
       )
       .catch(e => console.error(e));
@@ -53,7 +53,7 @@ export class ReactionService {
     }
   }
 
-  private formatRepByUser(perUserRep: ReactionByUser[] | undefined) {
+  private formatRepByUser(perUserRep: IReactionByUser[] | undefined) {
     if (!perUserRep) {
       return "You do not have any existing relationships.";
     } else {
