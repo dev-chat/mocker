@@ -28,7 +28,7 @@ export class ReactionService {
       )
       .catch(e => console.error(e));
 
-    return `${totalRep}\n\n${repByUser}`;
+    return `${repByUser}\n\n${totalRep}`;
   }
 
   public handleReaction(event: IEvent, isAdded: boolean) {
