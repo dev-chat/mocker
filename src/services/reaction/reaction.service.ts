@@ -1,11 +1,14 @@
+import { ReactionByUser } from "../../shared/models/reaction/ReactionByUser.model";
 import { IEvent } from "../../shared/models/slack/slack-models";
+import { SlackService } from "../slack/slack.service";
 import { reactionValues } from "./constants";
 import { ReactionPersistenceService } from "./reaction.persistence.service";
 
 export class ReactionService {
   private reactionPersistenceService = ReactionPersistenceService.getInstance();
+  private slackService = SlackService.getInstance();
 
-  public async getRep(userId: string) {
+  public getRep(userId: string) {
     return this.reactionPersistenceService
       .getRep(userId)
       .then(value => {
@@ -24,6 +27,15 @@ export class ReactionService {
       .catch(() => `Unable to retrieve your rep due to an error!`);
   }
 
+  public getRepByUser(userId: string) {
+    return this.reactionPersistenceService
+      .getRepByUser(userId)
+      .then((perUserRep: ReactionByUser[] | undefined) =>
+        this.formatRepByUser(perUserRep)
+      )
+      .catch(e => console.error(e));
+  }
+
   public handleReaction(event: IEvent, isAdded: boolean) {
     console.log(event);
     if (event.user && event.item_user && event.user !== event.item_user) {
@@ -38,6 +50,55 @@ export class ReactionService {
           event.item_user
         } message and no action was taken. This was a self-reaction or a reaction to a bot message.`
       );
+    }
+  }
+
+  private formatRepByUser(perUserRep: ReactionByUser[] | undefined) {
+    if (!perUserRep) {
+      return "You do not have any existing relationships.";
+    } else {
+      return perUserRep.map(userRep => {
+        return {
+          reactingUser: this.slackService.getUserName(userRep.reactingUser),
+          rep: `${this.getSentiment(userRep.rep)} (${userRep.rep})`
+        };
+      });
+    }
+  }
+
+  private getSentiment(rep: number) {
+    if (rep >= 1000) {
+      return "Worshipped";
+    } else if (rep >= 900 && rep < 1000) {
+      return "Enamored";
+    } else if (rep >= 800 && rep < 900) {
+      return "Adored";
+    } else if (rep >= 700 && rep < 800) {
+      return "Loved";
+    } else if (rep >= 600 && rep < 700) {
+      return "Endeared";
+    } else if (rep >= 500 && rep < 600) {
+      return "Admired";
+    } else if (rep >= 400 && rep < 500) {
+      return "Esteemed";
+    } else if (rep >= 300 && rep < 400) {
+      return "Well Liked";
+    } else if (rep >= 200 && rep < 300) {
+      return "Liked";
+    } else if (rep >= 100 && rep < 200) {
+      return "Respected";
+    } else if (rep >= -300 && rep < 100) {
+      return "Neutral";
+    } else if (rep >= -500 && rep < -300) {
+      return "Unfriendly";
+    } else if (rep >= -700 && rep < -500) {
+      return "Disliked";
+    } else if (rep >= -1000 && rep < -700) {
+      return "Scorned";
+    } else if (rep >= -1000) {
+      return "Hated";
+    } else {
+      return "Neutral";
     }
   }
 

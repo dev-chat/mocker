@@ -1,6 +1,7 @@
 import { getRepository } from "typeorm";
 import { Reaction } from "../../shared/db/models/Reaction";
 import { Rep } from "../../shared/db/models/Rep";
+import { IReactionByUser } from "../../shared/models/reaction/ReactionByUser.model";
 import { IEvent } from "../../shared/models/slack/slack-models";
 
 export class ReactionPersistenceService {
@@ -27,6 +28,18 @@ export class ReactionPersistenceService {
             );
           resolve(value);
         })
+        .catch(e => reject(e));
+    });
+  }
+
+  public getRepByUser(userId: string): Promise<IReactionByUser[] | undefined> {
+    return new Promise(async (resolve, reject) => {
+      await getRepository(Reaction)
+        .query(
+          `SELECT reactingUser, SUM(value) as rep FROM reaction WHERE affectedUser=? GROUP BY reactingUser ORDER BY rep DESC;`,
+          [userId]
+        )
+        .then(value => resolve(value))
         .catch(e => reject(e));
     });
   }
