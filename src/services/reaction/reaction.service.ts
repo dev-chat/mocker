@@ -14,7 +14,7 @@ export class ReactionService {
       .getRep(userId)
       .then(value => {
         if (value) {
-          return `*You currently have _${value!.rep}_ rep.*`;
+          return `\n*You currently have _${value!.rep}_ rep.*`;
         } else {
           return `You do not currently have any rep.`;
         }
@@ -28,7 +28,7 @@ export class ReactionService {
       )
       .catch(e => console.error(e));
 
-    return `${totalRep} \n \n${repByUser}`;
+    return `${totalRep}\n\n${repByUser}`;
   }
 
   public handleReaction(event: IEvent, isAdded: boolean) {
