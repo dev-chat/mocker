@@ -25,17 +25,3 @@ reactionController.post("/rep/get", async (req, res) => {
     res.send(repValue);
   }
 });
-
-reactionController.post("/rep/get/byUser", async (req, res) => {
-  const request: ISlashCommandRequest = req.body;
-  if (
-    muzzlePersistenceService.isUserMuzzled(request.user_id) ||
-    backfirePersistenceService.isBackfire(request.user_id) ||
-    counterPersistenceService.isCounterMuzzled(request.user_id)
-  ) {
-    res.send(`Sorry, can't do that while muzzled.`);
-  } else {
-    const repValue = await reactionService.getRepByUser(request.user_id);
-    res.send(repValue);
-  }
-});

@@ -1,3 +1,4 @@
+import Table from "easy-table";
 import { IReactionByUser } from "../../shared/models/reaction/ReactionByUser.model";
 import { IEvent } from "../../shared/models/slack/slack-models";
 import { SlackService } from "../slack/slack.service";
@@ -8,32 +9,26 @@ export class ReactionService {
   private reactionPersistenceService = ReactionPersistenceService.getInstance();
   private slackService = SlackService.getInstance();
 
-  public getRep(userId: string) {
-    return this.reactionPersistenceService
+  public async getRep(userId: string) {
+    const totalRep = await this.reactionPersistenceService
       .getRep(userId)
       .then(value => {
         if (value) {
-          const emoji =
-            value!.rep > 0
-              ? ":chart_with_upwards_trend:"
-              : value!.rep < 0
-              ? ":chart_with_downwards_trend:"
-              : ":zer0:";
-          return `${emoji} You currently have *${value!.rep}* rep. ${emoji}`;
+          return `*You currently have _${value!.rep}_ rep.*`;
         } else {
           return `You do not currently have any rep.`;
         }
       })
       .catch(() => `Unable to retrieve your rep due to an error!`);
-  }
 
-  public getRepByUser(userId: string) {
-    return this.reactionPersistenceService
+    const repByUser = await this.reactionPersistenceService
       .getRepByUser(userId)
       .then((perUserRep: IReactionByUser[] | undefined) =>
         this.formatRepByUser(perUserRep)
       )
       .catch(e => console.error(e));
+
+    return `${totalRep} \n \n${repByUser}`;
   }
 
   public handleReaction(event: IEvent, isAdded: boolean) {
@@ -57,12 +52,13 @@ export class ReactionService {
     if (!perUserRep) {
       return "You do not have any existing relationships.";
     } else {
-      return perUserRep.map(userRep => {
+      const formattedData = perUserRep.map(userRep => {
         return {
-          reactingUser: this.slackService.getUserName(userRep.reactingUser),
+          user: this.slackService.getUserName(userRep.reactingUser),
           rep: `${this.getSentiment(userRep.rep)} (${userRep.rep})`
         };
       });
+      return `${Table.print(formattedData)}`;
     }
   }
 
@@ -122,7 +118,6 @@ export class ReactionService {
   private handleRemovedReaction(event: IEvent) {
     const reactionValue = reactionValues[event.reaction];
     if (this.shouldReactionBeLogged(reactionValue)) {
-      // Log event to DB.
       this.reactionPersistenceService.removeReaction(event, reactionValue);
       console.log(
         `Removing rep from ${event.item_user} for ${event.user}'s reaction: ${
