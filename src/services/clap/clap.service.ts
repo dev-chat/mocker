@@ -6,7 +6,8 @@ export class ClapService {
     let output = "";
     const words = text.split(" ");
     for (let i = 0; i < words.length; i++) {
-      output += i !== words.length - 1 ? `${words[i]} :clap: ` : words[i];
+      output +=
+        i !== words.length - 1 ? `${words[i]} :clap: ` : `${words[i]} :clap:`;
     }
     return output;
   }

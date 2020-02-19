@@ -10,7 +10,7 @@ describe("ClapService", () => {
   describe("clap()", () => {
     it("should clap a users input with multiple words", () => {
       expect(clapService.clap("test this out")).toBe(
-        "test :clap: this :clap: out"
+        "test :clap: this :clap: out :clap:"
       );
     });
 
