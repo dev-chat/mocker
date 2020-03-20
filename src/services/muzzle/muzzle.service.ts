@@ -211,7 +211,7 @@ export class MuzzleService {
         });
         this.webService.sendMessage(
           channel,
-          `<@${userId}> says "${this.muzzle(text, muzzle!.id)}"`,
+          this.muzzle(text, muzzle!.id),
           token
         );
       } else {
