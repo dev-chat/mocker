@@ -192,7 +192,8 @@ export class MuzzleService {
     channel: string,
     userId: string,
     text: string,
-    timestamp: string
+    timestamp: string,
+    token: string
   ) {
     console.time("send-muzzled-message");
     const muzzle:
@@ -210,7 +211,8 @@ export class MuzzleService {
         });
         this.webService.sendMessage(
           channel,
-          `<@${userId}> says "${this.muzzle(text, muzzle!.id)}"`
+          `<@${userId}> says "${this.muzzle(text, muzzle!.id)}"`,
+          token
         );
       } else {
         this.muzzlePersistenceService.trackDeletedMessage(muzzle!.id, text);

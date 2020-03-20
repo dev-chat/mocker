@@ -43,12 +43,13 @@ export class WebService {
   /**
    * Handles sending messages to the chat.
    */
-  public sendMessage(channel: string, text: string) {
+  public sendMessage(channel: string, text: string, token: string) {
     const muzzleToken: any = process.env.muzzleBotToken;
     const postRequest: ChatPostMessageArguments = {
-      token: muzzleToken,
+      token: token ? token : muzzleToken,
       channel,
-      text
+      text,
+      as_user: token ? true : false
     };
     this.web.chat.postMessage(postRequest).catch(e => console.error(e));
   }

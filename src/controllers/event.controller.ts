@@ -36,7 +36,8 @@ function handleMuzzledMessage(request: IEventRequest) {
       request.event.channel,
       request.event.user,
       request.event.text,
-      request.event.ts
+      request.event.ts,
+      request.token
     );
   } else if (
     containsTag &&
