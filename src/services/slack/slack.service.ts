@@ -99,7 +99,6 @@ export class SlackService {
       .getAllUsers()
       .then(resp => {
         console.log("New user list has been retrieved!");
-        console.log(resp.members);
         return resp.members as ISlackUser[];
       })
       .catch(e => {

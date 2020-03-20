@@ -27,7 +27,7 @@ const counterPersistenceService = CounterPersistenceService.getInstance();
 function handleMuzzledMessage(request: IEventRequest) {
   const containsTag = slackService.containsTag(request.event.text);
   const userName = slackService.getUserName(request.event.user);
-  console.log(request);
+
   if (!containsTag) {
     console.log(
       `${userName} | ${request.event.user} is muzzled! Suppressing his voice...`
@@ -36,8 +36,7 @@ function handleMuzzledMessage(request: IEventRequest) {
       request.event.channel,
       request.event.user,
       request.event.text,
-      request.event.ts,
-      request.token
+      request.event.ts
     );
   } else if (
     containsTag &&
