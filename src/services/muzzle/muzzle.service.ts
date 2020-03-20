@@ -208,7 +208,10 @@ export class MuzzleService {
           isCounter: muzzle!.isCounter,
           removalFn: muzzle!.removalFn
         });
-        this.webService.sendMessage(channel, this.muzzle(text, muzzle!.id));
+        this.webService.sendMessage(
+          channel,
+          `<@${userId}> says "${this.muzzle(text, muzzle!.id)}"`
+        );
       } else {
         this.muzzlePersistenceService.trackDeletedMessage(muzzle!.id, text);
       }
