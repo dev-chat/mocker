@@ -30,13 +30,8 @@ walkieController.post("/walkie", (req, res) => {
   } else {
     const walkied: string = walkieService.walkieTalkie(request.text);
     const response: IChannelResponse = {
-      attachments: [
-        {
-          text: walkied
-        }
-      ],
       response_type: "in_channel",
-      text: `<@${request.user_id}>`
+      text: `<@${request.user_id}>: ${walkied}`
     };
     slackService.sendResponse(request.response_url, response);
     res.status(200).send();
