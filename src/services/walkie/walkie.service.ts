@@ -3,6 +3,6 @@ export class WalkieService {
     if (!text || text.length === 0) {
       return text;
     }
-    return `:walkietalkie: *chk* _${text}, over. *chk*_ :walkietalkie:`;
+    return `:walkietalkie: *chk* ${text} over. *chk* :walkietalkie:`;
   }
 }
