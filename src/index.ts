@@ -11,6 +11,7 @@ import { listController } from "./controllers/list.controller";
 import { mockController } from "./controllers/mock.controller";
 import { muzzleController } from "./controllers/muzzle.controller";
 import { reactionController } from "./controllers/reaction.controller";
+import { walkieController } from "./controllers/walkie.controller";
 import { config } from "./ormconfig";
 import { SlackService } from "./services/slack/slack.service";
 
@@ -28,6 +29,7 @@ app.use(confessionController);
 app.use(listController);
 app.use(eventController);
 app.use(reactionController);
+app.use(walkieController);
 
 const slackService = SlackService.getInstance();
 
