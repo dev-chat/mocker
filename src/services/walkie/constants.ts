@@ -23,7 +23,7 @@ export const NATO_MAPPINGS: INatoMapping = {
   U37SW3HD1: "Charlie Sierra",
   U3KABQXLY: "Juliet Charlie",
   U3U5VJA2E: "Romeo Golf",
-  U45HMKFJR: "Charlie Mike",
+  U45HMKFJR: "Charlie Foxtrot",
   U4NFD9J2G: "Juliet Sierra",
   URU0SCENN: "Mike Lima"
 };
