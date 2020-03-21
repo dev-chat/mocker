@@ -13,7 +13,7 @@ describe("slack-utils", () => {
         "This this <@U2ZCMGB52 | whoever> test test"
       );
       expect(talked).toBe(
-        `:walkietalkie: *chk* This this Juliet Foxtrot (<@U2ZCMGB52 | whoever>) test test over. *chk* :walkietalkie:`
+        `:walkietalkie: *chk* This this Juliet Foxtrot (<@U2ZCMGB52>) test test over. *chk* :walkietalkie:`
       );
     });
 
@@ -22,7 +22,7 @@ describe("slack-utils", () => {
         "This this <@U2ZCMGB52 | whoever> test test <@U45HMKFJR | charliemike>"
       );
       expect(talked).toBe(
-        `:walkietalkie: *chk* This this Juliet Foxtrot (<@U2ZCMGB52 | whoever>) test test Charlie Mike (<@U45HMKFJR | charliemike>) over. *chk* :walkietalkie:`
+        `:walkietalkie: *chk* This this Juliet Foxtrot (<@U2ZCMGB52>) test test Charlie Mike (<@U45HMKFJR>) over. *chk* :walkietalkie:`
       );
     });
   });
