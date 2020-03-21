@@ -16,5 +16,14 @@ describe("slack-utils", () => {
         `:walkietalkie: *chk* This this Juliet Foxtrot (<@U2ZCMGB52 | whoever>) test test over. *chk* :walkietalkie:`
       );
     });
+
+    it("should handle multiple user ids", () => {
+      const talked = walkieService.walkieTalkie(
+        "This this <@U2ZCMGB52 | whoever> test test <@U45HMKFJR | charliemike>"
+      );
+      expect(talked).toBe(
+        `:walkietalkie: *chk* This this Juliet Foxtrot (<@U2ZCMGB52 | whoever>) test test Charlie Mike (<@U45HMKFJR | charliemike>) over. *chk* :walkietalkie:`
+      );
+    });
   });
 });

@@ -13,7 +13,7 @@ export class WalkieService {
 
   public getNatoName(longUserId: string): string {
     const userId = this.getUserId(longUserId);
-    return NATO_MAPPINGS[userId];
+    return `${NATO_MAPPINGS[userId]} (${longUserId})`;
   }
 
   public walkieTalkie(text: string) {
@@ -21,15 +21,13 @@ export class WalkieService {
       return text;
     }
 
-    const userId = text.match(/[<]@\w+[ ]?\|[ ]?\w+[>]/gm);
+    const userIds = text.match(/[<]@\w+[ ]?\|[ ]?\w+[>]/gm);
     let fullText = text;
 
-    if (userId) {
-      const start = text.indexOf(userId.toString());
-      const natoName = this.getNatoName(userId.toString());
-      const firstHalf = text.substring(0, start);
-      const secondHalf = text.substring(start + userId.toString().length);
-      fullText = `${firstHalf}${natoName} (${userId.toString()})${secondHalf}`;
+    if (userIds && userIds.length) {
+      for (const userId of userIds) {
+        fullText = fullText.replace(userId, this.getNatoName(userId));
+      }
     }
 
     return `:walkietalkie: *chk* ${fullText} over. *chk* :walkietalkie:`;
