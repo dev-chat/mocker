@@ -67,7 +67,7 @@ export class CounterService {
         words[i],
         i === 0,
         i === words.length - 1,
-        REPLACEMENT_TEXT
+        REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)]
       );
       returnText += replacementWord;
     }

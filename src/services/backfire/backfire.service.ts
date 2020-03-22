@@ -27,9 +27,13 @@ export class BackfireService {
         words[i],
         i === 0,
         i === words.length - 1,
-        REPLACEMENT_TEXT
+        REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)]
       );
-      if (replacementWord.includes(REPLACEMENT_TEXT)) {
+      if (
+        replacementWord.includes(
+          REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)]
+        )
+      ) {
         wordsSuppressed++;
         charactersSuppressed += words[i].length;
       }
