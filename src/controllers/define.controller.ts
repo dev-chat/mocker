@@ -35,7 +35,7 @@ defineController.post("/define", async (req: Request, res: Response) => {
     const response: IChannelResponse = {
       response_type: "in_channel",
       text: `*${defineService.capitalizeFirstLetter(request.text)}*`,
-      attachments: defineService.formatDefs(defined.list)
+      attachments: defineService.formatDefs(defined.list, request.text)
     };
     slackService.sendResponse(request.response_url, response);
     res.status(200).send();

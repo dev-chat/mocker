@@ -44,22 +44,30 @@ export class DefineService {
   /**
    * Takes in an array of definitions and breaks them down into a shortened list depending on maxDefs
    */
-  public formatDefs(defArr: IDefinition[], maxDefs = 3) {
+  public formatDefs(defArr: IDefinition[], definedWord: string, maxDefs = 3) {
     if (!defArr || defArr.length === 0) {
       return [{ text: "Sorry, no definitions found." }];
     }
 
     const formattedArr: IAttachment[] = [];
-    const maxDefinitions: number =
-      defArr.length <= maxDefs ? defArr.length : maxDefs;
 
-    for (let i = 0; i < maxDefinitions; i++) {
-      formattedArr.push({
-        text: this.formatUrbanD(`${i + 1}. ${defArr[i].definition}`),
-        mrkdown_in: ["text"]
-      });
+    for (let i = 0; i < defArr.length; i++) {
+      if (defArr[i].word.toLowerCase() === definedWord.toLowerCase()) {
+        formattedArr.push({
+          text: this.formatUrbanD(
+            `${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition)}`
+          ),
+          mrkdown_in: ["text"]
+        });
+      }
+
+      if (formattedArr.length === maxDefs) {
+        return formattedArr;
+      }
     }
-    return formattedArr;
+    return formattedArr.length
+      ? formattedArr
+      : [{ text: "Sorry, no definitions found." }];
   }
   /**
    * Takes in a definition and removes brackets.
