@@ -21,7 +21,15 @@ export class DefineService {
    * Capitalizes the first letter of a given sentence.
    */
   public capitalizeFirstLetter(sentence: string): string {
-    return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}`;
+    const words = sentence.split(" ");
+    return words
+      .map(word =>
+        word
+          .charAt(0)
+          .toUpperCase()
+          .concat(word.slice(1))
+      )
+      .join(" ");
   }
 
   /**
