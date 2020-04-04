@@ -20,25 +20,24 @@ export class ReactionService {
         }
       })
       .catch(() => `Unable to retrieve your rep due to an error!`);
+    try {
+      const repByUser = await this.reactionPersistenceService.getRepByUser(
+        userId
+      );
 
-    const repByUser = await this.reactionPersistenceService
-      .getRepByUser(userId)
-      .then((perUserRep: IReactionByUser[] | undefined) =>
-        this.formatRepByUser(perUserRep)
-      )
-      .catch(e => console.error(e));
+      const generosityByUser = await this.reactionPersistenceService.getGenerosityByUser(
+        userId
+      );
 
-    const generosityByUser = await this.reactionPersistenceService
-      .getGenerosityByUser(userId)
-      .then((generosity: IReactionByUser[] | undefined) => {
-        this.formatRepByUser(generosity, true);
-      });
+      const table = this.formatRepByUser(repByUser, generosityByUser);
 
-    return `${repByUser}\n\n${totalRep}\n\n${generosityByUser}`;
+      return `${table}\n\n${totalRep}`;
+    } catch (e) {
+      return `Unable to retieve rep stats at the moment!`;
+    }
   }
 
   public handleReaction(event: IEvent, isAdded: boolean) {
-    console.log(event);
     if (event.user && event.item_user && event.user !== event.item_user) {
       if (isAdded) {
         this.handleAddedReaction(event);
@@ -56,25 +55,30 @@ export class ReactionService {
 
   private formatRepByUser(
     perUserRep: IReactionByUser[] | undefined,
-    isAffectedOnly = true
+    generosityByUser: IReactionByUser[] | undefined
   ) {
-    if (!perUserRep) {
+    if (!perUserRep && !generosityByUser) {
       return "You do not have any existing relationships.";
-    } else {
-      const formattedData = perUserRep.map(userRep => {
-        return {
-          user: this.slackService.getUserName(
-            isAffectedOnly ? userRep.affectedUser : userRep.reactingUser
-          ),
-          rep: `${this.getSentiment(userRep.rep)} (${userRep.rep})`
-        };
-      });
-      return `${Table.print(formattedData)}`;
     }
+
+    const formattedData = perUserRep!.map(userRep => {
+      const gen = generosityByUser!.find(item => {
+        return item.affectedUser === userRep.reactingUser;
+      });
+      return {
+        user: this.slackService.getUserName(userRep.reactingUser),
+        rep: `${this.getSentiment(userRep.rep)} (${userRep.rep})`,
+        generosity: `${this.getSentiment(gen!.rep)} (${gen!.rep})`
+      };
+    });
+
+    return `${Table.print(formattedData)}`;
   }
 
-  private getSentiment(rep: number) {
-    if (rep >= 1000) {
+  private getSentiment(rep: number | undefined) {
+    if (!rep) {
+      return "Neutral";
+    } else if (rep >= 1000) {
       return "Worshipped";
     } else if (rep >= 900 && rep < 1000) {
       return "Enamored";
