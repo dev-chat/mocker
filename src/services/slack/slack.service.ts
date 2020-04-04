@@ -30,7 +30,7 @@ export class SlackService {
   /**
    * Gets the username of the user by id.
    */
-  public getUserName(userId: string): string {
+  public getUserName(userId: string | undefined): string {
     const userObj: ISlackUser | undefined = this.getUserById(userId);
     return userObj ? userObj.name : "";
   }
@@ -39,7 +39,7 @@ export class SlackService {
    * Retrieves the user id from a string.
    * Expected format is <@U235KLKJ>
    */
-  public getUserId(user: string) {
+  public getUserId(user: string | undefined) {
     if (!user) {
       return "";
     }
@@ -50,7 +50,7 @@ export class SlackService {
   /**
    * Returns the user object by id
    */
-  public getUserById(userId: string) {
+  public getUserById(userId: string | undefined) {
     return this.userList.find((user: ISlackUser) => user.id === userId);
   }
 

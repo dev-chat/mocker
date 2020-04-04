@@ -1,4 +1,5 @@
 export interface IReactionByUser {
-  reactingUser: string;
+  reactingUser?: string;
+  affectedUser?: string;
   rep: number;
 }

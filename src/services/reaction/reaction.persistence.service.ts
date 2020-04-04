@@ -44,6 +44,20 @@ export class ReactionPersistenceService {
     });
   }
 
+  public getGenerosityByUser(
+    userId: string
+  ): Promise<IReactionByUser[] | undefined> {
+    return new Promise(async (resolve, reject) => {
+      await getRepository(Reaction)
+        .query(
+          `SELECT affectedUser, SUM(value) as rep FROM reaction WHERE reactingUser=? GROUP BY affectedUser ORDER BY rep DESC;`,
+          [userId]
+        )
+        .then(value => resolve(value))
+        .catch(e => reject(e));
+    });
+  }
+
   public saveReaction(event: IEvent, value: number) {
     return new Promise(async (resolve, reject) => {
       const reaction = new Reaction();

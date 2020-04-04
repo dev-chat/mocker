@@ -60,6 +60,7 @@ export const reactionValues: IReactionValue = {
   heavy_check_mark: 1,
   white_check_mark: 1,
   chart_with_upwards_trend: 1,
+  "party-blob": 1,
   // Negative Emojis
   face_with_rolling_eyes: -1,
   rage: -1,
@@ -107,5 +108,6 @@ export const reactionValues: IReactionValue = {
   "man-gesturing-no": -1,
   no_good: -1,
   chart_with_downwards_trend: -1,
-  zzz: -1
+  zzz: -1,
+  princess: -1
 };

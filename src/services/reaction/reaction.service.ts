@@ -28,7 +28,13 @@ export class ReactionService {
       )
       .catch(e => console.error(e));
 
-    return `${repByUser}\n\n${totalRep}`;
+    const generosityByUser = await this.reactionPersistenceService
+      .getGenerosityByUser(userId)
+      .then((generosity: IReactionByUser[] | undefined) => {
+        this.formatRepByUser(generosity, true);
+      });
+
+    return `${repByUser}\n\n${totalRep}\n\n${generosityByUser}`;
   }
 
   public handleReaction(event: IEvent, isAdded: boolean) {
@@ -48,13 +54,18 @@ export class ReactionService {
     }
   }
 
-  private formatRepByUser(perUserRep: IReactionByUser[] | undefined) {
+  private formatRepByUser(
+    perUserRep: IReactionByUser[] | undefined,
+    isAffectedOnly = true
+  ) {
     if (!perUserRep) {
       return "You do not have any existing relationships.";
     } else {
       const formattedData = perUserRep.map(userRep => {
         return {
-          user: this.slackService.getUserName(userRep.reactingUser),
+          user: this.slackService.getUserName(
+            isAffectedOnly ? userRep.affectedUser : userRep.reactingUser
+          ),
           rep: `${this.getSentiment(userRep.rep)} (${userRep.rep})`
         };
       });
