@@ -1,8 +1,9 @@
-FROM node:10.13.0
+FROM node:12
 
 WORKDIR /usr/src/mocker
 COPY package.json .
-RUN npm install
+RUN npm install && npm build
 COPY . .
+EXPOSE 3000
 
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/index.js"]
