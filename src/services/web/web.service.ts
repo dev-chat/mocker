@@ -14,13 +14,13 @@ export class WebService {
     return WebService.instance;
   }
   private static instance: WebService;
-  private web: WebClient = new WebClient(process.env.muzzleBotToken);
+  private web: WebClient = new WebClient(process.env.MUZZLE_BOT_TOKEN);
 
   /**
    * Handles deletion of messages.
    */
   public deleteMessage(channel: string, ts: string): void {
-    const muzzleToken: string | undefined = process.env.muzzleBotToken;
+    const muzzleToken: string | undefined = process.env.MUZZLE_BOT_TOKEN;
     const deleteRequest: ChatDeleteArguments = {
       token: muzzleToken,
       channel,
@@ -44,7 +44,7 @@ export class WebService {
    * Handles sending messages to the chat.
    */
   public sendMessage(channel: string, text: string): void {
-    const token: string | undefined = process.env.muzzleBotToken;
+    const token: string | undefined = process.env.MUZZLE_BOT_TOKEN;
     const postRequest: ChatPostMessageArguments = {
       token,
       channel,
@@ -58,7 +58,7 @@ export class WebService {
   }
 
   public uploadFile(channel: string, content: string, title?: string): void {
-    const muzzleToken: string | undefined = process.env.muzzleBotUserToken;
+    const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const uploadRequest: FilesUploadArguments = {
       channels: channel,
       content,

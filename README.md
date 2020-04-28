@@ -4,8 +4,20 @@
 
 ## Getting Started
 
-1. Clone down repository and `npm install`.
-2. Create a new Slack app, copy your bot token and add it to your environment variables as `muzzleBotToken`.
-3. Setup `/muzzle` as a slash command as a part of your new slack app.
-4. Create `/mock` and `/define` as additional slack commands and route them to your server.
-5. Start making fun of your friends!
+1. `npm install`
+2. Add the following environment variables:
+
+```
+  TYPEORM_CONNECTION: mysql,
+  TYPEORM_HOST: localhost,
+  TYPEORM_PORT: 3306,
+  TYPEORM_USERNAME: <USER-NAME-FOR-YOUR-DB>,
+  TYPEORM_PASSWORD: <PASSWORD-FOR-YOUR-DB>,
+  TYPEORM_DATABASE: <DATABASE-FOR-YOUR-INSTANCE>,
+  TYPEORM_ENTITIES: ./src/shared/db/models/*.ts, // Need clarity on this one
+  TYPEORM_SYNCHRONIZE: true
+  MUZZLE_BOT_TOKEN: <TOKEN-FOR-YOUR-SLACKBOT>
+  MUZZLE_BOT_USER_TOKEN: <TOKEN-FOR-YOUR-SLACKBOT-USER>
+```
+
+3.
