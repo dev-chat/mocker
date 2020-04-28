@@ -1,8 +1,8 @@
-export interface IUrbanDictionaryResponse {
-  list: IDefinition[];
+export interface UrbanDictionaryResponse {
+  list: Definition[];
 }
 
-export interface IDefinition {
+export interface Definition {
   definition: string;
   permalink: string;
   thumbs_up: number;

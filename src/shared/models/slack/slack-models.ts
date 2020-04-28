@@ -1,10 +1,10 @@
-export interface IChannelResponse {
+export interface ChannelResponse {
   response_type: string;
   text: string;
-  attachments?: IAttachment[];
+  attachments?: Attachment[];
 }
 
-export interface ISlashCommandRequest {
+export interface SlashCommandRequest {
   token: string;
   team_id: string;
   team_domain: string;
@@ -18,19 +18,19 @@ export interface ISlashCommandRequest {
   trigger_id: string;
 }
 
-export interface IEventRequest {
+export interface EventRequest {
   challenge: string;
   token: string;
   team_id: string;
   api_app_id: string;
-  event: IEvent;
+  event: Event;
   type: string;
   event_id: string;
   event_time: number;
   authed_users: string[];
 }
 
-export interface IEvent {
+export interface Event {
   client_msg_id: string;
   type: string;
   subtype: string;
@@ -42,7 +42,7 @@ export interface IEvent {
   event_ts: string;
   channel_type: string;
   authed_users: string[];
-  attachments: IEvent[];
+  attachments: Event[];
   pretext: string;
   callback_id: string;
   item_user: string;
@@ -50,13 +50,13 @@ export interface IEvent {
   item: any; // Needs work, not optional either.
 }
 
-export interface IAttachment {
+export interface Attachment {
   text: string;
   pretext?: string;
   mrkdown_in?: string[];
 }
 
-export interface ISlackUser {
+export interface SlackUser {
   id: string;
   team_id: string;
   name: string;

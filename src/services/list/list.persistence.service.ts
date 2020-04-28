@@ -1,8 +1,8 @@
-import { getRepository } from "typeorm";
-import { List } from "../../shared/db/models/List";
+import { getRepository } from 'typeorm';
+import { List } from '../../shared/db/models/List';
 
 export class ListPersistenceService {
-  public static getInstance() {
+  public static getInstance(): ListPersistenceService {
     if (!ListPersistenceService.instance) {
       ListPersistenceService.instance = new ListPersistenceService();
     }
@@ -11,20 +11,18 @@ export class ListPersistenceService {
 
   private static instance: ListPersistenceService;
 
-  private constructor() {}
-
-  public store(requestorId: string, text: string) {
+  public store(requestorId: string, text: string): Promise<List> {
     const listItem = new List();
     listItem.requestorId = requestorId;
     listItem.text = text;
     return getRepository(List).save(listItem);
   }
 
-  public retrieve() {
+  public retrieve(): Promise<List[]> {
     return getRepository(List).find();
   }
 
-  public remove(text: string) {
+  public remove(text: string): Promise<List> {
     return new Promise(async (resolve, reject) => {
       const item = await getRepository(List).findOne({ text });
       if (item) {

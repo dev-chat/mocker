@@ -1,12 +1,9 @@
-import Axios, { AxiosResponse } from "axios";
-import {
-  IDefinition,
-  IUrbanDictionaryResponse
-} from "../../shared/models/define/define-models";
-import { IAttachment } from "../../shared/models/slack/slack-models";
+import Axios, { AxiosResponse } from 'axios';
+import { Definition, UrbanDictionaryResponse } from '../../shared/models/define/define-models';
+import { Attachment } from '../../shared/models/slack/slack-models';
 
 export class DefineService {
-  public static getInstance() {
+  public static getInstance(): DefineService {
     if (!DefineService.instance) {
       DefineService.instance = new DefineService();
     }
@@ -15,41 +12,35 @@ export class DefineService {
 
   private static instance: DefineService;
 
-  private constructor() {}
-
   /**
    * Capitalizes the first letter of a given sentence.
    */
   public capitalizeFirstLetter(sentence: string, all = true): string {
     if (all) {
-      const words = sentence.split(" ");
+      const words = sentence.split(' ');
       return words
         .map(word =>
           word
             .charAt(0)
             .toUpperCase()
-            .concat(word.slice(1))
+            .concat(word.slice(1)),
         )
-        .join(" ");
+        .join(' ');
     }
-    return (
-      sentence.charAt(0).toUpperCase() + sentence.slice(1, sentence.length)
-    );
+    return sentence.charAt(0).toUpperCase() + sentence.slice(1, sentence.length);
   }
 
   /**
    * Returns a promise to look up a definition on urban dictionary.
    */
-  public define(word: string): Promise<IUrbanDictionaryResponse> {
-    const formattedWord = word.split(" ").join("+");
-    return Axios.get(
-      `http://api.urbandictionary.com/v0/define?term=${formattedWord}`
-    )
-      .then((res: AxiosResponse<IUrbanDictionaryResponse>) => {
+  public define(word: string): Promise<UrbanDictionaryResponse> {
+    const formattedWord = word.split(' ').join('+');
+    return Axios.get(`http://api.urbandictionary.com/v0/define?term=${formattedWord}`)
+      .then((res: AxiosResponse<UrbanDictionaryResponse>) => {
         return res.data;
       })
       .catch(e => {
-        console.log("error", e);
+        console.log('error', e);
         return e;
       });
   }
@@ -57,23 +48,19 @@ export class DefineService {
   /**
    * Takes in an array of definitions and breaks them down into a shortened list depending on maxDefs
    */
-  public formatDefs(defArr: IDefinition[], definedWord: string, maxDefs = 3) {
+  public formatDefs(defArr: Definition[], definedWord: string, maxDefs = 3): { text: string }[] {
     if (!defArr || defArr.length === 0) {
-      return [{ text: "Sorry, no definitions found." }];
+      return [{ text: 'Sorry, no definitions found.' }];
     }
 
-    const formattedArr: IAttachment[] = [];
+    const formattedArr: Attachment[] = [];
 
     for (let i = 0; i < defArr.length; i++) {
       if (defArr[i].word.toLowerCase() === definedWord.toLowerCase()) {
         formattedArr.push({
-          text: this.formatUrbanD(
-            `${i + 1}. ${this.capitalizeFirstLetter(
-              defArr[i].definition,
-              false
-            )}`
-          ),
-          mrkdown_in: ["text"]
+          text: this.formatUrbanD(`${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition, false)}`),
+          // eslint-disable-next-line @typescript-eslint/camelcase
+          mrkdown_in: ['text'],
         });
       }
 
@@ -81,17 +68,15 @@ export class DefineService {
         return formattedArr;
       }
     }
-    return formattedArr.length
-      ? formattedArr
-      : [{ text: "Sorry, no definitions found." }];
+    return formattedArr.length ? formattedArr : [{ text: 'Sorry, no definitions found.' }];
   }
   /**
    * Takes in a definition and removes brackets.
    */
   private formatUrbanD(definition: string): string {
-    let formattedDefinition: string = "";
+    let formattedDefinition = '';
     for (const letter of definition) {
-      if (letter !== "[" && letter !== "]") {
+      if (letter !== '[' && letter !== ']') {
         formattedDefinition += letter;
       }
     }

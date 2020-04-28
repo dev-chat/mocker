@@ -1,15 +1,12 @@
-import express, { Router } from "express";
-import { BackFirePersistenceService } from "../services/backfire/backfire.persistence.service";
-import { CounterPersistenceService } from "../services/counter/counter.persistence.service";
-import { ListPersistenceService } from "../services/list/list.persistence.service";
-import { MuzzlePersistenceService } from "../services/muzzle/muzzle.persistence.service";
-import { ReportService } from "../services/report/report.service";
-import { SlackService } from "../services/slack/slack.service";
-import { WebService } from "../services/web/web.service";
-import {
-  IChannelResponse,
-  ISlashCommandRequest
-} from "../shared/models/slack/slack-models";
+import express, { Router } from 'express';
+import { BackFirePersistenceService } from '../services/backfire/backfire.persistence.service';
+import { CounterPersistenceService } from '../services/counter/counter.persistence.service';
+import { ListPersistenceService } from '../services/list/list.persistence.service';
+import { MuzzlePersistenceService } from '../services/muzzle/muzzle.persistence.service';
+import { ReportService } from '../services/report/report.service';
+import { SlackService } from '../services/slack/slack.service';
+import { WebService } from '../services/web/web.service';
+import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
 
 export const listController: Router = express.Router();
 
@@ -21,8 +18,8 @@ const webService = WebService.getInstance();
 const listPersistenceService = ListPersistenceService.getInstance();
 const reportService = new ReportService();
 
-listController.post("/list/retrieve", async (req, res) => {
-  const request: ISlashCommandRequest = req.body;
+listController.post('/list/retrieve', async (req, res) => {
+  const request: SlashCommandRequest = req.body;
   if (
     muzzlePersistenceService.isUserMuzzled(request.user_id) ||
     backfirePersistenceService.isBackfire(request.user_id) ||
@@ -31,13 +28,13 @@ listController.post("/list/retrieve", async (req, res) => {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     const report = await reportService.getListReport();
-    webService.uploadFile(req.body.channel_id, report, "The List");
+    webService.uploadFile(req.body.channel_id, report, 'The List');
     res.status(200).send();
   }
 });
 
-listController.post("/list/add", (req, res) => {
-  const request: ISlashCommandRequest = req.body;
+listController.post('/list/add', (req, res) => {
+  const request: SlashCommandRequest = req.body;
   if (
     muzzlePersistenceService.isUserMuzzled(request.user_id) ||
     backfirePersistenceService.isBackfire(request.user_id) ||
@@ -45,22 +42,23 @@ listController.post("/list/add", (req, res) => {
   ) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
-    res.send("Sorry, you must send a message to list something.");
+    res.send('Sorry, you must send a message to list something.');
   } else if (request.text.length >= 255) {
-    res.send("Sorry, items added to The List must be less than 255 characters");
+    res.send('Sorry, items added to The List must be less than 255 characters');
   } else {
     listPersistenceService.store(request.user_id, request.text);
-    const response: IChannelResponse = {
-      response_type: "in_channel",
-      text: `\`${request.text}\` has been \`listed\``
+    const response: ChannelResponse = {
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      response_type: 'in_channel',
+      text: `\`${request.text}\` has been \`listed\``,
     };
     slackService.sendResponse(request.response_url, response);
     res.status(200).send();
   }
 });
 
-listController.post("/list/remove", (req, res) => {
-  const request: ISlashCommandRequest = req.body;
+listController.post('/list/remove', (req, res) => {
+  const request: SlashCommandRequest = req.body;
   if (
     muzzlePersistenceService.isUserMuzzled(request.user_id) ||
     backfirePersistenceService.isBackfire(request.user_id) ||
@@ -68,14 +66,15 @@ listController.post("/list/remove", (req, res) => {
   ) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
-    res.send("Sorry, you must send the item you wish to remove.");
+    res.send('Sorry, you must send the item you wish to remove.');
   } else {
     listPersistenceService
       .remove(request.text)
       .then(() => {
-        const response: IChannelResponse = {
-          response_type: "in_channel",
-          text: `\`${request.text}\` has been removed from \`The List\``
+        const response: ChannelResponse = {
+          // eslint-disable-next-line @typescript-eslint/camelcase
+          response_type: 'in_channel',
+          text: `\`${request.text}\` has been removed from \`The List\``,
         };
         slackService.sendResponse(request.response_url, response);
         res.status(200).send();

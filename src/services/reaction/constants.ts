@@ -1,7 +1,8 @@
-interface IReactionValue {
+/* eslint-disable @typescript-eslint/camelcase */
+interface ReactionValue {
   [key: string]: number;
 }
-export const reactionValues: IReactionValue = {
+export const reactionValues: ReactionValue = {
   // Positive emojis
   grinning: 1,
   grin: 1,
@@ -23,7 +24,7 @@ export const reactionValues: IReactionValue = {
   point_up_2: 1,
   the_horns: 1,
   ok_hand: 1,
-  "+1": 1,
+  '+1': 1,
   clap: 1,
   raised_hands: 1,
   pray: 1,
@@ -48,7 +49,7 @@ export const reactionValues: IReactionValue = {
   first_place_medal: 1,
   moneybag: 1,
   key: 1,
-  "100": 1,
+  '100': 1,
   bong: 1,
   chefkiss: 1,
   clapping: 1,
@@ -56,7 +57,7 @@ export const reactionValues: IReactionValue = {
   feelsgood: 1,
   healing_of_the_nation: 1,
   godmode: 1,
-  "1000": 1,
+  '1000': 1,
   heavy_check_mark: 1,
   white_check_mark: 1,
   chart_with_upwards_trend: 1,
@@ -71,19 +72,19 @@ export const reactionValues: IReactionValue = {
   skull: -1,
   skull_and_crossbones: -1,
   middle_finger: -1,
-  "-1": -1,
+  '-1': -1,
   bomb: -1,
   boom: -1,
   snowflake: -1,
   small_red_triangle: -1,
-  "99": -1,
-  "90": -1,
-  "bounce-eyes": -1,
+  '99': -1,
+  '90': -1,
+  'bounce-eyes': -1,
   butthurt: -1,
   caged2: -1,
   alert: -1,
   bomb2: -1,
-  "fake-news": -1,
+  'fake-news': -1,
   flag: -1,
   flesh: -1,
   heh: -1,
@@ -104,8 +105,8 @@ export const reactionValues: IReactionValue = {
   no_entry_sign: -1,
   dumpster: -1,
   thx: -1,
-  "man-gesturing-no": -1,
+  'man-gesturing-no': -1,
   no_good: -1,
   chart_with_downwards_trend: -1,
-  zzz: -1
+  zzz: -1,
 };

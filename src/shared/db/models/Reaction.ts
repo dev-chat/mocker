@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class Reaction {
@@ -20,9 +20,9 @@ export class Reaction {
   @Column()
   public type!: string;
 
-  @Column({ default: "NOT_AVAILABLE" })
+  @Column({ default: 'NOT_AVAILABLE' })
   public channel!: string;
 
-  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   public createdAt!: Date;
 }

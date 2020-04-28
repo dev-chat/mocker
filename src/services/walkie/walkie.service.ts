@@ -1,14 +1,14 @@
-import { NATO_MAPPINGS } from "./constants";
+import { NATO_MAPPINGS } from './constants';
 
 export class WalkieService {
   private userIdRegEx = /[<]@\w+/gm;
 
-  public getUserId(user: string) {
+  public getUserId(user: string): string {
     if (!user) {
-      return "";
+      return '';
     }
     const regArray = user.match(this.userIdRegEx);
-    return regArray ? regArray[0].slice(2) : "";
+    return regArray ? regArray[0].slice(2) : '';
   }
 
   public getNatoName(longUserId: string): string {
@@ -17,7 +17,7 @@ export class WalkieService {
     return NATO_MAPPINGS[userId] || longUserId;
   }
 
-  public walkieTalkie(text: string) {
+  public walkieTalkie(text: string): string {
     if (!text || text.length === 0) {
       return text;
     }

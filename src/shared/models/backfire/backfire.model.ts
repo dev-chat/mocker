@@ -1,4 +1,4 @@
-export interface IBackfire {
+export interface BackfireItem {
   suppressionCount: number;
   id: number;
   removalFn: NodeJS.Timeout;

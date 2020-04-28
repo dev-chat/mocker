@@ -1,11 +1,11 @@
-import { getRepository } from "typeorm";
-import { Reaction } from "../../shared/db/models/Reaction";
-import { Rep } from "../../shared/db/models/Rep";
-import { IReactionByUser } from "../../shared/models/reaction/ReactionByUser.model";
-import { IEvent } from "../../shared/models/slack/slack-models";
+import { getRepository } from 'typeorm';
+import { Reaction } from '../../shared/db/models/Reaction';
+import { Rep } from '../../shared/db/models/Rep';
+import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.model';
+import { Event } from '../../shared/models/slack/slack-models';
 
 export class ReactionPersistenceService {
-  public static getInstance() {
+  public static getInstance(): ReactionPersistenceService {
     if (!ReactionPersistenceService.instance) {
       ReactionPersistenceService.instance = new ReactionPersistenceService();
     }
@@ -14,37 +14,33 @@ export class ReactionPersistenceService {
 
   private static instance: ReactionPersistenceService;
 
-  private constructor() {}
-
   public getRep(userId: string): Promise<Rep | undefined> {
     return new Promise(async (resolve, reject) => {
       await getRepository(Rep)
         .findOne({ user: userId })
         .then(async value => {
           await getRepository(Rep)
-            .increment({ user: userId }, "timesChecked", 1)
-            .catch(e =>
-              console.error(`Error logging check for user ${userId}. \n ${e}`)
-            );
+            .increment({ user: userId }, 'timesChecked', 1)
+            .catch(e => console.error(`Error logging check for user ${userId}. \n ${e}`));
           resolve(value);
         })
         .catch(e => reject(e));
     });
   }
 
-  public getRepByUser(userId: string): Promise<IReactionByUser[] | undefined> {
+  public getRepByUser(userId: string): Promise<ReactionByUser[] | undefined> {
     return new Promise(async (resolve, reject) => {
       await getRepository(Reaction)
         .query(
           `SELECT reactingUser, SUM(value) as rep FROM reaction WHERE affectedUser=? GROUP BY reactingUser ORDER BY rep DESC;`,
-          [userId]
+          [userId],
         )
         .then(value => resolve(value))
         .catch(e => reject(e));
     });
   }
 
-  public saveReaction(event: IEvent, value: number) {
+  public saveReaction(event: Event, value: number): Promise<Reaction> {
     return new Promise(async (resolve, reject) => {
       const reaction = new Reaction();
       reaction.affectedUser = event.item_user;
@@ -72,31 +68,29 @@ export class ReactionPersistenceService {
     });
   }
 
-  public async removeReaction(event: IEvent, value: number) {
+  public async removeReaction(event: Event, value: number): Promise<void> {
     await getRepository(Reaction)
       .delete({
         reaction: event.reaction,
         affectedUser: event.item_user,
         reactingUser: event.user,
         type: event.item.type,
-        channel: event.item.channel
+        channel: event.item.channel,
       })
       .then(() => {
-        value === 1
-          ? this.decrementRep(event.item_user)
-          : this.incrementRep(event.item_user);
+        value === 1 ? this.decrementRep(event.item_user) : this.incrementRep(event.item_user);
       })
       .catch(e => e);
   }
 
-  private async isRepUserPresent(affectedUser: string) {
+  private async isRepUserPresent(affectedUser: string): Promise<boolean | void> {
     return getRepository(Rep)
       .findOne({ user: affectedUser })
       .then(user => !!user)
       .catch(e => console.error(e));
   }
 
-  private incrementRep(affectedUser: string) {
+  private incrementRep(affectedUser: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
       // Check for affectedUser
       const isUserExisting = await this.isRepUserPresent(affectedUser);
@@ -104,7 +98,7 @@ export class ReactionPersistenceService {
       if (isUserExisting) {
         // If it exists, increment rep by one.
         return getRepository(Rep)
-          .increment({ user: affectedUser }, "rep", 1)
+          .increment({ user: affectedUser }, 'rep', 1)
           .then(() => resolve())
           .catch(e => reject(e));
       } else {
@@ -120,7 +114,7 @@ export class ReactionPersistenceService {
     });
   }
 
-  private decrementRep(affectedUser: string) {
+  private decrementRep(affectedUser: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
       // Check for affectedUser
       const isUserExisting = await this.isRepUserPresent(affectedUser);
@@ -128,7 +122,7 @@ export class ReactionPersistenceService {
       if (isUserExisting) {
         // If it exists, decrement rep by one.
         return getRepository(Rep)
-          .decrement({ user: affectedUser }, "rep", 1)
+          .decrement({ user: affectedUser }, 'rep', 1)
           .then(() => resolve())
           .catch(e => reject(e));
       } else {

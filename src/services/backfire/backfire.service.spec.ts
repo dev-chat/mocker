@@ -1,8 +1,8 @@
-import { ISlackUser } from "../../shared/models/slack/slack-models";
-import { SlackService } from "../slack/slack.service";
-import { BackfireService } from "./backfire.service";
+import { SlackUser } from '../../shared/models/slack/slack-models';
+import { SlackService } from '../slack/slack.service';
+import { BackfireService } from './backfire.service';
 
-describe("BackfireService", () => {
+describe('BackfireService', () => {
   let backfireService: BackfireService;
   let slackInstance: SlackService;
 
@@ -10,11 +10,11 @@ describe("BackfireService", () => {
     backfireService = new BackfireService();
     slackInstance = SlackService.getInstance();
     slackInstance.userList = [
-      { id: "123", name: "test123" },
-      { id: "456", name: "test456" },
-      { id: "789", name: "test789" },
-      { id: "666", name: "requestor" }
-    ] as ISlackUser[];
+      { id: '123', name: 'test123' },
+      { id: '456', name: 'test456' },
+      { id: '789', name: 'test789' },
+      { id: '666', name: 'requestor' },
+    ] as SlackUser[];
     jest.useFakeTimers();
   });
 
@@ -22,7 +22,7 @@ describe("BackfireService", () => {
     jest.runAllTimers();
   });
 
-  it("should create", () => {
+  it('should create', () => {
     expect(backfireService).toBeTruthy();
   });
 });

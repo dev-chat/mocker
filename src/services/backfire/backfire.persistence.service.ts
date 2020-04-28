@@ -1,11 +1,11 @@
-import { getRepository } from "typeorm";
-import { Backfire } from "../../shared/db/models/Backfire";
-import { IBackfire } from "../../shared/models/backfire/backfire.model";
-import { ABUSE_PENALTY_TIME } from "../muzzle/constants";
-import { getRemainingTime } from "../muzzle/muzzle-utilities";
+import { getRepository, UpdateResult } from 'typeorm';
+import { Backfire } from '../../shared/db/models/Backfire';
+import { BackfireItem } from '../../shared/models/backfire/backfire.model';
+import { ABUSE_PENALTY_TIME } from '../muzzle/constants';
+import { getRemainingTime } from '../muzzle/muzzle-utilities';
 
 export class BackFirePersistenceService {
-  public static getInstance() {
+  public static getInstance(): BackFirePersistenceService {
     if (!BackFirePersistenceService.instance) {
       BackFirePersistenceService.instance = new BackFirePersistenceService();
     }
@@ -13,11 +13,9 @@ export class BackFirePersistenceService {
   }
 
   private static instance: BackFirePersistenceService;
-  private backfires: Map<string, IBackfire> = new Map();
+  private backfires: Map<string, BackfireItem> = new Map();
 
-  private constructor() {}
-
-  public addBackfire(userId: string, time: number) {
+  public addBackfire(userId: string, time: number): Promise<void> {
     const backfire = new Backfire();
     backfire.muzzledId = userId;
     backfire.messagesSuppressed = 0;
@@ -31,12 +29,12 @@ export class BackFirePersistenceService {
         this.backfires.set(userId, {
           suppressionCount: 0,
           id: backfireFromDb.id,
-          removalFn: setTimeout(() => this.removeBackfire(userId), time)
+          removalFn: setTimeout(() => this.removeBackfire(userId), time),
         });
       });
   }
 
-  public removeBackfire(userId: string) {
+  public removeBackfire(userId: string): void {
     this.backfires.delete(userId);
     console.log(`Backfire has expired and been removed for ${userId}`);
   }
@@ -45,7 +43,7 @@ export class BackFirePersistenceService {
     return this.backfires.has(userId);
   }
 
-  public addBackfireTime(userId: string, timeToAdd: number) {
+  public addBackfireTime(userId: string, timeToAdd: number): void {
     if (userId && this.backfires.has(userId)) {
       const removalFn = this.backfires.get(userId)!.removalFn;
       const newTime = getRemainingTime(removalFn) + timeToAdd;
@@ -56,16 +54,16 @@ export class BackFirePersistenceService {
       this.backfires.set(userId, {
         suppressionCount: this.backfires.get(userId)!.suppressionCount,
         id: this.backfires.get(userId)!.id,
-        removalFn: setTimeout(() => this.removeBackfire(userId), newTime)
+        removalFn: setTimeout(() => this.removeBackfire(userId), newTime),
       });
     }
   }
 
-  public getBackfireByUserId(userId: string): IBackfire | undefined {
+  public getBackfireByUserId(userId: string): BackfireItem | undefined {
     return this.backfires.get(userId);
   }
 
-  public setBackfire(userId: string, options: IBackfire) {
+  public setBackfire(userId: string, options: BackfireItem): void {
     this.backfires.set(userId, options);
   }
 
@@ -73,38 +71,27 @@ export class BackFirePersistenceService {
    * Determines suppression counts for messages that are ONLY deleted.
    * Used when a backfired user has hit their max suppressions or when they have tagged channel.
    */
-  public trackDeletedMessage(backfireId: number, text: string) {
-    const words = text.split(" ").length;
-    const characters = text.split("").length;
+  public trackDeletedMessage(backfireId: number, text: string): void {
+    const words = text.split(' ').length;
+    const characters = text.split('').length;
     this.incrementMessageSuppressions(backfireId);
     this.incrementWordSuppressions(backfireId, words);
     this.incrementCharacterSuppressions(backfireId, characters);
   }
 
-  public incrementBackfireTime(id: number, ms: number) {
-    return getRepository(Backfire).increment({ id }, "milliseconds", ms);
+  public incrementBackfireTime(id: number, ms: number): Promise<UpdateResult> {
+    return getRepository(Backfire).increment({ id }, 'milliseconds', ms);
   }
 
-  public incrementMessageSuppressions(id: number) {
-    return getRepository(Backfire).increment({ id }, "messagesSuppressed", 1);
+  public incrementMessageSuppressions(id: number): Promise<UpdateResult> {
+    return getRepository(Backfire).increment({ id }, 'messagesSuppressed', 1);
   }
 
-  public incrementWordSuppressions(id: number, suppressions: number) {
-    return getRepository(Backfire).increment(
-      { id },
-      "wordsSuppressed",
-      suppressions
-    );
+  public incrementWordSuppressions(id: number, suppressions: number): Promise<UpdateResult> {
+    return getRepository(Backfire).increment({ id }, 'wordsSuppressed', suppressions);
   }
 
-  public incrementCharacterSuppressions(
-    id: number,
-    charactersSuppressed: number
-  ) {
-    return getRepository(Backfire).increment(
-      { id },
-      "charactersSuppressed",
-      charactersSuppressed
-    );
+  public incrementCharacterSuppressions(id: number, charactersSuppressed: number): Promise<UpdateResult> {
+    return getRepository(Backfire).increment({ id }, 'charactersSuppressed', charactersSuppressed);
   }
 }

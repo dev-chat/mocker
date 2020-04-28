@@ -1,4 +1,4 @@
-export interface IReactionByUser {
+export interface ReactionByUser {
   reactingUser: string;
   rep: number;
 }
