@@ -275,10 +275,10 @@ export class MuzzlePersistenceService {
   private getMostMuzzledByInstances(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT muzzledId as id, COUNT(*) as count FROM muzzle GROUP BY id ORDER BY count DESC;`
-        : `SELECT muzzledId as id, COUNT(*) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${
-            range.end
-          }' GROUP BY id ORDER BY count DESC;`;
+        ? `SELECT muzzledId as slackId, COUNT(*) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT muzzledId as slackId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${
+            range.start
+          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -286,10 +286,10 @@ export class MuzzlePersistenceService {
   private getMuzzlerByInstances(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT requestorId as id, COUNT(*) as count FROM muzzle GROUP BY id ORDER BY count DESC;`
-        : `SELECT requestorId as id, COUNT(*) as count FROM muzzle WHERE createdAt >= '${
+        ? `SELECT requestorId as slackId, COUNT(*) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT requestorId as slackId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${
             range.start
-          }' AND createdAt < '${range.end}' GROUP BY id ORDER BY count DESC;`;
+          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -297,10 +297,10 @@ export class MuzzlePersistenceService {
   private getMuzzlerByMessages(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT requestorId as id, SUM(messagesSuppressed) as count FROM muzzle GROUP BY id ORDER BY count DESC;`
-        : `SELECT requestorId as id, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${
+        ? `SELECT requestorId as slackId, SUM(messagesSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT requestorId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${
             range.start
-          }' AND createdAt < '${range.end}' GROUP BY id ORDER BY count DESC;`;
+          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -308,10 +308,10 @@ export class MuzzlePersistenceService {
   private getMostMuzzledByMessages(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT muzzledId as id, SUM(messagesSuppressed) as count FROM muzzle GROUP BY id ORDER BY count DESC;`
-        : `SELECT muzzledId as id, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${
+        ? `SELECT muzzledId as slackId, SUM(messagesSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT muzzledId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${
             range.start
-          }' AND createdAt < '${range.end}' GROUP BY id ORDER BY count DESC;`;
+          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -319,10 +319,10 @@ export class MuzzlePersistenceService {
   private getMostMuzzledByWords(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT muzzledId as id, SUM(wordsSuppressed) as count FROM muzzle GROUP BY id ORDER BY count DESC;`
-        : `SELECT muzzledId as id, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${
+        ? `SELECT muzzledId as slackId, SUM(wordsSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT muzzledId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${
             range.start
-          }' AND createdAt < '${range.end}' GROUP BY id ORDER BY count DESC;`;
+          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -330,10 +330,10 @@ export class MuzzlePersistenceService {
   private getMuzzlerByWords(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT requestorId as id, SUM(wordsSuppressed) as count FROM muzzle GROUP BY id ORDER BY count DESC;`
-        : `SELECT requestorId as id, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${
+        ? `SELECT requestorId as slackId, SUM(wordsSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT requestorId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${
             range.start
-          }' AND createdAt < '${range.end}' GROUP BY id ORDER BY count DESC;`;
+          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -341,10 +341,10 @@ export class MuzzlePersistenceService {
   private getMostMuzzledByChars(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT muzzledId as id, SUM(charactersSuppressed) as count FROM muzzle GROUP BY id ORDER BY count DESC;`
-        : `SELECT muzzledId as id, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${
+        ? `SELECT muzzledId as slackId, SUM(charactersSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT muzzledId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${
             range.start
-          }' AND createdAt < '${range.end}' GROUP BY id ORDER BY count DESC;`;
+          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -352,10 +352,10 @@ export class MuzzlePersistenceService {
   private getMuzzlerByChars(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT requestorId as id, SUM(charactersSuppressed) as count FROM muzzle GROUP BY id ORDER BY count DESC;`
-        : `SELECT requestorId as id, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${
+        ? `SELECT requestorId as slackId, SUM(charactersSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT requestorId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${
             range.start
-          }' AND createdAt < '${range.end}' GROUP BY id ORDER BY count DESC;`;
+          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -363,10 +363,10 @@ export class MuzzlePersistenceService {
   private getMostMuzzledByTime(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT muzzledId as id, SUM(milliseconds) as count FROM muzzle GROUP BY id ORDER BY count DESC;`
-        : `SELECT muzzledId as id, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${
+        ? `SELECT muzzledId as slackId, SUM(milliseconds) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT muzzledId as slackId, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${
             range.start
-          }' AND createdAt < '${range.end}' GROUP BY id ORDER BY count DESC;`;
+          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -374,10 +374,10 @@ export class MuzzlePersistenceService {
   private getMuzzlerByTime(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT requestorId as id, SUM(milliseconds) as count FROM muzzle GROUP BY id ORDER BY count DESC;`
-        : `SELECT requestorId as id, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${
+        ? `SELECT requestorId as slackId, SUM(milliseconds) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT requestorId as slackId, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${
             range.start
-          }' AND createdAt < '${range.end}' GROUP BY id ORDER BY count DESC;`;
+          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }

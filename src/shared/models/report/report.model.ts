@@ -22,7 +22,7 @@ export interface MuzzleReport {
 }
 
 export interface ReportCount {
-  id: string;
+  slackId: string;
   count: number;
 }
 
