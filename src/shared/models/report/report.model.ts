@@ -1,0 +1,42 @@
+export enum ReportType {
+  Trailing30 = 'trailing30',
+  Week = 'week',
+  Month = 'month',
+  Year = 'year',
+  AllTime = 'all',
+}
+
+export interface ReportRange {
+  start?: string;
+  end?: string;
+  reportType: ReportType;
+}
+
+export interface MuzzleReport {
+  muzzled: MuzzleReportItem;
+  muzzlers: MuzzleReportItem;
+  accuracy: Accuracy[];
+  kdr: any[];
+  rawNemesis: any[];
+  successNemesis: any[];
+}
+
+export interface ReportCount {
+  id: number;
+  count: number;
+}
+
+export interface Accuracy {
+  requestorId: number;
+  accuracy: number;
+  kills: number;
+  deaths: number;
+}
+
+interface MuzzleReportItem {
+  byInstances: ReportCount[];
+  byMessages: ReportCount[];
+  byWords: ReportCount[];
+  byChars: ReportCount[];
+  byTime: ReportCount[];
+}

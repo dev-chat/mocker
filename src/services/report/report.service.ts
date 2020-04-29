@@ -1,10 +1,10 @@
 import Table from 'easy-table';
 import moment from 'moment';
 import { List } from '../../shared/db/models/List';
-import { ReportType } from '../../shared/models/muzzle/muzzle-models';
 import { ListPersistenceService } from '../list/list.persistence.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { SlackService } from '../slack/slack.service';
+import { ReportType } from '../../shared/models/report/report.model';
 
 export class ReportService {
   private slackService = SlackService.getInstance();

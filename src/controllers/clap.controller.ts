@@ -1,10 +1,10 @@
 import express, { Router } from 'express';
+import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { BackFirePersistenceService } from '../services/backfire/backfire.persistence.service';
 import { ClapService } from '../services/clap/clap.service';
 import { CounterPersistenceService } from '../services/counter/counter.persistence.service';
 import { MuzzlePersistenceService } from '../services/muzzle/muzzle.persistence.service';
 import { SlackService } from '../services/slack/slack.service';
-import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
 
 export const clapController: Router = express.Router();
 

@@ -1,4 +1,4 @@
-import { getRepository, UpdateResult } from 'typeorm';
+import { UpdateResult, getRepository } from 'typeorm';
 import { Backfire } from '../../shared/db/models/Backfire';
 import { BackfireItem } from '../../shared/models/backfire/backfire.model';
 import { ABUSE_PENALTY_TIME } from '../muzzle/constants';

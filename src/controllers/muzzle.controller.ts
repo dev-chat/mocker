@@ -6,8 +6,8 @@ import { MuzzleService } from '../services/muzzle/muzzle.service';
 import { ReportService } from '../services/report/report.service';
 import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
-import { ReportType } from '../shared/models/muzzle/muzzle-models';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import { ReportType } from '../shared/models/report/report.model';
 
 export const muzzleController: Router = express.Router();
 

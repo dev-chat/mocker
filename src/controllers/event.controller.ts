@@ -40,7 +40,7 @@ function handleMuzzledMessage(request: EventRequest): void {
     );
     muzzlePersistenceService.addMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
     webService.deleteMessage(request.event.channel, request.event.ts);
-    muzzlePersistenceService.trackDeletedMessage(muzzleId, request.event.text);
+    muzzlePersistenceService.trackDeletedMessage(muzzleId as number, request.event.text);
     webService.sendMessage(
       request.event.channel,
       `:rotating_light: <@${

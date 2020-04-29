@@ -2,8 +2,8 @@ import {
   ChatDeleteArguments,
   ChatPostMessageArguments,
   FilesUploadArguments,
-  WebClient,
   WebAPICallResult,
+  WebClient,
 } from '@slack/web-api';
 
 export class WebService {
