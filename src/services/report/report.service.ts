@@ -4,7 +4,7 @@ import { List } from '../../shared/db/models/List';
 import { ListPersistenceService } from '../list/list.persistence.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { SlackService } from '../slack/slack.service';
-import { ReportType } from '../../shared/models/report/report.model';
+import { ReportType, ReportCount, MuzzleReport } from '../../shared/models/report/report.model';
 
 export class ReportService {
   private slackService = SlackService.getInstance();
@@ -72,7 +72,7 @@ The List
 ${Table.print(reportWithoutDate)}
 `;
   }
-  private generateFormattedReport(report: any, reportType: ReportType): string {
+  private generateFormattedReport(report: MuzzleReport, reportType: ReportType): string {
     const formattedReport = this.formatReport(report);
     return `
 ${this.getReportTitle(reportType)}
@@ -97,21 +97,21 @@ ${this.getReportTitle(reportType)}
 `;
   }
 
-  private formatReport(report: any): any {
+  private formatReport(report: MuzzleReport): any {
     const reportFormatted = {
       muzzled: {
-        byInstances: report.muzzled.byInstances.map((instance: any) => {
+        byInstances: report.muzzled.byInstances.map((instance: ReportCount) => {
           return {
-            User: this.slackService.getUserById(instance.muzzledId)!.name,
+            User: this.slackService.getUserById(instance.id)!.name,
             Muzzles: instance.count,
           };
         }),
       },
       muzzlers: {
-        byInstances: report.muzzlers.byInstances.map((instance: any) => {
+        byInstances: report.muzzlers.byInstances.map((instance: ReportCount) => {
           return {
-            User: this.slackService.getUserById(instance.requestorId)!.name,
-            ['Muzzles Issued']: instance.instanceCount,
+            User: this.slackService.getUserById(instance.id)!.name,
+            ['Muzzles Issued']: instance.count,
           };
         }),
       },
