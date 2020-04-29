@@ -102,7 +102,7 @@ ${this.getReportTitle(reportType)}
       muzzled: {
         byInstances: report.muzzled.byInstances.map((instance: ReportCount) => {
           return {
-            User: this.slackService.getUserById(instance.id)!.name,
+            User: this.slackService.getUserById(instance.slackId)!.name,
             Muzzles: instance.count,
           };
         }),
@@ -110,7 +110,7 @@ ${this.getReportTitle(reportType)}
       muzzlers: {
         byInstances: report.muzzlers.byInstances.map((instance: ReportCount) => {
           return {
-            User: this.slackService.getUserById(instance.id)!.name,
+            User: this.slackService.getUserById(instance.slackId)!.name,
             ['Muzzles Issued']: instance.count,
           };
         }),
