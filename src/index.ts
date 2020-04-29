@@ -1,7 +1,7 @@
 import bodyParser from 'body-parser';
 import express, { Application } from 'express';
 import 'reflect-metadata';
-import { createConnection } from 'typeorm';
+import { createConnection, getConnectionOptions } from 'typeorm';
 import { clapController } from './controllers/clap.controller';
 import { confessionController } from './controllers/confession.controller';
 import { counterController } from './controllers/counter.controller';
@@ -12,7 +12,6 @@ import { mockController } from './controllers/mock.controller';
 import { muzzleController } from './controllers/muzzle.controller';
 import { reactionController } from './controllers/reaction.controller';
 import { walkieController } from './controllers/walkie.controller';
-import { config } from './ormconfig';
 import { SlackService } from './services/slack/slack.service';
 
 const app: Application = express();
@@ -33,15 +32,25 @@ app.use(walkieController);
 
 const slackService = SlackService.getInstance();
 
-createConnection(config)
-  .then(connection => {
-    if (connection.isConnected) {
-      slackService.getAllUsers();
-      console.log(`Connected to MySQL DB: ${config.database}`);
-    } else {
-      throw Error('Unable to connect to database');
-    }
-  })
-  .catch(e => console.error(e));
+const connectToDb = async (): Promise<void> => {
+  try {
+    const options = await getConnectionOptions();
+    createConnection(options)
+      .then(connection => {
+        if (connection.isConnected) {
+          slackService.getAllUsers();
+          console.log(`Connected to MySQL DB: ${options.database}`);
+        } else {
+          throw Error('Unable to connect to database');
+        }
+      })
+      .catch(e => console.error(e));
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-app.listen(PORT, (e: Error) => (e ? console.error(e) : console.log('Listening on port 3000')));
+app.listen(PORT, (e: Error) => {
+  e ? console.error(e) : console.log('Listening on port 3000');
+  connectToDb();
+});
