@@ -22,7 +22,7 @@ export interface MuzzleReport {
 }
 
 export interface ReportCount {
-  id: number;
+  id: string;
   count: number;
 }
 
