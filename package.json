@@ -55,7 +55,7 @@
     }
   },
   "lint-staged": {
-    "*.{ts, spec.ts, css,json,md}": [
+    "*.{ts, spec.ts, css,json}": [
       "npm run lint",
       "git add"
     ]
