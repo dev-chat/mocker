@@ -1,6 +1,5 @@
 import bodyParser from 'body-parser';
 import express, { Application } from 'express';
-import 'reflect-metadata';
 import { createConnection, getConnectionOptions } from 'typeorm';
 import { clapController } from './controllers/clap.controller';
 import { confessionController } from './controllers/confession.controller';

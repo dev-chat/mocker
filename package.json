@@ -22,13 +22,10 @@
     "axios": "^0.18.1",
     "body-parser": "^1.18.3",
     "easy-table": "^1.1.1",
-    "enquirer": "^2.3.2",
     "express": "^4.16.4",
     "moment": "^2.24.0",
     "mysql": "^2.17.1",
-    "reflect-metadata": "^0.1.13",
-    "typeorm": "^0.2.18",
-    "typescript": "^3.4.5"
+    "typeorm": "^0.2.18"
   },
   "devDependencies": {
     "@types/easy-table": "0.0.32",
@@ -49,7 +46,8 @@
     "nodemon": "^1.19.0",
     "prettier": "^1.17.1",
     "ts-jest": "^24.0.2",
-    "ts-node": "^8.1.0"
+    "ts-node": "^8.1.0",
+    "typescript": "^3.4.5"
   },
   "husky": {
     "hooks": {
