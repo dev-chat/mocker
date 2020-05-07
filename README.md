@@ -9,10 +9,9 @@
 1. Set up a new slack workspace for development purposes. (https://slack.com/get-started#/create)
 2. Go to: https://api.slack.com/apps and click Create New App
 3. Choose your newly created workspace as your Development Workspace and click Create App.
-4. Under add features and functionality, do the following:
-5. TODO: Do a bunch of stuff to make your app have the right slash commands, bot users, permissions, etc.
-6. Add your bot oauth token as MUZZLE_BOT_TOKEN and your bot user token as MUZZLE_BOT_USER_TOKEN to your environment variables. Alternatively, you can pass these in as command line arguments.
-7. At this point, you should have a fully configured slack workspace to begin testing in.
+4. Configure Ngrok for your newly created bot: https://api.slack.com/tutorials/tunneling-with-ngrok
+5. Add your bot oauth token as MUZZLE_BOT_TOKEN and your bot user token as MUZZLE_BOT_USER_TOKEN to your environment variables. Alternatively, you can pass these in as command line arguments.
+6. At this point, you should have a fully configured slack workspace to begin testing in.
 
 ### Setting Up Your MYSQL Instance
 
