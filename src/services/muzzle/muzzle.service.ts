@@ -80,7 +80,7 @@ export class MuzzleService {
       request.event.subtype === 'bot_message' &&
       finalUserId &&
       this.muzzlePersistenceService.isUserMuzzled(finalUserId) &&
-      request.event.username !== 'muzzle'
+      request.event.username.toLowerCase() !== 'muzzle'
     );
   }
 

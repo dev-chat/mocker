@@ -14,7 +14,7 @@ import { walkieController } from './controllers/walkie.controller';
 import { SlackService } from './services/slack/slack.service';
 
 const app: Application = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -67,7 +67,7 @@ const checkForEnvVariables = (): void => {
   }
 };
 
-app.listen(PORT, (e: Error) => {
+app.listen(PORT, (e?: Error) => {
   e ? console.error(e) : console.log('Listening on port 3000');
   checkForEnvVariables();
   connectToDb();
