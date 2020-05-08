@@ -14,6 +14,8 @@
 6. Your app should have the following features per the Slack management web app:
 
 - Slash Commands
+  - /mock - Request URL: `<ngrokUrl>/mock`
+  - /define - Request URL: `<ngrokUrl>/define`
   - /muzzle - Request URL: `<ngrokUrl>/muzzle`
   - /muzzlestats - Request URL: `<ngrokUrl>/muzzle/stats`
   - /confess - Request URL: `<ngrokUrl>/confess`
