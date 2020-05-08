@@ -1,6 +1,6 @@
 import { CounterMuzzle } from '../../shared/models/counter/counter-models';
 import { EventRequest } from '../../shared/models/slack/slack-models';
-import { MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from '../muzzle/constants';
+import { MAX_SUPPRESSIONS, REPLACEMENT_TEXT, MAX_WORD_LENGTH } from '../muzzle/constants';
 import { getTimeString, isRandomEven } from '../muzzle/muzzle-utilities';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { SlackService } from '../slack/slack.service';
@@ -59,7 +59,7 @@ export class CounterService {
 
   public getReplacementWord(word: string, isFirstWord: boolean, isLastWord: boolean, replacementText: string): string {
     const text =
-      isRandomEven() && word.length < 10 && word !== ' ' && !this.slackService.containsTag(word)
+      isRandomEven() && word.length < MAX_WORD_LENGTH && word !== ' ' && !this.slackService.containsTag(word)
         ? `*${word}*`
         : replacementText;
 
