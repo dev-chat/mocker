@@ -1,5 +1,5 @@
-import { ReportType } from '../../shared/models/muzzle/muzzle-models';
 import { ReportService } from './report.service';
+import { ReportType } from '../../shared/models/report/report.model';
 
 describe('ReportService', () => {
   let mockService: ReportService;

@@ -50,10 +50,24 @@ describe('MuzzleService', () => {
       jest
         .spyOn(MuzzlePersistenceService.getInstance(), 'incrementWordSuppressions')
         .mockResolvedValue(mockResolve as UpdateResult);
+      jest
+        .spyOn(muzzleService, 'getReplacementWord')
+        .mockImplementation((word: string, isFirstWord: boolean, isLastWord: boolean, replacementText: string) => {
+          const isRandomEven = (): boolean => true;
+          replacementText = '..mMm..';
+          const text =
+            isRandomEven() && word.length < 10 && word !== ' ' && !slackInstance.containsTag(word)
+              ? `*${word}*`
+              : replacementText;
+
+          if ((isFirstWord && !isLastWord) || (!isFirstWord && !isLastWord)) {
+            return `${text} `;
+          }
+          return text;
+        });
     });
 
     it('should always muzzle a tagged user', () => {
-      jest.spyOn(muzzleService, 'getReplacementWord').mockReturnValue('..mMm..');
       const testSentence = '<@U2TKJ> <@JKDSF> <@SDGJSK> <@LSKJDSG> <@lkjdsa> <@LKSJDF> <@SDLJG> <@jrjrjr> <@fudka>';
       expect(muzzleService.muzzle(testSentence, 1)).toBe(
         '..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm..',
