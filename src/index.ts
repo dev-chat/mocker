@@ -50,10 +50,10 @@ const connectToDb = async (): Promise<void> => {
 };
 
 const checkForEnvVariables = (): void => {
-  if (!!(process.env.MUZZLE_BOT_TOKEN && process.env.MUZZLE_BOT_USER_TOKEN)) {
+  if (!(process.env.MUZZLE_BOT_TOKEN && process.env.MUZZLE_BOT_USER_TOKEN)) {
     throw new Error('Missing MUZZLE_BOT_TOKEN or MUZZLE_BOT_USER_TOKEN environment variables.');
   } else if (
-    !!(
+    !(
       process.env.TYPEORM_CONNECTION &&
       process.env.TYPEORM_HOST &&
       process.env.TYPEORM_USERNAME &&
