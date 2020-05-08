@@ -11,7 +11,41 @@
 3. Choose your newly created workspace as your Development Workspace and click Create App.
 4. Configure Ngrok for your newly created bot: https://api.slack.com/tutorials/tunneling-with-ngrok
 5. Add your bot oauth token as MUZZLE_BOT_TOKEN and your bot user token as MUZZLE_BOT_USER_TOKEN to your environment variables. Alternatively, you can pass these in as command line arguments.
-6. At this point, you should have a fully configured slack workspace to begin testing in.
+6. Your app should have the following features per the Slack management web app:
+
+- Slash Commands
+  - /muzzle - Request URL: `<ngrokUrl>/muzzle`
+  - /muzzlestats - Request URL: `<ngrokUrl>/muzzle/stats`
+  - /confess - Request URL: `<ngrokUrl>/confess`
+  - /list - Request URL: `<ngrokUrl>/list/add`
+  - /listreport - Request URL: `<ngrokUrl>/list/retrieve`
+  - /listremove - Request URL: `<ngrokUrl>/list/remove`
+  - /counter - Request URL: `<ngrokUrl>/counter`
+  - /repstats - Request URL: `<ngrokUrl>/rep/get`
+  - /walkie - Request URL: `<ngrokUrl>/walkie`
+
+Each of the slash commands should have `Escape Channels, users and links sent to your app` checked.
+
+- Event Subscriptions
+
+  - Request URL: `<ngrokUrl>/muzzle/handle`
+  - Subscribe to Workspace Events:
+    - messages.channels
+    - reaction_added
+    - reaction_removed
+    - team_join
+
+- Permissions
+  - admin
+  - channels:history
+  - chat:write:bot
+  - chat:write:user
+  - commands
+  - files:write:user
+  - groups:history
+  - reactions:read
+  - users.profile:read
+  - users:read
 
 ### Setting Up Your MYSQL Instance
 
