@@ -4,3 +4,4 @@ export const MAX_SUPPRESSIONS = 7;
 export const MAX_MUZZLES = 2;
 export const ABUSE_PENALTY_TIME = 300000;
 export const REPLACEMENT_TEXT = ['..mMm..', '..COUGH..'];
+export const MAX_WORD_LENGTH = 10;

@@ -5,7 +5,7 @@ import { CounterPersistenceService } from '../counter/counter.persistence.servic
 import { CounterService } from '../counter/counter.service';
 import { SlackService } from '../slack/slack.service';
 import { WebService } from '../web/web.service';
-import { MAX_MUZZLES, MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from './constants';
+import { MAX_MUZZLES, MAX_SUPPRESSIONS, REPLACEMENT_TEXT, MAX_WORD_LENGTH } from './constants';
 import { getTimeString, getTimeToMuzzle, isRandomEven, shouldBackfire } from './muzzle-utilities';
 import { MuzzlePersistenceService } from './muzzle.persistence.service';
 
@@ -173,7 +173,7 @@ export class MuzzleService {
 
   public getReplacementWord(word: string, isFirstWord: boolean, isLastWord: boolean, replacementText: string): string {
     const text =
-      isRandomEven() && word.length < 10 && word !== ' ' && !this.slackService.containsTag(word)
+      isRandomEven() && word.length < MAX_WORD_LENGTH && word !== ' ' && !this.slackService.containsTag(word)
         ? `*${word}*`
         : replacementText;
 

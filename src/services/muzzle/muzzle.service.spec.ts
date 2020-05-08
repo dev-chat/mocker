@@ -6,7 +6,7 @@ import { Muzzled } from '../../shared/models/muzzle/muzzle-models';
 import { EventRequest, SlackUser } from '../../shared/models/slack/slack-models';
 import { SlackService } from '../slack/slack.service';
 import { WebService } from '../web/web.service';
-import { MAX_SUPPRESSIONS } from './constants';
+import { MAX_SUPPRESSIONS, MAX_WORD_LENGTH } from './constants';
 import * as muzzleUtils from './muzzle-utilities';
 import { MuzzlePersistenceService } from './muzzle.persistence.service';
 import { MuzzleService } from './muzzle.service';
@@ -56,7 +56,7 @@ describe('MuzzleService', () => {
           const isRandomEven = (): boolean => true;
           replacementText = '..mMm..';
           const text =
-            isRandomEven() && word.length < 10 && word !== ' ' && !slackInstance.containsTag(word)
+            isRandomEven() && word.length < MAX_WORD_LENGTH && word !== ' ' && !slackInstance.containsTag(word)
               ? `*${word}*`
               : replacementText;
 
