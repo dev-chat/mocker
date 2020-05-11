@@ -109,4 +109,5 @@ export const reactionValues: ReactionValue = {
   no_good: -1,
   chart_with_downwards_trend: -1,
   zzz: -1,
+  oof: -1,
 };
