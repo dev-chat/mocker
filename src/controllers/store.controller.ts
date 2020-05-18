@@ -19,7 +19,9 @@ storeController.post('/store', (req, res) => {
 
 storeController.post('/store/buy', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  if (!storeService.isValidItem(request.text)) {
+  if (!request.text) {
+    res.send('You must provide an item id in order to buy an item');
+  } else if (!storeService.isValidItem(request.text)) {
     res.send('Invalid item. Please use `/buy item_id`.');
   } else if (!storeService.canAfford(request.text, request.user_id)) {
     res.send(`Sorry, you can't afford that item.`);
@@ -36,6 +38,8 @@ storeController.post('/store/use', async (req, res) => {
     counterPersistenceService.isCounterMuzzled(request.user_id)
   ) {
     res.send(`Sorry, can't do that while muzzled.`);
+  } else if (!request.text) {
+    res.send('You must provide an item id in order to use an item');
   } else if (!storeService.isValidItem(request.text)) {
     res.send('Invalid item. PLease use `/buy item_id` or specify an item you own.');
   } else if (!storeService.isOwnedByUser(request.text, request.user_id)) {
