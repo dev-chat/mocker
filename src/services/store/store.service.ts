@@ -1,23 +1,25 @@
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
+import { StorePersistenceService } from './store.persistence.service';
+import { Item } from '../../shared/db/models/Item';
 
 export class StoreService {
   storePersistenceService = StorePersistenceService.getInstance();
   reactionPersistenceService = ReactionPersistenceService.getInstance();
 
-  listItems(): string {
-    this.storePersistenceService.getItems();
-    return '';
+  async listItems(): Promise<string> {
+    const items: Item[] = await this.storePersistenceService.getItems();
+    return `${items}`; // This should format the items;
   }
 
   async isValidItem(itemId: string): Promise<boolean> {
     const id = +itemId;
-    const isItem = this.storePersistenceService.getItem(id);
+    const isItem = await this.storePersistenceService.getItem(id);
     return !!isItem;
   }
 
   async canAfford(itemId: string, userId: string): Promise<boolean> {
     const id: number = +itemId;
-    const price: number = await this.storePersistenceService.getPrice(id);
+    const price: number = (await this.storePersistenceService.getItem(id)).price;
     const userRep: number = await +this.reactionPersistenceService.getRep(userId);
     return price <= userRep;
   }
