@@ -1,33 +1,15 @@
 import bodyParser from 'body-parser';
 import express, { Application } from 'express';
 import { createConnection, getConnectionOptions } from 'typeorm';
-import { clapController } from './controllers/clap.controller';
-import { confessionController } from './controllers/confession.controller';
-import { counterController } from './controllers/counter.controller';
-import { defineController } from './controllers/define.controller';
-import { eventController } from './controllers/event.controller';
-import { listController } from './controllers/list.controller';
-import { mockController } from './controllers/mock.controller';
-import { muzzleController } from './controllers/muzzle.controller';
-import { reactionController } from './controllers/reaction.controller';
-import { walkieController } from './controllers/walkie.controller';
 import { SlackService } from './services/slack/slack.service';
+import { controllers } from './controllers/index.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(counterController);
-app.use(mockController);
-app.use(muzzleController);
-app.use(defineController);
-app.use(clapController);
-app.use(confessionController);
-app.use(listController);
-app.use(eventController);
-app.use(reactionController);
-app.use(walkieController);
+app.use(controllers);
 
 const slackService = SlackService.getInstance();
 
