@@ -18,7 +18,7 @@ export class StoreService {
   async canAfford(itemId: string, userId: string): Promise<boolean> {
     const id = +itemId;
     const price: number = await this.storePersistenceService.getPrice(itemId);
-    const userRep: number = await this.reactionPersistenceService.getRep(userId);
+    const userRep: number = await +this.reactionPersistenceService.getRep(userId);
     return price <= userRep;
   }
 
