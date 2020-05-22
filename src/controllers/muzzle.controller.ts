@@ -52,7 +52,7 @@ muzzleController.post('/muzzle/stats', async (req: Request, res: Response) => {
   } else {
     const reportType: ReportType = reportService.getReportType(request.text);
     const report = await reportService.getMuzzleReport(reportType);
-    webService.uploadFile(req.body.channel_id, report, reportService.getReportTitle(reportType));
+    webService.uploadFile(req.body.channel_id, report, reportService.getReportTitle(reportType), request.user_id);
     res.status(200).send();
   }
 });

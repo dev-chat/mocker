@@ -1,9 +1,10 @@
 import {
   ChatDeleteArguments,
   ChatPostMessageArguments,
-  // FilesUploadArguments,
+  FilesUploadArguments,
   WebAPICallResult,
   WebClient,
+  ChatPostEphemeralArguments,
 } from '@slack/web-api';
 
 export class WebService {
@@ -57,20 +58,26 @@ export class WebService {
     return this.web.users.list();
   }
 
-  public uploadFile(channel: string, content: string, title?: string): void {
-    console.log(title);
-    // const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
-    // const uploadRequest: FilesUploadArguments = {
-    //   channels: channel,
-    //   content,
-    //   filetype: 'markdown',
-    //   title,
-    //   // eslint-disable-next-line @typescript-eslint/camelcase
-    //   initial_comment: title,
-    //   token: muzzleToken,
-    // };
+  public uploadFile(channel: string, content: string, title?: string, userId: string): void {
+    const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
+    const uploadRequest: FilesUploadArguments = {
+      channels: channel,
+      content,
+      filetype: 'markdown',
+      title,
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      initial_comment: title,
+      token: muzzleToken,
+    };
 
-    this.sendMessage(channel, content);
-    // this.web.files.upload(uploadRequest).catch(e => console.error(e));
+    this.web.files.upload(uploadRequest).catch(e => {
+      console.error(e);
+      const options: ChatPostEphemeralArguments = {
+        channel,
+        text: `Oops! I tried to post the stats you requested to ${channel} but it looks like I haven't been added to that channel yet. Can you please add me? Just type '@muzzle' in the channel!`,
+        user: userId,
+      };
+      this.web.chat.postEphemeral(options);
+    });
   }
 }
