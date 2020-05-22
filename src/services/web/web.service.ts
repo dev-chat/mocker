@@ -58,16 +58,17 @@ export class WebService {
   }
 
   public uploadFile(channel: string, content: string, title?: string): void {
-    const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
-    const uploadRequest: FilesUploadArguments = {
-      channels: channel,
-      content,
-      filetype: 'markdown',
-      title,
-      // eslint-disable-next-line @typescript-eslint/camelcase
-      initial_comment: title,
-      token: muzzleToken,
-    };
+    console.log(title);
+    // const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
+    // const uploadRequest: FilesUploadArguments = {
+    //   channels: channel,
+    //   content,
+    //   filetype: 'markdown',
+    //   title,
+    //   // eslint-disable-next-line @typescript-eslint/camelcase
+    //   initial_comment: title,
+    //   token: muzzleToken,
+    // };
 
     this.sendMessage(channel, content);
     // this.web.files.upload(uploadRequest).catch(e => console.error(e));
