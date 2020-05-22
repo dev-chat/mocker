@@ -58,7 +58,7 @@ export class WebService {
     return this.web.users.list();
   }
 
-  public uploadFile(channel: string, content: string, title?: string, userId: string): void {
+  public uploadFile(channel: string, content: string, title: string, userId: string): void {
     const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const uploadRequest: FilesUploadArguments = {
       channels: channel,
