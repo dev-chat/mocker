@@ -1,7 +1,7 @@
 import {
   ChatDeleteArguments,
   ChatPostMessageArguments,
-  FilesUploadArguments,
+  // FilesUploadArguments,
   WebAPICallResult,
   WebClient,
 } from '@slack/web-api';
