@@ -76,8 +76,8 @@ export class WebService {
         channel,
         text:
           e.data.error === 'not_in_channel'
-            ? `Oops! I tried to post the stats you requested to <@${channel}> but it looks like I haven't been added to that channel yet. Can you please add me? Just type \`@muzzle\` in the channel!`
-            : `Oops! I tried to post the stats you requested to <@${channel}> but it looks like something went wrong. Please try again later.`,
+            ? `Oops! I tried to post the stats you requested but it looks like I haven't been added to that channel yet. Can you please add me? Just type \`@muzzle\` in the channel!`
+            : `Oops! I tried to post the stats you requested but it looks like something went wrong. Please try again later.`,
         user: userId,
       };
       this.web.chat.postEphemeral(options);
