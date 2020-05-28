@@ -12,8 +12,8 @@ const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const counterPersistenceService = CounterPersistenceService.getInstance();
 const storeService: StoreService = new StoreService();
 
-storeController.post('/store', (req, res) => {
-  const storeItems: string = storeService.listItems();
+storeController.post('/store', async (_req, res) => {
+  const storeItems: string = await storeService.listItems();
   res.status(200).send(storeItems);
 });
 

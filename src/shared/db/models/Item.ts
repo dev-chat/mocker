@@ -6,6 +6,9 @@ export class Item {
   public id!: number;
 
   @Column()
+  public name!: string;
+
+  @Column()
   public description!: string;
 
   @Column()

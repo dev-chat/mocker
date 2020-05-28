@@ -18,16 +18,15 @@ export class StoreService {
   }
 
   async canAfford(itemId: string, userId: string): Promise<boolean> {
-    const id: number = +itemId;
+    const id = +itemId;
     const price: number = (await this.storePersistenceService.getItem(id)).price;
-    const userRep: number = await +this.reactionPersistenceService.getRep(userId);
+    const userRep: number = await this.reactionPersistenceService.getRep(userId);
     return price <= userRep;
   }
 
   async buyItem(itemId: string, userId: string): Promise<string> {
     const id = +itemId;
-    const receipt: string = await this.storePersistenceService.buyItem(id, userId);
-    return receipt;
+    return await this.storePersistenceService.buyItem(id, userId);
   }
 
   async isOwnedByUser(itemId: string, userId: string): Promise<boolean> {
