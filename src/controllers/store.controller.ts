@@ -46,8 +46,8 @@ storeController.post('/store/use', async (req, res) => {
     res.send('You do not own that item. Please buy it on the store by using `/buy item_id`.');
   }
 
-  const resp: string = await storeService.useItem(request.text, request.user_id);
-  res.status(200).send(resp);
+  storeService.useItem(request.text, request.user_id);
+  res.status(200);
 });
 
 storeController.post('/store/inventory', async (req, res) => {

@@ -35,14 +35,13 @@ export class StoreService {
     return isOwned;
   }
 
-  async useItem(itemId: string, userId: string): Promise<string> {
+  async useItem(itemId: string, userId: string): Promise<void> {
     const id = +itemId;
-    const useItem = await this.storePersistenceService.useItem(id, userId);
-    return useItem;
+    await this.storePersistenceService.useItem(id, userId);
   }
 
   async getInventory(userId: string): Promise<string> {
     const inventory = await this.storePersistenceService.getInventory(userId);
-    return inventory;
+    return inventory.toString();
   }
 }

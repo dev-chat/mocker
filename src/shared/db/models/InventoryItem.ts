@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
 import { User } from './User';
 import { Item } from './Item';
 
@@ -7,9 +7,9 @@ export class InventoryItem {
   @PrimaryGeneratedColumn()
   public id!: number;
 
-  @Column()
+  @ManyToOne(_type => Item, item => item.id)
   public item!: Item;
 
-  @ManyToOne(type => User, user => user.inventory)
+  @ManyToOne(_type => User, user => user.inventory)
   public owner!: User;
 }

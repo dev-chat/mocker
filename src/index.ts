@@ -1,3 +1,4 @@
+import 'reflect-metadata'; // Necessary for TypeORM entities.
 import bodyParser from 'body-parser';
 import express, { Application } from 'express';
 import { createConnection, getConnectionOptions } from 'typeorm';

@@ -39,15 +39,32 @@ export class StorePersistenceService {
     return `Sorry, unable to buy your item at this time. Please try again later.`;
   }
 
-  isOwnedByUser(itemId: number, userId: string): Promise<boolean> {
-    // Should use the iuser x items table.
+  async isOwnedByUser(itemId: number, userId: string): Promise<boolean> {
+    const itemById = await getRepository(Item).findOne(itemId);
+    const userById = await getRepository(User).findOne({ slackId: userId });
+    return !!getRepository(InventoryItem).findOneOrFail({ owner: userById, item: itemById });
   }
 
-  useItem(itemId: number, userId: string): Promise<string> {
-    // Should use the user x items tables.
+  async useItem(itemId: number, userId: string): Promise<void> {
+    const userById = (await getRepository(User).findOne({ slackId: userId })) as User;
+    const itemById = (await getRepository(Item).findOne(itemId)) as Item;
+    const inventoryItem = (await getRepository(InventoryItem).findOne({
+      owner: userById,
+      item: itemById,
+    })) as InventoryItem;
+    await getRepository(InventoryItem)
+      .remove(inventoryItem)
+      .then(_D => {
+        console.log(`${userById.slackId} used ${itemById.name}`);
+        // Needs to execute the thing that the item does. THinking about storing that code here in an items constant that maps by item name in DB.
+      })
+      .catch(e =>
+        console.error(`Error when trying to use item: ${userById.slackId} tried to use ${itemById.name} but ${e}`),
+      );
   }
 
-  getInventory(userId: string): Promise<string> {
-    // Should use the user x items table.
+  async getInventory(userId: string): Promise<InventoryItem[]> {
+    const userById = await getRepository(User).findOne({ slackId: userId });
+    return getRepository(InventoryItem).find({ owner: userById });
   }
 }
