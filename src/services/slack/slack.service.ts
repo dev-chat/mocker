@@ -95,6 +95,7 @@ export class SlackService {
       })
       .catch(e => {
         console.error('Failed to retrieve users', e);
+        console.timeEnd('retrieved user list in: ');
         console.error('Retrying in 5 seconds...');
         setTimeout(() => this.getAllUsers(), 5000);
       });

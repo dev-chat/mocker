@@ -12,6 +12,9 @@ export class User {
   @Column()
   public slackTeamId!: string;
 
+  @Column()
+  public name!: string;
+
   @OneToMany(_type => InventoryItem, inventoryItem => inventoryItem.owner)
   public inventory!: InventoryItem[];
 }
