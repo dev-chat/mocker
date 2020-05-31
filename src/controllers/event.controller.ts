@@ -128,6 +128,7 @@ eventController.post('/muzzle/handle', (req: Request, res: Response) => {
   if (req.body.challenge) {
     res.send({ challenge: req.body.challenge });
   }
+  res.status(200).send();
   const request: EventRequest = req.body;
   const isNewUserAdded = request.event.type === 'team_join';
   const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
