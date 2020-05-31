@@ -82,7 +82,7 @@ export class MuzzleService {
       if (request.event.blocks) {
         const hasIdInBlock = this.findUserIdInBlocks(request.event.blocks, this.userIdRegEx);
         if (hasIdInBlock) {
-          userIdByBlocks = this.slackService.getUserId(request.event.text);
+          userIdByBlocks = this.slackService.getUserId(hasIdInBlock);
           console.log(userIdByBlocks);
         }
       }
