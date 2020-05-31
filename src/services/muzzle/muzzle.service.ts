@@ -53,11 +53,13 @@ export class MuzzleService {
       if (typeof obj[key] === 'string') {
         const found = obj[key].match(regEx);
         if (found) {
+          console.log('found', obj[key]);
           id = obj[key];
           return obj[key];
         }
       }
       if (typeof obj[key] === 'object') {
+        console.log('found object at ', key, 'iterating...');
         this.findUserIdInBlocks(obj[key], regEx);
       }
     });
@@ -76,7 +78,7 @@ export class MuzzleService {
 
     const hasIdInBlock = this.findUserIdInBlocks(request.event, this.userIdRegEx);
 
-    if (!!hasIdInBlock) {
+    if (hasIdInBlock) {
       userIdByBlocks = this.slackService.getUserId(request.event.text);
     }
 
