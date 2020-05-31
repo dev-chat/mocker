@@ -77,10 +77,13 @@ export class MuzzleService {
       let userIdByCallbackId;
       let userIdByBlocks;
 
-      const hasIdInBlock = this.findUserIdInBlocks(request.event, this.userIdRegEx);
-      console.log(hasIdInBlock);
-      if (hasIdInBlock) {
-        userIdByBlocks = this.slackService.getUserId(request.event.text);
+      if (request.event.blocks) {
+        console.log('we got some blocks');
+        const hasIdInBlock = this.findUserIdInBlocks(request.event.blocks, this.userIdRegEx);
+        console.log('did we find an id in em', hasIdInBlock);
+        if (hasIdInBlock) {
+          userIdByBlocks = this.slackService.getUserId(request.event.text);
+        }
       }
 
       if (request.event.text) {
