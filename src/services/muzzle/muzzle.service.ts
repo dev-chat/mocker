@@ -53,13 +53,11 @@ export class MuzzleService {
       if (typeof obj[key] === 'string') {
         const found = obj[key].match(regEx);
         if (found) {
-          console.log('found', obj[key]);
           id = obj[key];
           return obj[key];
         }
       }
       if (typeof obj[key] === 'object') {
-        console.log('found object at ', key, 'iterating...');
         this.findUserIdInBlocks(obj[key], regEx);
       }
     });
@@ -70,45 +68,43 @@ export class MuzzleService {
    * Determines whether or not a bot message should be removed.
    */
   public shouldBotMessageBeMuzzled(request: EventRequest): boolean {
-    let userIdByEventText;
-    let userIdByAttachmentText;
-    let userIdByAttachmentPretext;
-    let userIdByCallbackId;
-    let userIdByBlocks;
+    if (request.event.subtype === 'bot_message' && request.event.username.toLowerCase() !== 'muzzle') {
+      let userIdByEventText;
+      let userIdByAttachmentText;
+      let userIdByAttachmentPretext;
+      let userIdByCallbackId;
+      let userIdByBlocks;
 
-    const hasIdInBlock = this.findUserIdInBlocks(request.event, this.userIdRegEx);
+      const hasIdInBlock = this.findUserIdInBlocks(request.event, this.userIdRegEx);
 
-    if (hasIdInBlock) {
-      userIdByBlocks = this.slackService.getUserId(request.event.text);
-    }
-
-    if (request.event.text) {
-      userIdByEventText = this.slackService.getUserId(request.event.text);
-    }
-
-    if (request.event.attachments && request.event.attachments.length) {
-      userIdByAttachmentText = this.slackService.getUserId(request.event.attachments[0].text);
-      userIdByAttachmentPretext = this.slackService.getUserId(request.event.attachments[0].pretext);
-
-      if (request.event.attachments[0].callback_id) {
-        userIdByCallbackId = this.slackService.getUserIdByCallbackId(request.event.attachments[0].callback_id);
+      if (hasIdInBlock) {
+        userIdByBlocks = this.slackService.getUserId(request.event.text);
       }
+
+      if (request.event.text) {
+        userIdByEventText = this.slackService.getUserId(request.event.text);
+      }
+
+      if (request.event.attachments && request.event.attachments.length) {
+        userIdByAttachmentText = this.slackService.getUserId(request.event.attachments[0].text);
+        userIdByAttachmentPretext = this.slackService.getUserId(request.event.attachments[0].pretext);
+
+        if (request.event.attachments[0].callback_id) {
+          userIdByCallbackId = this.slackService.getUserIdByCallbackId(request.event.attachments[0].callback_id);
+        }
+      }
+
+      const finalUserId = this.slackService.getBotId(
+        userIdByEventText,
+        userIdByAttachmentText,
+        userIdByAttachmentPretext,
+        userIdByCallbackId,
+        userIdByBlocks,
+      );
+      console.log(finalUserId);
+      return !!(finalUserId && this.muzzlePersistenceService.isUserMuzzled(finalUserId));
     }
-
-    const finalUserId = this.slackService.getBotId(
-      userIdByEventText,
-      userIdByAttachmentText,
-      userIdByAttachmentPretext,
-      userIdByCallbackId,
-      userIdByBlocks,
-    );
-
-    return !!(
-      request.event.subtype === 'bot_message' &&
-      finalUserId &&
-      this.muzzlePersistenceService.isUserMuzzled(finalUserId) &&
-      request.event.username.toLowerCase() !== 'muzzle'
-    );
+    return false;
   }
 
   /**
