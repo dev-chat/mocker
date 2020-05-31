@@ -68,7 +68,6 @@ export class MuzzleService {
    * Determines whether or not a bot message should be removed.
    */
   public shouldBotMessageBeMuzzled(request: EventRequest): boolean {
-    console.log(request);
     if (
       (request.event.bot_id || request.event.subtype === 'bot_message') &&
       (!request.event.username || request.event.username.toLowerCase() !== 'muzzle')
@@ -83,7 +82,6 @@ export class MuzzleService {
         const hasIdInBlock = this.findUserIdInBlocks(request.event.blocks, this.userIdRegEx);
         if (hasIdInBlock) {
           userIdByBlocks = this.slackService.getUserId(hasIdInBlock);
-          console.log(userIdByBlocks);
         }
       }
 
