@@ -70,7 +70,10 @@ export class MuzzleService {
    */
   public shouldBotMessageBeMuzzled(request: EventRequest): boolean {
     console.log(request);
-    if (request.event.subtype === 'bot_message' && request.event.username.toLowerCase() !== 'muzzle') {
+    if (
+      (request.event.bot_id || request.event.subtype === 'bot_message') &&
+      request.event.username.toLowerCase() !== 'muzzle'
+    ) {
       let userIdByEventText;
       let userIdByAttachmentText;
       let userIdByAttachmentPretext;
