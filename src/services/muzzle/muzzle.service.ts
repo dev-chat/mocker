@@ -72,7 +72,7 @@ export class MuzzleService {
     console.log(request);
     if (
       (request.event.bot_id || request.event.subtype === 'bot_message') &&
-      request.event.username.toLowerCase() !== 'muzzle'
+      (!request.event.username || request.event.username.toLowerCase() !== 'muzzle')
     ) {
       let userIdByEventText;
       let userIdByAttachmentText;
