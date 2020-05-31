@@ -29,3 +29,5 @@ export const NATO_MAPPINGS: NatoMapping = {
   U66P9KLBS: 'Papa Oscar Delta',
   U96SCNJM8: 'Papa Oscar Bravo',
 };
+
+export const USER_ID_REGEX = /[<]@\w+/gm;

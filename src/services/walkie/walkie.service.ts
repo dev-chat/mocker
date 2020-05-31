@@ -1,13 +1,11 @@
-import { NATO_MAPPINGS } from './constants';
+import { NATO_MAPPINGS, USER_ID_REGEX } from './constants';
 
 export class WalkieService {
-  private userIdRegEx = /[<]@\w+/gm;
-
   public getUserId(user: string): string {
     if (!user) {
       return '';
     }
-    const regArray = user.match(this.userIdRegEx);
+    const regArray = user.match(USER_ID_REGEX);
     return regArray ? regArray[0].slice(2) : '';
   }
 

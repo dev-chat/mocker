@@ -8,6 +8,7 @@ import { WebService } from '../web/web.service';
 import { MAX_MUZZLES, MAX_SUPPRESSIONS, REPLACEMENT_TEXT, MAX_WORD_LENGTH } from './constants';
 import { getTimeString, getTimeToMuzzle, isRandomEven, shouldBackfire } from './muzzle-utilities';
 import { MuzzlePersistenceService } from './muzzle.persistence.service';
+import { USER_ID_REGEX } from '../counter/constants';
 
 export class MuzzleService {
   private webService = WebService.getInstance();
@@ -16,7 +17,7 @@ export class MuzzleService {
   private backfirePersistenceService = BackFirePersistenceService.getInstance();
   private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
   private counterPersistenceService = CounterPersistenceService.getInstance();
-  private userIdRegEx = /[<]@\w+/gm;
+
   /**
    * Takes in text and randomly muzzles certain words.
    */
@@ -60,7 +61,6 @@ export class MuzzleService {
         id = this.findUserIdInBlocks(obj[key], regEx);
       }
     });
-    console.log('returning...', id);
     return id;
   }
 
@@ -79,7 +79,7 @@ export class MuzzleService {
       let userIdByBlocks;
 
       if (request.event.blocks) {
-        const hasIdInBlock = this.findUserIdInBlocks(request.event.blocks, this.userIdRegEx);
+        const hasIdInBlock = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
         if (hasIdInBlock) {
           userIdByBlocks = this.slackService.getUserId(hasIdInBlock);
         }

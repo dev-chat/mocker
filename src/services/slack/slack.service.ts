@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ChannelResponse, SlackUser } from '../../shared/models/slack/slack-models';
 import { WebService } from '../web/web.service';
+import { USER_ID_REGEX } from './constants';
 
 export class SlackService {
   public static getInstance(): SlackService {
@@ -11,7 +12,6 @@ export class SlackService {
   }
   private static instance: SlackService;
   public userList: SlackUser[] = [];
-  private userIdRegEx = /[<]@\w+/gm;
   private web: WebService = WebService.getInstance();
 
   public sendResponse(responseUrl: string, response: ChannelResponse): void {
@@ -36,7 +36,7 @@ export class SlackService {
     if (!user) {
       return '';
     }
-    const regArray = user.match(this.userIdRegEx);
+    const regArray = user.match(USER_ID_REGEX);
     return regArray ? regArray[0].slice(2) : '';
   }
 
