@@ -49,22 +49,17 @@ export class MuzzleService {
 
   public findUserIdInBlocks(obj: any, regEx: RegExp): string | undefined {
     let id;
-    const keys = Object.keys(obj);
-
-    for (const key in keys) {
+    Object.keys(obj).forEach(key => {
       if (typeof obj[key] === 'string') {
         const found = obj[key].match(regEx);
         if (found) {
           id = obj[key];
-          console.log(id);
-          break;
         }
       }
       if (typeof obj[key] === 'object') {
-        this.findUserIdInBlocks(obj[key], regEx);
+        id = this.findUserIdInBlocks(obj[key], regEx);
       }
-    }
-
+    });
     console.log('returning...', id);
     return id;
   }
