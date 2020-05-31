@@ -61,6 +61,7 @@ export class MuzzleService {
         this.findUserIdInBlocks(obj[key], regEx);
       }
     });
+    console.log('found', id);
     return id;
   }
 
