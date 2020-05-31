@@ -69,6 +69,7 @@ export class MuzzleService {
    * Determines whether or not a bot message should be removed.
    */
   public shouldBotMessageBeMuzzled(request: EventRequest): boolean {
+    console.log(request);
     if (request.event.subtype === 'bot_message' && request.event.username.toLowerCase() !== 'muzzle') {
       let userIdByEventText;
       let userIdByAttachmentText;
