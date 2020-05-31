@@ -16,7 +16,7 @@ export class MuzzleService {
   private backfirePersistenceService = BackFirePersistenceService.getInstance();
   private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
   private counterPersistenceService = CounterPersistenceService.getInstance();
-
+  private userIdRegEx = /[<]@\w+/gm;
   /**
    * Takes in text and randomly muzzles certain words.
    */
@@ -47,6 +47,23 @@ export class MuzzleService {
     return returnText;
   }
 
+  public findUserIdInBlocks(obj: any, regEx: RegExp): string | undefined {
+    let id;
+    Object.keys(obj).forEach(key => {
+      if (typeof obj[key] === 'string') {
+        const found = obj[key].match(regEx);
+        if (found) {
+          id = obj[key];
+          return obj[key];
+        }
+      }
+      if (typeof obj[key] === 'object') {
+        this.findUserIdInBlocks(obj[key], regEx);
+      }
+    });
+    return id;
+  }
+
   /**
    * Determines whether or not a bot message should be removed.
    */
@@ -55,6 +72,13 @@ export class MuzzleService {
     let userIdByAttachmentText;
     let userIdByAttachmentPretext;
     let userIdByCallbackId;
+    let userIdByBlocks;
+
+    const hasIdInBlock = this.findUserIdInBlocks(request.event, this.userIdRegEx);
+
+    if (!!hasIdInBlock) {
+      userIdByBlocks = this.slackService.getUserId(request.event.text);
+    }
 
     if (request.event.text) {
       userIdByEventText = this.slackService.getUserId(request.event.text);
@@ -74,6 +98,7 @@ export class MuzzleService {
       userIdByAttachmentText,
       userIdByAttachmentPretext,
       userIdByCallbackId,
+      userIdByBlocks,
     );
 
     return !!(

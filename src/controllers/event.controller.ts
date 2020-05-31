@@ -125,6 +125,9 @@ function handleNewUserAdd(): void {
 }
 // Change route to /event/handle instead.
 eventController.post('/muzzle/handle', (req: Request, res: Response) => {
+  if (req.body.challenge) {
+    res.send({ challenge: req.body.challenge });
+  }
   const request: EventRequest = req.body;
   const isNewUserAdded = request.event.type === 'team_join';
   const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
@@ -152,5 +155,4 @@ eventController.post('/muzzle/handle', (req: Request, res: Response) => {
     handleReaction(request);
   }
   console.timeEnd('respond-to-event');
-  res.send({ challenge: request.challenge });
 });

@@ -65,8 +65,9 @@ export class SlackService {
     fromAttachmentText: string | undefined,
     fromPretext: string | undefined,
     fromCallbackId: string | undefined,
+    fromBlocksId?: string | undefined,
   ): string | undefined {
-    return fromText || fromAttachmentText || fromPretext || fromCallbackId;
+    return fromText || fromAttachmentText || fromPretext || fromCallbackId || fromBlocksId;
   }
   /**
    * Determines whether or not a user is trying to @user, @channel or @here while muzzled.

@@ -136,37 +136,37 @@ describe('slack-utils', () => {
 
     describe('it should handle empty strings', () => {
       it('should return an id fromText if it is the only id present', () => {
-        expect(slackService.getBotId('12345', '', '', '')).toBe('12345');
+        expect(slackService.getBotId('12345', '', '', '', '')).toBe('12345');
       });
 
       it('should return an id fromAttachmentText if it is the only id present', () => {
-        expect(slackService.getBotId('', '12345', '', '')).toBe('12345');
+        expect(slackService.getBotId('', '12345', '', '', '')).toBe('12345');
       });
 
       it('should return an id fromPretext if it is the only id present', () => {
-        expect(slackService.getBotId('', '', '12345', '')).toBe('12345');
+        expect(slackService.getBotId('', '', '12345', '', '')).toBe('12345');
       });
 
       it('should return an id fromCallBackId if it is the only id present', () => {
-        expect(slackService.getBotId('', '', '', '12345')).toBe('12345');
+        expect(slackService.getBotId('', '', '', '12345', '')).toBe('12345');
       });
     });
 
     describe('it should return in the proper order', () => {
       it('should return the first available id - fromText', () => {
-        expect(slackService.getBotId('1', '2', '3', '4')).toBe('1');
+        expect(slackService.getBotId('1', '2', '3', '4', '')).toBe('1');
       });
 
       it('should return the first available id - fromAttachmentText', () => {
-        expect(slackService.getBotId(undefined, '2', '3', '4')).toBe('2');
+        expect(slackService.getBotId(undefined, '2', '3', '4', '')).toBe('2');
       });
 
       it('should return the first available id - fromPretext', () => {
-        expect(slackService.getBotId(undefined, undefined, '3', '4')).toBe('3');
+        expect(slackService.getBotId(undefined, undefined, '3', '4', '')).toBe('3');
       });
 
       it('should return the first available id - fromCallbackId', () => {
-        expect(slackService.getBotId(undefined, undefined, undefined, '4')).toBe('4');
+        expect(slackService.getBotId(undefined, undefined, undefined, '4', '')).toBe('4');
       });
     });
   });
