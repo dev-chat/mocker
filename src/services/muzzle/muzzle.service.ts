@@ -54,6 +54,7 @@ export class MuzzleService {
         const found = obj[key].match(regEx);
         if (found) {
           id = obj[key];
+          console.log(id);
           return obj[key];
         }
       }
@@ -61,7 +62,6 @@ export class MuzzleService {
         this.findUserIdInBlocks(obj[key], regEx);
       }
     });
-    console.log('found', id);
     return id;
   }
 
