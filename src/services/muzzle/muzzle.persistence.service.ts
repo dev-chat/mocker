@@ -431,12 +431,11 @@ export class MuzzlePersistenceService {
 
     return getRepository(Muzzle).query(query);
   }
-
   private getBackfireData(range: ReportRange): Promise<any[]> {
     const query =
       range.reportType === ReportType.AllTime
         ? `
-    SELECT a.muzzledId, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
+    SELECT a.muzzledId as muzzledId, a.backfireCount as backfires, b.muzzleCount as muzzles, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
     FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire GROUP BY muzzledId) a,
     (SELECT requestorId, count(*) as muzzleCount FROM muzzle GROUP BY requestorId) b
     WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`
