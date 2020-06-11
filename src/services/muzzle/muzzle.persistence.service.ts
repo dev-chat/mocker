@@ -440,7 +440,7 @@ export class MuzzlePersistenceService {
     (SELECT requestorId, count(*) as muzzleCount FROM muzzle GROUP BY requestorId) b
     WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`
         : `
-    SELECT a.muzzledId, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
+    SELECT a.muzzledId as muzzledId, a.backfireCount as backfires, b.muzzleCount as muzzles, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
     FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire WHERE createdAt >= '${
       range.start
     }' AND createdAt < '${range.end}' GROUP BY muzzledId) a,
