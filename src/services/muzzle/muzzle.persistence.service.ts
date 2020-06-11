@@ -217,6 +217,7 @@ export class MuzzlePersistenceService {
     const successNemesis = await this.getNemesisBySuccessful(range);
     const backfires = await this.getBackfireData(range);
 
+    console.log(backfires);
     return {
       muzzled: {
         byInstances: mostMuzzledByInstances,
