@@ -149,11 +149,8 @@ ${this.getReportTitle(reportType)}
         };
       }),
       backfires: report.backfires.map((instance: any) => {
-        console.log(instance.users);
         return {
-          User: this.slackService.getUserById(instance.users)!.name,
-          Backfires: instance.backfires,
-          Muzzles: instance.muzzles,
+          User: this.slackService.getUserById(instance.muzzledId)!.name,
           Percentage: instance.backfirePct,
         };
       }),
