@@ -1,11 +1,10 @@
 import moment from 'moment';
-import { UpdateResult, getRepository, Db, getManager } from 'typeorm';
+import { UpdateResult, getRepository, getManager } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
 import { Muzzled, Requestor } from '../../shared/models/muzzle/muzzle-models';
 import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_MUZZLE_TIME, MAX_TIME_BETWEEN_MUZZLES } from './constants';
 import { getRemainingTime } from './muzzle-utilities';
 import { Accuracy, MuzzleReport, ReportCount, ReportRange, ReportType } from '../../shared/models/report/report.model';
-import { BackFirePersistenceService } from '../backfire/backfire.persistence.service';
 
 export class MuzzlePersistenceService {
   public static getInstance(): MuzzlePersistenceService {
@@ -16,7 +15,6 @@ export class MuzzlePersistenceService {
   }
 
   private static instance: MuzzlePersistenceService;
-  private backFirePersistenceService = BackFirePersistenceService.getInstance();
   private muzzled: Map<string, Muzzled> = new Map();
   private requestors: Map<string, Requestor> = new Map();
 
