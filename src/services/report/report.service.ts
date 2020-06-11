@@ -5,7 +5,6 @@ import { ListPersistenceService } from '../list/list.persistence.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { SlackService } from '../slack/slack.service';
 import { ReportType, ReportCount, MuzzleReport } from '../../shared/models/report/report.model';
-import { BackFirePersistenceService } from '../backfire/backfire.persistence.service';
 
 export class ReportService {
   private slackService = SlackService.getInstance();
