@@ -5,6 +5,7 @@ import { ListPersistenceService } from '../list/list.persistence.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { SlackService } from '../slack/slack.service';
 import { ReportType, ReportCount, MuzzleReport } from '../../shared/models/report/report.model';
+import { BackFirePersistenceService } from '../backfire/backfire.persistence.service';
 
 export class ReportService {
   private slackService = SlackService.getInstance();
@@ -94,6 +95,9 @@ ${this.getReportTitle(reportType)}
 
   Top Nemesis by Kills
   ${Table.print(formattedReport.successNemesis)}
+
+  Top Backfires by \%
+  ${Table.print(formattedReport.backfires)}
 `;
   }
 
@@ -143,6 +147,14 @@ ${this.getReportTitle(reportType)}
           Killer: this.slackService.getUserById(instance.requestorId)!.name,
           Victim: this.slackService.getUserById(instance.muzzledId)!.name,
           Kills: instance.killCount,
+        };
+      }),
+      backfires: report.backfires.map((instance: any) => {
+        return {
+          User: this.slackService.getUserById(instance.users)!.name,
+          Backfires: instance.backfires,
+          Muzzles: instance.muzzles,
+          Percentage: instance.backfirePct,
         };
       }),
     };

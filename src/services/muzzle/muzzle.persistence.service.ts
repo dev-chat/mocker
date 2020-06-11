@@ -1,10 +1,11 @@
 import moment from 'moment';
-import { UpdateResult, getRepository } from 'typeorm';
+import { UpdateResult, getRepository, Db, getManager } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
 import { Muzzled, Requestor } from '../../shared/models/muzzle/muzzle-models';
 import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_MUZZLE_TIME, MAX_TIME_BETWEEN_MUZZLES } from './constants';
 import { getRemainingTime } from './muzzle-utilities';
 import { Accuracy, MuzzleReport, ReportCount, ReportRange, ReportType } from '../../shared/models/report/report.model';
+import { BackFirePersistenceService } from '../backfire/backfire.persistence.service';
 
 export class MuzzlePersistenceService {
   public static getInstance(): MuzzlePersistenceService {
@@ -15,6 +16,7 @@ export class MuzzlePersistenceService {
   }
 
   private static instance: MuzzlePersistenceService;
+  private backFirePersistenceService = BackFirePersistenceService.getInstance();
   private muzzled: Map<string, Muzzled> = new Map();
   private requestors: Map<string, Requestor> = new Map();
 
@@ -215,6 +217,7 @@ export class MuzzlePersistenceService {
 
     const rawNemesis = await this.getNemesisByRaw(range);
     const successNemesis = await this.getNemesisBySuccessful(range);
+    const backfires = await this.getBackfireData(range);
 
     return {
       muzzled: {
@@ -235,6 +238,7 @@ export class MuzzlePersistenceService {
       kdr,
       rawNemesis,
       successNemesis,
+      backfires,
     };
   }
 
@@ -427,6 +431,26 @@ export class MuzzlePersistenceService {
         `;
 
     return getRepository(Muzzle).query(query);
+  }
+
+  private getBackfireData(range: ReportRange): Promise<any[]> {
+    const query =
+      range.reportType === ReportType.AllTime
+        ? `
+    SELECT a.muzzledId, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
+    FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire GROUP BY muzzledId) a,
+    (SELECT requestorId, count(*) as muzzleCount FROM muzzle GROUP BY requestorId) b
+    WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`
+        : `
+    SELECT a.muzzledId, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
+    FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire WHERE createdAt >= '${
+      range.start
+    }' AND createdAt < '${range.end}' GROUP BY muzzledId) a,
+    (SELECT requestorId, count(*) as muzzleCount FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${
+            range.end
+          }' GROUP BY requestorId) b
+    WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`;
+    return getManager().query(query);
   }
 
   private getNemesisByRaw(range: ReportRange): Promise<any[]> {

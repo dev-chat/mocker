@@ -19,6 +19,7 @@ export interface MuzzleReport {
   kdr: any[];
   rawNemesis: any[];
   successNemesis: any[];
+  backfires: any[];
 }
 
 export interface ReportCount {
