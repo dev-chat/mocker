@@ -153,7 +153,7 @@ ${this.getReportTitle(reportType)}
           User: this.slackService.getUserById(instance.muzzledId)!.name,
           Backfires: instance.backfires,
           Muzzles: instance.muzzles,
-          '%': instance.backfirePct,
+          Percentage: instance.backfirePct,
         };
       }),
     };
