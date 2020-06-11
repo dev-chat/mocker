@@ -449,7 +449,9 @@ export class MuzzlePersistenceService {
             range.end
           }' GROUP BY requestorId) b
     WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`;
-    return getManager().query(query);
+    const manager = getManager();
+    console.log(manager);
+    return manager.query(query);
   }
 
   private getNemesisByRaw(range: ReportRange): Promise<any[]> {
