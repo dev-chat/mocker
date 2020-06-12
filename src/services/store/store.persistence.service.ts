@@ -48,19 +48,22 @@ export class StorePersistenceService {
   async useItem(itemId: number, userId: string): Promise<void> {
     const userById = (await getRepository(User).findOne({ slackId: userId })) as User;
     const itemById = (await getRepository(Item).findOne(itemId)) as Item;
-    const inventoryItem = (await getRepository(InventoryItem).findOne({
+    const inventoryItem = await getRepository(InventoryItem).findOne({
       owner: userById,
       item: itemById,
-    })) as InventoryItem;
-    await getRepository(InventoryItem)
-      .remove(inventoryItem)
-      .then(_D => {
-        console.log(`${userById.slackId} used ${itemById.name}`);
-        // Needs to execute the thing that the item does. THinking about storing that code here in an items constant that maps by item name in DB.
-      })
-      .catch(e =>
-        console.error(`Error when trying to use item: ${userById.slackId} tried to use ${itemById.name} but ${e}`),
-      );
+    });
+
+    if (inventoryItem) {
+      await getRepository(InventoryItem)
+        .remove(inventoryItem)
+        .then(_D => {
+          console.log(`${userById.slackId} used ${itemById.name}`);
+          // Needs to execute the thing that the item does. THinking about storing that code here in an items constant that maps by item name in DB.
+        })
+        .catch(e =>
+          console.error(`Error when trying to use item: ${userById.slackId} tried to use ${itemById.name} but ${e}`),
+        );
+    }
   }
 
   async getInventory(userId: string): Promise<InventoryItem[]> {

@@ -41,7 +41,7 @@ storeController.post('/store/use', async (req, res) => {
   } else if (!request.text) {
     res.send('You must provide an item id in order to use an item');
   } else if (!storeService.isValidItem(request.text)) {
-    res.send('Invalid item. PLease use `/buy item_id` or specify an item you own.');
+    res.send('Invalid item. Please use `/buy item_id` or specify an item you own.');
   } else if (!storeService.isOwnedByUser(request.text, request.user_id)) {
     res.send('You do not own that item. Please buy it on the store by using `/buy item_id`.');
   }
