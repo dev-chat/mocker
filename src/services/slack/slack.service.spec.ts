@@ -54,7 +54,6 @@ describe('slack-utils', () => {
     });
 
     it('should return the string when it exists inside of another string', () => {
-      console.log('what');
       expect(slackService.getUserId('Posted by: <@U2YJQN2KB> | Search: test')).toBe('U2YJQN2KB');
     });
   });

@@ -128,7 +128,7 @@ export class BackfireService {
         userIdByCallbackId,
         userIdByBlocks,
       );
-      console.log(finalUserId);
+
       return !!(finalUserId && this.backfirePersistenceService.isBackfire(finalUserId));
     }
     return false;

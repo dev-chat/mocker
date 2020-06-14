@@ -16,9 +16,7 @@ const counterService = new CounterService();
 
 counterController.post('/counter', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  console.log(request.text);
   const userId = slackService.getUserId(request.text);
-  console.log(userId);
   const counter = counterService.getCounterByRequestorAndUserId(userId, request.user_id);
   if (
     muzzlePersistenceService.isUserMuzzled(request.user_id) ||

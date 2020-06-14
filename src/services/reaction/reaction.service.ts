@@ -30,7 +30,6 @@ export class ReactionService {
   }
 
   public handleReaction(event: Event, isAdded: boolean): void {
-    console.log(event);
     if (event.user && event.item_user && event.user !== event.item_user) {
       if (isAdded) {
         this.handleAddedReaction(event);

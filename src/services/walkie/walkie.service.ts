@@ -11,7 +11,6 @@ export class WalkieService {
 
   public getNatoName(longUserId: string): string {
     const userId = this.getUserId(longUserId);
-    console.log(userId);
     return NATO_MAPPINGS[userId] || longUserId;
   }
 

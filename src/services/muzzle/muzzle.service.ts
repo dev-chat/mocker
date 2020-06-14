@@ -105,7 +105,6 @@ export class MuzzleService {
         userIdByCallbackId,
         userIdByBlocks,
       );
-      console.log(finalUserId);
       return !!(finalUserId && this.muzzlePersistenceService.isUserMuzzled(finalUserId));
     }
     return false;
