@@ -117,7 +117,7 @@ export class MuzzleService {
     const shouldBackFire = shouldBackfire();
     const userName = this.slackService.getUserName(userId);
     const requestorName = this.slackService.getUserName(requestorId);
-    const counter = this.counterPersistenceService.getCounterByRequestorId(requestorId);
+    const counter = this.counterPersistenceService.getCounterByRequestorId(userId);
 
     return new Promise(async (resolve, reject) => {
       if (!userId) {
