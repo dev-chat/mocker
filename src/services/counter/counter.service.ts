@@ -146,8 +146,8 @@ export class CounterService {
     return false;
   }
 
-  public removeCounter(id: number, isUsed: boolean, userId: string, requestorId: string, channel?: string): void {
-    this.counterPersistenceService.removeCounter(id, isUsed, channel);
+  public removeCounter(id: number, isUsed: boolean, userId: string, requestorId: string, channel: string): void {
+    this.counterPersistenceService.removeCounter(id, isUsed, channel, requestorId);
     if (isUsed && channel) {
       this.counterPersistenceService.counterMuzzle(requestorId, id);
       this.muzzlePersistenceService.removeMuzzlePrivileges(requestorId);
