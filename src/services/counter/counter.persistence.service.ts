@@ -55,9 +55,12 @@ export class CounterPersistenceService {
     this.counterMuzzles.set(userId, options);
   }
 
-  public async setCounteredToTrue(id: number): Promise<Counter> {
+  public async setCounteredToTrue(id: number, requestorId: string | undefined): Promise<Counter> {
     const counter = await getRepository(Counter).findOne(id);
     counter!.countered = true;
+    if (requestorId) {
+      counter!.counteredId = requestorId;
+    }
     return getRepository(Counter).save(counter as Counter);
   }
 
@@ -114,12 +117,12 @@ export class CounterPersistenceService {
     setTimeout(() => this.onProbation.splice(this.onProbation.indexOf(userId), 1), SINGLE_DAY_MS);
   }
 
-  public async removeCounter(id: number, isUsed: boolean, channel?: string): Promise<void> {
+  public async removeCounter(id: number, isUsed: boolean, channel: string, requestorId?: string): Promise<void> {
     const counter = this.counters.get(id);
     clearTimeout(counter!.removalFn);
     if (isUsed && channel) {
       this.counters.delete(id);
-      await this.setCounteredToTrue(id).catch(e => console.error('Error during setCounteredToTrue', e));
+      await this.setCounteredToTrue(id, requestorId).catch(e => console.error('Error during setCounteredToTrue', e));
     } else {
       // This whole section is an anti-pattern. Fix this.
       this.counters.delete(id);
