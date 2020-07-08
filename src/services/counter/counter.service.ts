@@ -149,11 +149,11 @@ export class CounterService {
   public removeCounter(id: number, isUsed: boolean, userId: string, requestorId: string, channel?: string): void {
     this.counterPersistenceService.removeCounter(id, isUsed, channel);
     if (isUsed && channel) {
-      this.counterPersistenceService.counterMuzzle(userId, id);
-      this.muzzlePersistenceService.removeMuzzlePrivileges(userId);
+      this.counterPersistenceService.counterMuzzle(requestorId, id);
+      this.muzzlePersistenceService.removeMuzzlePrivileges(requestorId);
       this.webService.sendMessage(
         channel,
-        `:crossed_swords: <@${requestorId}> successfully countered <@${userId}>! <@${userId}> has lost muzzle privileges for one hour and is muzzled for the next 5 minutes! :crossed_swords:`,
+        `:crossed_swords: <@${userId}> successfully countered <@${requestorId}>! <@${requestorId}> has lost muzzle privileges for one hour and is muzzled for the next 5 minutes! :crossed_swords:`,
       );
     }
   }
