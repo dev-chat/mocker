@@ -99,7 +99,6 @@ function handleCounterMuzzle(request: EventRequest): void {
         request.event.user,
       )} attempted to tag someone. Counter Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
     );
-    console.log(request.event);
     counterPersistenceService.addCounterMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
     webService.deleteMessage(request.event.channel, request.event.ts);
     webService.sendMessage(

@@ -117,7 +117,7 @@ export class MuzzleService {
     const shouldBackFire = shouldBackfire();
     const userName = this.slackService.getUserName(userId);
     const requestorName = this.slackService.getUserName(requestorId);
-    const counter = this.counterPersistenceService.getCounterByRequestorAndUserId(userId, requestorId);
+    const counter = this.counterPersistenceService.getCounterByRequestorId(requestorId);
 
     return new Promise(async (resolve, reject) => {
       if (!userId) {
@@ -139,7 +139,7 @@ export class MuzzleService {
         reject(`You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`);
       } else if (counter) {
         console.log(`${requestorId} attempted to muzzle ${userId} but was countered!`);
-        this.counterService.removeCounter(counter, true, channel);
+        this.counterService.removeCounter(counter, true, userId, requestorId, channel);
         reject(`You've been countered! Better luck next time...`);
       } else if (shouldBackFire) {
         console.log(`Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`);

@@ -20,17 +20,16 @@ export class CounterPersistenceService {
   private counters: Map<number, CounterItem> = new Map();
   private counterMuzzles: Map<string, CounterMuzzle> = new Map();
 
-  public addCounter(requestorId: string, counteredUserId: string): Promise<void> {
+  public addCounter(requestorId: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
       const counter = new Counter();
       counter.requestorId = requestorId;
-      counter.counteredId = counteredUserId;
       counter.countered = false;
 
       await getRepository(Counter)
         .save(counter)
         .then(counterFromDb => {
-          this.setCounterState(requestorId, counteredUserId, counterFromDb.id);
+          this.setCounterState(requestorId, counterFromDb.id);
           resolve();
         })
         .catch(e => reject(`Error on saving counter to DB: ${e}`));
@@ -94,10 +93,10 @@ export class CounterPersistenceService {
   /**
    * Retrieves the counterId for a counter that includes the specified requestorId and userId.
    */
-  public getCounterByRequestorAndUserId(requestorId: string, userId: string): number | undefined {
+  public getCounterByRequestorId(requestorId: string): number | undefined {
     let counterId;
     this.counters.forEach((item, key) => {
-      if (item.requestorId === requestorId && item.counteredId === userId) {
+      if (item.requestorId === requestorId) {
         counterId = key;
       }
     });
@@ -118,9 +117,9 @@ export class CounterPersistenceService {
       this.muzzlePersistenceService.removeMuzzlePrivileges(counter!.requestorId);
       this.webService.sendMessage(
         '#general',
-        `:flesh: <@${counter!.requestorId}> lives in fear of <@${
-          counter!.counteredId
-        }> and is now muzzled and has lost muzzle privileges for one hour. :flesh:`,
+        `:flesh: <@${
+          counter!.requestorId
+        }> lives in fear and is now muzzled, has lost muzzle privileges for one hour and cannot use counter again for 24 hours. :flesh:`,
       );
     }
   }
@@ -129,10 +128,9 @@ export class CounterPersistenceService {
     this.counterMuzzles.delete(userId);
   }
 
-  private setCounterState(requestorId: string, userId: string, counterId: number): void {
+  private setCounterState(requestorId: string, counterId: number): void {
     this.counters.set(counterId, {
       requestorId,
-      counteredId: userId,
       removalFn: setTimeout(() => this.removeCounter(counterId, false, '#general'), COUNTER_TIME),
     });
   }
