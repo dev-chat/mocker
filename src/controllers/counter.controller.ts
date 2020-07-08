@@ -23,8 +23,8 @@ counterController.post('/counter', async (req, res) => {
     res.send(
       "You can't counter someone if you are already muzzled, currently have a counter, or have lost counter privileges!",
     );
-  } else if (!request.text) {
-    res.send('Sorry, you must specify who you would like to counter in order to use this service.');
+  } else if (!counterPersistenceService.canCounter(request.user_id)) {
+    res.send('You have lost counter privileges and cannot counter right now.');
   } else {
     await counterService
       .createCounter(request.user_id)

@@ -4,7 +4,7 @@ import { CounterItem, CounterMuzzle } from '../../shared/models/counter/counter-
 import { getRemainingTime } from '../muzzle/muzzle-utilities';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { WebService } from '../web/web.service';
-import { COUNTER_TIME } from './constants';
+import { COUNTER_TIME, SINGLE_DAY_MS } from './constants';
 
 export class CounterPersistenceService {
   public static getInstance(): CounterPersistenceService {
@@ -19,6 +19,7 @@ export class CounterPersistenceService {
   private webService: WebService = WebService.getInstance();
   private counters: Map<number, CounterItem> = new Map();
   private counterMuzzles: Map<string, CounterMuzzle> = new Map();
+  private onProbation: string[] = [];
 
   public addCounter(requestorId: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
@@ -72,6 +73,10 @@ export class CounterPersistenceService {
     return this.counterMuzzles.get(userId);
   }
 
+  public canCounter(requestorId: string): boolean {
+    return !this.onProbation.includes(requestorId);
+  }
+
   public hasCounter(userId: string): boolean {
     let hasCounter = false;
     this.counters.forEach(counter => {
@@ -104,6 +109,11 @@ export class CounterPersistenceService {
     return counterId;
   }
 
+  public removeCounterPrivileges(userId: string) {
+    this.onProbation.push(userId);
+    setTimeout(() => this.onProbation.splice(this.onProbation.indexOf(userId), 1), SINGLE_DAY_MS);
+  }
+
   public async removeCounter(id: number, isUsed: boolean, channel?: string): Promise<void> {
     const counter = this.counters.get(id);
     clearTimeout(counter!.removalFn);
@@ -115,6 +125,7 @@ export class CounterPersistenceService {
       this.counters.delete(id);
       this.counterMuzzle(counter!.requestorId, id);
       this.muzzlePersistenceService.removeMuzzlePrivileges(counter!.requestorId);
+      this.onProbation.push(counter!.requestorId);
       this.webService.sendMessage(
         '#general',
         `:flesh: <@${
