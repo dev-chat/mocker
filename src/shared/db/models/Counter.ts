@@ -9,7 +9,7 @@ export class Counter {
   public requestorId!: string;
 
   @Column()
-  public counteredId!: string;
+  public counteredId?: string;
 
   @Column()
   public countered!: boolean;
