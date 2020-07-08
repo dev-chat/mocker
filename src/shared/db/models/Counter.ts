@@ -11,7 +11,7 @@ export class Counter {
   @Column()
   public counteredId?: string;
 
-  @Column()
+  @Column({ default: () => '' })
   public countered!: boolean;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
