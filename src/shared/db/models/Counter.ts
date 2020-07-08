@@ -8,10 +8,10 @@ export class Counter {
   @Column()
   public requestorId!: string;
 
-  @Column()
+  @Column({ default: () => '' })
   public counteredId?: string;
 
-  @Column({ default: () => '' })
+  @Column()
   public countered!: boolean;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
