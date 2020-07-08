@@ -10,7 +10,7 @@ export const counterController: Router = express.Router();
 
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backFirePersistenceService = BackFirePersistenceService.getInstance();
-const counterPersistnceService = CounterPersistenceService.getInstance();
+const counterPersistenceService = CounterPersistenceService.getInstance();
 const slackService = SlackService.getInstance();
 const counterService = new CounterService();
 
@@ -21,9 +21,12 @@ counterController.post('/counter', async (req, res) => {
   if (
     muzzlePersistenceService.isUserMuzzled(request.user_id) ||
     backFirePersistenceService.isBackfire(request.user_id) ||
-    counterPersistnceService.isCounterMuzzled(request.user_id)
+    counterPersistenceService.isCounterMuzzled(request.user_id) ||
+    counterPersistenceService.hasCounter(request.user_id)
   ) {
-    res.send("You can't counter someone if you are already muzzled!");
+    res.send(
+      "You can't counter someone if you are already muzzled, currently have a counter, or have lost counter privileges!",
+    );
   } else if (!request.text) {
     res.send('Sorry, you must specify who you would like to counter in order to use this service.');
   } else if (counter) {

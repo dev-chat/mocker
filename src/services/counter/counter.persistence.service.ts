@@ -73,6 +73,16 @@ export class CounterPersistenceService {
     return this.counterMuzzles.get(userId);
   }
 
+  public hasCounter(userId: string): boolean {
+    let hasCounter = false;
+    this.counters.forEach(counter => {
+      if (counter.requestorId === userId) {
+        hasCounter = true;
+      }
+    });
+    return hasCounter;
+  }
+
   public counterMuzzle(userId: string, counterId: number): void {
     this.counterMuzzles.set(userId, {
       suppressionCount: 0,
