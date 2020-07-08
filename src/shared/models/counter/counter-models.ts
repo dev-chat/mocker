@@ -1,6 +1,5 @@
 export interface CounterItem {
   requestorId: string;
-  counteredId: string;
   removalFn: NodeJS.Timeout;
 }
 

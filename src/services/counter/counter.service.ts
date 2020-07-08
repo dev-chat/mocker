@@ -17,26 +17,25 @@ export class CounterService {
   /**
    * Creates a counter in DB and stores it in memory.
    */
-  public createCounter(counteredId: string, requestorId: string): Promise<string> {
-    const counterUserName = this.slackService.getUserName(counteredId);
+  public createCounter(requestorId: string): Promise<string> {
     return new Promise(async (resolve, reject) => {
-      if (!counteredId || !requestorId) {
-        reject(`Invalid username passed in. You can only counter existing slack users.`);
-      } else if (this.counterPersistenceService.getCounterByRequestorAndUserId(requestorId, counteredId)) {
+      if (!requestorId) {
+        reject(`Invalid user. Only existing slack users can counter.`);
+      } else if (this.counterPersistenceService.getCounterByRequestorId(requestorId)) {
         reject('You already have a counter for this user.');
       } else {
         await this.counterPersistenceService
-          .addCounter(requestorId, counteredId)
+          .addCounter(requestorId)
           .then(() => {
-            resolve(`Counter set for ${counterUserName} for the next ${getTimeString(COUNTER_TIME)}`);
+            resolve(`Counter set for the next ${getTimeString(COUNTER_TIME)}`);
           })
           .catch(e => reject(e));
       }
     });
   }
 
-  public getCounterByRequestorAndUserId(requestorId: string, userId: string): number | undefined {
-    return this.counterPersistenceService.getCounterByRequestorAndUserId(requestorId, userId);
+  public getCounterByRequestorId(requestorId: string): number | undefined {
+    return this.counterPersistenceService.getCounterByRequestorId(requestorId);
   }
 
   public createCounterMuzzleMessage(text: string): string {
@@ -147,17 +146,14 @@ export class CounterService {
     return false;
   }
 
-  public removeCounter(id: number, isUsed: boolean, channel?: string): void {
-    const counter = this.counterPersistenceService.getCounter(id);
+  public removeCounter(id: number, isUsed: boolean, userId: string, requestorId: string, channel?: string): void {
     this.counterPersistenceService.removeCounter(id, isUsed, channel);
     if (isUsed && channel) {
-      this.counterPersistenceService.counterMuzzle(counter!.counteredId, id);
-      this.muzzlePersistenceService.removeMuzzlePrivileges(counter!.counteredId);
+      this.counterPersistenceService.counterMuzzle(userId, id);
+      this.muzzlePersistenceService.removeMuzzlePrivileges(userId);
       this.webService.sendMessage(
         channel,
-        `:crossed_swords: <@${counter!.requestorId}> successfully countered <@${counter!.counteredId}>! <@${
-          counter!.counteredId
-        }> has lost muzzle privileges for one hour and is muzzled for the next 5 minutes! :crossed_swords:`,
+        `:crossed_swords: <@${requestorId}> successfully countered <@${userId}>! <@${userId}> has lost muzzle privileges for one hour and is muzzled for the next 5 minutes! :crossed_swords:`,
       );
     }
   }
