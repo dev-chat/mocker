@@ -91,7 +91,7 @@ export class CounterPersistenceService {
   }
 
   /**
-   * Retrieves the counterId for a counter that includes the specified requestorId and userId.
+   * Retrieves the counterId for a counter that includes the specified requestorId.
    */
   public getCounterByRequestorId(requestorId: string): number | undefined {
     let counterId;
