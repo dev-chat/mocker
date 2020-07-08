@@ -8,7 +8,7 @@ export class Counter {
   @Column()
   public requestorId!: string;
 
-  @Column({ type: 'string', default: () => "' '" })
+  @Column({ default: () => "' '" })
   public counteredId?: string;
 
   @Column()
