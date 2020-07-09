@@ -24,8 +24,10 @@ defineController.post('/define', async (req: Request, res: Response) => {
   ) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
-    try {
-      const defined: UrbanDictionaryResponse = (await defineService.define(request.text)) as UrbanDictionaryResponse;
+    const defined: UrbanDictionaryResponse | Error = await defineService.define(request.text).catch(e => new Error(e));
+    if (defined instanceof Error) {
+      res.send('Something went wrong while retrieving your definition');
+    } else {
       res.status(200).send();
       const response: ChannelResponse = {
         // eslint-disable-next-line @typescript-eslint/camelcase
@@ -34,8 +36,6 @@ defineController.post('/define', async (req: Request, res: Response) => {
         attachments: defineService.formatDefs(defined.list, request.text),
       };
       slackService.sendResponse(request.response_url, response);
-    } catch (e) {
-      res.send('Something went wrong while retrieving your definition');
     }
   }
 });
