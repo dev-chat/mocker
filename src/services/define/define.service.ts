@@ -35,11 +35,13 @@ export class DefineService {
    */
   public define(word: string): Promise<UrbanDictionaryResponse> {
     const formattedWord = word.split(' ').join('+');
-    return Axios.get(`http://api.urbandictionary.com/v0/define?term=${formattedWord}`).then(
-      (res: AxiosResponse<UrbanDictionaryResponse>) => {
+    return Axios.get(`http://api.urbandictionary.com/v0/define?term=${formattedWord}`)
+      .then((res: AxiosResponse<UrbanDictionaryResponse>) => {
         return res.data;
-      },
-    );
+      })
+      .catch(e => {
+        throw new Error(e);
+      });
   }
 
   /**
