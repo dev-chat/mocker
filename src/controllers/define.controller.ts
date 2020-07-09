@@ -24,16 +24,18 @@ defineController.post('/define', async (req: Request, res: Response) => {
   ) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
-    const defined: UrbanDictionaryResponse = (await defineService.define(request.text).catch(e => {
-      res.send(`Error: ${e.message}`);
-    })) as UrbanDictionaryResponse;
-    const response: ChannelResponse = {
-      // eslint-disable-next-line @typescript-eslint/camelcase
-      response_type: 'in_channel',
-      text: `*${defineService.capitalizeFirstLetter(request.text)}*`,
-      attachments: defineService.formatDefs(defined.list, request.text),
-    };
-    slackService.sendResponse(request.response_url, response);
-    res.status(200).send();
+    try {
+      const defined: UrbanDictionaryResponse = (await defineService.define(request.text)) as UrbanDictionaryResponse;
+      res.status(200).send();
+      const response: ChannelResponse = {
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        response_type: 'in_channel',
+        text: `*${defineService.capitalizeFirstLetter(request.text)}*`,
+        attachments: defineService.formatDefs(defined.list, request.text),
+      };
+      slackService.sendResponse(request.response_url, response);
+    } catch (e) {
+      res.send('Something went wrong while retrieving your definition');
+    }
   }
 });
