@@ -45,9 +45,7 @@ muzzleController.post('/muzzle/stats', async (req: Request, res: Response) => {
     );
   } else if (request.text !== '' && !reportService.isValidReportType(request.text)) {
     res.send(
-      `Sorry! You passed in \`${
-        request.text
-      }\` but we can only generate reports for the following values: \`week\`, \`month\`, \`trailing30\`, \`year\`, \`all\``,
+      `Sorry! You passed in \`${request.text}\` but we can only generate reports for the following values: \`week\`, \`month\`, \`trailing30\`, \`year\`, \`all\``,
     );
   } else {
     const reportType: ReportType = reportService.getReportType(request.text);

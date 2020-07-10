@@ -24,8 +24,8 @@ export class BackFirePersistenceService {
     return getRepository(Backfire)
       .save(backfire)
       .then(backfireFromDb => {
-        this.redis.setValue(`backfire.${userId}`, backfireFromDb.id.toString(), 'EX', time);
-        this.redis.setValue(`backfire.${userId}.suppressions`, '0', 'EX', time);
+        this.redis.setValueWithExpire(`backfire.${userId}`, backfireFromDb.id.toString(), 'EX', time);
+        this.redis.setValueWithExpire(`backfire.${userId}.suppressions`, '0', 'EX', time);
       });
   }
 

@@ -1,22 +1,10 @@
-import { EventRequest } from '../../shared/models/slack/slack-models';
-import { BackFirePersistenceService } from '../backfire/backfire.persistence.service';
-import { CounterPersistenceService } from '../counter/counter.persistence.service';
-import { CounterService } from '../counter/counter.service';
-import { SlackService } from '../slack/slack.service';
-import { WebService } from '../web/web.service';
 import { MAX_MUZZLES, MAX_SUPPRESSIONS, REPLACEMENT_TEXT, MAX_WORD_LENGTH } from './constants';
 import { getTimeString, getTimeToMuzzle, isRandomEven, shouldBackfire } from './muzzle-utilities';
-import { MuzzlePersistenceService } from './muzzle.persistence.service';
-import { USER_ID_REGEX } from '../counter/constants';
+import { SuppressorService } from '../../shared/services/suppressor.service';
+import { CounterService } from '../counter/counter.service';
 
-export class MuzzleService {
-  private webService = WebService.getInstance();
-  private slackService = SlackService.getInstance();
+export class MuzzleService extends SuppressorService {
   private counterService = new CounterService();
-  private backfirePersistenceService = BackFirePersistenceService.getInstance();
-  private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
-  private counterPersistenceService = CounterPersistenceService.getInstance();
-
   /**
    * Takes in text and randomly muzzles certain words.
    */
@@ -45,68 +33,6 @@ export class MuzzleService {
     this.muzzlePersistenceService.incrementCharacterSuppressions(muzzleId, charactersSuppressed);
     this.muzzlePersistenceService.incrementWordSuppressions(muzzleId, wordsSuppressed);
     return returnText;
-  }
-
-  public findUserIdInBlocks(obj: any, regEx: RegExp): string | undefined {
-    let id;
-    Object.keys(obj).forEach(key => {
-      if (typeof obj[key] === 'string') {
-        const found = obj[key].match(regEx);
-        if (found) {
-          id = obj[key];
-        }
-      }
-      if (typeof obj[key] === 'object') {
-        id = this.findUserIdInBlocks(obj[key], regEx);
-      }
-    });
-    return id;
-  }
-
-  /**
-   * Determines whether or not a bot message should be removed.
-   */
-  public async shouldBotMessageBeMuzzled(request: EventRequest): Promise<boolean> {
-    if (
-      (request.event.bot_id || request.event.subtype === 'bot_message') &&
-      (!request.event.username || request.event.username.toLowerCase() !== 'muzzle')
-    ) {
-      let userIdByEventText;
-      let userIdByAttachmentText;
-      let userIdByAttachmentPretext;
-      let userIdByCallbackId;
-      let userIdByBlocks;
-
-      if (request.event.blocks) {
-        const hasIdInBlock = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
-        if (hasIdInBlock) {
-          userIdByBlocks = this.slackService.getUserId(hasIdInBlock);
-        }
-      }
-
-      if (request.event.text) {
-        userIdByEventText = this.slackService.getUserId(request.event.text);
-      }
-
-      if (request.event.attachments && request.event.attachments.length) {
-        userIdByAttachmentText = this.slackService.getUserId(request.event.attachments[0].text);
-        userIdByAttachmentPretext = this.slackService.getUserId(request.event.attachments[0].pretext);
-
-        if (request.event.attachments[0].callback_id) {
-          userIdByCallbackId = this.slackService.getUserIdByCallbackId(request.event.attachments[0].callback_id);
-        }
-      }
-
-      const finalUserId = this.slackService.getBotId(
-        userIdByEventText,
-        userIdByAttachmentText,
-        userIdByAttachmentPretext,
-        userIdByCallbackId,
-        userIdByBlocks,
-      );
-      return !!(finalUserId && (await this.muzzlePersistenceService.isUserMuzzled(finalUserId)));
-    }
-    return false;
   }
 
   /**

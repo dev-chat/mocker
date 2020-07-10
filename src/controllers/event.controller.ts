@@ -11,6 +11,7 @@ import { ReactionService } from '../services/reaction/reaction.service';
 import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
 import { EventRequest } from '../shared/models/slack/slack-models';
+import { SuppressorService } from '../shared/services/suppressor.service';
 
 export const eventController: Router = express.Router();
 
@@ -20,6 +21,7 @@ const counterService = new CounterService();
 const reactionService = new ReactionService();
 const webService = WebService.getInstance();
 const slackService = SlackService.getInstance();
+const suppressorService = new SuppressorService();
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const counterPersistenceService = CounterPersistenceService.getInstance();
@@ -146,12 +148,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       handleBackfire(request);
     } else if (isUserCounterMuzzled && !isReaction) {
       handleCounterMuzzle(request);
-    } else if (
-      ((await muzzleService.shouldBotMessageBeMuzzled(request)) ||
-        (await backfireService.shouldBotMessageBeMuzzled(request)) ||
-        (await counterService.shouldBotMessageBeMuzzled(request))) &&
-      !isReaction
-    ) {
+    } else if ((await suppressorService.shouldBotMessageBeMuzzled(request)) && !isReaction) {
       handleBotMessage(request);
     } else if (isReaction) {
       handleReaction(request);

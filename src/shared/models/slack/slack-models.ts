@@ -50,6 +50,9 @@ export interface Event {
   item: any; // Needs work, not optional either.
   blocks: any[]; // same same
   bot_id: string;
+  bot_profile: {
+    name: string;
+  };
 }
 
 export interface Attachment {

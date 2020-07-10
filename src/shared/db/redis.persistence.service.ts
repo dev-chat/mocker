@@ -15,7 +15,11 @@ export class RedisPersistenceService {
     return RedisPersistenceService.redis.get(key);
   }
 
-  setValue(key: string, value: string, expiryMode?: string, time?: string | number) {
+  setValue(key: string, value: string | number) {
+    return RedisPersistenceService.redis.set(key, value);
+  }
+
+  setValueWithExpire(key: string, value: string, expiryMode: string, time: number) {
     return RedisPersistenceService.redis.set(key, value, expiryMode, time);
   }
 

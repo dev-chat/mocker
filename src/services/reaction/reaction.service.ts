@@ -38,9 +38,7 @@ export class ReactionService {
       }
     } else {
       console.log(
-        `${event.user} responded to ${
-          event.item_user
-        } message and no action was taken. This was a self-reaction or a reaction to a bot message.`,
+        `${event.user} responded to ${event.item_user} message and no action was taken. This was a self-reaction or a reaction to a bot message.`,
       );
     }
   }
@@ -104,9 +102,7 @@ export class ReactionService {
     // Log event to DB.
     if (this.shouldReactionBeLogged(reactionValue)) {
       console.log(
-        `Adding reaction to ${event.item_user} for ${event.user}'s reaction: ${
-          event.reaction
-        }, yielding him ${reactionValue}`,
+        `Adding reaction to ${event.item_user} for ${event.user}'s reaction: ${event.reaction}, yielding him ${reactionValue}`,
       );
       this.reactionPersistenceService.saveReaction(event, reactionValue);
     }

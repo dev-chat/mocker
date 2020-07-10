@@ -29,9 +29,9 @@ export class MuzzlePersistenceService {
         .save(muzzle)
         .then(muzzleFromDb => {
           const expireTime = Math.floor(time / 1000);
-          this.redis.setValue(`muzzle.muzzled.${muzzledId}`, muzzleFromDb.id.toString(), 'EX', expireTime);
-          this.redis.setValue(`muzzle.muzzled.${muzzledId}.suppressions`, '0', 'EX', expireTime);
-          this.redis.setValue(`muzzle.muzzled.${muzzledId}.requestor`, requestorId, 'EX', expireTime);
+          this.redis.setValueWithExpire(`muzzle.muzzled.${muzzledId}`, muzzleFromDb.id.toString(), 'EX', expireTime);
+          this.redis.setValueWithExpire(`muzzle.muzzled.${muzzledId}.suppressions`, '0', 'EX', expireTime);
+          this.redis.setValueWithExpire(`muzzle.muzzled.${muzzledId}.requestor`, requestorId, 'EX', expireTime);
           this.setRequestorCount(requestorId);
           resolve();
         })
@@ -40,7 +40,7 @@ export class MuzzlePersistenceService {
   }
 
   public removeMuzzlePrivileges(requestorId: string): void {
-    this.redis.setValue(`muzzle.requestor.${requestorId}`, '2', 'EX', MAX_TIME_BETWEEN_MUZZLES);
+    this.redis.setValueWithExpire(`muzzle.requestor.${requestorId}`, '2', 'EX', MAX_TIME_BETWEEN_MUZZLES);
   }
 
   public async setRequestorCount(requestorId: string): Promise<void> {
@@ -48,9 +48,14 @@ export class MuzzlePersistenceService {
     const requests: number = numberOfRequests ? +numberOfRequests : 0;
     const newNumber = requests + 1;
     if (!numberOfRequests) {
-      this.redis.setValue(`muzzle.requestor.${requestorId}`, newNumber.toString(), 'EX', MAX_TIME_BETWEEN_MUZZLES);
+      this.redis.setValueWithExpire(
+        `muzzle.requestor.${requestorId}`,
+        newNumber.toString(),
+        'EX',
+        MAX_TIME_BETWEEN_MUZZLES,
+      );
     } else if (requests < MAX_MUZZLES) {
-      this.redis.setValue(`muzzle.requestor.${requestorId}`, newNumber.toString());
+      this.redis.setValue(`muzzle.requestor.${requestorId}`, newNumber);
     }
   }
 
@@ -227,9 +232,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT muzzledId as slackId, COUNT(*) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT muzzledId as slackId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        : `SELECT muzzledId as slackId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -238,9 +241,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId as slackId, COUNT(*) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT requestorId as slackId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        : `SELECT requestorId as slackId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -249,9 +250,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId as slackId, SUM(messagesSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT requestorId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        : `SELECT requestorId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -260,9 +259,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT muzzledId as slackId, SUM(messagesSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT muzzledId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        : `SELECT muzzledId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -271,9 +268,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT muzzledId as slackId, SUM(wordsSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT muzzledId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        : `SELECT muzzledId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -282,9 +277,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId as slackId, SUM(wordsSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT requestorId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        : `SELECT requestorId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -293,9 +286,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT muzzledId as slackId, SUM(charactersSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT muzzledId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        : `SELECT muzzledId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -304,9 +295,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId as slackId, SUM(charactersSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT requestorId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        : `SELECT requestorId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -315,9 +304,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT muzzledId as slackId, SUM(milliseconds) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT muzzledId as slackId, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        : `SELECT muzzledId as slackId, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -326,9 +313,7 @@ export class MuzzlePersistenceService {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId as slackId, SUM(milliseconds) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT requestorId as slackId, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        : `SELECT requestorId as slackId, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -338,9 +323,7 @@ export class MuzzlePersistenceService {
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths
            FROM muzzle GROUP BY requestorId ORDER BY accuracy DESC;`
-        : `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths FROM muzzle WHERE createdAt >= '${
-            range.start
-          }' AND createdAt < '${range.end}' GROUP BY requestorId ORDER BY accuracy DESC;`;
+        : `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY requestorId ORDER BY accuracy DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
@@ -363,9 +346,7 @@ export class MuzzlePersistenceService {
         `
         : `
         SELECT b.requestorId, IF(a.count > 0, a.count, 0) AS deaths, b.count as kills, b.count/IF(a.count > 0, a.count, 1) as kdr
-        FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 AND createdAt >= '${
-          range.start
-        }' AND createdAt <= '${range.end}' GROUP BY muzzledId) as a
+        FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 AND createdAt >= '${range.start}' AND createdAt <= '${range.end}' GROUP BY muzzledId) as a
         RIGHT JOIN (
         SELECT requestorId, COUNT(*) as count
         FROM muzzle
@@ -389,12 +370,8 @@ export class MuzzlePersistenceService {
     WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`
         : `
     SELECT a.muzzledId as muzzledId, a.backfireCount as backfires, b.muzzleCount as muzzles, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
-    FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire WHERE createdAt >= '${
-      range.start
-    }' AND createdAt < '${range.end}' GROUP BY muzzledId) a,
-    (SELECT requestorId, count(*) as muzzleCount FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${
-            range.end
-          }' GROUP BY requestorId) b
+    FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY muzzledId) a,
+    (SELECT requestorId, count(*) as muzzleCount FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY requestorId) b
     WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`;
     return getManager().query(query);
   }

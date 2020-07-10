@@ -45,7 +45,7 @@ export class WebService {
    * Handles sending messages to the chat.
    */
   public sendMessage(channel: string, text: string): void {
-    const token: string | undefined = process.env.MUZZLE_BOT_TOKEN;
+    const token: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const postRequest: ChatPostMessageArguments = {
       token,
       channel,
