@@ -15,10 +15,9 @@ const counterService = new CounterService();
 counterController.post('/counter', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   if (
-    muzzlePersistenceService.isUserMuzzled(request.user_id) ||
-    backFirePersistenceService.isBackfire(request.user_id) ||
-    counterPersistenceService.isCounterMuzzled(request.user_id) ||
-    counterPersistenceService.hasCounter(request.user_id)
+    (await muzzlePersistenceService.isUserMuzzled(request.user_id)) ||
+    (await backFirePersistenceService.isBackfire(request.user_id)) ||
+    (await counterPersistenceService.isCounterMuzzled(request.user_id))
   ) {
     res.send(
       "You can't counter someone if you are already muzzled, currently have a counter, or have lost counter privileges!",

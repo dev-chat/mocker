@@ -18,9 +18,9 @@ defineController.post('/define', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
 
   if (
-    muzzlePersistenceService.isUserMuzzled(request.user_id) ||
-    backfirePersistenceService.isBackfire(request.user_id) ||
-    counterPersistenceService.isCounterMuzzled(request.user_id)
+    (await muzzlePersistenceService.isUserMuzzled(request.user_id)) ||
+    (await backfirePersistenceService.isBackfire(request.user_id)) ||
+    (await counterPersistenceService.isCounterMuzzled(request.user_id))
   ) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {

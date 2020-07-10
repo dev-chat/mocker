@@ -21,9 +21,9 @@ const reportService = new ReportService();
 listController.post('/list/retrieve', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   if (
-    muzzlePersistenceService.isUserMuzzled(request.user_id) ||
-    backfirePersistenceService.isBackfire(request.user_id) ||
-    counterPersistenceService.isCounterMuzzled(request.user_id)
+    (await muzzlePersistenceService.isUserMuzzled(request.user_id)) ||
+    (await backfirePersistenceService.isBackfire(request.user_id)) ||
+    (await counterPersistenceService.isCounterMuzzled(request.user_id))
   ) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
@@ -33,12 +33,12 @@ listController.post('/list/retrieve', async (req, res) => {
   }
 });
 
-listController.post('/list/add', (req, res) => {
+listController.post('/list/add', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   if (
-    muzzlePersistenceService.isUserMuzzled(request.user_id) ||
-    backfirePersistenceService.isBackfire(request.user_id) ||
-    counterPersistenceService.isCounterMuzzled(request.user_id)
+    (await muzzlePersistenceService.isUserMuzzled(request.user_id)) ||
+    (await backfirePersistenceService.isBackfire(request.user_id)) ||
+    (await counterPersistenceService.isCounterMuzzled(request.user_id))
   ) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
@@ -57,12 +57,12 @@ listController.post('/list/add', (req, res) => {
   }
 });
 
-listController.post('/list/remove', (req, res) => {
+listController.post('/list/remove', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   if (
-    muzzlePersistenceService.isUserMuzzled(request.user_id) ||
-    backfirePersistenceService.isBackfire(request.user_id) ||
-    counterPersistenceService.isCounterMuzzled(request.user_id)
+    (await muzzlePersistenceService.isUserMuzzled(request.user_id)) ||
+    (await backfirePersistenceService.isBackfire(request.user_id)) ||
+    (await counterPersistenceService.isCounterMuzzled(request.user_id))
   ) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {

@@ -59,6 +59,10 @@ export class BackfireService {
     }
   }
 
+  public async getBackfire(userId: string): Promise<string | null> {
+    return await this.backfirePersistenceService.getBackfireByUserId(userId);
+  }
+
   public trackDeletedMessage(id: number, text: string): void {
     this.backfirePersistenceService.trackDeletedMessage(id, text);
   }

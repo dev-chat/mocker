@@ -1,4 +1,3 @@
-import { Muzzled } from '../../shared/models/muzzle/muzzle-models';
 import { EventRequest } from '../../shared/models/slack/slack-models';
 import { BackFirePersistenceService } from '../backfire/backfire.persistence.service';
 import { CounterPersistenceService } from '../counter/counter.persistence.service';
@@ -67,7 +66,7 @@ export class MuzzleService {
   /**
    * Determines whether or not a bot message should be removed.
    */
-  public shouldBotMessageBeMuzzled(request: EventRequest): boolean {
+  public async shouldBotMessageBeMuzzled(request: EventRequest): Promise<boolean> {
     if (
       (request.event.bot_id || request.event.subtype === 'bot_message') &&
       (!request.event.username || request.event.username.toLowerCase() !== 'muzzle')
@@ -105,7 +104,7 @@ export class MuzzleService {
         userIdByCallbackId,
         userIdByBlocks,
       );
-      return !!(finalUserId && this.muzzlePersistenceService.isUserMuzzled(finalUserId));
+      return !!(finalUserId && (await this.muzzlePersistenceService.isUserMuzzled(finalUserId)));
     }
     return false;
   }
@@ -122,17 +121,17 @@ export class MuzzleService {
     return new Promise(async (resolve, reject) => {
       if (!userId) {
         reject(`Invalid username passed in. You can only muzzle existing slack users.`);
-      } else if (this.muzzlePersistenceService.isUserMuzzled(userId)) {
+      } else if (await this.muzzlePersistenceService.isUserMuzzled(userId)) {
         console.error(
           `${requestorName} | ${requestorId} attempted to muzzle ${userName} | ${userId} but ${userName} | ${userId} is already muzzled.`,
         );
         reject(`${userName} is already muzzled!`);
-      } else if (this.muzzlePersistenceService.isUserMuzzled(requestorId)) {
+      } else if (await this.muzzlePersistenceService.isUserMuzzled(requestorId)) {
         console.error(
           `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId}  is currently muzzled`,
         );
         reject(`You can't muzzle someone if you are already muzzled!`);
-      } else if (this.muzzlePersistenceService.isMaxMuzzlesReached(requestorId)) {
+      } else if (await this.muzzlePersistenceService.isMaxMuzzlesReached(requestorId)) {
         console.error(
           `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId} has reached maximum muzzle of ${MAX_MUZZLES}`,
         );
@@ -176,22 +175,17 @@ export class MuzzleService {
   /**
    * Wrapper for sendMessage that handles suppression in memory and, if max suppressions are reached, handles suppression storage to disk.
    */
-  public sendMuzzledMessage(channel: string, userId: string, text: string, timestamp: string): void {
+  public async sendMuzzledMessage(channel: string, userId: string, text: string, timestamp: string): Promise<void> {
     console.time('send-muzzled-message');
-    const muzzle: Muzzled | undefined = this.muzzlePersistenceService.getMuzzle(userId);
+    const muzzle: string | null = await this.muzzlePersistenceService.getMuzzle(userId);
     if (muzzle) {
       this.webService.deleteMessage(channel, timestamp);
-      if (muzzle!.suppressionCount < MAX_SUPPRESSIONS) {
-        this.muzzlePersistenceService.setMuzzle(userId, {
-          suppressionCount: ++muzzle!.suppressionCount,
-          muzzledBy: muzzle!.muzzledBy,
-          id: muzzle!.id,
-          isCounter: muzzle!.isCounter,
-          removalFn: muzzle!.removalFn,
-        });
-        this.webService.sendMessage(channel, `<@${userId}> says "${this.muzzle(text, muzzle!.id)}"`);
+      const suppressions = await this.muzzlePersistenceService.getSuppressions(userId);
+      if (suppressions && +suppressions < MAX_SUPPRESSIONS) {
+        await this.muzzlePersistenceService.incrementStatefulSuppressions(userId);
+        this.webService.sendMessage(channel, `<@${userId}> says "${this.muzzle(text, +muzzle)}"`);
       } else {
-        this.muzzlePersistenceService.trackDeletedMessage(muzzle!.id, text);
+        this.muzzlePersistenceService.trackDeletedMessage(+muzzle, text);
       }
     }
     console.timeEnd('send-muzzled-message');

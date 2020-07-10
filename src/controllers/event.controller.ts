@@ -24,7 +24,7 @@ const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const counterPersistenceService = CounterPersistenceService.getInstance();
 
-function handleMuzzledMessage(request: EventRequest): void {
+async function handleMuzzledMessage(request: EventRequest): Promise<void> {
   const containsTag = slackService.containsTag(request.event.text);
   const userName = slackService.getUserName(request.event.user);
 
@@ -32,23 +32,25 @@ function handleMuzzledMessage(request: EventRequest): void {
     console.log(`${userName} | ${request.event.user} is muzzled! Suppressing his voice...`);
     muzzleService.sendMuzzledMessage(request.event.channel, request.event.user, request.event.text, request.event.ts);
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
-    const muzzleId = muzzlePersistenceService.getMuzzleId(request.event.user);
-    console.log(
-      `${slackService.getUserName(
-        request.event.user,
-      )} attempted to tag someone or change the channel topic. Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
-    );
-    muzzlePersistenceService.addMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
-    webService.deleteMessage(request.event.channel, request.event.ts);
-    muzzlePersistenceService.trackDeletedMessage(muzzleId as number, request.event.text);
-    webService.sendMessage(
-      request.event.channel,
-      `:rotating_light: <@${
-        request.event.user
-      }> attempted to @ while muzzled or change the channel topic! Muzzle increased by ${getTimeString(
-        ABUSE_PENALTY_TIME,
-      )} :rotating_light:`,
-    );
+    const muzzleId: string | null = await muzzlePersistenceService.getMuzzle(request.event.user);
+    if (muzzleId) {
+      console.log(
+        `${slackService.getUserName(
+          request.event.user,
+        )} attempted to tag someone or change the channel topic. Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
+      );
+      muzzlePersistenceService.addMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
+      webService.deleteMessage(request.event.channel, request.event.ts);
+      muzzlePersistenceService.trackDeletedMessage(+muzzleId, request.event.text);
+      webService.sendMessage(
+        request.event.channel,
+        `:rotating_light: <@${
+          request.event.user
+        }> attempted to @ while muzzled or change the channel topic! Muzzle increased by ${getTimeString(
+          ABUSE_PENALTY_TIME,
+        )} :rotating_light:`,
+      );
+    }
   }
 }
 
@@ -64,7 +66,7 @@ function handleBackfire(request: EventRequest): void {
       request.event.ts,
     );
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
-    const backfireId = backfireService.getBackfire(request.event.user)!.id;
+    const backfireId = backfireService.getBackfire(request.event.user);
     console.log(
       `${slackService.getUserName(
         request.event.user,
@@ -72,7 +74,7 @@ function handleBackfire(request: EventRequest): void {
     );
     backfireService.addBackfireTime(request.event.user, ABUSE_PENALTY_TIME);
     webService.deleteMessage(request.event.channel, request.event.ts);
-    backfireService.trackDeletedMessage(backfireId, request.event.text);
+    backfireService.trackDeletedMessage(+backfireId, request.event.text);
     webService.sendMessage(
       request.event.channel,
       `:rotating_light: <@${request.event.user}> attempted to @ while muzzled! Muzzle increased by ${getTimeString(
@@ -123,7 +125,7 @@ function handleNewUserAdd(): void {
   slackService.getAllUsers();
 }
 // Change route to /event/handle instead.
-eventController.post('/muzzle/handle', (req: Request, res: Response) => {
+eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
   if (req.body.challenge) {
     res.send({ challenge: req.body.challenge });
   } else {
@@ -131,9 +133,9 @@ eventController.post('/muzzle/handle', (req: Request, res: Response) => {
     const request: EventRequest = req.body;
     const isNewUserAdded = request.event.type === 'team_join';
     const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
-    const isMuzzled = muzzlePersistenceService.isUserMuzzled(request.event.user);
-    const isUserBackfired = backfirePersistenceService.isBackfire(request.event.user);
-    const isUserCounterMuzzled = counterPersistenceService.isCounterMuzzled(request.event.user);
+    const isMuzzled = await muzzlePersistenceService.isUserMuzzled(request.event.user);
+    const isUserBackfired = await backfirePersistenceService.isBackfire(request.event.user);
+    const isUserCounterMuzzled = await counterPersistenceService.isCounterMuzzled(request.event.user);
 
     console.time('respond-to-event');
     if (isNewUserAdded) {

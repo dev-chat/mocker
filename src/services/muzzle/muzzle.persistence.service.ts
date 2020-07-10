@@ -1,9 +1,7 @@
 import moment from 'moment';
 import { UpdateResult, getRepository, getManager } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
-import { Muzzled, Requestor } from '../../shared/models/muzzle/muzzle-models';
-import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_MUZZLE_TIME, MAX_TIME_BETWEEN_MUZZLES } from './constants';
-import { getRemainingTime } from './muzzle-utilities';
+import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_TIME_BETWEEN_MUZZLES } from './constants';
 import { Accuracy, MuzzleReport, ReportCount, ReportRange, ReportType } from '../../shared/models/report/report.model';
 import { RedisPersistenceService } from '../../shared/db/redis.persistence.service';
 
@@ -17,11 +15,8 @@ export class MuzzlePersistenceService {
 
   private static instance: MuzzlePersistenceService;
   private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
-  private muzzled: Map<string, Muzzled> = new Map();
-  private requestors: Map<string, Requestor> = new Map();
 
   public addMuzzle(requestorId: string, muzzledId: string, time: number): Promise<Muzzle> {
-    console.log(this.redis);
     return new Promise(async (resolve, reject) => {
       const muzzle = new Muzzle();
       muzzle.requestorId = requestorId;
@@ -33,13 +28,9 @@ export class MuzzlePersistenceService {
       await getRepository(Muzzle)
         .save(muzzle)
         .then(muzzleFromDb => {
-          this.muzzled.set(muzzledId, {
-            suppressionCount: 0,
-            muzzledBy: requestorId,
-            id: muzzleFromDb.id,
-            isCounter: false,
-            removalFn: setTimeout(() => this.removeMuzzle(muzzledId), time),
-          });
+          this.redis.setValue(`muzzle.muzzled.${muzzledId}`, muzzleFromDb.id.toString(), 'EX', time / 1000);
+          this.redis.setValue(`muzzle.muzzled.${muzzledId}.suppressions`, '0', 'EX', time / 1000);
+          this.redis.setValue(`muzzle.muzzled.${muzzledId}.requestor`, requestorId, 'EX', time / 1000);
           this.setRequestorCount(requestorId);
           resolve();
         })
@@ -48,83 +39,65 @@ export class MuzzlePersistenceService {
   }
 
   public removeMuzzlePrivileges(requestorId: string): void {
-    const requestorObj: Requestor | undefined = this.requestors.get(requestorId);
-    if (requestorObj) {
-      clearTimeout(this.requestors.get(requestorId)!.muzzleCountRemover as NodeJS.Timeout);
-    }
-
-    this.requestors.set(requestorId, {
-      muzzleCount: MAX_MUZZLES,
-      muzzleCountRemover: setTimeout(() => this.removeRequestor(requestorId), MAX_TIME_BETWEEN_MUZZLES),
-    });
+    this.redis.setValue(`muzzle.requestor.${requestorId}`, '2', 'EX', MAX_TIME_BETWEEN_MUZZLES);
   }
-  /**
-   * Adds a requestor to the requestors map with a muzzleCount to track how many muzzles have been performed, as well as a removal function.
-   */
-  public setRequestorCount(requestorId: string): void {
-    const muzzleCount = this.requestors.has(requestorId) ? ++this.requestors.get(requestorId)!.muzzleCount : 1;
 
-    if (this.requestors.has(requestorId)) {
-      clearTimeout(this.requestors.get(requestorId)!.muzzleCountRemover as NodeJS.Timeout);
+  public async setRequestorCount(requestorId: string): Promise<void> {
+    const numberOfRequests: string | null = await this.redis.getValue(`muzzle.requestor.${requestorId}`);
+    const requests: number = numberOfRequests ? +numberOfRequests : 0;
+    const newNumber = requests + 1;
+    if (!numberOfRequests) {
+      this.redis.setValue(`muzzle.requestor.${requestorId}`, newNumber.toString(), 'EX', MAX_TIME_BETWEEN_MUZZLES);
+    } else if (requests < MAX_MUZZLES) {
+      this.redis.setValue(`muzzle.requestor.${requestorId}`, newNumber.toString());
     }
-
-    const removalFunction =
-      this.requestors.has(requestorId) && this.requestors.get(requestorId)!.muzzleCount === MAX_MUZZLES
-        ? (): void => this.removeRequestor(requestorId)
-        : (): void => this.decrementMuzzleCount(requestorId);
-    this.requestors.set(requestorId, {
-      muzzleCount,
-      muzzleCountRemover: setTimeout(removalFunction, MAX_TIME_BETWEEN_MUZZLES),
-    });
   }
 
   /**
    * Returns boolean whether max muzzles have been reached.
    */
-  public isMaxMuzzlesReached(userId: string): boolean {
-    return this.requestors.has(userId) && this.requestors.get(userId)!.muzzleCount === MAX_MUZZLES;
+  public async isMaxMuzzlesReached(userId: string): Promise<boolean> {
+    const muzzles: string | null = await this.redis.getValue(`muzzle.requestor.${userId}`);
+    return !muzzles || !!(muzzles && +muzzles === MAX_MUZZLES);
   }
 
   /**
    * Adds the specified amount of time to a specified muzzled user.
    */
-  public addMuzzleTime(userId: string, timeToAdd: number): void {
-    if (userId && this.muzzled.has(userId)) {
-      const removalFn = this.muzzled.get(userId)!.removalFn;
-      const newTime = getRemainingTime(removalFn) + timeToAdd;
-      const muzzleId = this.muzzled.get(userId)!.id;
-      this.incrementMuzzleTime(muzzleId, ABUSE_PENALTY_TIME);
-      clearTimeout(this.muzzled.get(userId)!.removalFn);
+  public async addMuzzleTime(userId: string, timeToAdd: number): Promise<void> {
+    const muzzledId: string | null = await this.redis.getValue(`muzzle.muzzled.${userId}`);
+    if (muzzledId) {
+      const remainingTime: number = await this.redis.getTimeRemaining(`muzzle.muzzled.${userId}`);
+      const newTime = remainingTime + timeToAdd / 1000;
+      this.incrementMuzzleTime(+muzzledId, ABUSE_PENALTY_TIME);
       console.log(`Setting ${userId}'s muzzle time to ${newTime}`);
-      this.muzzled.set(userId, {
-        suppressionCount: this.muzzled.get(userId)!.suppressionCount,
-        muzzledBy: this.muzzled.get(userId)!.muzzledBy,
-        id: this.muzzled.get(userId)!.id,
-        isCounter: false,
-        removalFn: setTimeout(() => this.removeMuzzle(userId), newTime),
-      });
+      this.redis.expire(`muzzle.muzzled.${userId}`, newTime);
     }
   }
 
-  public setMuzzle(userId: string, options: Muzzled): void {
-    this.muzzled.set(userId, options);
+  public async getMuzzle(userId: string): Promise<string | null> {
+    return await this.redis.getValue(`muzzle.muzzled.${userId}`);
   }
 
-  public getMuzzle(userId: string): Muzzled | undefined {
-    return this.muzzled.get(userId);
+  public async getSuppressions(userId: string): Promise<string | null> {
+    return await this.redis.getValue(`muzzle.muzzled.${userId}.suppressions`);
   }
-  /**
-   * Gets the corresponding database ID for the user's current muzzle.
-   */
-  public getMuzzleId(userId: string): number | undefined {
-    return this.muzzled.get(userId)!.id;
+
+  public async incrementStatefulSuppressions(userId: string): Promise<void> {
+    const suppressions = await this.redis.getValue(`muzzle.muzzled.${userId}.suppressions`);
+    if (suppressions) {
+      const newValue = +suppressions + 1;
+      await this.redis.setValue(`muzzle.muzzled.${userId}.suppressions`, newValue.toString());
+    } else {
+      await this.redis.setValue(`muzzle.muzzled.${userId}.suppressions`, '1');
+    }
   }
 
   /**
    * Returns boolean whether user is muzzled or not.
    */
-  public isUserMuzzled(userId: string): boolean {
-    return this.muzzled.has(userId);
+  public async isUserMuzzled(userId: string): Promise<boolean> {
+    return !!(await this.redis.getValue(`muzzle.muzzled.${userId}`));
   }
 
   public incrementMuzzleTime(id: number, ms: number): Promise<UpdateResult> {
@@ -247,40 +220,6 @@ export class MuzzlePersistenceService {
       successNemesis,
       backfires,
     };
-  }
-
-  /**
-   * Removes a requestor from the map.
-   */
-  private removeRequestor(userId: string): void {
-    this.requestors.delete(userId);
-    console.log(
-      `${MAX_MUZZLE_TIME} has passed since ${userId} last successful muzzle. They have been removed from requestors.`,
-    );
-  }
-
-  /**
-   * Removes a muzzle from the specified user.
-   */
-  private removeMuzzle(userId: string): void {
-    this.muzzled.delete(userId);
-    console.log(`Removed ${userId}'s muzzle! He is free at last.`);
-  }
-
-  /**
-   * Decrements the muzzleCount on a requestor.
-   */
-  private decrementMuzzleCount(requestorId: string): void {
-    if (this.requestors.has(requestorId)) {
-      const decrementedMuzzle = --this.requestors.get(requestorId)!.muzzleCount;
-      this.requestors.set(requestorId, {
-        muzzleCount: decrementedMuzzle,
-        muzzleCountRemover: this.requestors.get(requestorId)!.muzzleCountRemover,
-      });
-      console.log(`Successfully decremented ${requestorId} muzzleCount to ${decrementedMuzzle}`);
-    } else {
-      console.error(`Attemped to decrement muzzle count for ${requestorId} but they did not exist!`);
-    }
   }
 
   private getMostMuzzledByInstances(range: ReportRange): Promise<ReportCount[]> {
