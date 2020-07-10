@@ -24,6 +24,7 @@ export class CounterPersistenceService {
   private onProbation: string[] = [];
 
   public addCounter(requestorId: string): Promise<void> {
+    console.log(this.redis);
     return new Promise(async (resolve, reject) => {
       const counter = new Counter();
       counter.requestorId = requestorId;
