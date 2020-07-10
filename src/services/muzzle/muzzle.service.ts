@@ -1,39 +1,10 @@
-import { MAX_MUZZLES, MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from './constants';
+import { MAX_MUZZLES, MAX_SUPPRESSIONS } from './constants';
 import { getTimeString, getTimeToMuzzle, shouldBackfire } from './muzzle-utilities';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 import { CounterService } from '../counter/counter.service';
 
 export class MuzzleService extends SuppressorService {
   private counterService = new CounterService();
-  /**
-   * Takes in text and randomly muzzles certain words.
-   */
-  public muzzle(text: string, muzzleId: number): string {
-    const words = text.split(' ');
-
-    let returnText = '';
-    let wordsSuppressed = 0;
-    let charactersSuppressed = 0;
-    let replacementWord;
-
-    for (let i = 0; i < words.length; i++) {
-      replacementWord = this.getReplacementWord(
-        words[i],
-        i === 0,
-        i === words.length - 1,
-        REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)],
-      );
-      if (replacementWord.includes(REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)])) {
-        wordsSuppressed++;
-        charactersSuppressed += words[i].length;
-      }
-      returnText += replacementWord;
-    }
-    this.muzzlePersistenceService.incrementMessageSuppressions(muzzleId);
-    this.muzzlePersistenceService.incrementCharacterSuppressions(muzzleId, charactersSuppressed);
-    this.muzzlePersistenceService.incrementWordSuppressions(muzzleId, wordsSuppressed);
-    return returnText;
-  }
 
   /**
    * Adds a user to the muzzled map and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
@@ -109,7 +80,10 @@ export class MuzzleService extends SuppressorService {
       const suppressions = await this.muzzlePersistenceService.getSuppressions(userId);
       if (!suppressions || (suppressions && +suppressions < MAX_SUPPRESSIONS)) {
         await this.muzzlePersistenceService.incrementStatefulSuppressions(userId);
-        this.webService.sendMessage(channel, `<@${userId}> says "${this.muzzle(text, +muzzle)}"`);
+        this.webService.sendMessage(
+          channel,
+          `<@${userId}> says "${this.sendSuppressedMessage(text, +muzzle, this.muzzlePersistenceService)}"`,
+        );
       } else {
         this.muzzlePersistenceService.trackDeletedMessage(+muzzle, text);
       }

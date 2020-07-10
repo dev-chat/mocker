@@ -6,7 +6,7 @@ import { MuzzlePersistenceService } from '../../services/muzzle/muzzle.persisten
 import { CounterPersistenceService } from '../../services/counter/counter.persistence.service';
 import { WebService } from '../../services/web/web.service';
 import { isRandomEven } from '../../services/muzzle/muzzle-utilities';
-import { MAX_WORD_LENGTH } from '../../services/muzzle/constants';
+import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../services/muzzle/constants';
 
 export class SuppressorService {
   public webService = WebService.getInstance();
@@ -94,5 +94,43 @@ export class SuppressorService {
       return `${text} `;
     }
     return text;
+  }
+
+  /**
+   * Takes in text and randomly muzzles words.
+   */
+  public sendSuppressedMessage(
+    text: string,
+    id: number,
+    persistenceService?: BackFirePersistenceService | MuzzlePersistenceService,
+  ): string {
+    const words = text.split(' ');
+
+    let returnText = '';
+    let wordsSuppressed = 0;
+    let charactersSuppressed = 0;
+    let replacementWord;
+
+    for (let i = 0; i < words.length; i++) {
+      replacementWord = this.getReplacementWord(
+        words[i],
+        i === 0,
+        i === words.length - 1,
+        REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)],
+      );
+      if (replacementWord.includes(REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)])) {
+        wordsSuppressed++;
+        charactersSuppressed += words[i].length;
+      }
+      returnText += replacementWord;
+    }
+
+    if (persistenceService) {
+      persistenceService.incrementMessageSuppressions(id);
+      persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
+      persistenceService.incrementWordSuppressions(id, wordsSuppressed);
+    }
+
+    return returnText;
   }
 }
