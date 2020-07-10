@@ -28,9 +28,10 @@ export class MuzzlePersistenceService {
       await getRepository(Muzzle)
         .save(muzzle)
         .then(muzzleFromDb => {
-          this.redis.setValue(`muzzle.muzzled.${muzzledId}`, muzzleFromDb.id.toString(), 'EX', time / 1000);
-          this.redis.setValue(`muzzle.muzzled.${muzzledId}.suppressions`, '0', 'EX', time / 1000);
-          this.redis.setValue(`muzzle.muzzled.${muzzledId}.requestor`, requestorId, 'EX', time / 1000);
+          const expireTime = Math.floor(time / 1000);
+          this.redis.setValue(`muzzle.muzzled.${muzzledId}`, muzzleFromDb.id.toString(), 'EX', expireTime);
+          this.redis.setValue(`muzzle.muzzled.${muzzledId}.suppressions`, '0', 'EX', expireTime);
+          this.redis.setValue(`muzzle.muzzled.${muzzledId}.requestor`, requestorId, 'EX', expireTime);
           this.setRequestorCount(requestorId);
           resolve();
         })
@@ -68,7 +69,7 @@ export class MuzzlePersistenceService {
     const muzzledId: string | null = await this.redis.getValue(`muzzle.muzzled.${userId}`);
     if (muzzledId) {
       const remainingTime: number = await this.redis.getTimeRemaining(`muzzle.muzzled.${userId}`);
-      const newTime = remainingTime + timeToAdd / 1000;
+      const newTime = Math.floor(remainingTime + timeToAdd / 1000);
       this.incrementMuzzleTime(+muzzledId, ABUSE_PENALTY_TIME);
       console.log(`Setting ${userId}'s muzzle time to ${newTime}`);
       this.redis.expire(`muzzle.muzzled.${userId}`, newTime);

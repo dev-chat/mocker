@@ -42,7 +42,7 @@ export class BackFirePersistenceService {
     const hasBackfire = await this.isBackfire(userId);
     if (hasBackfire) {
       const timeRemaining = await this.redis.getTimeRemaining(`backfire.${userId}`);
-      const newTime = timeRemaining + timeToAdd / 1000;
+      const newTime = Math.floor(timeRemaining + timeToAdd / 1000);
       await this.redis.expire(`backfire.${userId}`, newTime);
       await this.redis.expire(`backfire.${userId}.suppressions`, newTime);
       const backfireId = await this.redis.getValue(`backfire.${userId}`);
