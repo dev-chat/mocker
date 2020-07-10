@@ -111,66 +111,75 @@ describe('MuzzleService', () => {
 
     describe('when a user is muzzled', () => {
       beforeEach(() => {
-        jest.spyOn(MuzzlePersistenceService.getInstance(), 'isUserMuzzled').mockImplementation(() => true);
+        jest
+          .spyOn(MuzzlePersistenceService.getInstance(), 'isUserMuzzled')
+          .mockImplementation(() => new Promise(resolve => resolve(true)));
       });
 
-      it('should return true if an id is present in the event.text ', () => {
+      it('should return true if an id is present in the event.text ', async () => {
         mockRequest.event.attachments = [];
-        expect(muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(true);
+        const result = await muzzleService.shouldBotMessageBeMuzzled(mockRequest);
+        expect(result).toBe(true);
       });
 
-      it('should return true if an id is present in the event.attachments[0].text', () => {
+      it('should return true if an id is present in the event.attachments[0].text', async () => {
         mockRequest.event.text = 'whatever';
         mockRequest.event.attachments[0].pretext = 'whatever';
         mockRequest.event.attachments[0].callback_id = 'whatever';
-        expect(muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(true);
+        const result = await muzzleService.shouldBotMessageBeMuzzled(mockRequest);
+        expect(result).toBe(true);
       });
 
-      it('should return true if an id is present in the event.attachments[0].pretext', () => {
+      it('should return true if an id is present in the event.attachments[0].pretext', async () => {
         mockRequest.event.text = 'whatever';
         mockRequest.event.attachments[0].text = 'whatever';
         mockRequest.event.attachments[0].callback_id = 'whatever';
-        expect(muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(true);
+        const result = await muzzleService.shouldBotMessageBeMuzzled(mockRequest);
+        expect(result).toBe(true);
       });
 
-      it('should return the id present in the event.attachments[0].callback_id if an id is present', () => {
+      it('should return the id present in the event.attachments[0].callback_id if an id is present', async () => {
         mockRequest.event.text = 'whatever';
         mockRequest.event.attachments[0].text = 'whatever';
         mockRequest.event.attachments[0].pretext = 'whatever';
-        expect(muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(true);
+        const result = await muzzleService.shouldBotMessageBeMuzzled(mockRequest);
+        expect(result).toBe(true);
       });
     });
 
     describe('when a user is not muzzled', () => {
       beforeEach(() => {
-        jest.spyOn(MuzzlePersistenceService.getInstance(), 'isUserMuzzled').mockImplementation(() => false);
+        jest
+          .spyOn(MuzzlePersistenceService.getInstance(), 'isUserMuzzled')
+          .mockImplementation(() => new Promise(resolve => resolve(false)));
       });
 
-      it('should return false if there is no id present in any fields', () => {
+      it('should return false if there is no id present in any fields', async () => {
         mockRequest.event.text = 'no id';
         mockRequest.event.callback_id = 'TEST_TEST';
         mockRequest.event.attachments[0].text = 'test';
         mockRequest.event.attachments[0].pretext = 'test';
         mockRequest.event.attachments[0].callback_id = 'TEST';
-        expect(muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(false);
+        const result = await muzzleService.shouldBotMessageBeMuzzled(mockRequest);
+        expect(result).toBe(false);
       });
 
-      it('should return false if the message is not a bot_message', () => {
+      it('should return false if the message is not a bot_message', async () => {
         mockRequest.event.subtype = 'not_bot_message';
-        expect(muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(false);
+        expect(await muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(false);
       });
 
-      it('should return false if the requesting user is not muzzled', () => {
+      it('should return false if the requesting user is not muzzled', async () => {
         mockRequest.event.text = '<@456>';
         mockRequest.event.attachments[0].text = '<@456>';
         mockRequest.event.attachments[0].pretext = '<@456>';
         mockRequest.event.attachments[0].callback_id = 'TEST_456';
-        expect(muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(false);
+        expect(await muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(false);
       });
 
-      it('should return false if the bot username is muzzle', () => {
+      it('should return false if the bot username is muzzle', async () => {
         mockRequest.event.username = 'muzzle';
-        expect(muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(false);
+        expect(await muzzleService.shouldBotMessageBeMuzzled(mockRequest)).toBe(false);
       });
     });
   });
@@ -179,20 +188,22 @@ describe('MuzzleService', () => {
     describe('muzzled', () => {
       describe('when the user is not already muzzled', () => {
         let mockAddMuzzle: jest.SpyInstance;
-
+        let mockMaxMuzzles: jest.SpyInstance;
         beforeEach(() => {
           const mockMuzzle = { id: 1 };
           const persistenceService = MuzzlePersistenceService.getInstance();
           mockAddMuzzle = jest.spyOn(persistenceService, 'addMuzzle').mockResolvedValue(mockMuzzle as Muzzle);
-
-          jest.spyOn(persistenceService, 'isUserMuzzled').mockImplementation(() => false);
+          mockMaxMuzzles = jest.spyOn(persistenceService, 'isMaxMuzzlesReached').mockResolvedValue(false);
+          jest
+            .spyOn(persistenceService, 'isUserMuzzled')
+            .mockImplementation(() => new Promise(resolve => resolve(false)));
 
           jest.spyOn(muzzleUtils, 'shouldBackfire').mockImplementation(() => false);
         });
 
         it('should call MuzzlePersistenceService.addMuzzle()', async () => {
           await muzzleService.addUserToMuzzled(testData.user123, testData.requestor, 'test');
-
+          expect(mockMaxMuzzles).toHaveBeenCalled();
           expect(mockAddMuzzle).toHaveBeenCalled();
         });
       });
@@ -208,7 +219,12 @@ describe('MuzzleService', () => {
 
           jest.spyOn(muzzleUtils, 'shouldBackfire').mockImplementation(() => false);
 
-          jest.spyOn(persistenceService, 'isUserMuzzled').mockImplementation(() => true);
+          jest.spyOn(persistenceService, 'isUserMuzzled').mockImplementation(
+            () =>
+              new Promise(resolve => {
+                resolve(true);
+              }),
+          );
         });
 
         it('should reject if a user tries to muzzle an already muzzled user', async () => {
@@ -240,7 +256,7 @@ describe('MuzzleService', () => {
 
           when(mockIsUserMuzzled)
             .calledWith(testData.requestor)
-            .mockImplementation(() => true);
+            .mockImplementation(() => new Promise(resolve => resolve(true)));
         });
 
         it('should reject if a requestor tries to muzzle someone while the requestor is muzzled', async () => {
@@ -260,9 +276,13 @@ describe('MuzzleService', () => {
 
         jest.spyOn(muzzleUtils, 'shouldBackfire').mockImplementation(() => false);
 
-        jest.spyOn(persistenceService, 'isMaxMuzzlesReached').mockImplementation(() => true);
+        jest
+          .spyOn(persistenceService, 'isMaxMuzzlesReached')
+          .mockImplementation(() => new Promise(resolve => resolve(true)));
 
-        jest.spyOn(persistenceService, 'isUserMuzzled').mockImplementation(() => false);
+        jest
+          .spyOn(persistenceService, 'isUserMuzzled')
+          .mockImplementation(() => new Promise(resolve => resolve(false)));
       });
 
       it('should prevent a requestor from muzzling when isMaxMuzzlesReached is true', async () => {
@@ -283,61 +303,61 @@ describe('MuzzleService', () => {
     });
 
     describe('if a user is already muzzled', () => {
-      let mockMuzzle: Muzzled;
-      let mockSetMuzzle: jest.SpyInstance;
+      let mockMuzzle: string;
       let mockSendMessage: jest.SpyInstance;
+      let mockDeleteMessage: jest.SpyInstance;
       let mockTrackDeleted: jest.SpyInstance;
+      let mockGetSuppressions: jest.SpyInstance;
+      let mockGetMuzzle: jest.SpyInstance;
 
       beforeEach(() => {
         jest.clearAllMocks();
-        mockMuzzle = {
-          suppressionCount: 0,
-          muzzledBy: 'test',
-          id: 1234,
-          isCounter: false,
-          removalFn: setTimeout(() => 1234, 5000),
-        };
+        mockMuzzle = '1234';
 
-        mockSetMuzzle = jest.spyOn(persistenceService, 'setMuzzle');
+        mockDeleteMessage = jest.spyOn(webService, 'deleteMessage');
         mockSendMessage = jest.spyOn(webService, 'sendMessage').mockImplementation(() => true);
         mockTrackDeleted = jest.spyOn(persistenceService, 'trackDeletedMessage');
-
-        jest.spyOn(persistenceService, 'getMuzzle').mockReturnValue(mockMuzzle);
+        mockGetSuppressions = jest.spyOn(persistenceService, 'getSuppressions');
+        mockGetMuzzle = jest.spyOn(persistenceService, 'getMuzzle').mockResolvedValue(mockMuzzle);
       });
 
-      it('should call muzzlePersistenceService.setMuzzle and webService.sendMessage if suppressionCount is 0', () => {
-        muzzleService.sendMuzzledMessage('test', 'test', 'test', 'test');
-        expect(mockSetMuzzle).toHaveBeenCalled();
+      it('should call getMuzzle, deleteMessage and sendMessage if suppressionCount is 0', async () => {
+        mockGetSuppressions.mockResolvedValue('0');
+        mockGetMuzzle.mockResolvedValue('1234');
+        jest.spyOn(persistenceService, 'incrementStatefulSuppressions').mockResolvedValue();
+        await muzzleService.sendMuzzledMessage('test', '12345', 'test', 'test');
+        expect(mockGetMuzzle).toHaveBeenCalled();
+        expect(mockDeleteMessage).toHaveBeenCalled();
         expect(mockSendMessage).toHaveBeenCalled();
       });
 
-      it('should not call setMuzzle, not call sendMessage, but call trackDeletedMessage if suppressionCount >= MAX_SUPPRESSIONS', () => {
-        mockMuzzle.suppressionCount = MAX_SUPPRESSIONS;
-        muzzleService.sendMuzzledMessage('test', 'test', 'test', 'test');
-        expect(mockSetMuzzle).not.toHaveBeenCalled();
+      it('should call getMuzzle, and deleteMessage not call sendMessage, but call trackDeletedMessage if suppressionCount >= MAX_SUPPRESSIONS', async () => {
+        mockGetSuppressions.mockImplementation(() => new Promise(resolve => resolve(MAX_SUPPRESSIONS)));
+        await muzzleService.sendMuzzledMessage('test', '1234', 'test', 'test');
+        expect(mockDeleteMessage).toHaveBeenCalled();
+        expect(mockGetMuzzle).toHaveBeenCalled();
         expect(mockSendMessage).not.toHaveBeenCalled();
         expect(mockTrackDeleted).toHaveBeenCalled();
       });
     });
 
     describe('if a user is not muzzled', () => {
-      let mockSetMuzzle: jest.SpyInstance;
       let mockSendMessage: jest.SpyInstance;
       let mockTrackDeleted: jest.SpyInstance;
       let mockGetMuzzle: jest.SpyInstance;
 
       beforeEach(() => {
         jest.clearAllMocks();
-        mockSetMuzzle = jest.spyOn(persistenceService, 'setMuzzle');
         mockSendMessage = jest.spyOn(webService, 'sendMessage').mockImplementation(() => true);
         mockTrackDeleted = jest.spyOn(persistenceService, 'trackDeletedMessage');
 
-        mockGetMuzzle = jest.spyOn(persistenceService, 'getMuzzle').mockReturnValue(undefined);
+        mockGetMuzzle = jest
+          .spyOn(persistenceService, 'getMuzzle')
+          .mockReturnValue(new Promise(resolve => resolve(null)));
       });
       it('should not call any methods except getMuzzle', () => {
-        muzzleService.sendMuzzledMessage('test', 'test', 'test', 'test');
+        muzzleService.sendMuzzledMessage('test', '1234', 'test', 'test');
         expect(mockGetMuzzle).toHaveBeenCalled();
-        expect(mockSetMuzzle).not.toHaveBeenCalled();
         expect(mockSendMessage).not.toHaveBeenCalled();
         expect(mockTrackDeleted).not.toHaveBeenCalled();
       });

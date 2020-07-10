@@ -181,7 +181,7 @@ export class MuzzleService {
     if (muzzle) {
       this.webService.deleteMessage(channel, timestamp);
       const suppressions = await this.muzzlePersistenceService.getSuppressions(userId);
-      if (suppressions && +suppressions < MAX_SUPPRESSIONS) {
+      if (!suppressions || (suppressions && +suppressions < MAX_SUPPRESSIONS)) {
         await this.muzzlePersistenceService.incrementStatefulSuppressions(userId);
         this.webService.sendMessage(channel, `<@${userId}> says "${this.muzzle(text, +muzzle)}"`);
       } else {
