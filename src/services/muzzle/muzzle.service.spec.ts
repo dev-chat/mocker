@@ -2,7 +2,6 @@
 import { when } from 'jest-when';
 import { UpdateResult } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
-import { Muzzled } from '../../shared/models/muzzle/muzzle-models';
 import { EventRequest, SlackUser } from '../../shared/models/slack/slack-models';
 import { SlackService } from '../slack/slack.service';
 import { WebService } from '../web/web.service';
