@@ -5,8 +5,11 @@ import { getRemainingTime } from '../muzzle/muzzle-utilities';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { WebService } from '../web/web.service';
 import { COUNTER_TIME, SINGLE_DAY_MS } from './constants';
-import { RedisPersistenceService } from '../../shared/db/redis.persistence.service';
 
+// This service does not yet use redis since i need to get a better understanding
+// Of the pub/sub model there. The reason I did not convert to redis is because
+// the stateful data here is already in the relational DB and because
+// i need to figure out how to call a callback when a key expires in the db.
 export class CounterPersistenceService {
   public static getInstance(): CounterPersistenceService {
     if (!CounterPersistenceService.instance) {
@@ -17,14 +20,12 @@ export class CounterPersistenceService {
 
   private static instance: CounterPersistenceService;
   private muzzlePersistenceService: MuzzlePersistenceService = MuzzlePersistenceService.getInstance();
-  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
   private webService: WebService = WebService.getInstance();
   private counters: Map<number, CounterItem> = new Map();
   private counterMuzzles: Map<string, CounterMuzzle> = new Map();
   private onProbation: string[] = [];
 
   public addCounter(requestorId: string): Promise<void> {
-    console.log(this.redis);
     return new Promise(async (resolve, reject) => {
       const counter = new Counter();
       counter.requestorId = requestorId;
