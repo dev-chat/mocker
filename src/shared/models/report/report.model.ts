@@ -1,4 +1,5 @@
 export enum ReportType {
+  Trailing7 = 'trailing7',
   Trailing30 = 'trailing30',
   Week = 'week',
   Month = 'month',
