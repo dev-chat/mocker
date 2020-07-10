@@ -1,4 +1,3 @@
-import { BackfireItem } from '../../shared/models/backfire/backfire.model';
 import { EventRequest } from '../../shared/models/slack/slack-models';
 import { MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from '../muzzle/constants';
 import { isRandomEven } from '../muzzle/muzzle-utilities';
@@ -46,25 +45,18 @@ export class BackfireService {
     this.backfirePersistenceService.addBackfireTime(userId, time);
   }
 
-  public sendBackfiredMessage(channel: string, userId: string, text: string, timestamp: string): void {
-    const backfire: BackfireItem | undefined = this.backfirePersistenceService.getBackfireByUserId(userId);
-    if (backfire) {
+  public async sendBackfiredMessage(channel: string, userId: string, text: string, timestamp: string): Promise<void> {
+    const backfireId: string | null = await this.backfirePersistenceService.getBackfireByUserId(userId);
+    if (backfireId) {
       this.webService.deleteMessage(channel, timestamp);
-      if (backfire!.suppressionCount < MAX_SUPPRESSIONS) {
-        this.backfirePersistenceService.setBackfire(userId, {
-          suppressionCount: ++backfire!.suppressionCount,
-          id: backfire!.id,
-          removalFn: backfire!.removalFn,
-        });
-        this.webService.sendMessage(channel, `<@${userId}> says "${this.backfireMessage(text, backfire!.id)}"`);
+      const suppressions = await this.backfirePersistenceService.getSuppressions(userId);
+      if (suppressions && +suppressions < MAX_SUPPRESSIONS) {
+        this.backfirePersistenceService.incrementMessageSuppressions(+backfireId);
+        this.webService.sendMessage(channel, `<@${userId}> says "${this.backfireMessage(text, +backfireId)}"`);
       } else {
-        this.backfirePersistenceService.trackDeletedMessage(backfire!.id, text);
+        this.backfirePersistenceService.trackDeletedMessage(+backfireId, text);
       }
     }
-  }
-
-  public getBackfire(userId: string): BackfireItem | undefined {
-    return this.backfirePersistenceService.getBackfireByUserId(userId);
   }
 
   public trackDeletedMessage(id: number, text: string): void {

@@ -5,6 +5,7 @@ import { Muzzled, Requestor } from '../../shared/models/muzzle/muzzle-models';
 import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_MUZZLE_TIME, MAX_TIME_BETWEEN_MUZZLES } from './constants';
 import { getRemainingTime } from './muzzle-utilities';
 import { Accuracy, MuzzleReport, ReportCount, ReportRange, ReportType } from '../../shared/models/report/report.model';
+import { RedisPersistenceService } from '../../shared/db/redis.persistence.service';
 
 export class MuzzlePersistenceService {
   public static getInstance(): MuzzlePersistenceService {
@@ -15,10 +16,12 @@ export class MuzzlePersistenceService {
   }
 
   private static instance: MuzzlePersistenceService;
+  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
   private muzzled: Map<string, Muzzled> = new Map();
   private requestors: Map<string, Requestor> = new Map();
 
   public addMuzzle(requestorId: string, muzzledId: string, time: number): Promise<Muzzle> {
+    console.log(this.redis);
     return new Promise(async (resolve, reject) => {
       const muzzle = new Muzzle();
       muzzle.requestorId = requestorId;

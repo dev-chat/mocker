@@ -5,6 +5,7 @@ import { getRemainingTime } from '../muzzle/muzzle-utilities';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { WebService } from '../web/web.service';
 import { COUNTER_TIME, SINGLE_DAY_MS } from './constants';
+import { RedisPersistenceService } from '../../shared/db/redis.persistence.service';
 
 export class CounterPersistenceService {
   public static getInstance(): CounterPersistenceService {
@@ -16,6 +17,7 @@ export class CounterPersistenceService {
 
   private static instance: CounterPersistenceService;
   private muzzlePersistenceService: MuzzlePersistenceService = MuzzlePersistenceService.getInstance();
+  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
   private webService: WebService = WebService.getInstance();
   private counters: Map<number, CounterItem> = new Map();
   private counterMuzzles: Map<string, CounterMuzzle> = new Map();

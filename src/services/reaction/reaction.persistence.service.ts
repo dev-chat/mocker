@@ -3,6 +3,7 @@ import { Reaction } from '../../shared/db/models/Reaction';
 import { Rep } from '../../shared/db/models/Rep';
 import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.model';
 import { Event } from '../../shared/models/slack/slack-models';
+import { RedisPersistenceService } from '../../shared/db/redis.persistence.service';
 
 export class ReactionPersistenceService {
   public static getInstance(): ReactionPersistenceService {
@@ -13,8 +14,10 @@ export class ReactionPersistenceService {
   }
 
   private static instance: ReactionPersistenceService;
+  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
 
   public getRep(userId: string): Promise<Rep | undefined> {
+    console.log(this.redis);
     return new Promise(async (resolve, reject) => {
       await getRepository(Rep)
         .findOne({ user: userId })

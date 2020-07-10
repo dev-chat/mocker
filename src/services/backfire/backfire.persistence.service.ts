@@ -1,8 +1,6 @@
 import { UpdateResult, getRepository } from 'typeorm';
 import { Backfire } from '../../shared/db/models/Backfire';
-import { BackfireItem } from '../../shared/models/backfire/backfire.model';
-import { ABUSE_PENALTY_TIME } from '../muzzle/constants';
-import { getRemainingTime } from '../muzzle/muzzle-utilities';
+import { RedisPersistenceService } from '../../shared/db/redis.persistence.service';
 
 export class BackFirePersistenceService {
   public static getInstance(): BackFirePersistenceService {
@@ -13,7 +11,7 @@ export class BackFirePersistenceService {
   }
 
   private static instance: BackFirePersistenceService;
-  private backfires: Map<string, BackfireItem> = new Map();
+  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
 
   public addBackfire(userId: string, time: number): Promise<void> {
     const backfire = new Backfire();
@@ -26,45 +24,37 @@ export class BackFirePersistenceService {
     return getRepository(Backfire)
       .save(backfire)
       .then(backfireFromDb => {
-        this.backfires.set(userId, {
-          suppressionCount: 0,
-          id: backfireFromDb.id,
-          removalFn: setTimeout(() => this.removeBackfire(userId), time),
-        });
+        this.redis.setValue(`backfire.${userId}`, backfireFromDb.id.toString(), 'EX', time);
+        this.redis.setValue(`backfire.${userId}.suppressions`, '0', 'EX', time);
       });
   }
 
-  public removeBackfire(userId: string): void {
-    this.backfires.delete(userId);
-    console.log(`Backfire has expired and been removed for ${userId}`);
+  public async isBackfire(userId: string): Promise<boolean> {
+    const hasBackfire = await this.redis.getValue(`backfire.${userId}`);
+    return !!hasBackfire;
   }
 
-  public isBackfire(userId: string): boolean {
-    return this.backfires.has(userId);
+  public getSuppressions(userId: string) {
+    return this.redis.getValue(`backfire.${userId}.suppressions`);
   }
 
-  public addBackfireTime(userId: string, timeToAdd: number): void {
-    if (userId && this.backfires.has(userId)) {
-      const removalFn = this.backfires.get(userId)!.removalFn;
-      const newTime = getRemainingTime(removalFn) + timeToAdd;
-      const backfireId = this.backfires.get(userId)!.id;
-      this.incrementBackfireTime(backfireId, ABUSE_PENALTY_TIME);
-      clearTimeout(this.backfires.get(userId)!.removalFn);
+  public async addBackfireTime(userId: string, timeToAdd: number): Promise<void> {
+    const hasBackfire = await this.isBackfire(userId);
+    if (hasBackfire) {
+      const timeRemaining = await this.redis.getTimeRemaining(`backfire.${userId}`);
+      const newTime = timeRemaining + timeToAdd / 1000;
+      await this.redis.expire(`backfire.${userId}`, newTime);
+      await this.redis.expire(`backfire.${userId}.suppressions`, newTime);
+      const backfireId = await this.redis.getValue(`backfire.${userId}`);
+      if (backfireId) {
+        this.incrementBackfireTime(+backfireId, timeToAdd);
+      }
       console.log(`Setting ${userId}'s backfire time to ${newTime}`);
-      this.backfires.set(userId, {
-        suppressionCount: this.backfires.get(userId)!.suppressionCount,
-        id: this.backfires.get(userId)!.id,
-        removalFn: setTimeout(() => this.removeBackfire(userId), newTime),
-      });
     }
   }
 
-  public getBackfireByUserId(userId: string): BackfireItem | undefined {
-    return this.backfires.get(userId);
-  }
-
-  public setBackfire(userId: string, options: BackfireItem): void {
-    this.backfires.set(userId, options);
+  public getBackfireByUserId(userId: string) {
+    return this.redis.getValue(userId);
   }
 
   /**
