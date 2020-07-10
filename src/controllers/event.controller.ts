@@ -147,9 +147,9 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     } else if (isUserCounterMuzzled && !isReaction) {
       handleCounterMuzzle(request);
     } else if (
-      (muzzleService.shouldBotMessageBeMuzzled(request) ||
-        backfireService.shouldBotMessageBeMuzzled(request) ||
-        counterService.shouldBotMessageBeMuzzled(request)) &&
+      ((await muzzleService.shouldBotMessageBeMuzzled(request)) ||
+        (await backfireService.shouldBotMessageBeMuzzled(request)) ||
+        (await counterService.shouldBotMessageBeMuzzled(request))) &&
       !isReaction
     ) {
       handleBotMessage(request);

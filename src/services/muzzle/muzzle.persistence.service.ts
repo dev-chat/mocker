@@ -58,7 +58,7 @@ export class MuzzlePersistenceService {
    */
   public async isMaxMuzzlesReached(userId: string): Promise<boolean> {
     const muzzles: string | null = await this.redis.getValue(`muzzle.requestor.${userId}`);
-    return !muzzles || !!(muzzles && +muzzles === MAX_MUZZLES);
+    return !!(muzzles && +muzzles === MAX_MUZZLES);
   }
 
   /**
