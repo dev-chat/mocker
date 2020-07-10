@@ -1,6 +1,6 @@
 import { CounterMuzzle } from '../../shared/models/counter/counter-models';
-import { MAX_SUPPRESSIONS, REPLACEMENT_TEXT, MAX_WORD_LENGTH } from '../muzzle/constants';
-import { getTimeString, isRandomEven } from '../muzzle/muzzle-utilities';
+import { MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from '../muzzle/constants';
+import { getTimeString } from '../muzzle/muzzle-utilities';
 import { COUNTER_TIME } from './constants';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 
@@ -45,18 +45,6 @@ export class CounterService extends SuppressorService {
       returnText += replacementWord;
     }
     return returnText;
-  }
-
-  public getReplacementWord(word: string, isFirstWord: boolean, isLastWord: boolean, replacementText: string): string {
-    const text =
-      isRandomEven() && word.length < MAX_WORD_LENGTH && word !== ' ' && !this.slackService.containsTag(word)
-        ? `*${word}*`
-        : replacementText;
-
-    if ((isFirstWord && !isLastWord) || (!isFirstWord && !isLastWord)) {
-      return `${text} `;
-    }
-    return text;
   }
 
   public sendCounterMuzzledMessage(channel: string, userId: string, text: string, timestamp: string): void {

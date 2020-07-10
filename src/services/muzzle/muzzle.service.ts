@@ -1,5 +1,5 @@
-import { MAX_MUZZLES, MAX_SUPPRESSIONS, REPLACEMENT_TEXT, MAX_WORD_LENGTH } from './constants';
-import { getTimeString, getTimeToMuzzle, isRandomEven, shouldBackfire } from './muzzle-utilities';
+import { MAX_MUZZLES, MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from './constants';
+import { getTimeString, getTimeToMuzzle, shouldBackfire } from './muzzle-utilities';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 import { CounterService } from '../counter/counter.service';
 
@@ -115,17 +115,5 @@ export class MuzzleService extends SuppressorService {
       }
     }
     console.timeEnd('send-muzzled-message');
-  }
-
-  public getReplacementWord(word: string, isFirstWord: boolean, isLastWord: boolean, replacementText: string): string {
-    const text =
-      isRandomEven() && word.length < MAX_WORD_LENGTH && word !== ' ' && !this.slackService.containsTag(word)
-        ? `*${word}*`
-        : replacementText;
-
-    if ((isFirstWord && !isLastWord) || (!isFirstWord && !isLastWord)) {
-      return `${text} `;
-    }
-    return text;
   }
 }

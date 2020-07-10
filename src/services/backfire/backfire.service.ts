@@ -1,5 +1,4 @@
 import { MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from '../muzzle/constants';
-import { isRandomEven } from '../muzzle/muzzle-utilities';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 
 export class BackfireService extends SuppressorService {
@@ -57,17 +56,5 @@ export class BackfireService extends SuppressorService {
 
   public trackDeletedMessage(id: number, text: string): void {
     this.backfirePersistenceService.trackDeletedMessage(id, text);
-  }
-
-  private getReplacementWord(word: string, isFirstWord: boolean, isLastWord: boolean, replacementText: string): string {
-    const text =
-      isRandomEven() && word.length < 10 && word !== ' ' && !this.slackService.containsTag(word)
-        ? `*${word}*`
-        : replacementText;
-
-    if ((isFirstWord && !isLastWord) || (!isFirstWord && !isLastWord)) {
-      return `${text} `;
-    }
-    return text;
   }
 }

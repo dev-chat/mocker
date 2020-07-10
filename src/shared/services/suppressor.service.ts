@@ -5,6 +5,8 @@ import { BackFirePersistenceService } from '../../services/backfire/backfire.per
 import { MuzzlePersistenceService } from '../../services/muzzle/muzzle.persistence.service';
 import { CounterPersistenceService } from '../../services/counter/counter.persistence.service';
 import { WebService } from '../../services/web/web.service';
+import { isRandomEven } from '../../services/muzzle/muzzle-utilities';
+import { MAX_WORD_LENGTH } from '../../services/muzzle/constants';
 
 export class SuppressorService {
   public webService = WebService.getInstance();
@@ -80,5 +82,17 @@ export class SuppressorService {
       );
     }
     return false;
+  }
+
+  public getReplacementWord(word: string, isFirstWord: boolean, isLastWord: boolean, replacementText: string): string {
+    const text =
+      isRandomEven() && word.length < MAX_WORD_LENGTH && word !== ' ' && !this.slackService.containsTag(word)
+        ? `*${word}*`
+        : replacementText;
+
+    if ((isFirstWord && !isLastWord) || (!isFirstWord && !isLastWord)) {
+      return `${text} `;
+    }
+    return text;
   }
 }
