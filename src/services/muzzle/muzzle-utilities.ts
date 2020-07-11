@@ -31,5 +31,5 @@ export function isRandomEven(): boolean {
 
 export function shouldBackfire(): boolean {
   const chanceOfBackfire = 0.05;
-  return true || Math.random() <= chanceOfBackfire;
+  return Math.random() <= chanceOfBackfire;
 }
