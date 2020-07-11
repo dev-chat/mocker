@@ -31,6 +31,14 @@ export class SuppressorService {
     return id;
   }
 
+  public async isSuppressed(userId: string) {
+    return (
+      (await this.muzzlePersistenceService.isUserMuzzled(userId)) ||
+      (await this.backfirePersistenceService.isBackfire(userId)) ||
+      (await this.counterPersistenceService.isCounterMuzzled(userId))
+    );
+  }
+
   /**
    * Determines whether or not a bot message should be removed.
    */

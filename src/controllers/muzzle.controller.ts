@@ -1,22 +1,18 @@
 import express, { Request, Response, Router } from 'express';
-import { BackFirePersistenceService } from '../services/backfire/backfire.persistence.service';
-import { CounterPersistenceService } from '../services/counter/counter.persistence.service';
-import { MuzzlePersistenceService } from '../services/muzzle/muzzle.persistence.service';
 import { MuzzleService } from '../services/muzzle/muzzle.service';
 import { ReportService } from '../services/report/report.service';
 import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ReportType } from '../shared/models/report/report.model';
+import { SuppressorService } from '../shared/services/suppressor.service';
 
 export const muzzleController: Router = express.Router();
 
 const muzzleService = new MuzzleService();
 const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
-const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
-const backfirePersistenceService = BackFirePersistenceService.getInstance();
-const counterPersistenceService = CounterPersistenceService.getInstance();
+const suppressorService = new SuppressorService();
 const reportService = new ReportService();
 
 muzzleController.post('/muzzle', async (req: Request, res: Response) => {
@@ -32,12 +28,7 @@ muzzleController.post('/muzzle', async (req: Request, res: Response) => {
 
 muzzleController.post('/muzzle/stats', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
-  const userId: string = request.user_id;
-  if (
-    (await muzzlePersistenceService.isUserMuzzled(userId)) ||
-    (await backfirePersistenceService.isBackfire(request.user_id)) ||
-    (await counterPersistenceService.isCounterMuzzled(request.user_id))
-  ) {
+  if (await suppressorService.isSuppressed(request.user_id)) {
     res.send(`Sorry! Can't do that while muzzled.`);
   } else if (request.text.split(' ').length > 1) {
     res.send(
