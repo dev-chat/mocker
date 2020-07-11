@@ -16,10 +16,10 @@ export class RedisPersistenceService {
   }
 
   setValue(key: string, value: string | number) {
-    return RedisPersistenceService.redis.set(key, value);
+    return RedisPersistenceService.redis.set(key, value, 'KEEPTTL');
   }
 
-  setValueWithExpire(key: string, value: string, expiryMode: string, time: number) {
+  setValueWithExpire(key: string, value: string | number, expiryMode: string, time: number) {
     return RedisPersistenceService.redis.set(key, value, expiryMode, time);
   }
 

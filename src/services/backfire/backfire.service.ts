@@ -13,6 +13,7 @@ export class BackfireService extends SuppressorService {
       const suppressions = await this.backfirePersistenceService.getSuppressions(userId);
       if (suppressions && +suppressions < MAX_SUPPRESSIONS) {
         this.backfirePersistenceService.incrementMessageSuppressions(+backfireId);
+        this.backfirePersistenceService.addSuppression(userId);
         this.webService.sendMessage(
           channel,
           `<@${userId}> says "${this.sendSuppressedMessage(text, +backfireId, this.backfirePersistenceService)}"`,

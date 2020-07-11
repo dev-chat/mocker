@@ -24,8 +24,8 @@ export class BackFirePersistenceService {
     return getRepository(Backfire)
       .save(backfire)
       .then(backfireFromDb => {
-        this.redis.setValueWithExpire(`backfire.${userId}`, backfireFromDb.id.toString(), 'EX', time);
-        this.redis.setValueWithExpire(`backfire.${userId}.suppressions`, '0', 'EX', time);
+        this.redis.setValueWithExpire(`backfire.${userId}`, backfireFromDb.id, 'EX', Math.floor(time / 1000));
+        this.redis.setValueWithExpire(`backfire.${userId}.suppressions`, 0, 'EX', Math.floor(time / 1000));
       });
   }
 
@@ -36,6 +36,12 @@ export class BackFirePersistenceService {
 
   public getSuppressions(userId: string) {
     return this.redis.getValue(`backfire.${userId}.suppressions`);
+  }
+
+  public async addSuppression(userId: string) {
+    const suppressions = await this.getSuppressions(userId);
+    const number = suppressions ? +suppressions : 0;
+    this.redis.setValue(`backfire.${userId}.suppressions`, number + 1);
   }
 
   public async addBackfireTime(userId: string, timeToAdd: number): Promise<void> {
@@ -54,7 +60,7 @@ export class BackFirePersistenceService {
   }
 
   public getBackfireByUserId(userId: string) {
-    return this.redis.getValue(userId);
+    return this.redis.getValue(`backfire.${userId}`);
   }
 
   /**
