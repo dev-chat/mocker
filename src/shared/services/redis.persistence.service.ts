@@ -10,6 +10,7 @@ export class RedisPersistenceService {
 
   private static instance: RedisPersistenceService;
   private static redis: Redis = new ioredis().on('connect', () => console.log('Connected to Redis.'));
+  private static subscriber: Redis = new ioredis().on('connect', () => console.log('Created new subscriber'));
 
   getValue(key: string) {
     return RedisPersistenceService.redis.get(key);
@@ -29,5 +30,10 @@ export class RedisPersistenceService {
 
   expire(key: string, seconds: number) {
     return RedisPersistenceService.redis.expire(key, seconds);
+  }
+
+  // Left off here.
+  subscribe(channel: string) {
+    return RedisPersistenceService.subscriber.subscribe(channel);
   }
 }

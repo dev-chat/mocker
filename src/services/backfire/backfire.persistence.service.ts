@@ -1,6 +1,6 @@
 import { UpdateResult, getRepository } from 'typeorm';
 import { Backfire } from '../../shared/db/models/Backfire';
-import { RedisPersistenceService } from '../../shared/db/redis.persistence.service';
+import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 
 export class BackFirePersistenceService {
   public static getInstance(): BackFirePersistenceService {

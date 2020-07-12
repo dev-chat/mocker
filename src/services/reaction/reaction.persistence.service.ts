@@ -3,7 +3,7 @@ import { Reaction } from '../../shared/db/models/Reaction';
 import { Rep } from '../../shared/db/models/Rep';
 import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.model';
 import { Event } from '../../shared/models/slack/slack-models';
-import { RedisPersistenceService } from '../../shared/db/redis.persistence.service';
+import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 
 export class ReactionPersistenceService {
   public static getInstance(): ReactionPersistenceService {

@@ -3,7 +3,7 @@ import { UpdateResult, getRepository, getManager } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
 import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_TIME_BETWEEN_MUZZLES } from './constants';
 import { Accuracy, MuzzleReport, ReportCount, ReportRange, ReportType } from '../../shared/models/report/report.model';
-import { RedisPersistenceService } from '../../shared/db/redis.persistence.service';
+import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 
 export class MuzzlePersistenceService {
   public static getInstance(): MuzzlePersistenceService {
