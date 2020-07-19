@@ -118,7 +118,7 @@ export class CounterPersistenceService {
     return counterId;
   }
 
-  public removeCounterPrivileges(userId: string) {
+  public removeCounterPrivileges(userId: string): void {
     this.onProbation.push(userId);
     setTimeout(() => this.onProbation.splice(this.onProbation.indexOf(userId), 1), SINGLE_DAY_MS);
   }
@@ -134,7 +134,7 @@ export class CounterPersistenceService {
       this.counters.delete(id);
       this.counterMuzzle(counter!.requestorId, id);
       this.muzzlePersistenceService.removeMuzzlePrivileges(counter!.requestorId);
-      this.onProbation.push(counter!.requestorId);
+      this.removeCounterPrivileges(counter!.requestorId);
       this.webService.sendMessage(
         '#general',
         `:flesh: <@${
