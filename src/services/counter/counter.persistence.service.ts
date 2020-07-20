@@ -5,7 +5,6 @@ import { getRemainingTime } from '../muzzle/muzzle-utilities';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { WebService } from '../web/web.service';
 import { COUNTER_TIME, SINGLE_DAY_MS } from './constants';
-import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 
 // This service does not yet use redis since i need to get a better understanding
 // Of the pub/sub model there. The reason I did not convert to redis is because
@@ -22,7 +21,6 @@ export class CounterPersistenceService {
   private static instance: CounterPersistenceService;
   private muzzlePersistenceService: MuzzlePersistenceService = MuzzlePersistenceService.getInstance();
   private webService: WebService = WebService.getInstance();
-  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
   private counters: Map<number, CounterItem> = new Map();
   private counterMuzzles: Map<string, CounterMuzzle> = new Map();
   private onProbation: string[] = [];
@@ -118,7 +116,7 @@ export class CounterPersistenceService {
     return counterId;
   }
 
-  public removeCounterPrivileges(userId: string) {
+  public removeCounterPrivileges(userId: string): void {
     this.onProbation.push(userId);
     setTimeout(() => this.onProbation.splice(this.onProbation.indexOf(userId), 1), SINGLE_DAY_MS);
   }
@@ -134,7 +132,7 @@ export class CounterPersistenceService {
       this.counters.delete(id);
       this.counterMuzzle(counter!.requestorId, id);
       this.muzzlePersistenceService.removeMuzzlePrivileges(counter!.requestorId);
-      this.onProbation.push(counter!.requestorId);
+      this.removeCounterPrivileges(counter!.requestorId);
       this.webService.sendMessage(
         '#general',
         `:flesh: <@${
