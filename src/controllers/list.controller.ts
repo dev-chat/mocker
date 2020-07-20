@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { ListPersistenceService } from '../services/list/list.persistence.service';
-import { ReportService } from '../services/report/report.service';
+import { ReportService } from '../shared/services/report.service';
 import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
 import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';

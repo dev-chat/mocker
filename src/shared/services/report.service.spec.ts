@@ -1,5 +1,5 @@
 import { ReportService } from './report.service';
-import { ReportType } from '../../shared/models/report/report.model';
+import { ReportType } from '../models/report/report.model';
 
 describe('ReportService', () => {
   let mockService: ReportService;

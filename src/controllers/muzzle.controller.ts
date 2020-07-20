@@ -1,6 +1,6 @@
 import express, { Request, Response, Router } from 'express';
 import { MuzzleService } from '../services/muzzle/muzzle.service';
-import { ReportService } from '../services/report/report.service';
+import { ReportService } from '../shared/services/report.service';
 import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';

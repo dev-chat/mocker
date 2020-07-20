@@ -1,48 +1,19 @@
+import { ReportService } from '../../shared/services/report.service';
+import { MuzzlePersistenceService } from './muzzle.persistence.service';
+import { ReportType, MuzzleReport, ReportCount } from '../../shared/models/report/report.model';
 import Table from 'easy-table';
 import moment from 'moment';
-import { List } from '../../shared/db/models/List';
-import { ListPersistenceService } from '../list/list.persistence.service';
-import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
-import { SlackService } from '../slack/slack.service';
-import { ReportType, ReportCount, MuzzleReport } from '../../shared/models/report/report.model';
 
-export class ReportService {
-  private slackService = SlackService.getInstance();
-  private muzzlePersistenceService = MuzzlePersistenceService.getInstance();
-  private listPersistenceService = ListPersistenceService.getInstance();
-
-  public async getListReport(): Promise<string> {
-    const listReport = await this.listPersistenceService.retrieve();
-    return this.formatListReport(listReport);
-  }
+export class MuzzleReportService extends ReportService {
+  persistenceService = MuzzlePersistenceService.getInstance();
 
   public async getMuzzleReport(reportType: ReportType): Promise<string> {
-    const muzzleReport = await this.muzzlePersistenceService.retrieveMuzzleReport(reportType);
+    const muzzleReport = await this.persistenceService.retrieveMuzzleReport(reportType);
     return this.generateFormattedReport(muzzleReport, reportType);
   }
 
-  public isValidReportType(type: string): boolean {
-    const lowerCaseType = type.toLowerCase();
-    return (
-      lowerCaseType === ReportType.Trailing7 ||
-      lowerCaseType === ReportType.Trailing30 ||
-      lowerCaseType === ReportType.Week ||
-      lowerCaseType === ReportType.Month ||
-      lowerCaseType === ReportType.Year ||
-      lowerCaseType === ReportType.AllTime
-    );
-  }
-
-  public getReportType(type: string): ReportType {
-    const lowerCaseType: string = type.toLowerCase();
-    if (this.isValidReportType(type)) {
-      return lowerCaseType as ReportType;
-    }
-    return ReportType.AllTime;
-  }
-
   public getReportTitle(type: ReportType): string {
-    const range = this.muzzlePersistenceService.getRange(type);
+    const range = this.persistenceService.getRange(type);
     const titles = {
       [ReportType.Trailing7]: `Trailing 7 Days Report for ${moment(range.start).format('MM-DD-YYYY')} to ${moment(
         range.end,
@@ -65,17 +36,6 @@ export class ReportService {
     return titles[type];
   }
 
-  private formatListReport(report: any): string {
-    const reportWithoutDate = report.map((listItem: List) => {
-      return { Item: listItem.text };
-    });
-
-    return `
-The List
-    
-${Table.print(reportWithoutDate)}
-`;
-  }
   private generateFormattedReport(report: MuzzleReport, reportType: ReportType): string {
     const formattedReport = this.formatReport(report);
     return `
