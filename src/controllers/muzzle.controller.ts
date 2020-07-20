@@ -32,11 +32,11 @@ muzzleController.post('/muzzle/stats', async (req: Request, res: Response) => {
     res.send(`Sorry! Can't do that while muzzled.`);
   } else if (request.text.split(' ').length > 1) {
     res.send(
-      `Sorry! No support for multiple parameters at this time. Please choose one of: \`week\`, \`month\`, \`trailing30\`, \`year\`, \`all\``,
+      `Sorry! No support for multiple parameters at this time. Please choose one of: \`trailing7\`, \`week\`, \`month\`, \`trailing30\`, \`year\`, \`all\``,
     );
   } else if (request.text !== '' && !reportService.isValidReportType(request.text)) {
     res.send(
-      `Sorry! You passed in \`${request.text}\` but we can only generate reports for the following values: \`week\`, \`month\`, \`trailing30\`, \`year\`, \`all\``,
+      `Sorry! You passed in \`${request.text}\` but we can only generate reports for the following values: \`trailing7\`, \`week\`, \`month\`, \`trailing30\`, \`year\`, \`all\``,
     );
   } else {
     const reportType: ReportType = reportService.getReportType(request.text);
