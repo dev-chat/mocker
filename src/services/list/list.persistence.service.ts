@@ -18,10 +18,6 @@ export class ListPersistenceService {
     return getRepository(List).save(listItem);
   }
 
-  public retrieve(): Promise<List[]> {
-    return getRepository(List).find();
-  }
-
   public remove(text: string): Promise<List> {
     return new Promise(async (resolve, reject) => {
       const item = await getRepository(List).findOne({ text });

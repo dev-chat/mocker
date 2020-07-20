@@ -1,13 +1,11 @@
-import { ReportService } from '../../shared/services/report.service';
-import { ListPersistenceService } from './list.persistence.service';
-import { List } from '../../shared/db/models/List';
 import Table from 'easy-table';
+import { ReportService } from '../../shared/services/report.service';
+import { List } from '../../shared/db/models/List';
+import { getRepository } from 'typeorm';
 
 export class ListReportService extends ReportService {
-  persistenceService = ListPersistenceService.getInstance();
-
   public async getListReport(): Promise<string> {
-    const listReport = await this.persistenceService.retrieve();
+    const listReport = await getRepository(List).find();
     return this.formatListReport(listReport);
   }
 
