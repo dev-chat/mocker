@@ -1,9 +1,7 @@
 import { getRepository } from 'typeorm';
 import { Reaction } from '../../shared/db/models/Reaction';
 import { Rep } from '../../shared/db/models/Rep';
-import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.model';
 import { Event } from '../../shared/models/slack/slack-models';
-import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 
 export class ReactionPersistenceService {
   public static getInstance(): ReactionPersistenceService {
@@ -14,34 +12,6 @@ export class ReactionPersistenceService {
   }
 
   private static instance: ReactionPersistenceService;
-  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
-
-  public getRep(userId: string): Promise<Rep | undefined> {
-    console.log(this.redis);
-    return new Promise(async (resolve, reject) => {
-      await getRepository(Rep)
-        .findOne({ user: userId })
-        .then(async value => {
-          await getRepository(Rep)
-            .increment({ user: userId }, 'timesChecked', 1)
-            .catch(e => console.error(`Error logging check for user ${userId}. \n ${e}`));
-          resolve(value);
-        })
-        .catch(e => reject(e));
-    });
-  }
-
-  public getRepByUser(userId: string): Promise<ReactionByUser[] | undefined> {
-    return new Promise(async (resolve, reject) => {
-      await getRepository(Reaction)
-        .query(
-          `SELECT reactingUser, SUM(value) as rep FROM reaction WHERE affectedUser=? GROUP BY reactingUser ORDER BY rep DESC;`,
-          [userId],
-        )
-        .then(value => resolve(value))
-        .catch(e => reject(e));
-    });
-  }
 
   public saveReaction(event: Event, value: number): Promise<Reaction> {
     return new Promise(async (resolve, reject) => {
