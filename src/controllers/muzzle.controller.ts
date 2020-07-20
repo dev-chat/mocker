@@ -1,11 +1,11 @@
 import express, { Request, Response, Router } from 'express';
 import { MuzzleService } from '../services/muzzle/muzzle.service';
-import { ReportService } from '../shared/services/report.service';
 import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ReportType } from '../shared/models/report/report.model';
 import { SuppressorService } from '../shared/services/suppressor.service';
+import { MuzzleReportService } from '../services/muzzle/muzzle.report.service';
 
 export const muzzleController: Router = express.Router();
 
@@ -13,7 +13,7 @@ const muzzleService = new MuzzleService();
 const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
 const suppressorService = new SuppressorService();
-const reportService = new ReportService();
+const reportService = new MuzzleReportService();
 
 muzzleController.post('/muzzle', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;

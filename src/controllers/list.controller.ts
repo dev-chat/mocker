@@ -1,10 +1,10 @@
 import express, { Router } from 'express';
 import { ListPersistenceService } from '../services/list/list.persistence.service';
-import { ReportService } from '../shared/services/report.service';
 import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
 import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
+import { ListReportService } from '../services/list/list.report.service';
 
 export const listController: Router = express.Router();
 
@@ -12,7 +12,7 @@ const suppressorService = new SuppressorService();
 const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
 const listPersistenceService = ListPersistenceService.getInstance();
-const reportService = new ReportService();
+const reportService = new ListReportService();
 
 listController.post('/list/retrieve', async (req, res) => {
   const request: SlashCommandRequest = req.body;
