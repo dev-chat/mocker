@@ -50,6 +50,21 @@ export class ReactionReportService extends ReportService {
     });
   }
 
+  public getRepByChannel(): Promise<any[] | undefined> {
+    return getRepository(Reaction)
+      .query(`SELECT AVG(value) as avg, channel FROM reaction GROUP BY channel ORDER BY avg DESC;`)
+      .then(result => {
+        const formatted = result.map((avgReaction: any) => {
+          console.log(avgReaction);
+          return {
+            value: avgReaction.avg,
+            channel: this.slackService.getChannelName(avgReaction.channel),
+          };
+        });
+        return formatted;
+      });
+  }
+
   private formatRepByUser(perUserRep: ReactionByUser[] | undefined): string {
     if (!perUserRep) {
       return 'You do not have any existing relationships.';
@@ -63,6 +78,7 @@ export class ReactionReportService extends ReportService {
       return `${Table.print(formattedData)}`;
     }
   }
+
   private getSentiment(rep: number): string {
     if (rep >= 1000) {
       return 'Worshipped';
