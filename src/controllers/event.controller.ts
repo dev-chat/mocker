@@ -126,6 +126,10 @@ function handleReaction(request: EventRequest): void {
 function handleNewUserAdd(): void {
   slackService.getAllUsers();
 }
+
+function handleNewChannelCreated(): void {
+  slackService.getAllChannels();
+}
 // Change route to /event/handle instead.
 eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
   if (req.body.challenge) {
@@ -134,6 +138,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     res.status(200).send();
     const request: EventRequest = req.body;
     const isNewUserAdded = request.event.type === 'team_join';
+    const isNewChannelCreated = request.event.type === 'channel_created';
     const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
     const isMuzzled = await muzzlePersistenceService.isUserMuzzled(request.event.user);
     const isUserBackfired = await backfirePersistenceService.isBackfire(request.event.user);
@@ -142,6 +147,8 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     console.time('respond-to-event');
     if (isNewUserAdded) {
       handleNewUserAdd();
+    } else if (isNewChannelCreated) {
+      handleNewChannelCreated();
     } else if (isMuzzled && !isReaction) {
       handleMuzzledMessage(request);
     } else if (isUserBackfired && !isReaction) {

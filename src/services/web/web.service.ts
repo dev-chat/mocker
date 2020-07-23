@@ -58,6 +58,10 @@ export class WebService {
     return this.web.users.list();
   }
 
+  public getAllChannels(): Promise<any> {
+    return this.web.conversations.list().catch(e => console.log(e));
+  }
+
   public uploadFile(channel: string, content: string, title: string, userId: string): void {
     const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const uploadRequest: FilesUploadArguments = {

@@ -12,6 +12,7 @@ export class SlackService {
   }
   private static instance: SlackService;
   public userList: SlackUser[] = [];
+  public channels: any[] = [];
   private web: WebService = WebService.getInstance();
 
   public sendResponse(responseUrl: string, response: ChannelResponse): void {
@@ -78,6 +79,18 @@ export class SlackService {
     }
 
     return text.includes('<!channel>') || text.includes('<!here>') || !!this.getUserId(text);
+  }
+
+  public async getAllChannels() {
+    this.channels = await this.web.getAllChannels().then(result => result.channels);
+  }
+
+  public async getChannelName(channelId: string) {
+    const channel = this.channels.find(channel => channelId === channel.id);
+    if (channel) {
+      return channel.name;
+    }
+    return '';
   }
 
   /**
