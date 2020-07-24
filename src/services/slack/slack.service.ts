@@ -2,6 +2,7 @@ import axios from 'axios';
 import { ChannelResponse, SlackUser } from '../../shared/models/slack/slack-models';
 import { WebService } from '../web/web.service';
 import { USER_ID_REGEX } from './constants';
+import { SlackPersistenceService } from './slack.persistence.service';
 
 export class SlackService {
   public static getInstance(): SlackService {
@@ -14,6 +15,7 @@ export class SlackService {
   public userList: SlackUser[] = [];
   public channels: any[] = [];
   private web: WebService = WebService.getInstance();
+  private persistenceService: SlackPersistenceService = SlackPersistenceService.getInstance();
 
   public sendResponse(responseUrl: string, response: ChannelResponse): void {
     axios
@@ -82,7 +84,9 @@ export class SlackService {
   }
 
   public async getAllChannels() {
-    this.channels = await this.web.getAllChannels().then(result => result.channels);
+    this.channels = (await this.web
+      .getAllChannels()
+      .then(result => this.persistenceService.saveChannels(result.channels))) as any[];
   }
 
   public async getChannelName(channelId: string) {
@@ -102,6 +106,7 @@ export class SlackService {
       .getAllUsers()
       .then(resp => {
         console.log('New user list has been retrieved!');
+        this.persistenceService.saveUsers(resp.members as SlackUser[]);
         return resp.members as SlackUser[];
       })
       .catch(e => {
