@@ -67,54 +67,54 @@ ${this.getReportTitle(reportType)}
   private formatReport(report: MuzzleReport): any {
     const reportFormatted = {
       muzzled: {
-        byInstances: report.muzzled.byInstances.map((instance: ReportCount) => {
+        byInstances: report.muzzled.byInstances.map(async (instance: ReportCount) => {
           return {
-            User: this.slackService.getUserById(instance.slackId)!.name,
+            User: await this.slackService.getUserNameById(instance.slackId),
             Muzzles: instance.count,
           };
         }),
       },
       muzzlers: {
-        byInstances: report.muzzlers.byInstances.map((instance: ReportCount) => {
+        byInstances: report.muzzlers.byInstances.map(async (instance: ReportCount) => {
           return {
-            User: this.slackService.getUserById(instance.slackId)!.name,
+            User: await this.slackService.getUserNameById(instance.slackId),
             ['Muzzles Issued']: instance.count,
           };
         }),
       },
-      accuracy: report.accuracy.map((instance: any) => {
+      accuracy: report.accuracy.map(async (instance: any) => {
         return {
-          User: this.slackService.getUserById(instance.requestorId)!.name,
+          User: await this.slackService.getUserNameById(instance.requestorId),
           Accuracy: instance.accuracy,
           Kills: instance.kills,
           Attempts: instance.deaths,
         };
       }),
-      KDR: report.kdr.map((instance: any) => {
+      KDR: report.kdr.map(async (instance: any) => {
         return {
-          User: this.slackService.getUserById(instance.requestorId)!.name,
+          User: await this.slackService.getUserNameById(instance.requestorId),
           KDR: instance.kdr,
           Kills: instance.kills,
           Deaths: instance.deaths,
         };
       }),
-      rawNemesis: report.rawNemesis.map((instance: any) => {
+      rawNemesis: report.rawNemesis.map(async (instance: any) => {
         return {
-          Killer: this.slackService.getUserById(instance.requestorId)!.name,
-          Victim: this.slackService.getUserById(instance.muzzledId)!.name,
+          Killer: await this.slackService.getUserNameById(instance.requestorId),
+          Victim: await this.slackService.getUserNameById(instance.muzzledId),
           Attempts: instance.killCount,
         };
       }),
-      successNemesis: report.successNemesis.map((instance: any) => {
+      successNemesis: report.successNemesis.map(async (instance: any) => {
         return {
-          Killer: this.slackService.getUserById(instance.requestorId)!.name,
-          Victim: this.slackService.getUserById(instance.muzzledId)!.name,
+          Killer: await this.slackService.getUserNameById(instance.requestorId),
+          Victim: await this.slackService.getUserNameById(instance.muzzledId),
           Kills: instance.killCount,
         };
       }),
-      backfires: report.backfires.map((instance: any) => {
+      backfires: report.backfires.map(async (instance: any) => {
         return {
-          User: this.slackService.getUserById(instance.muzzledId)!.name,
+          User: await this.slackService.getUserNameById(instance.muzzledId),
           Backfires: instance.backfires,
           Muzzles: instance.muzzles,
           Percentage: instance.backfirePct,

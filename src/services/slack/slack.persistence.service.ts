@@ -64,4 +64,14 @@ export class SlackPersistenceService {
       console.log('Error on updating users: ', e);
     }
   }
+
+  // Might need to pass teamId here.
+  async getUserById(userId: string): Promise<SlackUser | undefined> {
+    return getRepository(SlackUser).findOne({ slackId: userId });
+  }
+
+  // Might need to pass teamId here.
+  async getChannelById(channelId: string): Promise<SlackChannel | undefined> {
+    return getRepository(SlackChannel).findOne({ channelId });
+  }
 }

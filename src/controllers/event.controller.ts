@@ -28,7 +28,7 @@ const counterPersistenceService = CounterPersistenceService.getInstance();
 
 async function handleMuzzledMessage(request: EventRequest): Promise<void> {
   const containsTag = slackService.containsTag(request.event.text);
-  const userName = slackService.getUserName(request.event.user);
+  const userName = await slackService.getUserNameById(request.event.user);
 
   if (!containsTag) {
     console.log(`${userName} | ${request.event.user} is muzzled! Suppressing his voice...`);
@@ -37,9 +37,7 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
     const muzzleId: string | null = await muzzlePersistenceService.getMuzzle(request.event.user);
     if (muzzleId) {
       console.log(
-        `${slackService.getUserName(
-          request.event.user,
-        )} attempted to tag someone or change the channel topic. Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
+        `${userName} attempted to tag someone or change the channel topic. Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
       );
       muzzlePersistenceService.addMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
       webService.deleteMessage(request.event.channel, request.event.ts);
@@ -56,9 +54,9 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
   }
 }
 
-function handleBackfire(request: EventRequest): void {
+async function handleBackfire(request: EventRequest): Promise<void> {
   const containsTag = slackService.containsTag(request.event.text);
-  const userName = slackService.getUserName(request.event.user);
+  const userName = await slackService.getUserNameById(request.event.user);
   if (!containsTag) {
     console.log(`${userName} | ${request.event.user} is backfired! Suppressing his voice...`);
     backfireService.sendBackfiredMessage(
@@ -69,11 +67,7 @@ function handleBackfire(request: EventRequest): void {
     );
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
     const backfireId = backfireService.getBackfire(request.event.user);
-    console.log(
-      `${slackService.getUserName(
-        request.event.user,
-      )} attempted to tag someone. Backfire increased by ${ABUSE_PENALTY_TIME}!`,
-    );
+    console.log(`${userName} attempted to tag someone. Backfire increased by ${ABUSE_PENALTY_TIME}!`);
     backfireService.addBackfireTime(request.event.user, ABUSE_PENALTY_TIME);
     webService.deleteMessage(request.event.channel, request.event.ts);
     backfireService.trackDeletedMessage(+backfireId, request.event.text);
@@ -86,9 +80,9 @@ function handleBackfire(request: EventRequest): void {
   }
 }
 
-function handleCounterMuzzle(request: EventRequest): void {
+async function handleCounterMuzzle(request: EventRequest): Promise<void> {
   const containsTag = slackService.containsTag(request.event.text);
-  const userName = slackService.getUserName(request.event.user);
+  const userName = await slackService.getUserNameById(request.event.user);
   if (!containsTag) {
     console.log(`${userName} | ${request.event.user} is counter-muzzled! Suppressing his voice...`);
     counterService.sendCounterMuzzledMessage(
@@ -98,11 +92,7 @@ function handleCounterMuzzle(request: EventRequest): void {
       request.event.ts,
     );
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
-    console.log(
-      `${slackService.getUserName(
-        request.event.user,
-      )} attempted to tag someone. Counter Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
-    );
+    console.log(`${userName} attempted to tag someone. Counter Muzzle increased by ${ABUSE_PENALTY_TIME}!`);
     counterPersistenceService.addCounterMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
     webService.deleteMessage(request.event.channel, request.event.ts);
     webService.sendMessage(

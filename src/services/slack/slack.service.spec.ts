@@ -1,4 +1,3 @@
-import { SlackUser } from '../../shared/models/slack/slack-models';
 import { SlackService } from './slack.service';
 
 describe('slack-utils', () => {
@@ -6,35 +5,20 @@ describe('slack-utils', () => {
 
   beforeEach(() => {
     slackService = SlackService.getInstance();
-    slackService.userList = [
-      {
-        id: '123',
-        name: 'test_user123',
-      },
-      {
-        id: '456',
-        name: 'test_user456',
-      },
-      {
-        id: '789',
-        name: 'test_user789',
-      },
-    ] as SlackUser[];
   });
+  // describe('getUserNameById()', () => {
+  //   it('should return the user.name property of a known user by id', () => {
+  //     expect(slackService.getUserName('123')).toBe('test_user123');
+  //   });
 
-  describe('getUserName()', () => {
-    it('should return the user.name property of a known user by id', () => {
-      expect(slackService.getUserName('123')).toBe('test_user123');
-    });
+  //   it('should return an empty string for a user that does not exist', () => {
+  //     expect(slackService.getUserName('1010')).toBe('');
+  //   });
 
-    it('should return an empty string for a user that does not exist', () => {
-      expect(slackService.getUserName('1010')).toBe('');
-    });
-
-    it('should handle empty strings values', () => {
-      expect(slackService.getUserName('')).toBe('');
-    });
-  });
+  //   it('should handle empty strings values', () => {
+  //     expect(slackService.getUserName('')).toBe('');
+  //   });
+  // });
 
   describe('getUserId()', () => {
     it('should return a userId when one is passed in without a username', () => {
@@ -55,16 +39,6 @@ describe('slack-utils', () => {
 
     it('should return the string when it exists inside of another string', () => {
       expect(slackService.getUserId('Posted by: <@U2YJQN2KB> | Search: test')).toBe('U2YJQN2KB');
-    });
-  });
-
-  describe('getUserById()', () => {
-    it('should return a user object when given a valid id', () => {
-      expect(slackService.getUserById('123')).toEqual(slackService.userList[0]);
-    });
-
-    it('should return undefined when given an invalid id', () => {
-      expect(slackService.getUserById('1010')).toBeUndefined();
     });
   });
 
