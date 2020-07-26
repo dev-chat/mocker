@@ -36,10 +36,11 @@ export class SlackPersistenceService {
     const dbUsers = users.map(user => {
       return {
         slackId: user.id,
-        name: user.name,
+        name: user.profile.display_name,
         teamId: user.team_id,
       };
     });
+    console.log(dbUsers);
     return getRepository(SlackUser)
       .save(dbUsers)
       .catch(e => {
