@@ -13,7 +13,8 @@ export class SlackPersistenceService {
 
   private static instance: SlackPersistenceService;
 
-  saveChannels(channels: any[]) {
+  // This sucks because TypeORM sucks. Time to consider removing this ORM.
+  async saveChannels(channels: any[]) {
     const dbChannels = channels.map(channel => {
       return {
         channelId: channel.id,
@@ -21,34 +22,46 @@ export class SlackPersistenceService {
         teamId: channel.shared_team_ids[0],
       };
     });
-    return getRepository(SlackChannel)
-      .save(dbChannels)
-      .catch(e => {
-        if (e.code === 'ER_DUP_ENTRY') {
-          return;
+
+    try {
+      for (const channel of dbChannels) {
+        const existingChannel = await getRepository(SlackChannel).findOne({
+          channelId: channel.channelId,
+          teamId: channel.teamId,
+        });
+        if (existingChannel) {
+          getRepository(SlackChannel).update(existingChannel, channel);
         } else {
-          console.error(e);
+          getRepository(SlackChannel).save(channel);
         }
-      });
+      }
+      console.log('Updated channel list');
+    } catch (e) {
+      console.log('Error on updating channels: ', e);
+    }
   }
 
-  saveUsers(users: SlackUserModel[]) {
+  // This sucks because TypeORM sucks. Time to consider removing this ORM.
+  async saveUsers(users: SlackUserModel[]) {
     const dbUsers = users.map(user => {
       return {
         slackId: user.id,
-        name: user.profile.display_name,
+        name: user.profile.display_name || user.name,
         teamId: user.team_id,
       };
     });
-    console.log(dbUsers);
-    return getRepository(SlackUser)
-      .save(dbUsers)
-      .catch(e => {
-        if (e.code === 'ER_DUP_ENTRY') {
-          return;
+    try {
+      for (const user of dbUsers) {
+        const existingUser = await getRepository(SlackUser).findOne({ slackId: user.slackId, teamId: user.teamId });
+        if (existingUser) {
+          getRepository(SlackUser).update(existingUser, user);
         } else {
-          console.error(e);
+          getRepository(SlackUser).save(user);
         }
-      });
+      }
+      console.log('Updated latest users in DB.');
+    } catch (e) {
+      console.log('Error on updating users: ', e);
+    }
   }
 }
