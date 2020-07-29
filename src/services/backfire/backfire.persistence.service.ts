@@ -30,8 +30,8 @@ export class BackFirePersistenceService {
       });
   }
 
-  public async isBackfire(userId: string): Promise<boolean> {
-    const hasBackfire = await this.redis.getValue(`backfire.${userId}`);
+  public async isBackfire(userId: string, teamId: string): Promise<boolean> {
+    const hasBackfire = await this.redis.getValue(`backfire.${userId}-${teamId}`);
     return !!hasBackfire;
   }
 
@@ -39,14 +39,14 @@ export class BackFirePersistenceService {
     return this.redis.getValue(`backfire.${userId}.suppressions`);
   }
 
-  public async addSuppression(userId: string) {
+  public async addSuppression(userId: string): Promise<void> {
     const suppressions = await this.getSuppressions(userId);
     const number = suppressions ? +suppressions : 0;
     this.redis.setValue(`backfire.${userId}.suppressions`, number + 1);
   }
 
-  public async addBackfireTime(userId: string, timeToAdd: number): Promise<void> {
-    const hasBackfire = await this.isBackfire(userId);
+  public async addBackfireTime(userId: string, teamId: string, timeToAdd: number): Promise<void> {
+    const hasBackfire = await this.isBackfire(userId, teamId);
     if (hasBackfire) {
       const timeRemaining = await this.redis.getTimeRemaining(`backfire.${userId}`);
       const newTime = Math.floor(timeRemaining + timeToAdd / 1000);

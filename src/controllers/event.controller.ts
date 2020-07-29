@@ -68,7 +68,7 @@ async function handleBackfire(request: EventRequest): Promise<void> {
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
     const backfireId = backfireService.getBackfire(request.event.user);
     console.log(`${userName} attempted to tag someone. Backfire increased by ${ABUSE_PENALTY_TIME}!`);
-    backfireService.addBackfireTime(request.event.user, ABUSE_PENALTY_TIME);
+    backfireService.addBackfireTime(request.event.user, request.event.team, ABUSE_PENALTY_TIME);
     webService.deleteMessage(request.event.channel, request.event.ts);
     backfireService.trackDeletedMessage(+backfireId, request.event.text);
     webService.sendMessage(
@@ -130,8 +130,9 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const isNewUserAdded = request.event.type === 'team_join';
     const isNewChannelCreated = request.event.type === 'channel_created';
     const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
-    const isMuzzled = await muzzlePersistenceService.isUserMuzzled(request.event.user);
-    const isUserBackfired = await backfirePersistenceService.isBackfire(request.event.user);
+    const isMuzzled = await muzzlePersistenceService.isUserMuzzled(request.event.user, request.event.team);
+    const isUserBackfired = await backfirePersistenceService.isBackfire(request.event.user, request.event.team);
+    // TO DO: Add teamId to this call once counterPersistenceService uses redis.
     const isUserCounterMuzzled = await counterPersistenceService.isCounterMuzzled(request.event.user);
 
     console.time('respond-to-event');

@@ -2,8 +2,8 @@ import { MAX_SUPPRESSIONS } from '../muzzle/constants';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 
 export class BackfireService extends SuppressorService {
-  public addBackfireTime(userId: string, time: number): void {
-    this.backfirePersistenceService.addBackfireTime(userId, time);
+  public addBackfireTime(userId: string, teamId: string, time: number): void {
+    this.backfirePersistenceService.addBackfireTime(userId, teamId, time);
   }
 
   public async sendBackfiredMessage(channel: string, userId: string, text: string, timestamp: string): Promise<void> {

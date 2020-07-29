@@ -16,7 +16,7 @@ const reportService = new ListReportService();
 
 listController.post('/list/retrieve', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  if (await suppressorService.isSuppressed(request.user_id)) {
+  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     const report = await reportService.getListReport();
@@ -27,14 +27,14 @@ listController.post('/list/retrieve', async (req, res) => {
 
 listController.post('/list/add', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  if (await suppressorService.isSuppressed(request.user_id)) {
+  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('Sorry, you must send a message to list something.');
   } else if (request.text.length >= 255) {
     res.send('Sorry, items added to The List must be less than 255 characters');
   } else {
-    listPersistenceService.store(request.user_id, request.text);
+    listPersistenceService.store(request.user_id, request.text, request.team_id);
     const response: ChannelResponse = {
       // eslint-disable-next-line @typescript-eslint/camelcase
       response_type: 'in_channel',
@@ -47,7 +47,7 @@ listController.post('/list/add', async (req, res) => {
 
 listController.post('/list/remove', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  if (await suppressorService.isSuppressed(request.user_id)) {
+  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('Sorry, you must send the item you wish to remove.');

@@ -10,7 +10,7 @@ const reportService = new ReactionReportService();
 
 reactionController.post('/rep/get', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  if (await suppressorService.isSuppressed(request.user_id)) {
+  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     const repValue = await reportService.getRep(request.user_id);

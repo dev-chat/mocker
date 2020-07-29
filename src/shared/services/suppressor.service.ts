@@ -31,10 +31,10 @@ export class SuppressorService {
     return id;
   }
 
-  public async isSuppressed(userId: string) {
+  public async isSuppressed(userId: string, teamId: string): Promise<boolean> {
     return (
-      (await this.muzzlePersistenceService.isUserMuzzled(userId)) ||
-      (await this.backfirePersistenceService.isBackfire(userId)) ||
+      (await this.muzzlePersistenceService.isUserMuzzled(userId, teamId)) ||
+      (await this.backfirePersistenceService.isBackfire(userId, teamId)) ||
       (await this.counterPersistenceService.isCounterMuzzled(userId))
     );
   }
@@ -84,8 +84,8 @@ export class SuppressorService {
       );
       return !!(
         finalUserId &&
-        ((await this.muzzlePersistenceService.isUserMuzzled(finalUserId)) ||
-          (await this.backfirePersistenceService.isBackfire(finalUserId)) ||
+        ((await this.muzzlePersistenceService.isUserMuzzled(finalUserId, request.team_id)) ||
+          (await this.backfirePersistenceService.isBackfire(finalUserId, request.team_id)) ||
           (await this.counterPersistenceService.isCounterMuzzled(finalUserId)))
       );
     }

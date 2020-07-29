@@ -100,8 +100,8 @@ export class MuzzlePersistenceService {
   /**
    * Returns boolean whether user is muzzled or not.
    */
-  public async isUserMuzzled(userId: string): Promise<boolean> {
-    return !!(await this.redis.getValue(`muzzle.muzzled.${userId}`));
+  public async isUserMuzzled(userId: string, teamId: string): Promise<boolean> {
+    return !!(await this.redis.getValue(`muzzle.muzzled.${userId}-${teamId}`));
   }
 
   public incrementMuzzleTime(id: number, ms: number): Promise<UpdateResult> {

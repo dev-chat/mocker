@@ -12,15 +12,15 @@ const counterService = new CounterService();
 
 counterController.post('/counter', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  if (await suppressorService.isSuppressed(request.user_id)) {
+  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(
       "You can't counter someone if you are already muzzled, currently have a counter, or have lost counter privileges!",
     );
-  } else if (!counterPersistenceService.canCounter(request.user_id)) {
+  } else if (!counterPersistenceService.canCounter(request.user_id, request.team_id)) {
     res.send('You have lost counter privileges and cannot counter right now.');
   } else {
     await counterService
-      .createCounter(request.user_id)
+      .createCounter(request.user_id, request.team_id)
       .then(value => res.send(value))
       .catch(e => res.send(e));
   }

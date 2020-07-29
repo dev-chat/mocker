@@ -13,7 +13,7 @@ const defineService = DefineService.getInstance();
 defineController.post('/define', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
 
-  if (await suppressorService.isSuppressed(request.user_id)) {
+  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     const defined: UrbanDictionaryResponse | Error = await defineService.define(request.text).catch(e => new Error(e));
