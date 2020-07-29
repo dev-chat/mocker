@@ -13,7 +13,7 @@ reactionController.post('/rep/get', async (req, res) => {
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
-    const repValue = await reportService.getRep(request.user_id);
+    const repValue = await reportService.getRep(request.user_id, request.team_id);
     res.send(repValue);
   }
 });

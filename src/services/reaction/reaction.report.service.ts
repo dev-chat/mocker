@@ -6,9 +6,8 @@ import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.mode
 import { Reaction } from '../../shared/db/models/Reaction';
 
 export class ReactionReportService extends ReportService {
-  // TODO: Add Team ID to the query.
-  public async getRep(userId: string): Promise<string> {
-    const totalRep = await this.getTotalRep(userId)
+  public async getRep(userId: string, teamId: string): Promise<string> {
+    const totalRep = await this.getTotalRep(userId, teamId)
       .then(value => {
         if (value) {
           return `\n*You currently have _${value!.rep}_ rep.*`;
@@ -18,21 +17,20 @@ export class ReactionReportService extends ReportService {
       })
       .catch(() => `Unable to retrieve your rep due to an error!`);
 
-    const repByUser = await this.getRepByUser(userId)
-      .then((perUserRep: ReactionByUser[] | undefined) => this.formatRepByUser(perUserRep))
+    const repByUser = await this.getRepByUser(userId, teamId)
+      .then((perUserRep: ReactionByUser[] | undefined) => this.formatRepByUser(perUserRep, teamId))
       .catch(e => console.error(e));
 
     return `${repByUser}\n\n${totalRep}`;
   }
 
-  // TODO: Add Team ID to the query.
-  public getTotalRep(userId: string): Promise<Rep | undefined> {
+  public getTotalRep(userId: string, teamId: string): Promise<Rep | undefined> {
     return new Promise(async (resolve, reject) => {
       await getRepository(Rep)
-        .findOne({ user: userId })
+        .findOne({ user: userId, teamId })
         .then(async value => {
           await getRepository(Rep)
-            .increment({ user: userId }, 'timesChecked', 1)
+            .increment({ user: userId, teamId }, 'timesChecked', 1)
             .catch(e => console.error(`Error logging check for user ${userId}. \n ${e}`));
           resolve(value);
         })
@@ -40,13 +38,12 @@ export class ReactionReportService extends ReportService {
     });
   }
 
-  // TODO: Add Team ID to the query.
-  public getRepByUser(userId: string): Promise<ReactionByUser[] | undefined> {
+  public getRepByUser(userId: string, teamId: string): Promise<ReactionByUser[] | undefined> {
     return new Promise(async (resolve, reject) => {
       await getRepository(Reaction)
         .query(
-          `SELECT reactingUser, SUM(value) as rep FROM reaction WHERE affectedUser=? GROUP BY reactingUser ORDER BY rep DESC;`,
-          [userId],
+          `SELECT reactingUser, SUM(value) as rep FROM reaction WHERE affectedUser=? AND teamId=? GROUP BY reactingUser ORDER BY rep DESC;`,
+          [userId, teamId],
         )
         .then(value => resolve(value))
         .catch(e => reject(e));
@@ -70,13 +67,13 @@ export class ReactionReportService extends ReportService {
       });
   }
 
-  private formatRepByUser(perUserRep: ReactionByUser[] | undefined): string {
+  private formatRepByUser(perUserRep: ReactionByUser[] | undefined, teamId: string): string {
     if (!perUserRep) {
       return 'You do not have any existing relationships.';
     } else {
       const formattedData = perUserRep.map(async userRep => {
         return {
-          user: await this.slackService.getUserNameById(userRep.reactingUser),
+          user: await this.slackService.getUserNameById(userRep.reactingUser, teamId),
           rep: `${this.getSentiment(userRep.rep)} (${userRep.rep})`,
         };
       });

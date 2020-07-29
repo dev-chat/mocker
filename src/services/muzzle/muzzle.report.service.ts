@@ -6,10 +6,10 @@ import { ReportType, MuzzleReport, ReportCount, ReportRange, Accuracy } from '..
 import { ReportService } from '../../shared/services/report.service';
 
 export class MuzzleReportService extends ReportService {
-  public async getMuzzleReport(reportType: ReportType): Promise<string> {
+  public async getMuzzleReport(reportType: ReportType, teamId: string): Promise<string> {
     const range = this.getRange(reportType);
-    const muzzleReport = await this.retrieveMuzzleReport(range);
-    return await this.generateFormattedReport(muzzleReport, reportType);
+    const muzzleReport = await this.retrieveMuzzleReport(range, teamId);
+    return await this.generateFormattedReport(muzzleReport, reportType, teamId);
   }
 
   public getReportTitle(type: ReportType): string {
@@ -36,8 +36,8 @@ export class MuzzleReportService extends ReportService {
     return titles[type];
   }
 
-  private async generateFormattedReport(report: MuzzleReport, reportType: ReportType): Promise<string> {
-    const formattedReport: any = await this.formatReport(report);
+  private async generateFormattedReport(report: MuzzleReport, reportType: ReportType, teamId: string): Promise<string> {
+    const formattedReport: any = await this.formatReport(report, teamId);
     return `
 ${this.getReportTitle(reportType)}
 
@@ -64,13 +64,13 @@ ${this.getReportTitle(reportType)}
 `;
   }
 
-  private async formatReport(report: MuzzleReport): Promise<any> {
+  private async formatReport(report: MuzzleReport, teamId: string): Promise<any> {
     const reportFormatted = {
       muzzled: {
         byInstances: await Promise.all(
           report.muzzled.byInstances.map(async (instance: ReportCount) => {
             return {
-              User: await this.slackService.getUserNameById(instance.slackId),
+              User: await this.slackService.getUserNameById(instance.slackId, teamId),
               Muzzles: instance.count,
             };
           }),
@@ -80,7 +80,7 @@ ${this.getReportTitle(reportType)}
         byInstances: await Promise.all(
           report.muzzlers.byInstances.map(async (instance: ReportCount) => {
             return {
-              User: await this.slackService.getUserNameById(instance.slackId),
+              User: await this.slackService.getUserNameById(instance.slackId, teamId),
               ['Muzzles Issued']: instance.count,
             };
           }),
@@ -89,7 +89,7 @@ ${this.getReportTitle(reportType)}
       accuracy: await Promise.all(
         report.accuracy.map(async (instance: any) => {
           return {
-            User: await this.slackService.getUserNameById(instance.requestorId),
+            User: await this.slackService.getUserNameById(instance.requestorId, teamId),
             Accuracy: instance.accuracy,
             Kills: instance.kills,
             Attempts: instance.deaths,
@@ -99,7 +99,7 @@ ${this.getReportTitle(reportType)}
       KDR: await Promise.all(
         report.kdr.map(async (instance: any) => {
           return {
-            User: await this.slackService.getUserNameById(instance.requestorId),
+            User: await this.slackService.getUserNameById(instance.requestorId, teamId),
             KDR: instance.kdr,
             Kills: instance.kills,
             Deaths: instance.deaths,
@@ -109,8 +109,8 @@ ${this.getReportTitle(reportType)}
       rawNemesis: await Promise.all(
         report.rawNemesis.map(async (instance: any) => {
           return {
-            Killer: await this.slackService.getUserNameById(instance.requestorId),
-            Victim: await this.slackService.getUserNameById(instance.muzzledId),
+            Killer: await this.slackService.getUserNameById(instance.requestorId, teamId),
+            Victim: await this.slackService.getUserNameById(instance.muzzledId, teamId),
             Attempts: instance.killCount,
           };
         }),
@@ -118,8 +118,8 @@ ${this.getReportTitle(reportType)}
       successNemesis: await Promise.all(
         report.successNemesis.map(async (instance: any) => {
           return {
-            Killer: await this.slackService.getUserNameById(instance.requestorId),
-            Victim: await this.slackService.getUserNameById(instance.muzzledId),
+            Killer: await this.slackService.getUserNameById(instance.requestorId, teamId),
+            Victim: await this.slackService.getUserNameById(instance.muzzledId, teamId),
             Kills: instance.killCount,
           };
         }),
@@ -127,7 +127,7 @@ ${this.getReportTitle(reportType)}
       backfires: await Promise.all(
         report.backfires.map(async (instance: any) => {
           return {
-            User: await this.slackService.getUserNameById(instance.muzzledId),
+            User: await this.slackService.getUserNameById(instance.muzzledId, teamId),
             Backfires: instance.backfires,
             Muzzles: instance.muzzles,
             Percentage: instance.backfirePct,
@@ -138,25 +138,25 @@ ${this.getReportTitle(reportType)}
     return reportFormatted;
   }
   /** Wrapper to generate a generic muzzle report in */
-  public async retrieveMuzzleReport(range: ReportRange): Promise<MuzzleReport> {
-    const mostMuzzledByInstances = await this.getMostMuzzledByInstances(range);
-    const mostMuzzledByMessages = await this.getMostMuzzledByMessages(range);
-    const mostMuzzledByWords = await this.getMostMuzzledByWords(range);
-    const mostMuzzledByChars = await this.getMostMuzzledByChars(range);
-    const mostMuzzledByTime = await this.getMostMuzzledByTime(range);
+  public async retrieveMuzzleReport(range: ReportRange, teamId: string): Promise<MuzzleReport> {
+    const mostMuzzledByInstances = await this.getMostMuzzledByInstances(range, teamId);
+    const mostMuzzledByMessages = await this.getMostMuzzledByMessages(range, teamId);
+    const mostMuzzledByWords = await this.getMostMuzzledByWords(range, teamId);
+    const mostMuzzledByChars = await this.getMostMuzzledByChars(range, teamId);
+    const mostMuzzledByTime = await this.getMostMuzzledByTime(range, teamId);
 
-    const muzzlerByInstances = await this.getMuzzlerByInstances(range);
-    const muzzlerByMessages = await this.getMuzzlerByMessages(range);
-    const muzzlerByWords = await this.getMuzzlerByWords(range);
-    const muzzlerByChars = await this.getMuzzlerByChars(range);
-    const muzzlerByTime = await this.getMuzzlerByTime(range);
+    const muzzlerByInstances = await this.getMuzzlerByInstances(range, teamId);
+    const muzzlerByMessages = await this.getMuzzlerByMessages(range, teamId);
+    const muzzlerByWords = await this.getMuzzlerByWords(range, teamId);
+    const muzzlerByChars = await this.getMuzzlerByChars(range, teamId);
+    const muzzlerByTime = await this.getMuzzlerByTime(range, teamId);
 
-    const accuracy = await this.getAccuracy(range);
-    const kdr = await this.getKdr(range);
+    const accuracy = await this.getAccuracy(range, teamId);
+    const kdr = await this.getKdr(range, teamId);
 
-    const rawNemesis = await this.getNemesisByRaw(range);
-    const successNemesis = await this.getNemesisBySuccessful(range);
-    const backfires = await this.getBackfireData(range);
+    const rawNemesis = await this.getNemesisByRaw(range, teamId);
+    const successNemesis = await this.getNemesisBySuccessful(range, teamId);
+    const backfires = await this.getBackfireData(range, teamId);
 
     return {
       muzzled: {
@@ -181,128 +181,117 @@ ${this.getReportTitle(reportType)}
     };
   }
 
-  // TODO: Add Team ID to the query.
-  private getMostMuzzledByInstances(range: ReportRange): Promise<ReportCount[]> {
+  private getMostMuzzledByInstances(range: ReportRange, teamId: string): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT muzzledId as slackId, COUNT(*) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT muzzledId as slackId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        ? `SELECT muzzledId as slackId, COUNT(*) as count FROM muzzle WHERE teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT muzzledId as slackId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getMuzzlerByInstances(range: ReportRange): Promise<ReportCount[]> {
+  private getMuzzlerByInstances(range: ReportRange, teamId: string): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT requestorId as slackId, COUNT(*) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT requestorId as slackId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        ? `SELECT requestorId as slackId, COUNT(*) as count FROM muzzle WHERE teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT requestorId as slackId, COUNT(*) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getMuzzlerByMessages(range: ReportRange): Promise<ReportCount[]> {
+  private getMuzzlerByMessages(range: ReportRange, teamId: string): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT requestorId as slackId, SUM(messagesSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT requestorId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        ? `SELECT requestorId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT requestorId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getMostMuzzledByMessages(range: ReportRange): Promise<ReportCount[]> {
+  private getMostMuzzledByMessages(range: ReportRange, teamId: string): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT muzzledId as slackId, SUM(messagesSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT muzzledId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        ? `SELECT muzzledId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT muzzledId as slackId, SUM(messagesSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getMostMuzzledByWords(range: ReportRange): Promise<ReportCount[]> {
+  private getMostMuzzledByWords(range: ReportRange, teamId: string): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT muzzledId as slackId, SUM(wordsSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT muzzledId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        ? `SELECT muzzledId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT muzzledId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getMuzzlerByWords(range: ReportRange): Promise<ReportCount[]> {
+  private getMuzzlerByWords(range: ReportRange, teamId: string): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT requestorId as slackId, SUM(wordsSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT requestorId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        ? `SELECT requestorId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT requestorId as slackId, SUM(wordsSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getMostMuzzledByChars(range: ReportRange): Promise<ReportCount[]> {
+  private getMostMuzzledByChars(range: ReportRange, teamId: string): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT muzzledId as slackId, SUM(charactersSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT muzzledId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        ? `SELECT muzzledId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT muzzledId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getMuzzlerByChars(range: ReportRange): Promise<ReportCount[]> {
+  private getMuzzlerByChars(range: ReportRange, teamId: string): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT requestorId as slackId, SUM(charactersSuppressed) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT requestorId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        ? `SELECT requestorId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT requestorId as slackId, SUM(charactersSuppressed) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getMostMuzzledByTime(range: ReportRange): Promise<ReportCount[]> {
+  private getMostMuzzledByTime(range: ReportRange, teamId: string): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT muzzledId as slackId, SUM(milliseconds) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT muzzledId as slackId, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        ? `SELECT muzzledId as slackId, SUM(milliseconds) as count FROM muzzle WHERE teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT muzzledId as slackId, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getMuzzlerByTime(range: ReportRange): Promise<ReportCount[]> {
+  private getMuzzlerByTime(range: ReportRange, teamId: string): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
-        ? `SELECT requestorId as slackId, SUM(milliseconds) as count FROM muzzle GROUP BY slackId ORDER BY count DESC;`
-        : `SELECT requestorId as slackId, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY slackId ORDER BY count DESC;`;
+        ? `SELECT requestorId as slackId, SUM(milliseconds) as count FROM muzzle WHERE teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`
+        : `SELECT requestorId as slackId, SUM(milliseconds) as count FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY slackId ORDER BY count DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getAccuracy(range: ReportRange): Promise<Accuracy[]> {
+  private getAccuracy(range: ReportRange, teamId: string): Promise<Accuracy[]> {
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths
-               FROM muzzle GROUP BY requestorId ORDER BY accuracy DESC;`
-        : `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY requestorId ORDER BY accuracy DESC;`;
+               FROM muzzle teamId='${teamId}' GROUP BY requestorId ORDER BY accuracy DESC;`
+        : `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY requestorId ORDER BY accuracy DESC;`;
 
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getKdr(range: ReportRange): Promise<any[]> {
+  private getKdr(range: ReportRange, teamId: string): Promise<any[]> {
     const query =
       range.reportType === ReportType.AllTime
         ? `
             SELECT b.requestorId, IF(a.count > 0, a.count, 0) AS deaths, b.count as kills, b.count/IF(a.count > 0, a.count, 1) as kdr
-            FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 GROUP BY muzzledId) as a
+            FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 AND teamId='${teamId}' GROUP BY muzzledId) as a
             RIGHT JOIN (
             SELECT requestorId, COUNT(*) as count
             FROM muzzle
             WHERE messagesSuppressed > 0
+            AND teamId='${teamId}'
             GROUP BY requestorId
             ) AS b
             ON a.muzzledId = b.requestorId
@@ -311,11 +300,11 @@ ${this.getReportTitle(reportType)}
             `
         : `
             SELECT b.requestorId, IF(a.count > 0, a.count, 0) AS deaths, b.count as kills, b.count/IF(a.count > 0, a.count, 1) as kdr
-            FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 AND createdAt >= '${range.start}' AND createdAt <= '${range.end}' GROUP BY muzzledId) as a
+            FROM (SELECT muzzledId, COUNT(*) as count FROM muzzle WHERE messagesSuppressed > 0 AND createdAt >= '${range.start}' AND createdAt <= '${range.end}' AND teamId='${teamId}' GROUP BY muzzledId) as a
             RIGHT JOIN (
             SELECT requestorId, COUNT(*) as count
             FROM muzzle
-            WHERE messagesSuppressed > 0 AND createdAt >= '${range.start}' AND createdAt <= '${range.end}'
+            WHERE messagesSuppressed > 0 AND createdAt >= '${range.start}' AND createdAt <= '${range.end}' AND teamId='${teamId}'
             GROUP BY requestorId
             ) AS b
             ON a.muzzledId = b.requestorId
@@ -326,25 +315,23 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getBackfireData(range: ReportRange): Promise<any[]> {
+  private getBackfireData(range: ReportRange, teamId: string): Promise<any[]> {
     const query =
       range.reportType === ReportType.AllTime
         ? `
         SELECT a.muzzledId as muzzledId, a.backfireCount as backfires, b.muzzleCount as muzzles, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
-        FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire GROUP BY muzzledId) a,
-        (SELECT requestorId, count(*) as muzzleCount FROM muzzle GROUP BY requestorId) b
+        FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire WHERE teamId='${teamId}' GROUP BY muzzledId) a,
+        (SELECT requestorId, count(*) as muzzleCount FROM muzzle WHERE teamId='${teamId}' GROUP BY requestorId) b
         WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`
         : `
         SELECT a.muzzledId as muzzledId, a.backfireCount as backfires, b.muzzleCount as muzzles, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
-        FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY muzzledId) a,
-        (SELECT requestorId, count(*) as muzzleCount FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' GROUP BY requestorId) b
+        FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY muzzledId) a,
+        (SELECT requestorId, count(*) as muzzleCount FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY requestorId) b
         WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`;
     return getManager().query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getNemesisByRaw(range: ReportRange): Promise<any[]> {
+  private getNemesisByRaw(range: ReportRange, teamId: string): Promise<any[]> {
     const query =
       range.reportType === ReportType.AllTime
         ? `
@@ -352,6 +339,7 @@ ${this.getReportTitle(reportType)}
         FROM (
           SELECT requestorId, muzzledId, COUNT(*) as count
           FROM muzzle
+          WHERE teamId='${teamId}'
           GROUP BY requestorId, muzzledId
         ) AS a 
         INNER JOIN(
@@ -359,6 +347,7 @@ ${this.getReportTitle(reportType)}
           FROM (
             SELECT requestorId, muzzledId, COUNT(*) AS count 
             FROM muzzle
+            WHERE teamId='${teamId}'
             GROUP BY requestorId, muzzledId
           ) AS c 
           GROUP BY c.muzzledId
@@ -371,7 +360,7 @@ ${this.getReportTitle(reportType)}
         FROM (
           SELECT requestorId, muzzledId, COUNT(*) as count
           FROM muzzle
-          WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}'
+          WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}'
           GROUP BY requestorId, muzzledId
         ) AS a 
         INNER JOIN(
@@ -379,7 +368,7 @@ ${this.getReportTitle(reportType)}
           FROM (
             SELECT requestorId, muzzledId, COUNT(*) AS count 
             FROM muzzle
-            WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}'
+            WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}'
             GROUP BY requestorId, muzzledId
           ) AS c 
           GROUP BY c.muzzledId
@@ -391,8 +380,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
-  // TODO: Add Team ID to the query.
-  private getNemesisBySuccessful(range: ReportRange): Promise<any[]> {
+  private getNemesisBySuccessful(range: ReportRange, teamId: string): Promise<any[]> {
     const query =
       range.reportType === ReportType.AllTime
         ? `
@@ -400,7 +388,7 @@ ${this.getReportTitle(reportType)}
           FROM (
             SELECT requestorId, muzzledId, COUNT(*) as count
             FROM muzzle
-            WHERE messagesSuppressed > 0
+            WHERE messagesSuppressed > 0 AND teamId='${teamId}'
             GROUP BY requestorId, muzzledId
           ) AS a 
           INNER JOIN(
@@ -408,7 +396,7 @@ ${this.getReportTitle(reportType)}
             FROM (
               SELECT requestorId, muzzledId, COUNT(*) AS count 
               FROM muzzle
-              WHERE messagesSuppressed > 0
+              WHERE messagesSuppressed > 0 AND teamId='${teamId}'
               GROUP BY requestorId, muzzledId
             ) AS c 
             GROUP BY c.muzzledId
@@ -421,7 +409,7 @@ ${this.getReportTitle(reportType)}
           FROM (
             SELECT requestorId, muzzledId, COUNT(*) as count
             FROM muzzle
-            WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND messagesSuppressed > 0
+            WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND messagesSuppressed > 0 AND teamId='${teamId}'
             GROUP BY requestorId, muzzledId
           ) AS a 
           INNER JOIN(
@@ -429,7 +417,7 @@ ${this.getReportTitle(reportType)}
             FROM (
               SELECT requestorId, muzzledId, COUNT(*) AS count 
               FROM muzzle
-              WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND messagesSuppressed > 0
+              WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND messagesSuppressed > 0 AND teamId='${teamId}'
               GROUP BY requestorId, muzzledId
             ) AS c 
             GROUP BY c.muzzledId
