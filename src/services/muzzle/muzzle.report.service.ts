@@ -135,7 +135,6 @@ ${this.getReportTitle(reportType)}
         }),
       ),
     };
-    console.log(reportFormatted);
     return reportFormatted;
   }
   /** Wrapper to generate a generic muzzle report in */
