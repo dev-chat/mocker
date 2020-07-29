@@ -9,6 +9,9 @@ export class Rep {
   public user!: string;
 
   @Column()
+  public teamId!: string;
+
+  @Column()
   public rep!: number;
 
   @Column({ default: () => 0 })

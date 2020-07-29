@@ -13,6 +13,7 @@ export class BackFirePersistenceService {
   private static instance: BackFirePersistenceService;
   private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
 
+  // TODO: Add Team ID to the query.
   public addBackfire(userId: string, time: number): Promise<void> {
     const backfire = new Backfire();
     backfire.muzzledId = userId;

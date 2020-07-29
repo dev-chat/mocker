@@ -9,6 +9,9 @@ export class List {
   public requestorId!: string;
 
   @Column()
+  public teamId!: string;
+
+  @Column()
   public text!: string;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

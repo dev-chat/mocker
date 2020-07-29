@@ -9,6 +9,9 @@ export class Backfire {
   public muzzledId!: string;
 
   @Column()
+  public teamId!: string;
+
+  @Column()
   public milliseconds!: number;
 
   @Column()

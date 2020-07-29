@@ -12,6 +12,9 @@ export class Reaction {
   public affectedUser!: string;
 
   @Column()
+  public teamId!: string;
+
+  @Column()
   public reaction!: string;
 
   @Column()
