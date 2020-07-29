@@ -22,17 +22,18 @@ export class ReactionPersistenceService {
       reaction.value = value;
       reaction.type = event.item.type;
       reaction.channel = event.item.channel;
+      reaction.teamId = event.team;
 
       // Kind ugly dawg, wtf.
       await getRepository(Reaction)
         .save(reaction)
         .then(async () => {
           if (value === 1) {
-            await this.incrementRep(event.item_user)
+            await this.incrementRep(event.item_user, event.team)
               .then(() => resolve())
               .catch(e => reject(e));
           } else {
-            await this.decrementRep(event.item_user)
+            await this.decrementRep(event.item_user, event.team)
               .then(() => resolve())
               .catch(e => reject(e));
           }
@@ -49,29 +50,30 @@ export class ReactionPersistenceService {
         reactingUser: event.user,
         type: event.item.type,
         channel: event.item.channel,
+        teamId: event.team,
       })
       .then(() => {
-        value === 1 ? this.decrementRep(event.item_user) : this.incrementRep(event.item_user);
+        value === 1 ? this.decrementRep(event.item_user, event.team) : this.incrementRep(event.item_user, event.team);
       })
       .catch(e => e);
   }
 
-  private async isRepUserPresent(affectedUser: string): Promise<boolean | void> {
+  private async isRepUserPresent(affectedUser: string, teamId: string): Promise<boolean | void> {
     return getRepository(Rep)
-      .findOne({ user: affectedUser })
+      .findOne({ user: affectedUser, teamId })
       .then(user => !!user)
       .catch(e => console.error(e));
   }
 
-  private incrementRep(affectedUser: string): Promise<void> {
+  private incrementRep(affectedUser: string, teamId: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
       // Check for affectedUser
-      const isUserExisting = await this.isRepUserPresent(affectedUser);
+      const isUserExisting = await this.isRepUserPresent(affectedUser, teamId);
 
       if (isUserExisting) {
         // If it exists, increment rep by one.
         return getRepository(Rep)
-          .increment({ user: affectedUser }, 'rep', 1)
+          .increment({ user: affectedUser, teamId }, 'rep', 1)
           .then(() => resolve())
           .catch(e => reject(e));
       } else {
@@ -79,6 +81,7 @@ export class ReactionPersistenceService {
         const newRepUser = new Rep();
         newRepUser.user = affectedUser;
         newRepUser.rep = 1;
+        newRepUser.teamId = teamId;
         return getRepository(Rep)
           .save(newRepUser)
           .then(() => resolve())
@@ -87,15 +90,15 @@ export class ReactionPersistenceService {
     });
   }
 
-  private decrementRep(affectedUser: string): Promise<void> {
+  private decrementRep(affectedUser: string, teamId: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
       // Check for affectedUser
-      const isUserExisting = await this.isRepUserPresent(affectedUser);
+      const isUserExisting = await this.isRepUserPresent(affectedUser, teamId);
 
       if (isUserExisting) {
         // If it exists, decrement rep by one.
         return getRepository(Rep)
-          .decrement({ user: affectedUser }, 'rep', 1)
+          .decrement({ user: affectedUser, teamId }, 'rep', 1)
           .then(() => resolve())
           .catch(e => reject(e));
       } else {
@@ -103,6 +106,7 @@ export class ReactionPersistenceService {
         const newRepUser = new Rep();
         newRepUser.user = affectedUser;
         newRepUser.rep = -1;
+        newRepUser.teamId = teamId;
         return getRepository(Rep)
           .save(newRepUser)
           .then(() => resolve())

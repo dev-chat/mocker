@@ -41,7 +41,7 @@ export class MuzzleService extends SuppressorService {
         console.log(`Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`);
         const timeToMuzzle = getTimeToMuzzle();
         await this.backfirePersistenceService
-          .addBackfire(requestorId, timeToMuzzle)
+          .addBackfire(requestorId, timeToMuzzle, teamId)
           .then(() => {
             this.muzzlePersistenceService.setRequestorCount(requestorId, teamId);
             this.webService.sendMessage(

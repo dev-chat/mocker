@@ -13,20 +13,20 @@ export class BackFirePersistenceService {
   private static instance: BackFirePersistenceService;
   private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
 
-  // TODO: Add Team ID to the query.
-  public addBackfire(userId: string, time: number): Promise<void> {
+  public addBackfire(userId: string, time: number, teamId: string): Promise<void> {
     const backfire = new Backfire();
     backfire.muzzledId = userId;
     backfire.messagesSuppressed = 0;
     backfire.wordsSuppressed = 0;
     backfire.charactersSuppressed = 0;
     backfire.milliseconds = time;
+    backfire.teamId = teamId;
 
     return getRepository(Backfire)
       .save(backfire)
       .then(backfireFromDb => {
-        this.redis.setValueWithExpire(`backfire.${userId}`, backfireFromDb.id, 'EX', Math.floor(time / 1000));
-        this.redis.setValueWithExpire(`backfire.${userId}.suppressions`, 0, 'EX', Math.floor(time / 1000));
+        this.redis.setValueWithExpire(`backfire.${userId}-${teamId}`, backfireFromDb.id, 'EX', Math.floor(time / 1000));
+        this.redis.setValueWithExpire(`backfire.${userId}-${teamId}.suppressions`, 0, 'EX', Math.floor(time / 1000));
       });
   }
 
