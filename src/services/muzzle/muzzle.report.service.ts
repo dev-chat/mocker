@@ -275,7 +275,7 @@ ${this.getReportTitle(reportType)}
     const query =
       range.reportType === ReportType.AllTime
         ? `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths
-               FROM muzzle teamId='${teamId}' GROUP BY requestorId ORDER BY accuracy DESC;`
+               FROM muzzle WHERE teamId='${teamId}' GROUP BY requestorId ORDER BY accuracy DESC;`
         : `SELECT requestorId, SUM(IF(messagesSuppressed > 0, 1, 0))/COUNT(*) as accuracy, SUM(IF(muzzle.messagesSuppressed > 0, 1, 0)) as kills, COUNT(*) as deaths FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY requestorId ORDER BY accuracy DESC;`;
 
     return getRepository(Muzzle).query(query);
