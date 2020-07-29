@@ -14,7 +14,7 @@ export class ReactionPersistenceService {
   private static instance: ReactionPersistenceService;
 
   public saveReaction(event: Event, value: number): Promise<Reaction> {
-    console.log(event.team);
+    console.log(event);
     return new Promise(async (resolve, reject) => {
       const reaction = new Reaction();
       reaction.affectedUser = event.item_user;
