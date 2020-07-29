@@ -53,16 +53,17 @@ export class ReactionReportService extends ReportService {
     });
   }
 
-  // TODO: Add Team ID to the query.
-  public getRepByChannel(): Promise<any[] | undefined> {
+  public getRepByChannel(teamId: string): Promise<any[] | undefined> {
     return getRepository(Reaction)
-      .query(`SELECT AVG(value) as avg, channel FROM reaction GROUP BY channel ORDER BY avg DESC;`)
+      .query(
+        `SELECT AVG(value) as avg, channel WHERE teamId=${teamId} FROM reaction GROUP BY channel ORDER BY avg DESC;`,
+      )
       .then(result => {
         const formatted = result.map((avgReaction: any) => {
           console.log(avgReaction);
           return {
             value: avgReaction.avg,
-            channel: this.slackService.getChannelName(avgReaction.channel),
+            channel: this.slackService.getChannelName(avgReaction.channel, teamId),
           };
         });
         return formatted;

@@ -36,8 +36,8 @@ export class SlackService {
   /**
    * Returns the user name by id
    */
-  public getUserNameById(userId: string): Promise<string | undefined> {
-    return this.persistenceService.getUserById(userId).then(user => user?.name);
+  public getUserNameById(userId: string, teamId: string): Promise<string | undefined> {
+    return this.persistenceService.getUserById(userId, teamId).then(user => user?.name);
   }
 
   /**
@@ -77,8 +77,8 @@ export class SlackService {
     this.web.getAllChannels().then(result => this.persistenceService.saveChannels(result.channels));
   }
 
-  public async getChannelName(channelId: string) {
-    const channel = await this.persistenceService.getChannelById(channelId);
+  public async getChannelName(channelId: string, teamId: string): Promise<string> {
+    const channel = await this.persistenceService.getChannelById(channelId, teamId);
     return channel?.name || '';
   }
 
