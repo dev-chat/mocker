@@ -65,12 +65,12 @@ export class SlackPersistenceService {
     }
   }
 
-  // Might need to pass teamId here.
+  // TODO: Add Team ID to make this scaleable.
   async getUserById(userId: string): Promise<SlackUser | undefined> {
     return getRepository(SlackUser).findOne({ slackId: userId });
   }
 
-  // Might need to pass teamId here.
+  // TO DO: Add Team ID to make this scalable.
   async getChannelById(channelId: string): Promise<SlackChannel | undefined> {
     return getRepository(SlackChannel).findOne({ channelId });
   }

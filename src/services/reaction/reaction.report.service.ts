@@ -6,6 +6,7 @@ import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.mode
 import { Reaction } from '../../shared/db/models/Reaction';
 
 export class ReactionReportService extends ReportService {
+  // TODO: Add Team ID to the query.
   public async getRep(userId: string): Promise<string> {
     const totalRep = await this.getTotalRep(userId)
       .then(value => {
@@ -24,6 +25,7 @@ export class ReactionReportService extends ReportService {
     return `${repByUser}\n\n${totalRep}`;
   }
 
+  // TODO: Add Team ID to the query.
   public getTotalRep(userId: string): Promise<Rep | undefined> {
     return new Promise(async (resolve, reject) => {
       await getRepository(Rep)
@@ -38,6 +40,7 @@ export class ReactionReportService extends ReportService {
     });
   }
 
+  // TODO: Add Team ID to the query.
   public getRepByUser(userId: string): Promise<ReactionByUser[] | undefined> {
     return new Promise(async (resolve, reject) => {
       await getRepository(Reaction)
@@ -50,6 +53,7 @@ export class ReactionReportService extends ReportService {
     });
   }
 
+  // TODO: Add Team ID to the query.
   public getRepByChannel(): Promise<any[] | undefined> {
     return getRepository(Reaction)
       .query(`SELECT AVG(value) as avg, channel FROM reaction GROUP BY channel ORDER BY avg DESC;`)

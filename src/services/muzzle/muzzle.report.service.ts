@@ -181,6 +181,7 @@ ${this.getReportTitle(reportType)}
     };
   }
 
+  // TODO: Add Team ID to the query.
   private getMostMuzzledByInstances(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -190,6 +191,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getMuzzlerByInstances(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -199,6 +201,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getMuzzlerByMessages(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -208,6 +211,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getMostMuzzledByMessages(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -217,6 +221,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getMostMuzzledByWords(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -226,6 +231,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getMuzzlerByWords(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -235,6 +241,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getMostMuzzledByChars(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -244,6 +251,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getMuzzlerByChars(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -253,6 +261,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getMostMuzzledByTime(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -262,6 +271,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getMuzzlerByTime(range: ReportRange): Promise<ReportCount[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -271,6 +281,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getAccuracy(range: ReportRange): Promise<Accuracy[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -281,6 +292,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getKdr(range: ReportRange): Promise<any[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -313,6 +325,8 @@ ${this.getReportTitle(reportType)}
 
     return getRepository(Muzzle).query(query);
   }
+
+  // TODO: Add Team ID to the query.
   private getBackfireData(range: ReportRange): Promise<any[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -329,6 +343,7 @@ ${this.getReportTitle(reportType)}
     return getManager().query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getNemesisByRaw(range: ReportRange): Promise<any[]> {
     const query =
       range.reportType === ReportType.AllTime
@@ -376,6 +391,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
+  // TODO: Add Team ID to the query.
   private getNemesisBySuccessful(range: ReportRange): Promise<any[]> {
     const query =
       range.reportType === ReportType.AllTime
