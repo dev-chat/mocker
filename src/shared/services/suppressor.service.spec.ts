@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/camelcase */
 import { UpdateResult } from 'typeorm';
 import { SuppressorService } from './suppressor.service';
-import { SlackUser, EventRequest } from '../models/slack/slack-models';
+import { EventRequest } from '../models/slack/slack-models';
 import { MuzzlePersistenceService } from '../../services/muzzle/muzzle.persistence.service';
 import { MAX_WORD_LENGTH } from '../../services/muzzle/constants';
 import { SlackService } from '../../services/slack/slack.service';
@@ -13,12 +13,6 @@ describe('SuppressorService', () => {
   beforeEach(() => {
     suppressorService = new SuppressorService();
     slackInstance = SlackService.getInstance();
-    suppressorService.slackService.userList = [
-      { id: '123', name: 'test123' },
-      { id: '456', name: 'test456' },
-      { id: '789', name: 'test789' },
-      { id: '666', name: 'requestor' },
-    ] as SlackUser[];
     jest.useFakeTimers();
   });
 
