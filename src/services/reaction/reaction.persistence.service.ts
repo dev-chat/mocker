@@ -13,7 +13,7 @@ export class ReactionPersistenceService {
 
   private static instance: ReactionPersistenceService;
 
-  public saveReaction(event: Event, value: number): Promise<Reaction> {
+  public saveReaction(event: Event, value: number, teamId: string): Promise<Reaction> {
     console.log(event);
     return new Promise(async (resolve, reject) => {
       const reaction = new Reaction();
@@ -23,18 +23,18 @@ export class ReactionPersistenceService {
       reaction.value = value;
       reaction.type = event.item.type;
       reaction.channel = event.item.channel;
-      reaction.teamId = event.team;
+      reaction.teamId = teamId;
 
       // Kind ugly dawg, wtf.
       await getRepository(Reaction)
         .save(reaction)
         .then(async () => {
           if (value === 1) {
-            await this.incrementRep(event.item_user, event.team)
+            await this.incrementRep(event.item_user, teamId)
               .then(() => resolve())
               .catch(e => reject(e));
           } else {
-            await this.decrementRep(event.item_user, event.team)
+            await this.decrementRep(event.item_user, teamId)
               .then(() => resolve())
               .catch(e => reject(e));
           }
@@ -43,7 +43,7 @@ export class ReactionPersistenceService {
     });
   }
 
-  public async removeReaction(event: Event, value: number): Promise<void> {
+  public async removeReaction(event: Event, value: number, teamId: string): Promise<void> {
     await getRepository(Reaction)
       .delete({
         reaction: event.reaction,
@@ -54,7 +54,7 @@ export class ReactionPersistenceService {
         teamId: event.team,
       })
       .then(() => {
-        value === 1 ? this.decrementRep(event.item_user, event.team) : this.incrementRep(event.item_user, event.team);
+        value === 1 ? this.decrementRep(event.item_user, teamId) : this.incrementRep(event.item_user, teamId);
       })
       .catch(e => e);
   }

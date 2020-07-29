@@ -53,7 +53,7 @@ export interface Event {
   bot_profile: {
     name: string;
   };
-  team: string;
+  team?: string;
 }
 
 export interface Attachment {
