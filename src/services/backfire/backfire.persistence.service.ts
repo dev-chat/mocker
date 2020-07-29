@@ -35,14 +35,14 @@ export class BackFirePersistenceService {
     return !!hasBackfire;
   }
 
-  public getSuppressions(userId: string) {
-    return this.redis.getValue(`backfire.${userId}.suppressions`);
+  public getSuppressions(userId: string, teamId: string): Promise<string | null> {
+    return this.redis.getValue(`backfire.${userId}-${teamId}.suppressions`);
   }
 
-  public async addSuppression(userId: string): Promise<void> {
-    const suppressions = await this.getSuppressions(userId);
+  public async addSuppression(userId: string, teamId: string): Promise<void> {
+    const suppressions = await this.getSuppressions(userId, teamId);
     const number = suppressions ? +suppressions : 0;
-    this.redis.setValue(`backfire.${userId}.suppressions`, number + 1);
+    this.redis.setValue(`backfire.${userId}-${teamId}.suppressions`, number + 1);
   }
 
   public async addBackfireTime(userId: string, teamId: string, timeToAdd: number): Promise<void> {
@@ -50,9 +50,9 @@ export class BackFirePersistenceService {
     if (hasBackfire) {
       const timeRemaining = await this.redis.getTimeRemaining(`backfire.${userId}`);
       const newTime = Math.floor(timeRemaining + timeToAdd / 1000);
-      await this.redis.expire(`backfire.${userId}`, newTime);
-      await this.redis.expire(`backfire.${userId}.suppressions`, newTime);
-      const backfireId = await this.redis.getValue(`backfire.${userId}`);
+      await this.redis.expire(`backfire.${userId}-${teamId}`, newTime);
+      await this.redis.expire(`backfire.${userId}-${teamId}.suppressions`, newTime);
+      const backfireId = await this.redis.getValue(`backfire.${userId}-${teamId}`);
       if (backfireId) {
         this.incrementBackfireTime(+backfireId, timeToAdd);
       }
@@ -60,8 +60,8 @@ export class BackFirePersistenceService {
     }
   }
 
-  public getBackfireByUserId(userId: string) {
-    return this.redis.getValue(`backfire.${userId}`);
+  public getBackfireByUserId(userId: string, teamId: string): Promise<string | null> {
+    return this.redis.getValue(`backfire.${userId}-${teamId}`);
   }
 
   /**

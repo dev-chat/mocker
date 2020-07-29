@@ -70,9 +70,10 @@ async function handleBackfire(request: EventRequest): Promise<void> {
       request.event.user,
       request.event.text,
       request.event.ts,
+      request.event.team,
     );
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
-    const backfireId = backfireService.getBackfire(request.event.user);
+    const backfireId = backfireService.getBackfire(request.event.user, request.event.team);
     console.log(`${userName} attempted to tag someone. Backfire increased by ${ABUSE_PENALTY_TIME}!`);
     backfireService.addBackfireTime(request.event.user, request.event.team, ABUSE_PENALTY_TIME);
     webService.deleteMessage(request.event.channel, request.event.ts);
