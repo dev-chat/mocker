@@ -14,7 +14,7 @@ export class SlackPersistenceService {
   private static instance: SlackPersistenceService;
 
   // This sucks because TypeORM sucks. Time to consider removing this ORM.
-  async saveChannels(channels: any[]) {
+  async saveChannels(channels: any[]): Promise<void> {
     const dbChannels = channels.map(channel => {
       return {
         channelId: channel.id,
