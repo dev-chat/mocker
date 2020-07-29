@@ -12,28 +12,28 @@ export class RedisPersistenceService {
   private static redis: Redis = new ioredis().on('connect', () => console.log('Connected to Redis.'));
   private static subscriber: Redis = new ioredis().on('connect', () => console.log('Created new subscriber'));
 
-  getValue(key: string) {
+  getValue(key: string): Promise<string | null> {
     return RedisPersistenceService.redis.get(key);
   }
 
-  setValue(key: string, value: string | number) {
+  setValue(key: string, value: string | number): Promise<string | null> {
     return RedisPersistenceService.redis.set(key, value, 'KEEPTTL');
   }
 
-  setValueWithExpire(key: string, value: string | number, expiryMode: string, time: number) {
+  setValueWithExpire(key: string, value: string | number, expiryMode: string, time: number): Promise<string | null> {
     return RedisPersistenceService.redis.set(key, value, expiryMode, time);
   }
 
-  getTimeRemaining(key: string) {
+  getTimeRemaining(key: string): Promise<number> {
     return RedisPersistenceService.redis.ttl(key);
   }
 
-  expire(key: string, seconds: number) {
+  expire(key: string, seconds: number): Promise<number> {
     return RedisPersistenceService.redis.expire(key, seconds);
   }
 
   // Left off here.
-  subscribe(channel: string) {
+  subscribe(channel: string): Promise<number> {
     return RedisPersistenceService.subscriber.subscribe(channel);
   }
 }
