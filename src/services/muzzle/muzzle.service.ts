@@ -9,33 +9,33 @@ export class MuzzleService extends SuppressorService {
   /**
    * Adds a user to the muzzled map and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
    */
-  public async addUserToMuzzled(userId: string, requestorId: string, channel: string): Promise<string> {
+  public async addUserToMuzzled(userId: string, requestorId: string, teamId: string, channel: string): Promise<string> {
     const shouldBackFire = shouldBackfire();
-    const userName = await this.slackService.getUserNameById(userId);
-    const requestorName = await this.slackService.getUserNameById(requestorId);
+    const userName = await this.slackService.getUserNameById(userId, teamId);
+    const requestorName = await this.slackService.getUserNameById(requestorId, teamId);
     const counter = this.counterPersistenceService.getCounterByRequestorId(userId);
 
     return new Promise(async (resolve, reject) => {
       if (!userId) {
         reject(`Invalid username passed in. You can only muzzle existing slack users.`);
-      } else if (await this.muzzlePersistenceService.isUserMuzzled(userId)) {
+      } else if (await this.muzzlePersistenceService.isUserMuzzled(userId, teamId)) {
         console.error(
           `${requestorName} | ${requestorId} attempted to muzzle ${userName} | ${userId} but ${userName} | ${userId} is already muzzled.`,
         );
         reject(`${userName} is already muzzled!`);
-      } else if (await this.muzzlePersistenceService.isUserMuzzled(requestorId)) {
+      } else if (await this.muzzlePersistenceService.isUserMuzzled(requestorId, teamId)) {
         console.error(
           `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId}  is currently muzzled`,
         );
         reject(`You can't muzzle someone if you are already muzzled!`);
-      } else if (await this.muzzlePersistenceService.isMaxMuzzlesReached(requestorId)) {
+      } else if (await this.muzzlePersistenceService.isMaxMuzzlesReached(requestorId, teamId)) {
         console.error(
           `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId} has reached maximum muzzle of ${MAX_MUZZLES}`,
         );
         reject(`You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`);
       } else if (counter) {
         console.log(`${requestorId} attempted to muzzle ${userId} but was countered!`);
-        this.counterService.removeCounter(counter, true, userId, requestorId, channel);
+        this.counterService.removeCounter(counter, true, userId, requestorId, channel, teamId);
         reject(`You've been countered! Better luck next time...`);
       } else if (shouldBackFire) {
         console.log(`Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`);
@@ -43,7 +43,7 @@ export class MuzzleService extends SuppressorService {
         await this.backfirePersistenceService
           .addBackfire(requestorId, timeToMuzzle)
           .then(() => {
-            this.muzzlePersistenceService.setRequestorCount(requestorId);
+            this.muzzlePersistenceService.setRequestorCount(requestorId, teamId);
             this.webService.sendMessage(
               channel,
               `:boom: <@${requestorId}> attempted to muzzle <@${userId}> but it backfired! :boom:`,
@@ -57,7 +57,7 @@ export class MuzzleService extends SuppressorService {
       } else {
         const timeToMuzzle = getTimeToMuzzle();
         await this.muzzlePersistenceService
-          .addMuzzle(requestorId, userId, timeToMuzzle)
+          .addMuzzle(requestorId, userId, teamId, timeToMuzzle)
           .then(() => {
             resolve(`Successfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`);
           })
@@ -72,14 +72,20 @@ export class MuzzleService extends SuppressorService {
   /**
    * Wrapper for sendMessage that handles suppression in memory and, if max suppressions are reached, handles suppression storage to disk.
    */
-  public async sendMuzzledMessage(channel: string, userId: string, text: string, timestamp: string): Promise<void> {
+  public async sendMuzzledMessage(
+    channel: string,
+    userId: string,
+    teamId: string,
+    text: string,
+    timestamp: string,
+  ): Promise<void> {
     console.time('send-muzzled-message');
-    const muzzle: string | null = await this.muzzlePersistenceService.getMuzzle(userId);
+    const muzzle: string | null = await this.muzzlePersistenceService.getMuzzle(userId, teamId);
     if (muzzle) {
       this.webService.deleteMessage(channel, timestamp);
-      const suppressions = await this.muzzlePersistenceService.getSuppressions(userId);
+      const suppressions = await this.muzzlePersistenceService.getSuppressions(userId, teamId);
       if (!suppressions || (suppressions && +suppressions < MAX_SUPPRESSIONS)) {
-        await this.muzzlePersistenceService.incrementStatefulSuppressions(userId);
+        await this.muzzlePersistenceService.incrementStatefulSuppressions(userId, teamId);
         this.webService.sendMessage(
           channel,
           `<@${userId}> says "${this.sendSuppressedMessage(text, +muzzle, this.muzzlePersistenceService)}"`,

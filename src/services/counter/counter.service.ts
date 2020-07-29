@@ -8,7 +8,7 @@ export class CounterService extends SuppressorService {
   /**
    * Creates a counter in DB and stores it in memory.
    */
-  public createCounter(requestorId: string): Promise<string> {
+  public createCounter(requestorId: string, teamId: string): Promise<string> {
     return new Promise(async (resolve, reject) => {
       if (!requestorId) {
         reject(`Invalid user. Only existing slack users can counter.`);
@@ -16,7 +16,7 @@ export class CounterService extends SuppressorService {
         reject('You already have a counter for this user.');
       } else {
         await this.counterPersistenceService
-          .addCounter(requestorId)
+          .addCounter(requestorId, teamId)
           .then(() => {
             resolve(`Counter set for the next ${getTimeString(COUNTER_TIME)}`);
           })
@@ -62,11 +62,18 @@ export class CounterService extends SuppressorService {
     }
   }
 
-  public removeCounter(id: number, isUsed: boolean, userId: string, requestorId: string, channel: string): void {
-    this.counterPersistenceService.removeCounter(id, isUsed, channel, requestorId);
+  public removeCounter(
+    id: number,
+    isUsed: boolean,
+    userId: string,
+    requestorId: string,
+    channel: string,
+    teamId: string,
+  ): void {
+    this.counterPersistenceService.removeCounter(id, isUsed, channel, teamId, requestorId);
     if (isUsed && channel) {
       this.counterPersistenceService.counterMuzzle(requestorId, id);
-      this.muzzlePersistenceService.removeMuzzlePrivileges(requestorId);
+      this.muzzlePersistenceService.removeMuzzlePrivileges(requestorId, teamId);
       this.webService.sendMessage(
         channel,
         `:crossed_swords: <@${userId}> successfully countered <@${requestorId}>! <@${requestorId}> has lost muzzle privileges for one hour and is muzzled for the next 5 minutes! :crossed_swords:`,

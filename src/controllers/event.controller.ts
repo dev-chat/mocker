@@ -32,7 +32,13 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
 
   if (!containsTag) {
     console.log(`${userName} | ${request.event.user} is muzzled! Suppressing his voice...`);
-    muzzleService.sendMuzzledMessage(request.event.channel, request.event.user, request.event.text, request.event.ts);
+    muzzleService.sendMuzzledMessage(
+      request.event.channel,
+      request.event.user,
+      request.event.team,
+      request.event.text,
+      request.event.ts,
+    );
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
     const muzzleId: string | null = await muzzlePersistenceService.getMuzzle(request.event.user);
     if (muzzleId) {

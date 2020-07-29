@@ -16,7 +16,7 @@ counterController.post('/counter', async (req, res) => {
     res.send(
       "You can't counter someone if you are already muzzled, currently have a counter, or have lost counter privileges!",
     );
-  } else if (!counterPersistenceService.canCounter(request.user_id, request.team_id)) {
+  } else if (!counterPersistenceService.canCounter(request.user_id)) {
     res.send('You have lost counter privileges and cannot counter right now.');
   } else {
     await counterService

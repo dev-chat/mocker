@@ -18,9 +18,11 @@ const reportService = new MuzzleReportService();
 muzzleController.post('/muzzle', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
   const userId: string = slackService.getUserId(request.text);
-  const results = await muzzleService.addUserToMuzzled(userId, request.user_id, request.channel_name).catch(e => {
-    res.send(e);
-  });
+  const results = await muzzleService
+    .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
+    .catch(e => {
+      res.send(e);
+    });
   if (results) {
     res.send(results);
   }
