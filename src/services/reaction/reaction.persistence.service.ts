@@ -14,7 +14,6 @@ export class ReactionPersistenceService {
   private static instance: ReactionPersistenceService;
 
   public saveReaction(event: Event, value: number, teamId: string): Promise<Reaction> {
-    console.log(event);
     return new Promise(async (resolve, reject) => {
       const reaction = new Reaction();
       reaction.affectedUser = event.item_user;
@@ -51,7 +50,7 @@ export class ReactionPersistenceService {
         reactingUser: event.user,
         type: event.item.type,
         channel: event.item.channel,
-        teamId: event.team,
+        teamId: teamId,
       })
       .then(() => {
         value === 1 ? this.decrementRep(event.item_user, teamId) : this.incrementRep(event.item_user, teamId);
