@@ -71,6 +71,7 @@ export class ReactionReportService extends ReportService {
     if (!perUserRep) {
       return 'You do not have any existing relationships.';
     } else {
+      console.log(perUserRep, teamId);
       const formattedData = perUserRep.map(async userRep => {
         return {
           user: await this.slackService.getUserNameById(userRep.reactingUser, teamId),
