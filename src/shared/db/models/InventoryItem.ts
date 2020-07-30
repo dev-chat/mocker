@@ -7,9 +7,15 @@ export class InventoryItem {
   @PrimaryGeneratedColumn()
   public id!: number;
 
-  @ManyToOne(_type => Item, item => item.id)
+  @ManyToOne(
+    _type => Item,
+    item => item.id,
+  )
   public item!: Item;
 
-  @ManyToOne(_type => User, user => user.inventory)
+  @ManyToOne(
+    _type => User,
+    user => user.inventory,
+  )
   public owner!: User;
 }

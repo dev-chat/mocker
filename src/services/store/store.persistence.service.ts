@@ -21,9 +21,9 @@ export class StorePersistenceService {
     return getRepository(Item).findOneOrFail({ id: itemId });
   }
 
-  async buyItem(itemId: number, userId: string): Promise<string> {
+  async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
     const itemById = await getRepository(Item).findOne(itemId);
-    const userById = await getRepository(User).findOne({ slackId: userId });
+    const userById = await getRepository(User).findOne({ slackId: userId, slackTeamId: teamId });
     if (itemById && userById) {
       const item = new InventoryItem();
       item.item = itemById;
@@ -39,14 +39,14 @@ export class StorePersistenceService {
     return `Sorry, unable to buy your item at this time. Please try again later.`;
   }
 
-  async isOwnedByUser(itemId: number, userId: string): Promise<boolean> {
+  async isOwnedByUser(itemId: number, userId: string, teamId: string): Promise<boolean> {
     const itemById = await getRepository(Item).findOne(itemId);
-    const userById = await getRepository(User).findOne({ slackId: userId });
+    const userById = await getRepository(User).findOne({ slackId: userId, slackTeamId: teamId });
     return !!getRepository(InventoryItem).findOneOrFail({ owner: userById, item: itemById });
   }
 
-  async useItem(itemId: number, userId: string): Promise<void> {
-    const userById = (await getRepository(User).findOne({ slackId: userId })) as User;
+  async useItem(itemId: number, userId: string, teamId: string): Promise<void> {
+    const userById = (await getRepository(User).findOne({ slackId: userId, slackTeamId: teamId })) as User;
     const itemById = (await getRepository(Item).findOne(itemId)) as Item;
     const inventoryItem = await getRepository(InventoryItem).findOne({
       owner: userById,
@@ -66,8 +66,8 @@ export class StorePersistenceService {
     }
   }
 
-  async getInventory(userId: string): Promise<InventoryItem[]> {
-    const userById = await getRepository(User).findOne({ slackId: userId });
+  async getInventory(userId: string, teamId: string): Promise<InventoryItem[]> {
+    const userById = await getRepository(User).findOne({ slackId: userId, slackTeamId: teamId });
     return getRepository(InventoryItem).find({ owner: userById });
   }
 }

@@ -17,31 +17,31 @@ export class StoreService {
     return !!isItem;
   }
 
-  async canAfford(itemId: string, userId: string): Promise<boolean> {
+  async canAfford(itemId: string, userId: string, teamId: string): Promise<boolean> {
     const id = +itemId;
     const price: number = (await this.storePersistenceService.getItem(id)).price;
-    const userRep: number = await this.reactionPersistenceService.getRep(userId);
-    return price <= userRep;
+    const userRep: number | undefined = await this.reactionPersistenceService.getUserRep(userId, teamId);
+    return userRep && price ? price <= userRep : false;
   }
 
-  async buyItem(itemId: string, userId: string): Promise<string> {
+  async buyItem(itemId: string, userId: string, teamId: string): Promise<string> {
     const id = +itemId;
-    return await this.storePersistenceService.buyItem(id, userId);
+    return await this.storePersistenceService.buyItem(id, userId, teamId);
   }
 
-  async isOwnedByUser(itemId: string, userId: string): Promise<boolean> {
+  async isOwnedByUser(itemId: string, userId: string, teamId: string): Promise<boolean> {
     const id = +itemId;
-    const isOwned = await this.storePersistenceService.isOwnedByUser(id, userId);
+    const isOwned = await this.storePersistenceService.isOwnedByUser(id, userId, teamId);
     return isOwned;
   }
 
-  async useItem(itemId: string, userId: string): Promise<void> {
+  async useItem(itemId: string, userId: string, teamId: string): Promise<void> {
     const id = +itemId;
-    await this.storePersistenceService.useItem(id, userId);
+    await this.storePersistenceService.useItem(id, userId, teamId);
   }
 
-  async getInventory(userId: string): Promise<string> {
-    const inventory = await this.storePersistenceService.getInventory(userId);
+  async getInventory(userId: string, teamId: string): Promise<string> {
+    const inventory = await this.storePersistenceService.getInventory(userId, teamId);
     return inventory.toString();
   }
 }

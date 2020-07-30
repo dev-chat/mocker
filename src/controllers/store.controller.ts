@@ -1,15 +1,11 @@
 import express, { Router } from 'express';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { BackFirePersistenceService } from '../services/backfire/backfire.persistence.service';
-import { CounterPersistenceService } from '../services/counter/counter.persistence.service';
-import { MuzzlePersistenceService } from '../services/muzzle/muzzle.persistence.service';
 import { StoreService } from '../services/store/store.service';
+import { SuppressorService } from '../shared/services/suppressor.service';
 
 export const storeController: Router = express.Router();
 
-const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
-const backfirePersistenceService = BackFirePersistenceService.getInstance();
-const counterPersistenceService = CounterPersistenceService.getInstance();
+const suppressorService: SuppressorService = new SuppressorService();
 const storeService: StoreService = new StoreService();
 
 storeController.post('/store', async (_req, res) => {
@@ -23,35 +19,31 @@ storeController.post('/store/buy', async (req, res) => {
     res.send('You must provide an item id in order to buy an item');
   } else if (!storeService.isValidItem(request.text)) {
     res.send('Invalid item. Please use `/buy item_id`.');
-  } else if (!storeService.canAfford(request.text, request.user_id)) {
+  } else if (!storeService.canAfford(request.text, request.user_id, request.team_id)) {
     res.send(`Sorry, you can't afford that item.`);
   }
-  const receipt: string = await storeService.buyItem(request.text, request.user_id);
+  const receipt: string = await storeService.buyItem(request.text, request.user_id, request.team_id);
   res.status(200).send(receipt);
 });
 
 storeController.post('/store/use', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  if (
-    muzzlePersistenceService.isUserMuzzled(request.user_id) ||
-    backfirePersistenceService.isBackfire(request.user_id) ||
-    counterPersistenceService.isCounterMuzzled(request.user_id)
-  ) {
+  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('You must provide an item id in order to use an item');
   } else if (!storeService.isValidItem(request.text)) {
     res.send('Invalid item. Please use `/buy item_id` or specify an item you own.');
-  } else if (!storeService.isOwnedByUser(request.text, request.user_id)) {
+  } else if (!storeService.isOwnedByUser(request.text, request.user_id, request.team_id)) {
     res.send('You do not own that item. Please buy it on the store by using `/buy item_id`.');
   }
 
-  storeService.useItem(request.text, request.user_id);
+  storeService.useItem(request.text, request.user_id, request.team_id);
   res.status(200);
 });
 
 storeController.post('/store/inventory', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  const inventory: string = await storeService.getInventory(request.user_id);
+  const inventory: string = await storeService.getInventory(request.user_id, request.team_id);
   res.status(200).send(inventory);
 });
