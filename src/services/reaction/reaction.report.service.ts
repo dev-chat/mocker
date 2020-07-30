@@ -18,7 +18,7 @@ export class ReactionReportService extends ReportService {
       .catch(() => `Unable to retrieve your rep due to an error!`);
 
     const repByUser = await this.getRepByUser(userId, teamId)
-      .then((perUserRep: ReactionByUser[] | undefined) => this.formatRepByUser(perUserRep, teamId))
+      .then(async (perUserRep: ReactionByUser[] | undefined) => await this.formatRepByUser(perUserRep, teamId))
       .catch(e => console.error(e));
 
     return `${repByUser}\n\n${totalRep}`;
@@ -67,11 +67,11 @@ export class ReactionReportService extends ReportService {
       });
   }
 
-  private formatRepByUser(perUserRep: ReactionByUser[] | undefined, teamId: string): string {
+  private async formatRepByUser(perUserRep: ReactionByUser[] | undefined, teamId: string): Promise<string> {
     if (!perUserRep) {
       return 'You do not have any existing relationships.';
     } else {
-      const formattedData = Promise.all(
+      const formattedData = await Promise.all(
         perUserRep.map(async userRep => {
           return {
             user: await this.slackService.getUserNameById(userRep.reactingUser, teamId),
