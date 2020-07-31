@@ -1,7 +1,7 @@
 import { getRepository } from 'typeorm';
 import { Item } from '../../shared/db/models/Item';
 import { InventoryItem } from '../../shared/db/models/InventoryItem';
-import { User } from '../../shared/db/models/User';
+import { SlackUser } from '../../shared/db/models/SlackUser';
 
 export class StorePersistenceService {
   public static getInstance(): StorePersistenceService {
@@ -23,7 +23,7 @@ export class StorePersistenceService {
 
   async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
     const itemById = await getRepository(Item).findOne(itemId);
-    const userById = await getRepository(User).findOne({ slackId: userId, slackTeamId: teamId });
+    const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
     if (itemById && userById) {
       const item = new InventoryItem();
       item.item = itemById;
@@ -41,13 +41,13 @@ export class StorePersistenceService {
 
   async isOwnedByUser(itemId: number, userId: string, teamId: string): Promise<boolean> {
     const itemById = await getRepository(Item).findOne(itemId);
-    const userById = await getRepository(User).findOne({ slackId: userId, slackTeamId: teamId });
+    const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
     return !!getRepository(InventoryItem).findOneOrFail({ owner: userById, item: itemById });
   }
 
   async useItem(itemId: number, userId: string, teamId: string): Promise<void> {
-    const userById = (await getRepository(User).findOne({ slackId: userId, slackTeamId: teamId })) as User;
-    const itemById = (await getRepository(Item).findOne(itemId)) as Item;
+    const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
+    const itemById = await getRepository(Item).findOne(itemId);
     const inventoryItem = await getRepository(InventoryItem).findOne({
       owner: userById,
       item: itemById,
@@ -57,17 +57,17 @@ export class StorePersistenceService {
       await getRepository(InventoryItem)
         .remove(inventoryItem)
         .then(_D => {
-          console.log(`${userById.slackId} used ${itemById.name}`);
+          console.log(`${userById?.slackId} used ${itemById?.name}`);
           // Needs to execute the thing that the item does. THinking about storing that code here in an items constant that maps by item name in DB.
         })
         .catch(e =>
-          console.error(`Error when trying to use item: ${userById.slackId} tried to use ${itemById.name} but ${e}`),
+          console.error(`Error when trying to use item: ${userById?.slackId} tried to use ${itemById?.name} but ${e}`),
         );
     }
   }
 
   async getInventory(userId: string, teamId: string): Promise<InventoryItem[]> {
-    const userById = await getRepository(User).findOne({ slackId: userId, slackTeamId: teamId });
+    const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
     return getRepository(InventoryItem).find({ owner: userById });
   }
 }

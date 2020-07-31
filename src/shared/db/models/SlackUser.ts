@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany } from 'typeorm';
+import { InventoryItem } from './InventoryItem';
 
 @Entity()
 @Unique(['slackId', 'teamId'])
@@ -14,4 +15,10 @@ export class SlackUser {
 
   @Column()
   public teamId!: string;
+
+  @OneToMany(
+    _type => InventoryItem,
+    inventoryItem => inventoryItem.owner,
+  )
+  public inventory!: InventoryItem[];
 }

@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
-import { User } from './User';
 import { Item } from './Item';
+import { SlackUser } from './SlackUser';
 
 @Entity()
 export class InventoryItem {
@@ -14,8 +14,8 @@ export class InventoryItem {
   public item!: Item;
 
   @ManyToOne(
-    _type => User,
+    _type => SlackUser,
     user => user.inventory,
   )
-  public owner!: User;
+  public owner!: SlackUser;
 }
