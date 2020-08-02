@@ -6,13 +6,15 @@ export class StoreService {
   storePersistenceService = StorePersistenceService.getInstance();
   reactionPersistenceService = ReactionPersistenceService.getInstance();
 
-  async listItems(): Promise<string> {
+  async listItems(slackId: string, teamId: string): Promise<string> {
     const items: Item[] = await this.storePersistenceService.getItems();
-    let view =
-      'Welcome to the Muzzle Store! Purchase items by typing `/buy item_id` where item_id is the number shown below! \n \n';
+    const rep = await this.reactionPersistenceService.getUserRep(slackId, teamId);
+    let view = `Welcome to the Muzzle Store! \n \n Purchase items by typing \`/buy item_id\` where item_id is the number shown below! \n \n`;
     items.map(item => {
       view += `*${item.id}. ${item.name}* \n *Cost:* ${item.price} rep \n *Description:* ${item.description} \n \n`;
     });
+
+    view += `You currently have *${rep ? rep : 0} Rep* to spend. Spend it wisely!`;
     return view;
   }
 
@@ -56,10 +58,12 @@ export class StoreService {
 
   async getInventory(userId: string, teamId: string): Promise<string> {
     const inventory = await this.storePersistenceService.getInventory(userId, teamId);
+    const rep = await this.reactionPersistenceService.getUserRep(userId, teamId);
     let view = '*Inventory* \n Use items by typing `/use item_id` where item_id is the number shown below. \n \n';
     inventory.map(inventory => {
       view += `*${inventory.name}* \n *Description:* ${inventory.description} \n \n`;
     });
+    view += `Rep: ${rep ? rep : 0}`;
     return view;
   }
 }

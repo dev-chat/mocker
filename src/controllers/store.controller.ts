@@ -8,8 +8,9 @@ export const storeController: Router = express.Router();
 const suppressorService: SuppressorService = new SuppressorService();
 const storeService: StoreService = new StoreService();
 
-storeController.post('/store', async (_req, res) => {
-  const storeItems: string = await storeService.listItems();
+storeController.post('/store', async (req, res) => {
+  const request: SlashCommandRequest = req.body;
+  const storeItems: string = await storeService.listItems(request.user_id, request.team_id);
   res.status(200).send(storeItems);
 });
 
