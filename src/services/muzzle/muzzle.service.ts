@@ -2,9 +2,11 @@ import { MAX_MUZZLES, MAX_SUPPRESSIONS } from './constants';
 import { getTimeString, getTimeToMuzzle, shouldBackfire } from './muzzle-utilities';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 import { CounterService } from '../counter/counter.service';
+import { StorePersistenceService } from '../store/store.persistence.service';
 
 export class MuzzleService extends SuppressorService {
   private counterService = new CounterService();
+  private storePersistenceSerivce = StorePersistenceService.getInstance();
 
   /**
    * Adds a user to the muzzled map and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
@@ -55,7 +57,7 @@ export class MuzzleService extends SuppressorService {
             reject(`Muzzle failed!`);
           });
       } else {
-        const timeToMuzzle = getTimeToMuzzle();
+        const timeToMuzzle = getTimeToMuzzle() + (await this.storePersistenceSerivce.getTimeModifiers(userId, teamId));
         await this.muzzlePersistenceService
           .addMuzzle(requestorId, userId, teamId, timeToMuzzle)
           .then(() => {

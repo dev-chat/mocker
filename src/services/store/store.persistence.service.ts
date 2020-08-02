@@ -26,6 +26,20 @@ export class StorePersistenceService {
     return getRepository(Item).findOne({ id: itemId });
   }
 
+  // This function is not very scalable and will only work with 50 Cal Rounds for right now. It will need to be reworked
+  async getTimeModifiers(userId: string, teamId: string) {
+    let time = 0;
+    const modifiers = [
+      {
+        name: '50CalRounds',
+        time: 120000,
+      },
+    ];
+    const items = await this.redisService.getPattern(`muzzle.item.${userId}-${teamId}.${modifiers[0].name}`);
+    time += items.length * modifiers[0].time;
+    return time;
+  }
+
   // TODO: Fix this query.
   async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
     const itemById = await getRepository(Item).findOne(itemId);
