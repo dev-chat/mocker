@@ -66,10 +66,8 @@ export class StorePersistenceService {
     }
   }
 
-  // This query sucks cuz you suck at sql.
   async getInventory(userId: string, teamId: string): Promise<Item[]> {
-    const user = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
-    const query = `select inventory_item.itemId, item.name, item.description from inventory_item INNER JOIN item ON inventory_item.itemId=item.id WHERE inventory_item.ownerId=${user?.id};`;
+    const query = `SELECT inventory_item.itemId, item.name, item.description FROM inventory_item INNER JOIN item ON inventory_item.itemId=item.id WHERE inventory_item.ownerId=(SELECT id FROM slack_user WHERE slackId='${userId}' AND teamId='${teamId}');`;
     return getManager().query(query);
   }
 }
