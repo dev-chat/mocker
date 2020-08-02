@@ -8,7 +8,22 @@ export class StoreService {
 
   async listItems(): Promise<string> {
     const items: Item[] = await this.storePersistenceService.getItems();
-    return `${items}`; // This should format the items;
+    let view =
+      'Welcome to the Muzzle Store! Purchase items by typing `/buy item_id` where item_id is the number shown below! \n \n';
+    items.map(item => {
+      view += `*${item.id}. ${item.name}* \n *Cost:* ${item.price} rep \n *Description:* ${item.description} \n \n`;
+    });
+    return view;
+  }
+
+  public formatItems(items: Item[]): any {
+    return items.map(item => {
+      return {
+        name: item.name,
+        description: item.description,
+        price: item.price,
+      };
+    });
   }
 
   async isValidItem(itemId: string): Promise<boolean> {
