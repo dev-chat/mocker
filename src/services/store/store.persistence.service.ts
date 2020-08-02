@@ -3,6 +3,8 @@ import { Item } from '../../shared/db/models/Item';
 import { InventoryItem } from '../../shared/db/models/InventoryItem';
 import { SlackUser } from '../../shared/db/models/SlackUser';
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
+import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
+import { getMsForSpecifiedRange } from '../muzzle/muzzle-utilities';
 
 export class StorePersistenceService {
   public static getInstance(): StorePersistenceService {
@@ -14,6 +16,7 @@ export class StorePersistenceService {
 
   private static instance: StorePersistenceService;
   private reactionPersistenceService: ReactionPersistenceService = ReactionPersistenceService.getInstance();
+  private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
 
   getItems(): Promise<Item[]> {
     return getRepository(Item).find();
@@ -34,7 +37,7 @@ export class StorePersistenceService {
       await this.reactionPersistenceService.spendRep(userId, teamId, itemById.price);
       return await getRepository(InventoryItem)
         .insert(item)
-        .then(_result => `Congratulations! You have purchased ${itemById.name}`)
+        .then(_result => `Congratulations! You have purchased *_${itemById.name}!_*`)
         .catch(e => {
           console.error(e);
           return `Sorry, unable to buy ${itemById.name}. Please try again later.`;
@@ -62,6 +65,28 @@ export class StorePersistenceService {
       owner: userById,
       item: itemById,
     })) as InventoryItem;
+    const nameWithoutSpaces = itemById?.name.split(' ').join('');
+    const existingKey = await this.redisService.getPattern(`muzzle.item.${userId}-${teamId}.${nameWithoutSpaces}`);
+    if (existingKey.length) {
+      if (itemById?.isStackable) {
+        this.redisService.setValueWithExpire(
+          `muzzle.item.${userId}-${teamId}.${nameWithoutSpaces}.${existingKey.length}`,
+          1,
+          'PX',
+          !itemById.isRange ? itemById.max_ms : getMsForSpecifiedRange(itemById.min_ms, itemById.max_ms),
+        );
+      } else if (!itemById?.isStackable) {
+        return `Unable to use your item. This item is not stackable.`;
+      }
+    } else if (!existingKey.length && itemById) {
+      this.redisService.setValueWithExpire(
+        `muzzle.item.${userId}-${teamId}.${nameWithoutSpaces}`,
+        1,
+        'PX',
+        !itemById.isRange ? itemById.max_ms : getMsForSpecifiedRange(itemById.min_ms, itemById.max_ms),
+      );
+    }
+
     const message = await getRepository(InventoryItem)
       .remove(inventoryItem)
       .then(_D => {

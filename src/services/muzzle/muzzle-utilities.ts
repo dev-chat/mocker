@@ -13,6 +13,10 @@ export function getTimeToMuzzle(): number {
   return Math.floor(Math.random() * (180000 - 30000 + 1) + 30000);
 }
 
+export function getMsForSpecifiedRange(start: number, end: number) {
+  return Math.floor(Math.random() * (start - end + 1) + end);
+}
+
 /**
  * Gives us a time string formatted as 1m20s to show the user.
  */

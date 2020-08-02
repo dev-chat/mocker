@@ -13,4 +13,16 @@ export class Item {
 
   @Column()
   public price!: number;
+
+  @Column()
+  public isStackable!: boolean;
+
+  @Column()
+  public isRange!: boolean;
+
+  @Column()
+  public max_ms!: number;
+
+  @Column()
+  public min_ms!: number;
 }

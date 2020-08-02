@@ -36,4 +36,8 @@ export class RedisPersistenceService {
   subscribe(channel: string): Promise<number> {
     return RedisPersistenceService.subscriber.subscribe(channel);
   }
+
+  getPattern(pattern: string): Promise<string[]> {
+    return RedisPersistenceService.redis.keys(`*${pattern}*`);
+  }
 }
