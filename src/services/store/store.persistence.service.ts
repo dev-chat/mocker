@@ -1,4 +1,4 @@
-import { getRepository } from 'typeorm';
+import { getRepository, getManager } from 'typeorm';
 import { Item } from '../../shared/db/models/Item';
 import { InventoryItem } from '../../shared/db/models/InventoryItem';
 import { SlackUser } from '../../shared/db/models/SlackUser';
@@ -66,8 +66,10 @@ export class StorePersistenceService {
     }
   }
 
-  async getInventory(userId: string, teamId: string): Promise<InventoryItem[]> {
-    const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
-    return getRepository(InventoryItem).find({ owner: userById });
+  // This query sucks cuz you suck at sql.
+  async getInventory(userId: string, teamId: string): Promise<Item[]> {
+    const user = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
+    const query = `select inventory_item.itemId, item.name, item.description from inventory_item INNER JOIN item ON inventory_item.itemId=item.id WHERE inventory_item.ownerId=${user?.id};`;
+    return getManager().query(query);
   }
 }

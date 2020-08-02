@@ -57,6 +57,10 @@ export class StoreService {
 
   async getInventory(userId: string, teamId: string): Promise<string> {
     const inventory = await this.storePersistenceService.getInventory(userId, teamId);
-    return inventory.toString();
+    let view = '*Inventory* \n Use items by typing `/use item_id` where item_id is the number shown below. \n \n';
+    inventory.map(inventory => {
+      view += `*${inventory.name}* \n *Description:* ${inventory.description} \n \n`;
+    });
+    return view;
   }
 }
