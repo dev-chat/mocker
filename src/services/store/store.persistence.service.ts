@@ -17,10 +17,11 @@ export class StorePersistenceService {
     return getRepository(Item).find();
   }
 
-  getItem(itemId: number): Promise<Item> {
-    return getRepository(Item).findOneOrFail({ id: itemId });
+  getItem(itemId: number): Promise<Item | undefined> {
+    return getRepository(Item).findOne({ id: itemId });
   }
 
+  // TODO: Fix this query.
   async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
     const itemById = await getRepository(Item).findOne(itemId);
     const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
@@ -39,31 +40,53 @@ export class StorePersistenceService {
     return `Sorry, unable to buy your item at this time. Please try again later.`;
   }
 
+  // TODO: Fix this query.
   async isOwnedByUser(itemId: number, userId: string, teamId: string): Promise<boolean> {
     const itemById = await getRepository(Item).findOne(itemId);
     const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
-    return !!getRepository(InventoryItem).findOneOrFail({ owner: userById, item: itemById });
+    return await getRepository(InventoryItem)
+      .findOne({ owner: userById, item: itemById })
+      .then(result => {
+        return !!result;
+      });
   }
 
-  async useItem(itemId: number, userId: string, teamId: string): Promise<void> {
+  // TODO: Fix this query.
+  async useItem(itemId: number, userId: string, teamId: string): Promise<string> {
     const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
-    const itemById = await getRepository(Item).findOne(itemId);
-    const inventoryItem = await getRepository(InventoryItem).findOne({
-      owner: userById,
-      item: itemById,
-    });
-
-    if (inventoryItem) {
-      await getRepository(InventoryItem)
-        .remove(inventoryItem)
-        .then(_D => {
-          console.log(`${userById?.slackId} used ${itemById?.name}`);
-          // Needs to execute the thing that the item does. THinking about storing that code here in an items constant that maps by item name in DB.
+    const itemById = await getRepository(Item)
+      .findOne(itemId)
+      .catch(_e => console.error(`Unable to find item by id: ${itemId}`));
+    if (itemById) {
+      const inventoryItem = await getRepository(InventoryItem)
+        .findOneOrFail({
+          owner: userById,
+          item: itemById,
         })
-        .catch(e =>
-          console.error(`Error when trying to use item: ${userById?.slackId} tried to use ${itemById?.name} but ${e}`),
+        .catch(_e =>
+          console.error(`Unable to find ${itemById?.name} owned by ${userById?.name} | ${userById?.teamId}`),
         );
+
+      if (inventoryItem) {
+        const message = await getRepository(InventoryItem)
+          .remove(inventoryItem)
+          .then(_D => {
+            console.log(`${userById?.slackId} used ${itemById?.name}`);
+            return `${itemById?.name} used!`;
+            // Needs to execute the thing that the item does. THinking about storing that code here in an items constant that maps by item name in DB.
+          })
+          .catch(e => {
+            console.error(
+              `Error when trying to use item: ${userById?.slackId} tried to use ${itemById?.name} but ${e}`,
+            );
+            return `Unable to use item. ${e}`;
+          });
+        return message;
+      }
+    } else if (!itemById) {
+      return 'This item does not exist.';
     }
+    return 'You do not own this item.';
   }
 
   async getInventory(userId: string, teamId: string): Promise<Item[]> {

@@ -34,7 +34,7 @@ export class StoreService {
 
   async canAfford(itemId: string, userId: string, teamId: string): Promise<boolean> {
     const id = +itemId;
-    const price: number = (await this.storePersistenceService.getItem(id)).price;
+    const price: number | undefined = (await this.storePersistenceService.getItem(id))?.price;
     const userRep: number | undefined = await this.reactionPersistenceService.getUserRep(userId, teamId);
     return userRep && price ? price <= userRep : false;
   }
@@ -46,13 +46,12 @@ export class StoreService {
 
   async isOwnedByUser(itemId: string, userId: string, teamId: string): Promise<boolean> {
     const id = +itemId;
-    const isOwned = await this.storePersistenceService.isOwnedByUser(id, userId, teamId);
-    return isOwned;
+    return await this.storePersistenceService.isOwnedByUser(id, userId, teamId);
   }
 
-  async useItem(itemId: string, userId: string, teamId: string): Promise<void> {
+  async useItem(itemId: string, userId: string, teamId: string): Promise<string> {
     const id = +itemId;
-    await this.storePersistenceService.useItem(id, userId, teamId);
+    return await this.storePersistenceService.useItem(id, userId, teamId);
   }
 
   async getInventory(userId: string, teamId: string): Promise<string> {
