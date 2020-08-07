@@ -62,7 +62,7 @@ export class MuzzleService extends SuppressorService {
         await this.muzzlePersistenceService.setRequestorCount(requestorId, teamId);
         this.webService.sendMessage(
           channel,
-          `:innocent: <@${requestorId}> attempted to muzzle <@${userId}> but he was protected by a Guardian Angel. :innocent:`,
+          `:innocent: <@${requestorId}> attempted to muzzle <@${userId}> but he was protected by a \`Guardian Angel\`. :innocent:`,
         );
         this.storePersistenceSerivce.removeKey(protectedUser);
         resolve('Sorry, the light shines upon your target today.');
