@@ -46,14 +46,17 @@ export class StoreService {
     return await this.storePersistenceService.buyItem(id, userId, teamId);
   }
 
-  async isOwnedByUser(itemId: string, userId: string, teamId: string): Promise<boolean> {
-    const id = +itemId;
-    return await this.storePersistenceService.isOwnedByUser(id, userId, teamId);
+  async isOwnedByUser(itemId: string | undefined, userId: string, teamId: string): Promise<boolean> {
+    if (itemId) {
+      const id = +itemId;
+      return await this.storePersistenceService.isOwnedByUser(id, userId, teamId);
+    }
+    return false;
   }
 
-  async useItem(itemId: string, userId: string, teamId: string): Promise<string> {
+  async useItem(itemId: string, userId: string, teamId: string, userIdForItem?: string): Promise<string> {
     const id = +itemId;
-    return await this.storePersistenceService.useItem(id, userId, teamId);
+    return await this.storePersistenceService.useItem(id, userId, teamId, userIdForItem);
   }
 
   async getInventory(userId: string, teamId: string): Promise<string> {

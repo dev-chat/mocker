@@ -40,4 +40,8 @@ export class RedisPersistenceService {
   getPattern(pattern: string): Promise<string[]> {
     return RedisPersistenceService.redis.keys(`*${pattern}*`);
   }
+
+  removeKey(key: string) {
+    return RedisPersistenceService.redis.del(key);
+  }
 }

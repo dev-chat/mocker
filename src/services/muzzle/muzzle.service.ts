@@ -16,6 +16,7 @@ export class MuzzleService extends SuppressorService {
     const userName = await this.slackService.getUserNameById(userId, teamId);
     const requestorName = await this.slackService.getUserNameById(requestorId, teamId);
     const counter = this.counterPersistenceService.getCounterByRequestorId(userId);
+    const protectedUser = await this.storePersistenceSerivce.isProtected(userId, teamId);
 
     return new Promise(async (resolve, reject) => {
       if (!userId) {
@@ -41,7 +42,8 @@ export class MuzzleService extends SuppressorService {
         reject(`You've been countered! Better luck next time...`);
       } else if (shouldBackFire) {
         console.log(`Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`);
-        const timeToMuzzle = getTimeToMuzzle();
+        const timeToMuzzle =
+          getTimeToMuzzle() + (await this.storePersistenceSerivce.getTimeModifiers(requestorId, teamId));
         await this.backfirePersistenceService
           .addBackfire(requestorId, timeToMuzzle, teamId)
           .then(() => {
@@ -56,8 +58,17 @@ export class MuzzleService extends SuppressorService {
             console.error(e);
             reject(`Muzzle failed!`);
           });
+      } else if (protectedUser) {
+        await this.muzzlePersistenceService.setRequestorCount(requestorId, teamId);
+        this.webService.sendMessage(
+          channel,
+          `:innocent: <@${requestorId}> attempted to muzzle <@${userId}> but he was protected by a Guardian Angel. :innocent:`,
+        );
+        this.storePersistenceSerivce.removeKey(protectedUser);
+        resolve('Sorry, the light shines upon your target today.');
       } else {
-        const timeToMuzzle = getTimeToMuzzle() + (await this.storePersistenceSerivce.getTimeModifiers(userId, teamId));
+        const timeToMuzzle =
+          getTimeToMuzzle() + (await this.storePersistenceSerivce.getTimeModifiers(requestorId, teamId));
         await this.muzzlePersistenceService
           .addMuzzle(requestorId, userId, teamId, timeToMuzzle)
           .then(() => {

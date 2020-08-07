@@ -33,8 +33,18 @@ storeController.post('/store/buy', async (req, res) => {
 
 storeController.post('/store/use', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  const isOwnedByUser = await storeService.isOwnedByUser(request.text, request.user_id, request.team_id);
-  const isValidItem = await storeService.isValidItem(request.text);
+  const textArgs = request.text.split(' ');
+  let itemId: string | undefined;
+  let userIdForItem: string | undefined;
+
+  if (textArgs.length >= 2) {
+    itemId = textArgs[0];
+    userIdForItem = await suppressorService.slackService.getUserId(textArgs[1]);
+  } else {
+    itemId = textArgs[0];
+  }
+  const isOwnedByUser = await storeService.isOwnedByUser(itemId, request.user_id, request.team_id);
+  const isValidItem = await storeService.isValidItem(itemId);
 
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
@@ -45,7 +55,7 @@ storeController.post('/store/use', async (req, res) => {
   } else if (!isOwnedByUser) {
     res.send('You do not own that item. Please buy it on the store by using `/buy item_id`.');
   } else {
-    const receipt: string = await storeService.useItem(request.text, request.user_id, request.team_id);
+    const receipt: string = await storeService.useItem(itemId, request.user_id, request.team_id, userIdForItem);
     res.status(200).send(receipt);
   }
 });

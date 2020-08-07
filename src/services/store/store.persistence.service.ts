@@ -40,6 +40,20 @@ export class StorePersistenceService {
     return time;
   }
 
+  async isProtected(userId: string, teamId: string): Promise<string | false> {
+    const protectors = [
+      {
+        name: 'GuardianAngel',
+      },
+    ];
+    const blah = await this.redisService.getPattern(`muzzle.item.${userId}-${teamId}.${protectors[0].name}`);
+    return blah.length > 0 && blah[0];
+  }
+
+  async removeKey(key: string) {
+    this.redisService.removeKey(key);
+  }
+
   // TODO: Fix this query.
   async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
     const itemById = await getRepository(Item).findOne(itemId);
@@ -72,19 +86,24 @@ export class StorePersistenceService {
   }
 
   // TODO: Fix this query.
-  async useItem(itemId: number, userId: string, teamId: string): Promise<string> {
-    const userById: SlackUser | undefined = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
+  async useItem(itemId: number, userId: string, teamId: string, userIdForItem?: string): Promise<string> {
+    const usingUser: SlackUser | undefined = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
+    const receivingUser: SlackUser | undefined = await getRepository(SlackUser).findOne({
+      slackId: userIdForItem,
+      teamId,
+    });
     const itemById: Item | undefined = await getRepository(Item).findOne(itemId);
     const inventoryItem = (await getRepository(InventoryItem).findOne({
-      owner: userById,
+      owner: usingUser,
       item: itemById,
     })) as InventoryItem;
     const nameWithoutSpaces = itemById?.name.split(' ').join('');
-    const existingKey = await this.redisService.getPattern(`muzzle.item.${userId}-${teamId}.${nameWithoutSpaces}`);
+    const keyName = `muzzle.item.${receivingUser ? receivingUser.slackId : userId}-${teamId}.${nameWithoutSpaces}`;
+    const existingKey = await this.redisService.getPattern(keyName);
     if (existingKey.length) {
       if (itemById?.isStackable) {
         this.redisService.setValueWithExpire(
-          `muzzle.item.${userId}-${teamId}.${nameWithoutSpaces}.${existingKey.length}`,
+          `${keyName}.${existingKey.length}`,
           1,
           'PX',
           !itemById.isRange ? itemById.max_ms : getMsForSpecifiedRange(itemById.min_ms, itemById.max_ms),
@@ -94,7 +113,7 @@ export class StorePersistenceService {
       }
     } else if (!existingKey.length && itemById) {
       this.redisService.setValueWithExpire(
-        `muzzle.item.${userId}-${teamId}.${nameWithoutSpaces}`,
+        keyName,
         1,
         'PX',
         !itemById.isRange ? itemById.max_ms : getMsForSpecifiedRange(itemById.min_ms, itemById.max_ms),
@@ -104,9 +123,8 @@ export class StorePersistenceService {
     const message = await getRepository(InventoryItem)
       .remove(inventoryItem)
       .then(_D => {
-        console.log(`${userById?.slackId} used ${itemById?.name}`);
+        console.log(`${usingUser?.slackId} used ${itemById?.name}`);
         return `${itemById?.name} used!`;
-        // Needs to execute the thing that the item does. THinking about storing that code here in an items constant that maps by item name in DB.
       });
     return message;
   }
