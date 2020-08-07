@@ -21,12 +21,12 @@ export class MuzzleService extends SuppressorService {
     return new Promise(async (resolve, reject) => {
       if (!userId) {
         reject(`Invalid username passed in. You can only muzzle existing slack users.`);
-      } else if (await this.muzzlePersistenceService.isUserMuzzled(userId, teamId)) {
+      } else if (await this.isSuppressed(userId, teamId)) {
         console.error(
           `${requestorName} | ${requestorId} attempted to muzzle ${userName} | ${userId} but ${userName} | ${userId} is already muzzled.`,
         );
         reject(`${userName} is already muzzled!`);
-      } else if (await this.muzzlePersistenceService.isUserMuzzled(requestorId, teamId)) {
+      } else if (await this.isSuppressed(requestorId, teamId)) {
         console.error(
           `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId}  is currently muzzled`,
         );

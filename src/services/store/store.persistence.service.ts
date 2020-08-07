@@ -5,6 +5,8 @@ import { SlackUser } from '../../shared/db/models/SlackUser';
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
 import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 import { getMsForSpecifiedRange } from '../muzzle/muzzle-utilities';
+import { Purchase } from '../../shared/db/models/Purchase';
+import { UsedItem } from '../../shared/db/models/UsedItem';
 
 export class StorePersistenceService {
   public static getInstance(): StorePersistenceService {
@@ -65,7 +67,7 @@ export class StorePersistenceService {
     this.redisService.removeKey(key);
   }
 
-  // TODO: Fix this query.
+  // TODO: Fix this query. This is so nasty.
   async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
     const itemById = await getRepository(Item).findOne(itemId);
     const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
@@ -74,6 +76,16 @@ export class StorePersistenceService {
       item.item = itemById;
       item.owner = userById;
       await this.reactionPersistenceService.spendRep(userId, teamId, itemById.price);
+      const purchase = new Purchase();
+      purchase.item = itemById.id;
+      purchase.price = itemById.price;
+      purchase.user = userById.id;
+      await getRepository(Purchase)
+        .insert(purchase)
+        .catch(e => {
+          console.error('Error on updating purchase table');
+          console.error(e);
+        });
       return await getRepository(InventoryItem)
         .insert(item)
         .then(_result => `Congratulations! You have purchased *_${itemById.name}!_*`)
@@ -130,6 +142,12 @@ export class StorePersistenceService {
         !itemById.isRange ? itemById.max_ms : getMsForSpecifiedRange(itemById.min_ms, itemById.max_ms),
       );
     }
+
+    const usedItem = new UsedItem();
+    usedItem.item = itemById!.id;
+    usedItem.usedOnUser = receivingUser ? receivingUser.id : usingUser!.id;
+    usedItem.usingUser = usingUser!.id;
+    await getRepository(UsedItem).insert(usedItem);
 
     const message = await getRepository(InventoryItem)
       .remove(inventoryItem)
