@@ -31,11 +31,6 @@ export class MuzzleService extends SuppressorService {
           `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId}  is currently muzzled`,
         );
         reject(`You can't muzzle someone if you are already muzzled!`);
-      } else if (await this.muzzlePersistenceService.isMaxMuzzlesReached(requestorId, teamId)) {
-        console.error(
-          `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId} has reached maximum muzzle of ${MAX_MUZZLES}`,
-        );
-        reject(`You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`);
       } else if (counter) {
         console.log(`${requestorId} attempted to muzzle ${userId} but was countered!`);
         this.counterService.removeCounter(counter, true, userId, requestorId, channel, teamId);
@@ -71,6 +66,11 @@ export class MuzzleService extends SuppressorService {
           .then(user => user!.split('-')[0]);
         await this.muzzlePersistenceService.addMuzzle(userToCredit, requestorId, teamId, timeToMuzzle);
         resolve(':innocent: The Light shines upon your enemy. :innocent:');
+      } else if (await this.muzzlePersistenceService.isMaxMuzzlesReached(requestorId, teamId)) {
+        console.error(
+          `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId} has reached maximum muzzle of ${MAX_MUZZLES}`,
+        );
+        reject(`You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`);
       } else {
         const timeToMuzzle =
           getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(requestorId, teamId));

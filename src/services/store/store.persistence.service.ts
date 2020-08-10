@@ -41,7 +41,7 @@ export class StorePersistenceService {
       modifiers.map(
         async (modifier): Promise<number> => {
           return this.redisService
-            .getPattern(`muzzle.item.${userId}-${teamId}.${modifier.name}`)
+            .getPattern(this.getRedisKeyName(userId, teamId, modifier.name))
             .then((result): number => {
               return result.length ? modifier.time * result.length : 0;
             });
@@ -59,7 +59,7 @@ export class StorePersistenceService {
         name: 'GuardianAngel',
       },
     ];
-    const blah = await this.redisService.getPattern(`muzzle.item.${userId}-${teamId}.${protectors[0].name}`);
+    const blah = await this.redisService.getPattern(this.getRedisKeyName(userId, teamId, protectors[0].name));
     return blah.length > 0 && blah[0];
   }
 
@@ -120,8 +120,8 @@ export class StorePersistenceService {
       owner: usingUser,
       item: itemById,
     })) as InventoryItem;
-    const nameWithoutSpaces = itemById?.name.split(' ').join('');
-    const keyName = `muzzle.item.${receivingUser ? receivingUser.slackId : userId}-${teamId}.${nameWithoutSpaces}`;
+    const nameWithoutSpaces = itemById!.name.split(' ').join('');
+    const keyName = this.getRedisKeyName(receivingUser ? receivingUser.slackId : userId, teamId, nameWithoutSpaces);
     const existingKey = await this.redisService.getPattern(keyName);
     if (existingKey.length) {
       if (itemById?.isStackable) {
@@ -165,5 +165,9 @@ export class StorePersistenceService {
   async getInventory(userId: string, teamId: string): Promise<Item[]> {
     const query = `SELECT inventory_item.itemId, item.name, item.description FROM inventory_item INNER JOIN item ON inventory_item.itemId=item.id WHERE inventory_item.ownerId=(SELECT id FROM slack_user WHERE slackId='${userId}' AND teamId='${teamId}');`;
     return getManager().query(query);
+  }
+
+  private getRedisKeyName(userId: string, teamId: string, itemName: string) {
+    return `store.item.${userId}-${teamId}.${itemName}`;
   }
 }
