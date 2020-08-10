@@ -54,13 +54,15 @@ export class StorePersistenceService {
 
   // Probably doesnt need to be a pattern.
   async isProtected(userId: string, teamId: string): Promise<string | false> {
-    const protectors = [
+    const protectorItem = [
       {
         name: 'GuardianAngel',
       },
     ];
-    const blah = await this.redisService.getPattern(this.getRedisKeyName(userId, teamId, protectors[0].name));
-    return blah.length > 0 && blah[0];
+    const activeProtection = await this.redisService.getPattern(
+      this.getRedisKeyName(userId, teamId, protectorItem[0].name),
+    );
+    return activeProtection.length > 0 && activeProtection[0];
   }
 
   async removeKey(key: string) {
