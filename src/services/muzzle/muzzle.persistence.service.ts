@@ -1,6 +1,6 @@
 import { UpdateResult, getRepository } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
-import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_TIME_BETWEEN_MUZZLES } from './constants';
+import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_TIME_BETWEEN_MUZZLES, MuzzleRedisTypeEnum } from './constants';
 import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 
 export class MuzzlePersistenceService {
@@ -29,15 +29,14 @@ export class MuzzlePersistenceService {
         .then(muzzleFromDb => {
           const expireTime = Math.floor(time / 1000);
           this.redis.setValueWithExpire(
-            `muzzle.muzzled.${muzzledId}-${teamId}`,
+            this.getRedisKeyName(muzzledId, teamId, MuzzleRedisTypeEnum.Muzzled),
             muzzleFromDb.id.toString(),
             'EX',
             expireTime,
           );
-          this.redis.setValueWithExpire(`muzzle.muzzled.${muzzledId}-${teamId}.suppressions`, '0', 'EX', expireTime);
           this.redis.setValueWithExpire(
-            `muzzle.muzzled.${muzzledId}-${teamId}.requestor`,
-            requestorId,
+            this.getRedisKeyName(muzzledId, teamId, MuzzleRedisTypeEnum.Muzzled, true),
+            '0',
             'EX',
             expireTime,
           );
@@ -49,22 +48,29 @@ export class MuzzlePersistenceService {
   }
 
   public removeMuzzlePrivileges(requestorId: string, teamId: string): void {
-    this.redis.setValueWithExpire(`muzzle.requestor.${requestorId}-${teamId}`, '2', 'EX', MAX_TIME_BETWEEN_MUZZLES);
+    this.redis.setValueWithExpire(
+      this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor),
+      '2',
+      'EX',
+      MAX_TIME_BETWEEN_MUZZLES,
+    );
   }
 
   public async setRequestorCount(requestorId: string, teamId: string): Promise<void> {
-    const numberOfRequests: string | null = await this.redis.getValue(`muzzle.requestor.${requestorId}-${teamId}`);
+    const numberOfRequests: string | null = await this.redis.getValue(
+      this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor),
+    );
     const requests: number = numberOfRequests ? +numberOfRequests : 0;
     const newNumber = requests + 1;
     if (!numberOfRequests) {
       this.redis.setValueWithExpire(
-        `muzzle.requestor.${requestorId}-${teamId}`,
+        this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor),
         newNumber.toString(),
         'EX',
         MAX_TIME_BETWEEN_MUZZLES,
       );
     } else if (requests < MAX_MUZZLES) {
-      this.redis.setValue(`muzzle.requestor.${requestorId}-${teamId}`, newNumber);
+      this.redis.setValue(this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor), newNumber);
     }
   }
 
@@ -72,7 +78,9 @@ export class MuzzlePersistenceService {
    * Returns boolean whether max muzzles have been reached.
    */
   public async isMaxMuzzlesReached(userId: string, teamId: string): Promise<boolean> {
-    const muzzles: string | null = await this.redis.getValue(`muzzle.requestor.${userId}-${teamId}`);
+    const muzzles: string | null = await this.redis.getValue(
+      this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Requestor),
+    );
     return !!(muzzles && +muzzles === MAX_MUZZLES);
   }
 
@@ -80,31 +88,40 @@ export class MuzzlePersistenceService {
    * Adds the specified amount of time to a specified muzzled user.
    */
   public async addMuzzleTime(userId: string, teamId: string, timeToAdd: number): Promise<void> {
-    const muzzledId: string | null = await this.redis.getValue(`muzzle.muzzled.${userId}-${teamId}`);
+    const muzzledId: string | null = await this.redis.getValue(
+      this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled),
+    );
     if (muzzledId) {
-      const remainingTime: number = await this.redis.getTimeRemaining(`muzzle.muzzled.${userId}-${teamId}`);
+      const remainingTime: number = await this.redis.getTimeRemaining(
+        this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled),
+      );
       const newTime = Math.floor(remainingTime + timeToAdd / 1000);
       this.incrementMuzzleTime(+muzzledId, ABUSE_PENALTY_TIME);
       console.log(`Setting ${userId}'s muzzle time to ${newTime}`);
-      this.redis.expire(`muzzle.muzzled.${userId}-${teamId}`, newTime);
+      this.redis.expire(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled), newTime);
     }
   }
 
   public async getMuzzle(userId: string, teamId: string): Promise<string | null> {
-    return await this.redis.getValue(`muzzle.muzzled.${userId}-${teamId}`);
+    return await this.redis.getValue(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled));
   }
 
   public async getSuppressions(userId: string, teamId: string): Promise<string | null> {
-    return await this.redis.getValue(`muzzle.muzzled.${userId}-${teamId}.suppressions`);
+    return await this.redis.getValue(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled, true));
   }
 
   public async incrementStatefulSuppressions(userId: string, teamId: string): Promise<void> {
-    const suppressions = await this.redis.getValue(`muzzle.muzzled.${userId}-${teamId}.suppressions`);
+    const suppressions = await this.redis.getValue(
+      this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled, true),
+    );
     if (suppressions) {
       const newValue = +suppressions + 1;
-      await this.redis.setValue(`muzzle.muzzled.${userId}-${teamId}.suppressions`, newValue.toString());
+      await this.redis.setValue(
+        this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled, true),
+        newValue.toString(),
+      );
     } else {
-      await this.redis.setValue(`muzzle.muzzled.${userId}-${teamId}.suppressions`, '1');
+      await this.redis.setValue(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled, true), '1');
     }
   }
 
@@ -112,7 +129,7 @@ export class MuzzlePersistenceService {
    * Returns boolean whether user is muzzled or not.
    */
   public async isUserMuzzled(userId: string, teamId: string): Promise<boolean> {
-    return !!(await this.redis.getValue(`muzzle.muzzled.${userId}-${teamId}`));
+    return !!(await this.redis.getValue(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled)));
   }
 
   public incrementMuzzleTime(id: number, ms: number): Promise<UpdateResult> {
@@ -140,5 +157,9 @@ export class MuzzlePersistenceService {
     this.incrementMessageSuppressions(muzzleId);
     this.incrementWordSuppressions(muzzleId, words);
     this.incrementCharacterSuppressions(muzzleId, characters);
+  }
+
+  private getRedisKeyName(userId: string, teamId: string, userType: MuzzleRedisTypeEnum, withSuppressions = false) {
+    return `muzzle.${userType}.${userId}-${teamId}.${withSuppressions ? 'suppressions' : ''}`;
   }
 }

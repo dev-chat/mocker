@@ -127,7 +127,7 @@ export class StorePersistenceService {
       if (itemById?.isStackable) {
         this.redisService.setValueWithExpire(
           `${keyName}.${existingKey.length}`,
-          1,
+          `${userId}-${teamId}`,
           'PX',
           !itemById.isRange ? itemById.max_ms : getMsForSpecifiedRange(itemById.min_ms, itemById.max_ms),
         );
@@ -137,7 +137,7 @@ export class StorePersistenceService {
     } else if (!existingKey.length && itemById) {
       this.redisService.setValueWithExpire(
         keyName,
-        1,
+        `${userId}-${teamId}`,
         'PX',
         !itemById.isRange ? itemById.max_ms : getMsForSpecifiedRange(itemById.min_ms, itemById.max_ms),
       );
@@ -156,6 +156,10 @@ export class StorePersistenceService {
         return `${itemById?.name} used!`;
       });
     return message;
+  }
+
+  getUserOfUsedItem(key: string) {
+    return this.redisService.getValue(key);
   }
 
   async getInventory(userId: string, teamId: string): Promise<Item[]> {

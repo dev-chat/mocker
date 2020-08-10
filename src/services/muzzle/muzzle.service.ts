@@ -6,7 +6,7 @@ import { StorePersistenceService } from '../store/store.persistence.service';
 
 export class MuzzleService extends SuppressorService {
   private counterService = new CounterService();
-  private storePersistenceSerivce = StorePersistenceService.getInstance();
+  private storePersistenceService = StorePersistenceService.getInstance();
 
   /**
    * Adds a user to the muzzled map and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
@@ -16,7 +16,7 @@ export class MuzzleService extends SuppressorService {
     const userName = await this.slackService.getUserNameById(userId, teamId);
     const requestorName = await this.slackService.getUserNameById(requestorId, teamId);
     const counter = this.counterPersistenceService.getCounterByRequestorId(userId);
-    const protectedUser = await this.storePersistenceSerivce.isProtected(userId, teamId);
+    const protectedUser = await this.storePersistenceService.isProtected(userId, teamId);
 
     return new Promise(async (resolve, reject) => {
       if (!userId) {
@@ -43,7 +43,7 @@ export class MuzzleService extends SuppressorService {
       } else if (shouldBackFire) {
         console.log(`Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`);
         const timeToMuzzle =
-          getTimeToMuzzle() + (await this.storePersistenceSerivce.getTimeModifiers(requestorId, teamId));
+          getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(requestorId, teamId));
         await this.backfirePersistenceService
           .addBackfire(requestorId, timeToMuzzle, teamId)
           .then(() => {
@@ -64,11 +64,16 @@ export class MuzzleService extends SuppressorService {
           channel,
           `:innocent: <@${requestorId}> attempted to muzzle <@${userId}> but he was protected by a \`Guardian Angel\`. :innocent:`,
         );
-        this.storePersistenceSerivce.removeKey(protectedUser);
-        resolve('Sorry, the light shines upon your target today.');
+        const timeToMuzzle =
+          getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(requestorId, teamId));
+        const userToCredit = await this.storePersistenceService
+          .getUserOfUsedItem(protectedUser)
+          .then(user => user!.split('-')[0]);
+        await this.muzzlePersistenceService.addMuzzle(userToCredit, requestorId, teamId, timeToMuzzle);
+        resolve(':innocent: The Light shines upon your enemy. :innocent:');
       } else {
         const timeToMuzzle =
-          getTimeToMuzzle() + (await this.storePersistenceSerivce.getTimeModifiers(requestorId, teamId));
+          getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(requestorId, teamId));
         await this.muzzlePersistenceService
           .addMuzzle(requestorId, userId, teamId, timeToMuzzle)
           .then(() => {

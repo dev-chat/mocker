@@ -25,34 +25,39 @@ export class BackFirePersistenceService {
     return getRepository(Backfire)
       .save(backfire)
       .then(backfireFromDb => {
-        this.redis.setValueWithExpire(`backfire.${userId}-${teamId}`, backfireFromDb.id, 'EX', Math.floor(time / 1000));
-        this.redis.setValueWithExpire(`backfire.${userId}-${teamId}.suppressions`, 0, 'EX', Math.floor(time / 1000));
+        this.redis.setValueWithExpire(
+          this.getRedisKeyName(userId, teamId),
+          backfireFromDb.id,
+          'EX',
+          Math.floor(time / 1000),
+        );
+        this.redis.setValueWithExpire(this.getRedisKeyName(userId, teamId, true), 0, 'EX', Math.floor(time / 1000));
       });
   }
 
   public async isBackfire(userId: string, teamId: string): Promise<boolean> {
-    const hasBackfire = await this.redis.getValue(`backfire.${userId}-${teamId}`);
+    const hasBackfire = await this.redis.getValue(this.getRedisKeyName(userId, teamId));
     return !!hasBackfire;
   }
 
   public getSuppressions(userId: string, teamId: string): Promise<string | null> {
-    return this.redis.getValue(`backfire.${userId}-${teamId}.suppressions`);
+    return this.redis.getValue(this.getRedisKeyName(userId, teamId, true));
   }
 
   public async addSuppression(userId: string, teamId: string): Promise<void> {
     const suppressions = await this.getSuppressions(userId, teamId);
     const number = suppressions ? +suppressions : 0;
-    this.redis.setValue(`backfire.${userId}-${teamId}.suppressions`, number + 1);
+    this.redis.setValue(this.getRedisKeyName(userId, teamId, true), number + 1);
   }
 
   public async addBackfireTime(userId: string, teamId: string, timeToAdd: number): Promise<void> {
     const hasBackfire = await this.isBackfire(userId, teamId);
     if (hasBackfire) {
-      const timeRemaining = await this.redis.getTimeRemaining(`backfire.${userId}`);
+      const timeRemaining = await this.redis.getTimeRemaining(this.getRedisKeyName(userId, teamId));
       const newTime = Math.floor(timeRemaining + timeToAdd / 1000);
-      await this.redis.expire(`backfire.${userId}-${teamId}`, newTime);
-      await this.redis.expire(`backfire.${userId}-${teamId}.suppressions`, newTime);
-      const backfireId = await this.redis.getValue(`backfire.${userId}-${teamId}`);
+      await this.redis.expire(this.getRedisKeyName(userId, teamId), newTime);
+      await this.redis.expire(this.getRedisKeyName(userId, teamId, true), newTime);
+      const backfireId = await this.redis.getValue(this.getRedisKeyName(userId, teamId));
       if (backfireId) {
         this.incrementBackfireTime(+backfireId, timeToAdd);
       }
@@ -61,7 +66,7 @@ export class BackFirePersistenceService {
   }
 
   public getBackfireByUserId(userId: string, teamId: string): Promise<string | null> {
-    return this.redis.getValue(`backfire.${userId}-${teamId}`);
+    return this.redis.getValue(this.getRedisKeyName(userId, teamId));
   }
 
   /**
@@ -90,5 +95,9 @@ export class BackFirePersistenceService {
 
   public incrementCharacterSuppressions(id: number, charactersSuppressed: number): Promise<UpdateResult> {
     return getRepository(Backfire).increment({ id }, 'charactersSuppressed', charactersSuppressed);
+  }
+
+  private getRedisKeyName(userId: string, teamId: string, isSuppression = false) {
+    return `backfire.${userId}-${teamId}.${isSuppression ? 'suppressions' : ''}`;
   }
 }
