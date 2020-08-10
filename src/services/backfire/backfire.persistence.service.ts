@@ -98,6 +98,6 @@ export class BackFirePersistenceService {
   }
 
   private getRedisKeyName(userId: string, teamId: string, isSuppression = false) {
-    return `backfire.${userId}-${teamId}.${isSuppression ? 'suppressions' : ''}`;
+    return `backfire.${userId}-${teamId}${isSuppression ? '.suppressions' : ''}`;
   }
 }

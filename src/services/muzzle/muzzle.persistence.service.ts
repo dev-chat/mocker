@@ -160,6 +160,6 @@ export class MuzzlePersistenceService {
   }
 
   private getRedisKeyName(userId: string, teamId: string, userType: MuzzleRedisTypeEnum, withSuppressions = false) {
-    return `muzzle.${userType}.${userId}-${teamId}.${withSuppressions ? 'suppressions' : ''}`;
+    return `muzzle.${userType}.${userId}-${teamId}${withSuppressions ? '.suppressions' : ''}`;
   }
 }
