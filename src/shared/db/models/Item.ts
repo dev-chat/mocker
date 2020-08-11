@@ -21,8 +21,17 @@ export class Item {
   public isRange!: boolean;
 
   @Column()
-  public max_ms!: number;
+  public max_active_ms!: number;
 
   @Column()
-  public min_ms!: number;
+  public min_active_ms!: number;
+
+  @Column()
+  public isTimeModifier!: boolean;
+
+  @Column()
+  public max_modified_ms!: number;
+
+  @Column()
+  public min_modified_ms!: number;
 }

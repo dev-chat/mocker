@@ -14,6 +14,9 @@ export function getTimeToMuzzle(): number {
 }
 
 export function getMsForSpecifiedRange(start: number, end: number) {
+  if (start === end) {
+    return start;
+  }
   return Math.floor(Math.random() * (start - end + 1) + end);
 }
 

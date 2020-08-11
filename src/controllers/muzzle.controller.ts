@@ -15,6 +15,7 @@ const webService = WebService.getInstance();
 const suppressorService = new SuppressorService();
 const reportService = new MuzzleReportService();
 
+// TODO: This should have the logic from the addUserToMuzzled function in muzzleService.
 muzzleController.post('/muzzle', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
   const userId: string = slackService.getUserId(request.text);

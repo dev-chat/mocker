@@ -7,6 +7,7 @@ import { RedisPersistenceService } from '../../shared/services/redis.persistence
 import { getMsForSpecifiedRange } from '../muzzle/muzzle-utilities';
 import { Purchase } from '../../shared/db/models/Purchase';
 import { UsedItem } from '../../shared/db/models/UsedItem';
+import { ItemKill } from '../../shared/db/models/ItemKill';
 
 export class StorePersistenceService {
   public static getInstance(): StorePersistenceService {
@@ -28,22 +29,39 @@ export class StorePersistenceService {
     return getRepository(Item).findOne({ id: itemId });
   }
 
-  // Any time modifiers will need to be added to the modifiers array here.
-  // This should probably live in a DB and should probably be the result of a mysql call.
+  // Returns active OFFENSIVE items.
+  getActiveItems(userId: string, teamId: string) {
+    return this.redisService.getPattern(this.getRedisKeyName(userId, teamId)).then(result =>
+      result.map(item => {
+        const itemArr = item.split('.');
+        // Hardcoded because we can rely on this being the itemName per getRedisKeyName
+        return itemArr[3];
+      }),
+    );
+  }
+
+  async setItemKill(muzzleId: number, activeItems: string[]) {
+    return await Promise.all(
+      activeItems.map(async (itemId: string) => {
+        const itemKill = new ItemKill();
+        itemKill.itemId = +itemId;
+        itemKill.muzzleId = muzzleId;
+        return await getRepository(ItemKill).insert(itemKill);
+      }),
+    );
+  }
+
   async getTimeModifiers(userId: string, teamId: string) {
-    const modifiers = [
-      {
-        name: '50CalRounds',
-        time: 120000,
-      },
-    ];
+    const modifiers = await getRepository(Item).find({ isTimeModifier: true });
     const time: number[] = await Promise.all(
       modifiers.map(
         async (modifier): Promise<number> => {
           return this.redisService
-            .getPattern(this.getRedisKeyName(userId, teamId, modifier.name))
+            .getPattern(this.getRedisKeyName(userId, teamId, modifier.id))
             .then((result): number => {
-              return result.length ? modifier.time * result.length : 0;
+              return result.length
+                ? getMsForSpecifiedRange(modifier.min_modified_ms, modifier.max_modified_ms) * result.length
+                : 0;
             });
         },
       ),
@@ -57,10 +75,11 @@ export class StorePersistenceService {
     const protectorItem = [
       {
         name: 'GuardianAngel',
+        id: 2,
       },
     ];
     const activeProtection = await this.redisService.getPattern(
-      this.getRedisKeyName(userId, teamId, protectorItem[0].name),
+      this.getRedisKeyName(userId, teamId, protectorItem[0].id),
     );
     return activeProtection.length > 0 && activeProtection[0];
   }
@@ -122,8 +141,7 @@ export class StorePersistenceService {
       owner: usingUser,
       item: itemById,
     })) as InventoryItem;
-    const nameWithoutSpaces = itemById!.name.split(' ').join('');
-    const keyName = this.getRedisKeyName(receivingUser ? receivingUser.slackId : userId, teamId, nameWithoutSpaces);
+    const keyName = this.getRedisKeyName(receivingUser ? receivingUser.slackId : userId, teamId, itemId);
     const existingKey = await this.redisService.getPattern(keyName);
     if (existingKey.length) {
       if (itemById?.isStackable) {
@@ -131,7 +149,7 @@ export class StorePersistenceService {
           `${keyName}.${existingKey.length}`,
           `${userId}-${teamId}`,
           'PX',
-          !itemById.isRange ? itemById.max_ms : getMsForSpecifiedRange(itemById.min_ms, itemById.max_ms),
+          getMsForSpecifiedRange(itemById.min_active_ms, itemById.max_active_ms),
         );
       } else if (!itemById?.isStackable) {
         return `Unable to use your item. This item is not stackable.`;
@@ -141,7 +159,7 @@ export class StorePersistenceService {
         keyName,
         `${userId}-${teamId}`,
         'PX',
-        !itemById.isRange ? itemById.max_ms : getMsForSpecifiedRange(itemById.min_ms, itemById.max_ms),
+        getMsForSpecifiedRange(itemById.min_active_ms, itemById.max_active_ms),
       );
     }
 
@@ -169,7 +187,7 @@ export class StorePersistenceService {
     return getManager().query(query);
   }
 
-  private getRedisKeyName(userId: string, teamId: string, itemName: string) {
-    return `store.item.${userId}-${teamId}.${itemName}`;
+  private getRedisKeyName(userId: string, teamId: string, itemId?: number) {
+    return `store.item.${userId}-${teamId}${itemId ? `.${itemId}` : ''}`;
   }
 }

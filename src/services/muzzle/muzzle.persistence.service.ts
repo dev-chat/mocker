@@ -2,6 +2,7 @@ import { UpdateResult, getRepository } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
 import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_TIME_BETWEEN_MUZZLES, MuzzleRedisTypeEnum } from './constants';
 import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
+import { StorePersistenceService } from '../store/store.persistence.service';
 
 export class MuzzlePersistenceService {
   public static getInstance(): MuzzlePersistenceService {
@@ -13,9 +14,12 @@ export class MuzzlePersistenceService {
 
   private static instance: MuzzlePersistenceService;
   private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
+  private storePersistenceService = StorePersistenceService.getInstance();
 
   public addMuzzle(requestorId: string, muzzledId: string, teamId: string, time: number): Promise<Muzzle> {
     return new Promise(async (resolve, reject) => {
+      const activeItems = await this.storePersistenceService.getActiveItems(requestorId, teamId);
+      console.log(activeItems);
       const muzzle = new Muzzle();
       muzzle.requestorId = requestorId;
       muzzle.muzzledId = muzzledId;
@@ -41,6 +45,7 @@ export class MuzzlePersistenceService {
             expireTime,
           );
           this.setRequestorCount(requestorId, teamId);
+          this.storePersistenceService.setItemKill(muzzleFromDb.id, activeItems);
           resolve();
         })
         .catch(e => reject(e));
