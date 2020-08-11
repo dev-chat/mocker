@@ -29,11 +29,11 @@ export class StorePersistenceService {
     return getRepository(Item).findOne({ id: itemId });
   }
 
-  // Returns active OFFENSIVE items. Right now the filter for the defensive items isnt working right.
-  async getActiveItems(userId: string, teamId: string): string[] {
+  // Returns active OFFENSIVE items.
+  async getActiveItems(userId: string, teamId: string): Promise<string[]> {
     const defensiveItems = await getRepository(Item).find({ isProtector: true });
     return this.redisService.getPattern(this.getRedisKeyName(userId, teamId)).then(result => {
-      const items: (string | undefined)[] = result.map((item: string): string | undefined => {
+      const items: string[] = result.map((item: string): string => {
         const itemArr = item.split('.');
         let isDefensive = false;
         for (const item of defensiveItems) {
@@ -42,10 +42,9 @@ export class StorePersistenceService {
           }
         }
         // Hardcoded because we can rely on this being the itemName per getRedisKeyName
-        return isDefensive ? itemArr[3] : undefined;
+        return !isDefensive ? itemArr[3] : '';
       });
-      console.log(items);
-      const filtered: string[] = items.filter(item => item !== undefined);
+      const filtered: string[] = items.filter(item => item !== '');
       return filtered;
     });
   }
