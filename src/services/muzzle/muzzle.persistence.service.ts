@@ -19,7 +19,6 @@ export class MuzzlePersistenceService {
   public addMuzzle(requestorId: string, muzzledId: string, teamId: string, time: number): Promise<Muzzle> {
     return new Promise(async (resolve, reject) => {
       const activeItems = await this.storePersistenceService.getActiveItems(requestorId, teamId);
-      console.log(activeItems);
       const muzzle = new Muzzle();
       muzzle.requestorId = requestorId;
       muzzle.muzzledId = muzzledId;
