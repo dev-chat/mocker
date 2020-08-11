@@ -70,7 +70,6 @@ export class StorePersistenceService {
     return time.reduce((accum, value) => accum + value);
   }
 
-  // Probably doesnt need to be a pattern.
   async isProtected(userId: string, teamId: string): Promise<string | false> {
     const protectorItems = await getRepository(Item).find({ isProtector: true });
 

@@ -59,12 +59,15 @@ export class MuzzleService extends SuppressorService {
           channel,
           `:innocent: <@${requestorId}> attempted to muzzle <@${userId}> but he was protected by a \`Guardian Angel\`. <@${requestorId}> is now muzzled. :innocent:`,
         );
-        const timeToMuzzle =
-          getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(requestorId, teamId));
+
         const userToCredit = await this.storePersistenceService
           .getUserOfUsedItem(protectedUser)
           .then(user => user!.split('-')[0]);
-        await this.muzzlePersistenceService.addMuzzle(userToCredit, requestorId, teamId, timeToMuzzle, true);
+        const timeToMuzzle =
+          getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(userToCredit, teamId));
+        const protectedUserArr = protectedUser.split('.');
+        const defensiveItemId = protectedUserArr[protectedUserArr.length - 1];
+        await this.muzzlePersistenceService.addMuzzle(userToCredit, requestorId, teamId, timeToMuzzle, defensiveItemId);
         resolve(':innocent: The Light shines upon your enemy. :innocent:');
       } else if (await this.muzzlePersistenceService.isMaxMuzzlesReached(requestorId, teamId)) {
         console.error(

@@ -21,9 +21,8 @@ export class MuzzlePersistenceService {
     muzzledId: string,
     teamId: string,
     time: number,
-    isDefensiveKill = false,
+    defensiveItemId?: string,
   ): Promise<Muzzle> {
-    console.log(isDefensiveKill);
     return new Promise(async (resolve, reject) => {
       const activeItems = await this.storePersistenceService.getActiveItems(requestorId, teamId);
       const muzzle = new Muzzle();
@@ -52,6 +51,9 @@ export class MuzzlePersistenceService {
           );
           this.setRequestorCount(requestorId, teamId);
           this.storePersistenceService.setItemKill(muzzleFromDb.id, activeItems);
+          if (defensiveItemId) {
+            this.storePersistenceService.setItemKill(muzzleFromDb.id, [defensiveItemId]);
+          }
           resolve();
         })
         .catch(e => reject(e));
