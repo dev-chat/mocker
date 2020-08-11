@@ -17,7 +17,7 @@ export class MuzzleService extends SuppressorService {
     const requestorName = await this.slackService.getUserNameById(requestorId, teamId);
     const counter = this.counterPersistenceService.getCounterByRequestorId(userId);
     const protectedUser = await this.storePersistenceService.isProtected(userId, teamId);
-
+    console.log(protectedUser);
     return new Promise(async (resolve, reject) => {
       if (!userId) {
         reject(`Invalid username passed in. You can only muzzle existing slack users.`);
@@ -57,14 +57,14 @@ export class MuzzleService extends SuppressorService {
         await this.muzzlePersistenceService.setRequestorCount(requestorId, teamId);
         this.webService.sendMessage(
           channel,
-          `:innocent: <@${requestorId}> attempted to muzzle <@${userId}> but he was protected by a \`Guardian Angel\`. :innocent:`,
+          `:innocent: <@${requestorId}> attempted to muzzle <@${userId}> but he was protected by a \`Guardian Angel\`. <@${requestorId}> is now muzzled. :innocent:`,
         );
         const timeToMuzzle =
           getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(requestorId, teamId));
         const userToCredit = await this.storePersistenceService
           .getUserOfUsedItem(protectedUser)
           .then(user => user!.split('-')[0]);
-        await this.muzzlePersistenceService.addMuzzle(userToCredit, requestorId, teamId, timeToMuzzle);
+        await this.muzzlePersistenceService.addMuzzle(userToCredit, requestorId, teamId, timeToMuzzle, true);
         resolve(':innocent: The Light shines upon your enemy. :innocent:');
       } else if (await this.muzzlePersistenceService.isMaxMuzzlesReached(requestorId, teamId)) {
         console.error(

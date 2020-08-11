@@ -34,4 +34,7 @@ export class Item {
 
   @Column()
   public min_modified_ms!: number;
+
+  @Column()
+  public isProtector!: boolean;
 }

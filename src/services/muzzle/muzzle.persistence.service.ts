@@ -16,7 +16,14 @@ export class MuzzlePersistenceService {
   private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
   private storePersistenceService = StorePersistenceService.getInstance();
 
-  public addMuzzle(requestorId: string, muzzledId: string, teamId: string, time: number): Promise<Muzzle> {
+  public addMuzzle(
+    requestorId: string,
+    muzzledId: string,
+    teamId: string,
+    time: number,
+    isDefensiveKill = false,
+  ): Promise<Muzzle> {
+    console.log(isDefensiveKill);
     return new Promise(async (resolve, reject) => {
       const activeItems = await this.storePersistenceService.getActiveItems(requestorId, teamId);
       const muzzle = new Muzzle();
