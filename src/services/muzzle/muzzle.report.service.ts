@@ -137,6 +137,7 @@ ${this.getReportTitle(reportType)}
     };
     return reportFormatted;
   }
+
   /** Wrapper to generate a generic muzzle report in */
   public async retrieveMuzzleReport(range: ReportRange, teamId: string): Promise<MuzzleReport> {
     const mostMuzzledByInstances = await this.getMostMuzzledByInstances(range, teamId);
@@ -428,4 +429,20 @@ ${this.getReportTitle(reportType)}
 
     return getRepository(Muzzle).query(query);
   }
+
+  // TO DO: Add this into the report. For now you are just preserving the query here. It will need some fine tuning.
+  // private getAllOffensiveKills(range: ReportRange, teamId: string) {
+  //   console.log(range);
+  //   console.log(teamId)
+  //   const query = `select * FROM muzzle LEFT JOIN (SELECT * from item_kill WHERE item_kill.itemId NOT IN (select id from item where isDefensive=1)) as a ON a.muzzleId=muzzle.id;`
+  //   return getManager().query(query);
+  // }
+
+  // TO DO: Add this into the report. For now you are just preserving the query here. It will need some fine tuning.
+  // private getAllDefensiveKills(range: ReportRange, teamId: string) {
+  //   console.log(range);
+  //   console.log(teamId)
+  //   const query = `select * FROM muzzle INNER JOIN (SELECT * from item_kill WHERE item_kill.itemId IN (select id from item where isDefensive=1)) as a ON a.muzzleId=muzzle.id;`
+  //   return getManager().query(query);
+  // }
 }

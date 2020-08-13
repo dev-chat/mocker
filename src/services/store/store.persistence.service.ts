@@ -31,7 +31,7 @@ export class StorePersistenceService {
 
   // Returns active OFFENSIVE items.
   async getActiveItems(userId: string, teamId: string): Promise<string[]> {
-    const defensiveItems = await getRepository(Item).find({ isProtector: true });
+    const defensiveItems = await getRepository(Item).find({ isDefensive: true });
     return this.redisService.getPattern(this.getRedisKeyName(userId, teamId)).then(result => {
       const items: string[] = result.map((item: string): string => {
         const itemArr = item.split('.');
@@ -80,7 +80,7 @@ export class StorePersistenceService {
   }
 
   async isProtected(userId: string, teamId: string): Promise<string | false> {
-    const protectorItems = await getRepository(Item).find({ isProtector: true });
+    const protectorItems = await getRepository(Item).find({ isDefensive: true });
 
     const activeProtection: string[][] = await Promise.all(
       protectorItems.map(async item => {

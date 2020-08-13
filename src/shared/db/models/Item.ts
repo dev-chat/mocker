@@ -36,5 +36,5 @@ export class Item {
   public min_modified_ms!: number;
 
   @Column()
-  public isProtector!: boolean;
+  public isDefensive!: boolean;
 }
