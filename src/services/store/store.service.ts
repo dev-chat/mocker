@@ -1,13 +1,12 @@
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
 import { StorePersistenceService } from './store.persistence.service';
-import { Item } from '../../shared/db/models/Item';
 
 export class StoreService {
   storePersistenceService = StorePersistenceService.getInstance();
   reactionPersistenceService = ReactionPersistenceService.getInstance();
 
   async listItems(slackId: string, teamId: string): Promise<string> {
-    const items: Item[] = await this.storePersistenceService.getItems();
+    const items = await this.storePersistenceService.getItems(teamId);
     const rep = await this.reactionPersistenceService.getUserRep(slackId, teamId);
     let view = `Welcome to the Muzzle Store! \n \n Purchase items by typing \`/buy item_id\` where item_id is the number shown below! \n \n`;
     items.map(item => {
@@ -18,7 +17,7 @@ export class StoreService {
     return view;
   }
 
-  public formatItems(items: Item[]): any {
+  public formatItems(items: any[]): any {
     return items.map(item => {
       return {
         name: item.name,
@@ -28,15 +27,15 @@ export class StoreService {
     });
   }
 
-  async isValidItem(itemId: string): Promise<boolean> {
+  async isValidItem(itemId: string, teamId: string): Promise<boolean> {
     const id = +itemId;
-    const isItem = await this.storePersistenceService.getItem(id);
+    const isItem = await this.storePersistenceService.getItem(id, teamId);
     return !!isItem;
   }
 
   async canAfford(itemId: string, userId: string, teamId: string): Promise<boolean> {
     const id = +itemId;
-    const price: number | undefined = (await this.storePersistenceService.getItem(id))?.price;
+    const price: number | undefined = (await this.storePersistenceService.getItem(id, teamId))?.price;
     const userRep: number | undefined = await this.reactionPersistenceService.getUserRep(userId, teamId);
     return userRep && price ? price <= userRep : false;
   }

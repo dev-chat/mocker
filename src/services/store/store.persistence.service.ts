@@ -8,6 +8,7 @@ import { getMsForSpecifiedRange } from '../muzzle/muzzle-utilities';
 import { Purchase } from '../../shared/db/models/Purchase';
 import { UsedItem } from '../../shared/db/models/UsedItem';
 import { ItemKill } from '../../shared/db/models/ItemKill';
+import { Price } from '../../shared/db/models/Price';
 
 export class StorePersistenceService {
   public static getInstance(): StorePersistenceService {
@@ -21,12 +22,23 @@ export class StorePersistenceService {
   private reactionPersistenceService: ReactionPersistenceService = ReactionPersistenceService.getInstance();
   private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
 
-  getItems(): Promise<Item[]> {
-    return getRepository(Item).find();
+  async getItems(teamId: string): Promise<any[]> {
+    const items = await getRepository(Item).find();
+    const itemsWithPrices = await Promise.all(
+      items.map(async (item: Item) => {
+        return await getRepository(Price).findOne({ itemId: item.id, teamId: teamId });
+      }),
+    );
+    return itemsWithPrices;
   }
 
-  getItem(itemId: number): Promise<Item | undefined> {
-    return getRepository(Item).findOne({ id: itemId });
+  async getItem(itemId: number, teamId: string): Promise<any | undefined> {
+    const item = await getRepository(Item).findOne({ id: itemId });
+    const price = await getRepository(Price)
+      .findOne({ itemId, teamId })
+      .then(item => item!.price);
+    const itemWithPrice = { price, ...item };
+    return itemWithPrice;
   }
 
   // Returns active OFFENSIVE items.
@@ -101,14 +113,15 @@ export class StorePersistenceService {
   async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
     const itemById = await getRepository(Item).findOne(itemId);
     const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
+    const priceByTeam = await getRepository(Price).findOne({ itemId, teamId });
     if (itemById && userById) {
       const item = new InventoryItem();
       item.item = itemById;
       item.owner = userById;
-      await this.reactionPersistenceService.spendRep(userId, teamId, itemById.price);
+      await this.reactionPersistenceService.spendRep(userId, teamId, priceByTeam!.price);
       const purchase = new Purchase();
       purchase.item = itemById.id;
-      purchase.price = itemById.price;
+      purchase.price = priceByTeam!.price;
       purchase.user = userById.id;
       await getRepository(Purchase)
         .insert(purchase)

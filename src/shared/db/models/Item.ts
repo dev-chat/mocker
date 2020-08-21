@@ -11,8 +11,8 @@ export class Item {
   @Column()
   public description!: string;
 
-  @Column()
-  public price!: number;
+  @Column('float')
+  public pricePct!: number;
 
   @Column()
   public isStackable!: boolean;

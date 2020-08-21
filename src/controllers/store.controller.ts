@@ -16,7 +16,7 @@ storeController.post('/store', async (req, res) => {
 
 storeController.post('/store/buy', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  const isValidItem = await storeService.isValidItem(request.text);
+  const isValidItem = await storeService.isValidItem(request.text, request.team_id);
   const canAffordItem = await storeService.canAfford(request.text, request.user_id, request.team_id);
 
   if (!request.text) {
@@ -44,7 +44,7 @@ storeController.post('/store/use', async (req, res) => {
     itemId = textArgs[0];
   }
   const isOwnedByUser = await storeService.isOwnedByUser(itemId, request.user_id, request.team_id);
-  const isValidItem = await storeService.isValidItem(itemId);
+  const isValidItem = await storeService.isValidItem(itemId, request.team_id);
 
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
