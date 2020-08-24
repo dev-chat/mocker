@@ -39,7 +39,6 @@ export class StorePersistenceService {
     const price = await getManager().query(
       `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
     );
-    console.log(price[0].price);
     const itemWithPrice = { ...item, price: price[0].price };
     return itemWithPrice;
   }
