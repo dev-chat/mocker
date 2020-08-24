@@ -157,6 +157,10 @@ export class StorePersistenceService {
 
   // TODO: Fix this query.
   async useItem(itemId: number, userId: string, teamId: string, userIdForItem?: string): Promise<string> {
+    // really janky way to enforce that guardian angel can only be used on others.
+    if ((!userIdForItem || userId === userIdForItem) && itemId === 2) {
+      return `Unable to use your item. You must specify who this item is used on and that user cannot be you.`;
+    }
     const usingUser: SlackUser | undefined = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
     const receivingUser: SlackUser | undefined = await getRepository(SlackUser).findOne({
       slackId: userIdForItem,
