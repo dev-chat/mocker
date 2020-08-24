@@ -40,6 +40,8 @@ export class WebService {
         console.log('Message already deleted, no need to retry');
       } else {
         console.error(e);
+        console.error('delete request was : ');
+        console.error(deleteRequest);
         console.error('Unable to delete message. Retrying in 5 seconds...');
         setTimeout(() => this.deleteMessage(channel, ts), 5000);
       }
