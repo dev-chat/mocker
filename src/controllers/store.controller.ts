@@ -54,6 +54,11 @@ storeController.post('/store/use', async (req, res) => {
     res.send('Invalid `item_id`. Please specify an item you own.');
   } else if (!isOwnedByUser) {
     res.send('You do not own that item. Please buy it on the store by using `/buy item_id`.');
+  } else if (itemId === '1' && userIdForItem) {
+    // JANKY way to prevent using this item on someone by accident. It creates unintended circumstances.
+    res.send(
+      'Sorry, this item cannot be used on other people. Try `/use item_id`. You do not need to specify a user you wish to use this on.',
+    );
   } else {
     const receipt: string = await storeService.useItem(itemId, request.user_id, request.team_id, userIdForItem);
     res.status(200).send(receipt);
