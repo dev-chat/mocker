@@ -8,7 +8,6 @@ import { getMsForSpecifiedRange } from '../muzzle/muzzle-utilities';
 import { Purchase } from '../../shared/db/models/Purchase';
 import { UsedItem } from '../../shared/db/models/UsedItem';
 import { ItemKill } from '../../shared/db/models/ItemKill';
-import { Price } from '../../shared/db/models/Price';
 
 export class StorePersistenceService {
   public static getInstance(): StorePersistenceService {
@@ -26,7 +25,10 @@ export class StorePersistenceService {
     const items = await getRepository(Item).find();
     const itemsWithPrices = await Promise.all(
       items.map(async (item: Item) => {
-        return await getRepository(Price).findOne({ itemId: item.id, teamId: teamId });
+        const price = await getManager().query(
+          `SELECT * FROM price WHERE itemId=${item.id} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${item.id} AND teamId='${teamId}');`,
+        );
+        return { ...item, price: price[0]?.price };
       }),
     );
     return itemsWithPrices;
@@ -34,10 +36,11 @@ export class StorePersistenceService {
 
   async getItem(itemId: number, teamId: string): Promise<any | undefined> {
     const item = await getRepository(Item).findOne({ id: itemId });
-    const price = await getRepository(Price)
-      .findOne({ itemId, teamId })
-      .then(item => item!.price);
-    const itemWithPrice = { price, ...item };
+    const price = await getManager().query(
+      `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
+    );
+    console.log(price[0].price);
+    const itemWithPrice = { ...item, price: price[0].price };
     return itemWithPrice;
   }
 
@@ -113,15 +116,17 @@ export class StorePersistenceService {
   async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
     const itemById = await getRepository(Item).findOne(itemId);
     const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
-    const priceByTeam = await getRepository(Price).findOne({ itemId, teamId });
+    const priceByTeam = await getManager().query(
+      `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
+    );
     if (itemById && userById) {
       const item = new InventoryItem();
       item.item = itemById;
       item.owner = userById;
-      await this.reactionPersistenceService.spendRep(userId, teamId, priceByTeam!.price);
+      await this.reactionPersistenceService.spendRep(userId, teamId, priceByTeam[0].price);
       const purchase = new Purchase();
       purchase.item = itemById.id;
-      purchase.price = priceByTeam!.price;
+      purchase.price = priceByTeam[0].price;
       purchase.user = userById.id;
       await getRepository(Purchase)
         .insert(purchase)
