@@ -1,4 +1,4 @@
 USE mockerdbdev;
 
 INSERT INTO item(name, description, pricePct, isStackable, isRange, max_active_ms, min_active_ms, isTimeModifier, max_modified_ms, min_modified_ms, isDefensive) VALUES("50 Cal Rounds", "Adds an additional two minutes to your randomly generated muzzle time for one hour.", 0.1, true, false, 3600000, 3600000, true, 120000, 120000, false);
-INSERT INTO item(name, description, pricePct, isStackable, isRange, max_active_ms, min_active_ms, isTimeModifier, max_modified_ms, min_modified_ms, isDefensive) VALUES("Guardian Angel", "Prevents you or the user you specify from being muzzled for a random time between 30 minutes and 1.5 hours.", 0.20, false, true, 5400000, 1800000, false, 0, 0, true);
+INSERT INTO item(name, description, pricePct, isStackable, isRange, max_active_ms, min_active_ms, isTimeModifier, max_modified_ms, min_modified_ms, isDefensive) VALUES("Guardian Angel", "Prevents the user you specify from being muzzled for a random time between 10 minutes and 30 minutes.", 0.20, false, true, 1800000, 600000, false, 0, 0, true);
