@@ -43,7 +43,7 @@ export class WebService {
         console.error('delete request was : ');
         console.error(deleteRequest);
         console.error('Unable to delete message. Retrying in 5 seconds...');
-        setTimeout(() => this.deleteMessage(channel, ts), 5000);
+        setTimeout(() => this.deleteMessage(channel, ts, times + 1), 5000);
       }
     });
   }
