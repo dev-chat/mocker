@@ -7,6 +7,8 @@ import {
   ChatPostEphemeralArguments,
 } from '@slack/web-api';
 
+const MAX_RETRIES = 5;
+
 export class WebService {
   public static getInstance(): WebService {
     if (!WebService.instance) {
@@ -20,7 +22,10 @@ export class WebService {
   /**
    * Handles deletion of messages.
    */
-  public deleteMessage(channel: string, ts: string): void {
+  public deleteMessage(channel: string, ts: string, times = 0): void {
+    if (times > MAX_RETRIES) {
+      return;
+    }
     const muzzleToken: string | undefined = process.env.MUZZLE_BOT_TOKEN;
     const deleteRequest: ChatDeleteArguments = {
       token: muzzleToken,
