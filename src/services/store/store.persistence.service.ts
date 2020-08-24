@@ -162,15 +162,19 @@ export class StorePersistenceService {
       return `Unable to use your item. You must specify who this item is used on and that user cannot be you.`;
     }
     const usingUser: SlackUser | undefined = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
+    console.log(usingUser);
     const receivingUser: SlackUser | undefined = await getRepository(SlackUser).findOne({
       slackId: userIdForItem,
       teamId,
     });
+    console.log(receivingUser);
     const itemById: Item | undefined = await getRepository(Item).findOne(itemId);
+    console.log(itemById);
     const inventoryItem = (await getRepository(InventoryItem).findOne({
       owner: usingUser,
       item: itemById,
     })) as InventoryItem;
+    console.log(inventoryItem);
     const keyName = this.getRedisKeyName(receivingUser ? receivingUser.slackId : userId, teamId, itemId);
     const existingKey = await this.redisService.getPattern(keyName);
     if (existingKey.length) {
