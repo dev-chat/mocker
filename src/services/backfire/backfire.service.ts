@@ -12,10 +12,11 @@ export class BackfireService extends SuppressorService {
     text: string,
     timestamp: string,
     teamId: string,
+    isPrivate: boolean,
   ): Promise<void> {
     const backfireId: string | null = await this.backfirePersistenceService.getBackfireByUserId(userId, teamId);
     if (backfireId) {
-      this.webService.deleteMessage(channel, timestamp);
+      this.webService.deleteMessage(channel, timestamp, isPrivate);
       const suppressions = await this.backfirePersistenceService.getSuppressions(userId, teamId);
       if (suppressions && +suppressions < MAX_SUPPRESSIONS) {
         this.backfirePersistenceService.incrementMessageSuppressions(+backfireId);

@@ -99,11 +99,12 @@ export class MuzzleService extends SuppressorService {
     teamId: string,
     text: string,
     timestamp: string,
+    isPrivate: boolean,
   ): Promise<void> {
     console.time('send-muzzled-message');
     const muzzle: string | null = await this.muzzlePersistenceService.getMuzzle(userId, teamId);
     if (muzzle) {
-      this.webService.deleteMessage(channel, timestamp);
+      this.webService.deleteMessage(channel, timestamp, isPrivate);
       const suppressions = await this.muzzlePersistenceService.getSuppressions(userId, teamId);
       if (!suppressions || (suppressions && +suppressions < MAX_SUPPRESSIONS)) {
         await this.muzzlePersistenceService.incrementStatefulSuppressions(userId, teamId);
