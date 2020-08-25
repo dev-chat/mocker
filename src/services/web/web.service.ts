@@ -22,11 +22,13 @@ export class WebService {
   /**
    * Handles deletion of messages.
    */
-  public deleteMessage(channel: string, ts: string, times = 0): void {
+  public deleteMessage(channel: string, ts: string, isPrivate = false, times = 0): void {
     if (times > MAX_RETRIES) {
       return;
     }
-    const muzzleToken: string | undefined = process.env.MUZZLE_BOT_TOKEN;
+    const muzzleToken: string | undefined = isPrivate
+      ? process.env.MUZZLE_BOT_USER_TOKEN
+      : process.env.MUZZLE_BOT_TOKEN;
     const deleteRequest: ChatDeleteArguments = {
       token: muzzleToken,
       channel,
@@ -43,7 +45,7 @@ export class WebService {
         console.error('delete request was : ');
         console.error(deleteRequest);
         console.error('Unable to delete message. Retrying in 5 seconds...');
-        setTimeout(() => this.deleteMessage(channel, ts, times + 1), 5000);
+        setTimeout(() => this.deleteMessage(channel, ts, isPrivate, times + 1), 5000);
       }
     });
   }
