@@ -47,16 +47,10 @@ export class CounterService extends SuppressorService {
     return returnText;
   }
 
-  public sendCounterMuzzledMessage(
-    channel: string,
-    userId: string,
-    text: string,
-    timestamp: string,
-    isPrivate: boolean,
-  ): void {
+  public sendCounterMuzzledMessage(channel: string, userId: string, text: string, timestamp: string): void {
     const counterMuzzle: CounterMuzzle | undefined = this.counterPersistenceService.getCounterMuzzle(userId);
     if (counterMuzzle) {
-      this.webService.deleteMessage(channel, timestamp, isPrivate);
+      this.webService.deleteMessage(channel, timestamp);
       if (counterMuzzle!.suppressionCount < MAX_SUPPRESSIONS) {
         this.counterPersistenceService.setCounterMuzzle(userId, {
           suppressionCount: ++counterMuzzle!.suppressionCount,

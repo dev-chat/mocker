@@ -38,7 +38,6 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
       request.team_id,
       request.event.text,
       request.event.ts,
-      request.event.channel_type === 'group',
     );
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
     const muzzleId: string | null = await muzzlePersistenceService.getMuzzle(request.event.user, request.team_id);
@@ -47,7 +46,7 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
         `${userName} attempted to tag someone or change the channel topic. Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
       );
       muzzlePersistenceService.addMuzzleTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
-      webService.deleteMessage(request.event.channel, request.event.ts, request.event.channel_type === 'group');
+      webService.deleteMessage(request.event.channel, request.event.ts);
       muzzlePersistenceService.trackDeletedMessage(+muzzleId, request.event.text);
       webService.sendMessage(
         request.event.channel,
@@ -72,13 +71,12 @@ async function handleBackfire(request: EventRequest): Promise<void> {
       request.event.text,
       request.event.ts,
       request.team_id,
-      request.event.channel_type === 'group',
     );
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
     const backfireId = backfireService.getBackfire(request.event.user, request.team_id);
     console.log(`${userName} attempted to tag someone. Backfire increased by ${ABUSE_PENALTY_TIME}!`);
     backfireService.addBackfireTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
-    webService.deleteMessage(request.event.channel, request.event.ts, request.event.channel_type === 'group');
+    webService.deleteMessage(request.event.channel, request.event.ts);
     backfireService.trackDeletedMessage(+backfireId, request.event.text);
     webService.sendMessage(
       request.event.channel,
@@ -99,12 +97,11 @@ async function handleCounterMuzzle(request: EventRequest): Promise<void> {
       request.event.user,
       request.event.text,
       request.event.ts,
-      request.event.channel_type === 'group',
     );
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
     console.log(`${userName} attempted to tag someone. Counter Muzzle increased by ${ABUSE_PENALTY_TIME}!`);
     counterPersistenceService.addCounterMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
-    webService.deleteMessage(request.event.channel, request.event.ts, request.event.channel_type === 'group');
+    webService.deleteMessage(request.event.channel, request.event.ts);
     webService.sendMessage(
       request.event.channel,
       `:rotating_light: <@${request.event.user}> attempted to @ while countered! Muzzle increased by ${getTimeString(
@@ -116,7 +113,7 @@ async function handleCounterMuzzle(request: EventRequest): Promise<void> {
 
 function handleBotMessage(request: EventRequest): void {
   console.log(`A user is muzzled and tried to send a bot message! Suppressing...`);
-  webService.deleteMessage(request.event.channel, request.event.ts, request.event.channel_type === 'group');
+  webService.deleteMessage(request.event.channel, request.event.ts);
 }
 
 function handleReaction(request: EventRequest): void {
