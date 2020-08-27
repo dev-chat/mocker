@@ -8,7 +8,7 @@ export class StoreService {
   async listItems(slackId: string, teamId: string): Promise<string> {
     const items = await this.storePersistenceService.getItems(teamId);
     const rep = await this.reactionPersistenceService.getUserRep(slackId, teamId);
-    let view = `Welcome to the Muzzle Store! \n \n Purchase items by typing \`/buy item_id\` where item_id is the number shown below! \n \n`;
+    let view = `Welcome to the Muzzle Store! \n \n Purchase items by typing \`/buy item_id\` where item_id is the number shown below! \n \n Once purchased, you can use items by typing \`/use item_id\` or you can view them in your inventory by typing \`/inventory\``;
     items.map(item => {
       view += `*${item.id}. ${item.name}* \n *Cost:* ${item.price} rep \n *Description:* ${item.description} \n \n`;
     });

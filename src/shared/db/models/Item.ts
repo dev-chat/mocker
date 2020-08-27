@@ -37,4 +37,13 @@ export class Item {
 
   @Column()
   public isDefensive!: boolean;
+
+  @Column()
+  public isEffect!: boolean;
+
+  @Column()
+  public isDirect!: boolean;
+
+  @Column()
+  public requiresUser!: boolean;
 }
