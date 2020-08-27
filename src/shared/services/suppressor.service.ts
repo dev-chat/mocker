@@ -48,7 +48,6 @@ export class SuppressorService {
       ((request.event.username && request.event.username.toLowerCase() !== 'muzzle') ||
         (request.event.bot_profile && request.event.bot_profile.name.toLowerCase() !== 'muzzle'))
     ) {
-      console.log(request.event.bot_profile && request.event.bot_profile.name.toLowerCase() !== 'muzzle');
       let userIdByEventText;
       let userIdByAttachmentText;
       let userIdByAttachmentPretext;

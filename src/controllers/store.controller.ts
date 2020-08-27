@@ -45,6 +45,8 @@ storeController.post('/store/use', async (req, res) => {
   }
   const isOwnedByUser = await storeService.isOwnedByUser(itemId, request.user_id, request.team_id);
   const isValidItem = await storeService.isValidItem(itemId, request.team_id);
+  const isUserRequired = await storeService.isUserRequired(itemId);
+  //const isItemDirect = await storeService.isItemDirect(itemId);
 
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
@@ -54,11 +56,12 @@ storeController.post('/store/use', async (req, res) => {
     res.send('Invalid `item_id`. Please specify an item you own.');
   } else if (!isOwnedByUser) {
     res.send('You do not own that item. Please buy it on the store by using `/buy item_id`.');
-  } else if (itemId === '1' && userIdForItem) {
-    // JANKY way to prevent using this item on someone by accident. It creates unintended circumstances.
+  } else if (!isUserRequired && userIdForItem) {
     res.send(
       'Sorry, this item cannot be used on other people. Try `/use item_id`. You do not need to specify a user you wish to use this on.',
     );
+  } else if (isUserRequired && (!userIdForItem || userIdForItem === request.user_id)) {
+    res.send('Sorry, this item can only be used on other people. Try `/use item_id @user` in order to use this item.');
   } else {
     const receipt: string = await storeService.useItem(itemId, request.user_id, request.team_id, userIdForItem);
     res.status(200).send(receipt);
