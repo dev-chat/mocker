@@ -28,7 +28,7 @@ export class ItemService {
           await this.suppressorService.removeSuppression(userId, teamId);
           await this.webService.sendMessage(
             channel,
-            `:zombie: <@${usedOnUser}> has been resurrected by <@${userId}>. :zombie:`,
+            `:zombie: <@${usedOnUser}> has been resurrected by <@${userId}>! :zombie:`,
           );
           return await this.storeService.useItem('3', userId, teamId, usedOnUser);
         } else {
