@@ -48,7 +48,6 @@ storeController.post('/store/use', async (req, res) => {
   const isOwnedByUser = await storeService.isOwnedByUser(itemId, request.user_id, request.team_id);
   const isValidItem = await storeService.isValidItem(itemId, request.team_id);
   const isUserRequired = await storeService.isUserRequired(itemId);
-  //const isItemDirect = await storeService.isItemDirect(itemId);
 
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
@@ -65,10 +64,13 @@ storeController.post('/store/use', async (req, res) => {
   } else if (isUserRequired && (!userIdForItem || userIdForItem === request.user_id)) {
     res.send('Sorry, this item can only be used on other people. Try `/use item_id @user` in order to use this item.');
   } else {
-    if (itemId === '3') {
-      await itemService.useItem(+itemId, userIdForItem as string, request.team_id, request.channel_name);
-    }
-    const receipt: string = await storeService.useItem(itemId, request.user_id, request.team_id, userIdForItem);
+    const receipt = await itemService.useItem(
+      itemId,
+      request.user_id,
+      request.team_id,
+      userIdForItem as string,
+      request.channel_name,
+    );
     res.status(200).send(receipt);
   }
 });
