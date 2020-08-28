@@ -42,8 +42,5 @@ export class Item {
   public isEffect!: boolean;
 
   @Column()
-  public isDirect!: boolean;
-
-  @Column()
   public requiresUser!: boolean;
 }

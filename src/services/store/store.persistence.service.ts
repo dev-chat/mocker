@@ -158,20 +158,16 @@ export class StorePersistenceService {
   // TODO: Fix this query.
   async useItem(itemId: number, userId: string, teamId: string, userIdForItem?: string): Promise<string> {
     const usingUser: SlackUser | undefined = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
-    console.log(usingUser);
     const receivingUser: SlackUser | undefined = await getRepository(SlackUser).findOne({
       slackId: userIdForItem,
       teamId,
     });
-    console.log(receivingUser);
     const itemById: Item | undefined = await getRepository(Item).findOne(itemId);
-    console.log(itemById);
     const inventoryItem = (await getRepository(InventoryItem).findOne({
       owner: usingUser,
       item: itemById,
     })) as InventoryItem;
-    console.log(inventoryItem);
-    if (!itemById?.isDirect) {
+    if (itemById?.isEffect) {
       const keyName = this.getRedisKeyName(receivingUser ? receivingUser.slackId : userId, teamId, itemId);
       const existingKey = await this.redisService.getPattern(keyName);
       if (existingKey.length) {
@@ -218,12 +214,6 @@ export class StorePersistenceService {
     return getRepository(Item)
       .findOne({ id: itemId })
       .then(item => item?.requiresUser);
-  }
-
-  isItemDirect(itemId: number) {
-    return getRepository(Item)
-      .findOne({ id: itemId })
-      .then(item => item?.isDirect);
   }
 
   async getInventory(userId: string, teamId: string): Promise<Item[]> {

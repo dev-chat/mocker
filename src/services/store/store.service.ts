@@ -61,14 +61,6 @@ export class StoreService {
     return false;
   }
 
-  async isItemDirect(itemId: string | undefined) {
-    if (itemId) {
-      const id = +itemId;
-      return await this.storePersistenceService.isItemDirect(id);
-    }
-    return false;
-  }
-
   async useItem(itemId: string, userId: string, teamId: string, userIdForItem?: string): Promise<string> {
     const id = +itemId;
     return await this.storePersistenceService.useItem(id, userId, teamId, userIdForItem);
