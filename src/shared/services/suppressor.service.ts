@@ -39,6 +39,24 @@ export class SuppressorService {
     );
   }
 
+  public async removeSuppression(userId: string, teamId: string): Promise<void> {
+    const isMuzzled = await this.muzzlePersistenceService.isUserMuzzled(userId, teamId);
+    const isBackfired = await this.backfirePersistenceService.isBackfire(userId, teamId);
+    const isCountered = await this.counterPersistenceService.isCounterMuzzled(userId);
+
+    if (isCountered) {
+      // This should takea teamId but doesnt because we never finished converting counter.persistence to redis.
+      await this.counterPersistenceService.removeCounterMuzzle(userId);
+    }
+
+    if (isMuzzled) {
+      await this.muzzlePersistenceService.removeMuzzle(userId, teamId);
+    }
+
+    if (isBackfired) {
+      await this.backfirePersistenceService.removeBackfire(userId, teamId);
+    }
+  }
   /**
    * Determines whether or not a bot message should be removed.
    */

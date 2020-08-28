@@ -35,6 +35,10 @@ export class BackFirePersistenceService {
       });
   }
 
+  public async removeBackfire(userId: string, teamId: string): Promise<void> {
+    await this.redis.removeKey(this.getRedisKeyName(userId, teamId));
+  }
+
   public async isBackfire(userId: string, teamId: string): Promise<boolean> {
     const hasBackfire = await this.redis.getValue(this.getRedisKeyName(userId, teamId));
     return !!hasBackfire;

@@ -60,6 +60,10 @@ export class MuzzlePersistenceService {
     });
   }
 
+  public async removeMuzzle(userId: string, teamId: string): Promise<void> {
+    this.redis.removeKey(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled));
+  }
+
   public removeMuzzlePrivileges(requestorId: string, teamId: string): void {
     this.redis.setValueWithExpire(
       this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor),

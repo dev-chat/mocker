@@ -149,7 +149,7 @@ export class CounterPersistenceService {
     }
   }
 
-  private removeCounterMuzzle(userId: string): void {
+  public removeCounterMuzzle(userId: string): void {
     this.counterMuzzles.delete(userId);
   }
 
