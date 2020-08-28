@@ -21,16 +21,21 @@ const signatureVerification = (req: any, res: Response, next: NextFunction) => {
       .update(base)
       .digest('hex');
 
-  if (hashed !== slackSignature) {
-    console.error('Someone is hitting your service from outside of slack.');
-    console.error(req.ip);
-    console.error(req.ips);
-    console.error(req.headers);
-    console.error(req.body);
-    res.send('Naughty, naughty...');
-    return;
+  if (
+    hashed === slackSignature ||
+    req.body.token === process.env.CLAPPER_TOKEN ||
+    req.body.token === process.env.MOCKER_TOKEN ||
+    req.body.token === process.env.DEFINE_TOKEN
+  ) {
+    next();
   }
-  next();
+  console.error('Someone is hitting your service from outside of slack.');
+  console.error(req.ip);
+  console.error(req.ips);
+  console.error(req.headers);
+  console.error(req.body);
+  res.send('Naughty, naughty...');
+  return;
 };
 
 app.use(
