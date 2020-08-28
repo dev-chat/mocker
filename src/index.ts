@@ -1,6 +1,7 @@
 import 'reflect-metadata'; // Necessary for TypeORM entities.
 import bodyParser from 'body-parser';
-import express, { Application } from 'express';
+import crypto from 'crypto';
+import express, { Application, Response, NextFunction } from 'express';
 import { createConnection, getConnectionOptions } from 'typeorm';
 import { SlackService } from './services/slack/slack.service';
 import { controllers } from './controllers/index.controller';
@@ -8,8 +9,46 @@ import { controllers } from './controllers/index.controller';
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+const signatureVerification = (req: any, res: Response, next: NextFunction) => {
+  const body = req.rawBody;
+  const timestamp = req.headers['x-slack-request-timestamp'];
+  const slackSignature = req.headers['x-slack-signature'];
+  const base = 'v0:' + timestamp + ':' + body;
+  const hashed: string =
+    'v0=' +
+    crypto
+      .createHmac('sha256', process.env.MUZZLE_BOT_SIGNING_SECRET as string)
+      .update(base)
+      .digest('hex');
+
+  if (hashed !== slackSignature) {
+    console.error('Someone is hitting your service from outside of slack.');
+    console.error(req.ip);
+    console.error(req.ips);
+    console.error(req.headers);
+    console.error(req.body);
+    res.send('Naughty, naughty...');
+    return;
+  }
+  next();
+};
+
+app.use(
+  bodyParser.urlencoded({
+    extended: true,
+    verify: function(req: any, _res, buf) {
+      req.rawBody = buf;
+    },
+  }),
+);
+app.use(
+  bodyParser.json({
+    verify: function(req: any, _res, buf) {
+      req.rawBody = buf;
+    },
+  }),
+);
+app.use(signatureVerification);
 app.use(controllers);
 
 const slackService = SlackService.getInstance();
