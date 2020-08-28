@@ -2,11 +2,13 @@ import express, { Router } from 'express';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { StoreService } from '../services/store/store.service';
 import { SuppressorService } from '../shared/services/suppressor.service';
+import { ItemService } from '../services/item/item.service';
 
 export const storeController: Router = express.Router();
 
 const suppressorService: SuppressorService = new SuppressorService();
 const storeService: StoreService = new StoreService();
+const itemService: ItemService = new ItemService();
 
 storeController.post('/store', async (req, res) => {
   const request: SlashCommandRequest = req.body;
@@ -63,6 +65,9 @@ storeController.post('/store/use', async (req, res) => {
   } else if (isUserRequired && (!userIdForItem || userIdForItem === request.user_id)) {
     res.send('Sorry, this item can only be used on other people. Try `/use item_id @user` in order to use this item.');
   } else {
+    if (itemId === '3') {
+      await itemService.useItem(+itemId, userIdForItem as string, request.team_id, request.channel_name);
+    }
     const receipt: string = await storeService.useItem(itemId, request.user_id, request.team_id, userIdForItem);
     res.status(200).send(receipt);
   }
