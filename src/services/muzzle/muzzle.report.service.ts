@@ -320,12 +320,12 @@ ${this.getReportTitle(reportType)}
     const query =
       range.reportType === ReportType.AllTime
         ? `
-        SELECT a.muzzledId as muzzledId, a.backfireCount as backfires, b.muzzleCount as muzzles, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
+        SELECT a.muzzledId as muzzledId, a.backfireCount as backfires, b.muzzleCount as muzzles, (a.backfireCount / (a.backfireCount + b.muzzleCount)) * 100 as backfirePct
         FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire WHERE teamId='${teamId}' GROUP BY muzzledId) a,
         (SELECT requestorId, count(*) as muzzleCount FROM muzzle WHERE teamId='${teamId}' GROUP BY requestorId) b
         WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`
         : `
-        SELECT a.muzzledId as muzzledId, a.backfireCount as backfires, b.muzzleCount as muzzles, (a.backfireCount / b.muzzleCount) * 100 as backfirePct
+        SELECT a.muzzledId as muzzledId, a.backfireCount as backfires, b.muzzleCount as muzzles, (a.backfireCount / (a.backfireCount + b.muzzleCount)) * 100 as backfirePct
         FROM (SELECT muzzledId, count(*) as backfireCount FROM backfire WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY muzzledId) a,
         (SELECT requestorId, count(*) as muzzleCount FROM muzzle WHERE createdAt >= '${range.start}' AND createdAt < '${range.end}' AND teamId='${teamId}' GROUP BY requestorId) b
         WHERE a.muzzledId = b.requestorId ORDER BY backfirePct DESC;`;
