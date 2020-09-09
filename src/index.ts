@@ -93,6 +93,15 @@ const checkForEnvVariables = (): void => {
     )
   ) {
     throw new Error('Missing TYPEORM environment variables!');
+  } else if (
+    !(
+      process.env.MUZZLE_BOT_SIGNING_SECRET ||
+      process.env.CLAPPER_TOKEN ||
+      process.env.MOCKER_TOKEN ||
+      process.env.DEFINE_TOKEN
+    )
+  ) {
+    throw new Error('Missing MUZZLE_BOT_SIGNING_SECRET, CLAPPER_TOKEN, MOCKER_TOKEN or DEFINE_TOKEN!');
   }
 };
 
