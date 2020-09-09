@@ -22,9 +22,11 @@ muzzleController.post('/muzzle', async (req: Request, res: Response) => {
   const results = await muzzleService
     .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
     .catch(e => {
+      console.error(e);
       res.send(e);
     });
   if (results) {
+    console.log(results);
     res.send(results);
   }
 });
