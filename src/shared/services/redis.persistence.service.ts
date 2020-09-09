@@ -9,8 +9,12 @@ export class RedisPersistenceService {
   }
 
   private static instance: RedisPersistenceService;
-  private static redis: Redis = new ioredis().on('connect', () => console.log('Connected to Redis.'));
-  private static subscriber: Redis = new ioredis().on('connect', () => console.log('Created new subscriber'));
+  private static redis: Redis = process.env.PRODUCTION
+    ? new ioredis(6379, 'redis').on('connect', () => console.log('Connected to Redis.'))
+    : new ioredis().on('connect', () => console.log('Connected to Redis.'));
+  private static subscriber: Redis = process.env.PRODUCTION
+    ? new ioredis(6379, 'redis').on('connect', () => console.log('Created new subscriber'))
+    : new ioredis(6379, 'redis').on('connect', () => console.log('Created new subscriber'));
 
   getValue(key: string): Promise<string | null> {
     return RedisPersistenceService.redis.get(key);
