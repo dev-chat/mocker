@@ -28,14 +28,15 @@ const signatureVerification = (req: any, res: Response, next: NextFunction) => {
     req.body.token === process.env.DEFINE_TOKEN
   ) {
     next();
+  } else {
+    console.error('Someone is hitting your service from outside of slack.');
+    console.error(req.ip);
+    console.error(req.ips);
+    console.error(req.headers);
+    console.error(req.body);
+    res.send('Naughty, naughty...');
+    return;
   }
-  console.error('Someone is hitting your service from outside of slack.');
-  console.error(req.ip);
-  console.error(req.ips);
-  console.error(req.headers);
-  console.error(req.body);
-  res.send('Naughty, naughty...');
-  return;
 };
 
 app.use(
