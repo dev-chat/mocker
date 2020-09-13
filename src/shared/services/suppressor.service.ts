@@ -43,17 +43,20 @@ export class SuppressorService {
     const isMuzzled = await this.muzzlePersistenceService.isUserMuzzled(userId, teamId);
     const isBackfired = await this.backfirePersistenceService.isBackfire(userId, teamId);
     const isCountered = await this.counterPersistenceService.isCounterMuzzled(userId);
-
+    console.log('Removing suppression for ', userId, ' on team ', teamId);
     if (isCountered) {
+      console.log('Removing counter for ', userId);
       // This should takea teamId but doesnt because we never finished converting counter.persistence to redis.
       await this.counterPersistenceService.removeCounterMuzzle(userId);
     }
 
     if (isMuzzled) {
+      console.log('Removing muzzle for ', userId, teamId);
       await this.muzzlePersistenceService.removeMuzzle(userId, teamId);
     }
 
     if (isBackfired) {
+      console.log('Removing backfire for ', userId);
       await this.backfirePersistenceService.removeBackfire(userId, teamId);
     }
   }
