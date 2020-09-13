@@ -25,7 +25,7 @@ export class ItemService {
       interaction: async (userId: string, teamId: string, usedOnUser: string, channel: string): Promise<string> => {
         const isUserMuzzled = await this.suppressorService.isSuppressed(usedOnUser, teamId);
         if (isUserMuzzled) {
-          await this.suppressorService.removeSuppression(userId, teamId);
+          await this.suppressorService.removeSuppression(usedOnUser, teamId);
           await this.webService.sendMessage(
             channel,
             `:zombie: <@${usedOnUser}> has been resurrected by <@${userId}>! :zombie:`,
