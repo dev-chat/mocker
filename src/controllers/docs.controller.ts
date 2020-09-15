@@ -14,7 +14,7 @@ const webService = WebService.getInstance();
 const docsPersistenceService = DocsPersistenceService.getInstance();
 const reportService = new DocsReportService();
 
-docsController.post('/list/retrieve', async (req, res) => {
+docsController.post('/docs/retrieve', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
@@ -25,7 +25,7 @@ docsController.post('/list/retrieve', async (req, res) => {
   }
 });
 
-docsController.post('/list/add', async (req, res) => {
+docsController.post('/docs/add', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
@@ -45,7 +45,7 @@ docsController.post('/list/add', async (req, res) => {
   }
 });
 
-docsController.post('/list/remove', async (req, res) => {
+docsController.post('/docs/remove', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
