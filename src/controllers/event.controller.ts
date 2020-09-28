@@ -29,7 +29,6 @@ const counterPersistenceService = CounterPersistenceService.getInstance();
 async function handleMuzzledMessage(request: EventRequest): Promise<void> {
   const containsTag = slackService.containsTag(request.event.text);
   const userName = await slackService.getUserNameById(request.event.user, request.team_id);
-
   if (!containsTag) {
     console.log(`${userName} | ${request.event.user} is muzzled! Suppressing his voice...`);
     muzzleService.sendMuzzledMessage(
@@ -135,6 +134,8 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     res.status(200).send();
     const request: EventRequest = req.body;
     console.log(request);
+    const isMessageEdit =
+      request.event.subtype === 'message_changed' && request.event.message && request.event.message.user;
     const isNewUserAdded = request.event.type === 'team_join';
     const isNewChannelCreated = request.event.type === 'channel_created';
     const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';

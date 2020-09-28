@@ -53,6 +53,9 @@ export interface Event {
   bot_profile: {
     name: string;
   };
+  message: {
+    user: string;
+  };
 }
 
 export interface Attachment {
