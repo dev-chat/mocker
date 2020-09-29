@@ -73,7 +73,7 @@ export class StoreService {
     const rep = await this.reactionPersistenceService.getUserRep(userId, teamId);
     let view = '*Inventory* \n Use items by typing `/use item_id` where item_id is the number shown below. \n \n';
     inventory.map(inventory => {
-      view += `*${inventory.name}* \n *Description:* ${inventory.description} \n *Item_Id:* ${inventory.id} \n \n`;
+      view += `*${inventory.name}* \n *Description:* ${inventory.description} \n *Item_Id:* ${inventory.itemId} \n \n`;
     });
     view += `Rep: ${rep ? rep : 0}`;
     return view;

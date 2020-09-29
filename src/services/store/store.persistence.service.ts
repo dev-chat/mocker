@@ -222,7 +222,7 @@ export class StorePersistenceService {
       });
   }
 
-  async getInventory(userId: string, teamId: string): Promise<Item[]> {
+  async getInventory(userId: string, teamId: string): Promise<any[]> {
     const query = `SELECT inventory_item.itemId, item.name, item.description FROM inventory_item INNER JOIN item ON inventory_item.itemId=item.id WHERE inventory_item.ownerId=(SELECT id FROM slack_user WHERE slackId='${userId}' AND teamId='${teamId}');`;
     return getManager().query(query);
   }
