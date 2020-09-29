@@ -10,7 +10,9 @@ export class StoreService {
     const rep = await this.reactionPersistenceService.getUserRep(slackId, teamId);
     let view = `Welcome to the Muzzle Store! \n \n Purchase items by typing \`/buy item_id\` where item_id is the number shown below! \n \n Once purchased, you can use items by typing \`/use item_id\` or you can view them in your inventory by typing \`/inventory\`. \n \n`;
     items.map(item => {
-      view += `*${item.id}. ${item.name}* \n *Cost:* ${item.price} rep \n *Description:* ${item.description} \n \n`;
+      view += `*${item.id}. ${item.name}* \n *Cost:* ${item.price} rep \n *Description:* ${
+        item.description
+      } \n *How to Use:* ${item.requiresUser ? `\`/use ${item.id} @user\`` : `\`/use ${item.id}\``} \n \n`;
     });
 
     view += `You currently have *${rep ? rep : 0} Rep* to spend. Spend it wisely!`;
@@ -53,7 +55,7 @@ export class StoreService {
     return false;
   }
 
-  async isUserRequired(itemId: string | undefined) {
+  async isUserRequired(itemId: string | undefined): Promise<boolean> {
     if (itemId) {
       const id = +itemId;
       return await this.storePersistenceService.isUserRequired(id);
@@ -71,7 +73,7 @@ export class StoreService {
     const rep = await this.reactionPersistenceService.getUserRep(userId, teamId);
     let view = '*Inventory* \n Use items by typing `/use item_id` where item_id is the number shown below. \n \n';
     inventory.map(inventory => {
-      view += `*${inventory.name}* \n *Description:* ${inventory.description} \n \n`;
+      view += `*${inventory.name}* \n *Description:* ${inventory.description} \n *Item_Id:* ${inventory.id} \n \n`;
     });
     view += `Rep: ${rep ? rep : 0}`;
     return view;
