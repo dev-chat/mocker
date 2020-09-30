@@ -49,7 +49,10 @@ export class MuzzlePersistenceService {
             'EX',
             expireTime,
           );
-          this.setRequestorCount(requestorId, teamId);
+          if (!defensiveItemId) {
+            this.setRequestorCount(requestorId, teamId);
+          }
+
           this.storePersistenceService.setItemKill(muzzleFromDb.id, activeItems);
           if (defensiveItemId) {
             this.storePersistenceService.setItemKill(muzzleFromDb.id, [defensiveItemId]);
