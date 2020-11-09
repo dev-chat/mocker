@@ -17,6 +17,8 @@ storeController.post('/store', async (req, res) => {
 });
 
 storeController.post('/store/buy', async (req, res) => {
+  res.send('Muzzle is no longer enabled for your workspace.');
+  return;
   const request: SlashCommandRequest = req.body;
   const isValidItem = await storeService.isValidItem(request.text, request.team_id);
   const canAffordItem = await storeService.canAfford(request.text, request.user_id, request.team_id);
@@ -34,6 +36,8 @@ storeController.post('/store/buy', async (req, res) => {
 });
 
 storeController.post('/store/use', async (req, res) => {
+  res.send('Muzzle is no longer enabled for your workspace.');
+  return;
   const request: SlashCommandRequest = req.body;
   const textArgs = request.text.split(' ');
   let itemId: string | undefined;
@@ -76,6 +80,8 @@ storeController.post('/store/use', async (req, res) => {
 });
 
 storeController.post('/store/inventory', async (req, res) => {
+  res.send('Muzzle is no longer enabled for your workspace.');
+  return;
   const request: SlashCommandRequest = req.body;
   const inventory: string = await storeService.getInventory(request.user_id, request.team_id);
   res.status(200).send(inventory);

@@ -17,6 +17,9 @@ const reportService = new MuzzleReportService();
 
 // TODO: This should have the logic from the addUserToMuzzled function in muzzleService.
 muzzleController.post('/muzzle', async (req: Request, res: Response) => {
+  // Disables ability to muzzle.
+  res.send('Muzzle is no longer enabled for your workspace.');
+  return;
   const request: SlashCommandRequest = req.body;
   const userId: string = slackService.getUserId(request.text);
   const results = await muzzleService

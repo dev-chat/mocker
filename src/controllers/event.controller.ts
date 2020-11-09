@@ -142,7 +142,6 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const isUserBackfired = await backfirePersistenceService.isBackfire(request.event.user, request.team_id);
     // TO DO: Add teamId to this call once counterPersistenceService uses redis.
     const isUserCounterMuzzled = await counterPersistenceService.isCounterMuzzled(request.event.user);
-
     console.time('respond-to-event');
     if (isNewUserAdded) {
       handleNewUserAdd();

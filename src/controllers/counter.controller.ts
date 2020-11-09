@@ -11,6 +11,8 @@ const counterPersistenceService = CounterPersistenceService.getInstance();
 const counterService = new CounterService();
 
 counterController.post('/counter', async (req, res) => {
+  res.send('Muzzle is no longer enabled for your workspace.');
+  return;
   const request: SlashCommandRequest = req.body;
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(
