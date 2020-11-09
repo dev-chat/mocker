@@ -17,7 +17,7 @@ confessionController.post('/confess', async (req, res) => {
   } else {
     const confession = `Someone has confessed: 
     \`${request.text}\``;
-    webService.sendMessage('#confessions', confession);
+    webService.sendMessage(request.channel_id, confession);
     res.status(200).send();
   }
 });
