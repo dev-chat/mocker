@@ -1,6 +1,6 @@
 import express, { Request, Response, Router } from 'express';
-import { MuzzleService } from '../services/muzzle/muzzle.service';
-import { SlackService } from '../services/slack/slack.service';
+// import { MuzzleService } from '../services/muzzle/muzzle.service';
+// import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ReportType } from '../shared/models/report/report.model';
@@ -9,29 +9,28 @@ import { MuzzleReportService } from '../services/muzzle/muzzle.report.service';
 
 export const muzzleController: Router = express.Router();
 
-const muzzleService = new MuzzleService();
-const slackService = SlackService.getInstance();
+// const muzzleService = new MuzzleService();
+// const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
 const suppressorService = new SuppressorService();
 const reportService = new MuzzleReportService();
 
 // TODO: This should have the logic from the addUserToMuzzled function in muzzleService.
-muzzleController.post('/muzzle', async (req: Request, res: Response) => {
+muzzleController.post('/muzzle', async (_req: Request, res: Response) => {
   // Disables ability to muzzle.
   res.send('Muzzle is no longer enabled for your workspace.');
-  return;
-  const request: SlashCommandRequest = req.body;
-  const userId: string = slackService.getUserId(request.text);
-  const results = await muzzleService
-    .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
-    .catch(e => {
-      console.error(e);
-      res.send(e);
-    });
-  if (results) {
-    console.log(results);
-    res.send(results);
-  }
+  // const request: SlashCommandRequest = req.body;
+  // const userId: string = slackService.getUserId(request.text);
+  // const results = await muzzleService
+  //   .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
+  //   .catch(e => {
+  //     console.error(e);
+  //     res.send(e);
+  //   });
+  // if (results) {
+  //   console.log(results);
+  //   res.send(results);
+  // }
 });
 
 muzzleController.post('/muzzle/stats', async (req: Request, res: Response) => {
