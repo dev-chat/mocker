@@ -21,5 +21,6 @@ export class ActivityPersistenceService {
     activity.teamId = request.team_id;
     activity.userId = request.event.user;
     activity.eventType = request.event.type;
+    getRepository(Activity).insert(activity);
   }
 }
