@@ -1,4 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany } from 'typeorm';
+import { Activity } from './Activity';
 import { InventoryItem } from './InventoryItem';
 
 @Entity()
@@ -21,4 +22,9 @@ export class SlackUser {
     inventoryItem => inventoryItem.owner,
   )
   public inventory!: InventoryItem[];
+  @OneToMany(
+    _type => Activity,
+    activity => activity.userId,
+  )
+  public activity!: Activity[];
 }
