@@ -1,7 +1,7 @@
 import { getRepository } from 'typeorm';
 import { Activity } from '../../shared/db/models/Activity';
 import { SlackUser } from '../../shared/db/models/SlackUser';
-import { EventRequest, SlackUser } from '../../shared/models/slack/slack-models';
+import { EventRequest } from '../../shared/models/slack/slack-models';
 
 export class ActivityPersistenceService {
   public static getInstance(): ActivityPersistenceService {
