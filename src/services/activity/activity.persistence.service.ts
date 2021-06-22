@@ -1,6 +1,7 @@
 import { getRepository } from 'typeorm';
 import { Activity } from '../../shared/db/models/Activity';
-import { EventRequest } from '../../shared/models/slack/slack-models';
+import { SlackUser } from '../../shared/db/models/SlackUser';
+import { EventRequest, SlackUser } from '../../shared/models/slack/slack-models';
 
 export class ActivityPersistenceService {
   public static getInstance(): ActivityPersistenceService {
@@ -12,12 +13,16 @@ export class ActivityPersistenceService {
 
   private static instance: ActivityPersistenceService;
 
-  logActivity(request: EventRequest) {
+  async logActivity(request: EventRequest) {
+    const user: SlackUser | undefined = await getRepository(SlackUser).findOne({
+      slackId: request?.event?.user,
+      teamId: request?.team_id,
+    });
     const activity = new Activity();
     activity.channel = request.event.channel;
     activity.channelType = request.event.channel_type;
     activity.teamId = request.team_id;
-    activity.userId = request.event.user;
+    activity.userId = user as SlackUser;
     activity.eventType = request.event.type;
     getRepository(Activity).insert(activity);
   }
