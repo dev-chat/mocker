@@ -1,7 +1,6 @@
-import { UpdateResult, getRepository } from 'typeorm';
+import { getRepository } from 'typeorm';
 import { Activity } from '../../shared/db/models/Activity';
 import { EventRequest } from '../../shared/models/slack/slack-models';
-import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 
 export class ActivityPersistenceService {
   public static getInstance(): ActivityPersistenceService {
@@ -12,7 +11,6 @@ export class ActivityPersistenceService {
   }
 
   private static instance: ActivityPersistenceService;
-  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
 
   logActivity(request: EventRequest) {
     const activity = new Activity();
