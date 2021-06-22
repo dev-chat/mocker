@@ -19,7 +19,7 @@ export class ActivityPersistenceService {
       teamId: request?.team_id,
     });
     const activity = new Activity();
-    activity.channel = request.event.channel;
+    activity.channel = request.event.channel || request.event.item.channel;
     activity.channelType = request.event.channel_type;
     activity.teamId = request.team_id;
     activity.userId = user as SlackUser;
