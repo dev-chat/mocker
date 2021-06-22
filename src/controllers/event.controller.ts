@@ -159,6 +159,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     } else if (isReaction) {
       handleReaction(request);
     }
+    handleActivity(request);
     console.timeEnd('respond-to-event');
   }
 });
