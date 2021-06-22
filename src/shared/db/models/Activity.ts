@@ -10,7 +10,7 @@ export class Activity {
     _type => SlackUser,
     user => user.activity,
   )
-  public userId!: string;
+  public userId!: SlackUser;
 
   @Column()
   public teamId!: string;
