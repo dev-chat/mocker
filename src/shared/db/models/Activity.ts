@@ -12,16 +12,16 @@ export class Activity {
   )
   public userId!: SlackUser;
 
-  @Column()
+  @Column({ default: 'NOT_AVAILABLE' })
   public teamId!: string;
 
   @Column({ default: 'NOT_AVAILABLE' })
   public channel!: string;
 
-  @Column()
+  @Column({ default: 'NOT_AVAILABLE' })
   public channelType!: string;
 
-  @Column()
+  @Column({ default: 'NOT_AVAILABLE' })
   public eventType!: string;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
