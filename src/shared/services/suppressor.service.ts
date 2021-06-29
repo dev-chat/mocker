@@ -7,6 +7,7 @@ import { CounterPersistenceService } from '../../services/counter/counter.persis
 import { WebService } from '../../services/web/web.service';
 import { isRandomEven } from '../../services/muzzle/muzzle-utilities';
 import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../services/muzzle/constants';
+import { TranslationService } from './translation.service';
 
 export class SuppressorService {
   public webService = WebService.getInstance();
@@ -14,6 +15,7 @@ export class SuppressorService {
   public backfirePersistenceService = BackFirePersistenceService.getInstance();
   public muzzlePersistenceService = MuzzlePersistenceService.getInstance();
   public counterPersistenceService = CounterPersistenceService.getInstance();
+  public translationService = new TranslationService();
 
   public findUserIdInBlocks(obj: any, regEx: RegExp): string | undefined {
     let id;
