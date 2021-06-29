@@ -1,4 +1,5 @@
 import express, { Request, Response, Router } from 'express';
+import { ActivityPersistenceService } from '../services/activity/activity.persistence.service';
 import { BackFirePersistenceService } from '../services/backfire/backfire.persistence.service';
 import { BackfireService } from '../services/backfire/backfire.service';
 import { CounterPersistenceService } from '../services/counter/counter.persistence.service';
@@ -25,6 +26,7 @@ const suppressorService = new SuppressorService();
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const counterPersistenceService = CounterPersistenceService.getInstance();
+const activityPersistenceService = ActivityPersistenceService.getInstance();
 
 async function handleMuzzledMessage(request: EventRequest): Promise<void> {
   const containsTag = slackService.containsTag(request.event.text);
@@ -127,6 +129,10 @@ function handleNewUserAdd(): void {
 function handleNewChannelCreated(): void {
   slackService.getAllChannels();
 }
+
+function handleActivity(request: EventRequest): void {
+  activityPersistenceService.logActivity(request);
+}
 // Change route to /event/handle instead.
 eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
   if (req.body.challenge) {
@@ -159,6 +165,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     } else if (isReaction) {
       handleReaction(request);
     }
+    handleActivity(request);
     console.timeEnd('respond-to-event');
   }
 });
