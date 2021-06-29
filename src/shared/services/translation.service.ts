@@ -116,7 +116,7 @@ export class TranslationService {
   ];
   public translate(text: string): Promise<string> {
     return Axios.post(
-      `https://translation.googleapis.com/language/translate/v2?key=${process.env.googleTranslateApiKey}`,
+      `https://translation.googleapis.com/language/translate/v2?key=${process.env.GOOGLE_TRANSLATE_API_KEY}`,
       {
         q: text,
         source: 'en',
