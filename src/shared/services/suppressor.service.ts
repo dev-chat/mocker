@@ -124,6 +124,28 @@ export class SuppressorService {
     return text;
   }
 
+  public logTranslateSuppression(
+    text: string,
+    id: number,
+    persistenceService?: BackFirePersistenceService | MuzzlePersistenceService,
+  ): void {
+    const sentence = text.trim();
+    const words = sentence.split(' ');
+    let wordsSuppressed = 0;
+    let charactersSuppressed = 0;
+
+    for (let i = 0; i < words.length; i++) {
+      wordsSuppressed++;
+      charactersSuppressed += words[i].length;
+    }
+
+    if (persistenceService) {
+      persistenceService.incrementMessageSuppressions(id);
+      persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
+      persistenceService.incrementWordSuppressions(id, wordsSuppressed);
+    }
+  }
+
   /**
    * Takes in text and randomly muzzles words.
    */

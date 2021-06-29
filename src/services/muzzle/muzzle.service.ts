@@ -3,10 +3,12 @@ import { getTimeString, getTimeToMuzzle, shouldBackfire } from './muzzle-utiliti
 import { SuppressorService } from '../../shared/services/suppressor.service';
 import { CounterService } from '../counter/counter.service';
 import { StorePersistenceService } from '../store/store.persistence.service';
+import { TranslationService } from '../../shared/services/translation.service';
 
 export class MuzzleService extends SuppressorService {
   private counterService = new CounterService();
   private storePersistenceService = StorePersistenceService.getInstance();
+  private translationService = new TranslationService();
 
   /**
    * Adds a user to the muzzled map and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
@@ -107,10 +109,19 @@ export class MuzzleService extends SuppressorService {
       const suppressions = await this.muzzlePersistenceService.getSuppressions(userId, teamId);
       if (!suppressions || (suppressions && +suppressions < MAX_SUPPRESSIONS)) {
         await this.muzzlePersistenceService.incrementStatefulSuppressions(userId, teamId);
-        this.webService.sendMessage(
-          channel,
-          `<@${userId}> says "${this.sendSuppressedMessage(text, +muzzle, this.muzzlePersistenceService)}"`,
-        );
+        let suppressedMessage: any = await this.translationService.translate(text).catch(e => {
+          console.error('error on translation');
+          console.error(e);
+          return null;
+        });
+
+        if (suppressedMessage?.data?.translations?.[0]?.translatedText) {
+          await this.logTranslateSuppression(text, +muzzle, this.muzzlePersistenceService);
+        } else {
+          suppressedMessage = this.sendSuppressedMessage(text, +muzzle, this.muzzlePersistenceService);
+        }
+
+        this.webService.sendMessage(channel, `<@${userId}> says "${suppressedMessage}"`);
       } else {
         this.muzzlePersistenceService.trackDeletedMessage(+muzzle, text);
       }

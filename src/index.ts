@@ -98,10 +98,13 @@ const checkForEnvVariables = (): void => {
       process.env.MUZZLE_BOT_SIGNING_SECRET ||
       process.env.CLAPPER_TOKEN ||
       process.env.MOCKER_TOKEN ||
-      process.env.DEFINE_TOKEN
+      process.env.DEFINE_TOKEN ||
+      process.env.GOOGLE_TRANSLATE_API_KEY
     )
   ) {
-    throw new Error('Missing MUZZLE_BOT_SIGNING_SECRET, CLAPPER_TOKEN, MOCKER_TOKEN or DEFINE_TOKEN!');
+    throw new Error(
+      'Missing MUZZLE_BOT_SIGNING_SECRET, CLAPPER_TOKEN, MOCKER_TOKEN, DEFINE_TOKEN, or GOOGLE_TRANSLATE_API_KEY!',
+    );
   }
 };
 
