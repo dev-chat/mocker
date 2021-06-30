@@ -18,7 +18,7 @@ export class TranslationService {
         return res?.data?.data?.translations?.[0].translatedText;
       });
     }
-    return new Promise((resolve, reject) => resolve(text));
+    return new Promise((resolve, _reject) => resolve(text));
   }
 
   getRandomLanguage(): string {
