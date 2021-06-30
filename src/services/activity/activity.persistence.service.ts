@@ -5,7 +5,7 @@ import { EventRequest } from '../../shared/models/slack/slack-models';
 
 // Get the current day of the week and UTC time.
 // Gets the average number of events for the specified time frame, channel and day of the week.
-const query = `SELECT AVG(x.count) as avg from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="1" AND x.time="14:45" AND x.channel="C2ZVBM51V";`;
+// const query = `SELECT AVG(x.count) as avg from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="1" AND x.time="14:45" AND x.channel="C2ZVBM51V";`;
 export class ActivityPersistenceService {
   public static getInstance(): ActivityPersistenceService {
     if (!ActivityPersistenceService.instance) {
@@ -50,6 +50,7 @@ export class ActivityPersistenceService {
       time,
       date: utcDate,
     };
+    console.log(mostRecentFiveMinBlock);
     // Compare to average for that five minute block.
     // If greater than average, is hot
     // If less than or equal to average but greater than half of average, is lukewarm
