@@ -1,7 +1,7 @@
 import Axios, { AxiosResponse } from 'axios';
 
 export class TranslationService {
-  private supportedLanguages = ['zh-TW', 'en', 'eo', 'de', 'haw', 'ga', 'it', 'ja', 'la', 'ru', 'es', 'th', 'fr', 'he'];
+  private supportedLanguages = ['de', 'es'];
   public translate(text: string): Promise<string> {
     const lang = this.getRandomLanguage();
     if (lang !== 'en') {
