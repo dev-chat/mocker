@@ -21,20 +21,15 @@ export class BackfireService extends SuppressorService {
         this.backfirePersistenceService.incrementMessageSuppressions(+backfireId);
         this.backfirePersistenceService.addSuppression(userId, teamId);
         const language = this.translationService.getRandomLanguage();
-        let suppressedMessage: string | null;
-        if (language === 'en') {
-          suppressedMessage = this.sendSuppressedMessage(text, +backfireId, this.backfirePersistenceService);
+        const suppressedMessage = await this.translationService.translate(text, language).catch(e => {
+          console.error('error on translation');
+          console.error(e);
+          return null;
+        });
+        if (suppressedMessage === null) {
+          this.sendSuppressedMessage(text, +backfireId, this.backfirePersistenceService);
         } else {
-          suppressedMessage = await this.translationService.translate(text, language).catch(e => {
-            console.error('error on translation');
-            console.error(e);
-            return null;
-          });
-          if (suppressedMessage === null) {
-            this.sendSuppressedMessage(text, +backfireId, this.backfirePersistenceService);
-          } else {
-            await this.logTranslateSuppression(text, +backfireId, this.backfirePersistenceService);
-          }
+          await this.logTranslateSuppression(text, +backfireId, this.backfirePersistenceService);
         }
 
         this.webService.sendMessage(channel, `<@${userId}> says "${suppressedMessage}"`);

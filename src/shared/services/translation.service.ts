@@ -18,11 +18,9 @@ export class TranslationService {
 
   getRandomLanguage(): string {
     const roll = Math.random();
-    if (roll <= 0.5) {
+    if (roll <= 0.25) {
       return 'es';
-    } else if (roll > 0.5 && roll <= 0.9) {
-      return 'de';
     }
-    return 'en';
+    return 'de';
   }
 }
