@@ -2,6 +2,7 @@ import { getRepository } from 'typeorm';
 import { Activity } from '../../shared/db/models/Activity';
 import { SlackUser } from '../../shared/db/models/SlackUser';
 import { EventRequest } from '../../shared/models/slack/slack-models';
+import { TimeBlock } from './activity.model';
 
 // Get the current day of the week and UTC time.
 // Gets the average number of events for the specified time frame, channel and day of the week.
@@ -43,17 +44,26 @@ export class ActivityPersistenceService {
     }
     const time = `${hour}:${minute}`;
 
-    const utcDate = `${date.getUTCDay()}-${date.getUTCMonth() + 1}-${date.getUTCFullYear()}`;
-
     // Final most recent 5 min block.
-    const mostRecentFiveMinBlock = {
+    const mostRecentFiveMinBlock: TimeBlock = {
       time,
-      date: utcDate,
+      date: {
+        day: date.getUTCDay(),
+        month: date.getUTCMonth() + 1,
+        year: date.getUTCFullYear(),
+      },
     };
     console.log(mostRecentFiveMinBlock);
     // Compare to average for that five minute block.
     // If greater than average, is hot
     // If less than or equal to average but greater than half of average, is lukewarm
     // If less than half of average, is cold.
+  }
+
+  // Idk, this might not even be what i want. I am too tired to figure it out.
+  getMostRecentAverageActivity(time: TimeBlock, channel: string) {
+    // Some bad sql practices here that need to be cleared up.
+    const query = `SELECT AVG(x.count) as avg from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.day}" AND x.time="${time?.time}" AND x.channel="${channel}";`;
+    return getRepository(Activity).query(query);
   }
 }
