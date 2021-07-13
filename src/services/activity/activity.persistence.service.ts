@@ -81,7 +81,7 @@ export class ActivityPersistenceService {
       hottestChannels.push(channelTemp);
     }
     // Top 10 by day.
-    const sortedDaily = dailyAverages.sort((a: any, b: any) => a.avg - b.avg).slice(0, 10);
+    const sortedDaily = dailyAverages.sort((a: any, b: any) => parseInt(a.avg) - parseInt(b.avg)).slice(0, 10);
     console.log(sortedDaily);
     const sorted = sortedDaily.map((daily: any) => hottestChannels.find(x => x.id === daily.channel));
     // const sorted = hottestChannels.sort((a, b) => a.average - b.average).slice(0, 10);
