@@ -61,19 +61,19 @@ export class ActivityPersistenceService {
         hottestChannels[channel.id] = {
           temperature: 'hot',
           average: averageMessages,
-          current: currentMessages.count,
+          current: currentMessages,
         };
       } else if (currentMessages < averageMessages / 2) {
         hottestChannels[channel.id] = {
           temperature: 'cold',
           average: averageMessages,
-          current: currentMessages.count,
+          current: currentMessages,
         };
       } else {
         hottestChannels[channel.id] = {
           temperature: 'average',
           average: averageMessages,
-          current: currentMessages.count,
+          current: currentMessages,
         };
       }
     }
@@ -86,7 +86,7 @@ export class ActivityPersistenceService {
     const query = `SELECT x.count as count from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.time="${time?.time}" AND x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}" AND x.channel="${channel}";`;
     return getRepository(Activity)
       .query(query)
-      .then(result => (result?.[0]?.avg ? parseInt(result?.[0]?.avg) : 0));
+      .then(result => (result?.[0]?.count ? parseInt(result?.[0]?.count) : 0));
   }
 
   getMostRecentAverageActivity(time: TimeBlock, channel: string) {
