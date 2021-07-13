@@ -59,8 +59,8 @@ export class ActivityPersistenceService {
     const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock);
 
     for (const channel of channels) {
-      const averageMessage = averageMessages.find((x: any) => x.channelId === channel.id).avg || 0;
-      const currentMessage = currentMessages.find((x: any) => x.channelId === channel.id).count || 0;
+      const averageMessage = averageMessages?.find((x: any) => x.channelId === channel.id)?.avg || 0;
+      const currentMessage = currentMessages?.find((x: any) => x.channelId === channel.id)?.count || 0;
       const channelTemp = {
         id: channel.id,
         name: channel.name,
