@@ -101,8 +101,8 @@ export class ActivityPersistenceService {
       .query(query)
       .then(result => {
         console.log('most recent average');
-        console.log(result);
-        return result;
+        console.log(parseInt(result[0].avg));
+        return result[0].avg;
       });
   }
 
