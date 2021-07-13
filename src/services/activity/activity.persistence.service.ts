@@ -5,9 +5,6 @@ import { EventRequest } from '../../shared/models/slack/slack-models';
 import { WebService } from '../web/web.service';
 import { Temperature, TimeBlock } from './activity.model';
 
-// Get the current day of the week and UTC time.
-// Gets the average number of events for the specified time frame, channel and day of the week.
-// const query = `SELECT AVG(x.count) as avg from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="1" AND x.time="14:45" AND x.channel="C2ZVBM51V";`;
 export class ActivityPersistenceService {
   private web: WebService = WebService.getInstance();
   private refreshTime = true;
@@ -108,7 +105,7 @@ export class ActivityPersistenceService {
   }
 
   getCurrentNumberOfMessages(time: TimeBlock) {
-    const query = `SELECT x.count as count, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.time="${time?.time}" AND x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}";`;
+    const query = `SELECT x.count as count, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.time="${time?.time}" AND x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}";`;
     return getRepository(Activity)
       .query(query)
       .then(result => {
@@ -120,7 +117,7 @@ export class ActivityPersistenceService {
 
   getMostRecentAverageActivity(time: TimeBlock) {
     // Some bad sql practices here that need to be cleared up.
-    const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.dayOfWeek}" AND x.time="${time?.time}" GROUP BY channel;`;
+    const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.dayOfWeek}" AND x.time="${time?.time}" GROUP BY channel;`;
     return getRepository(Activity)
       .query(query)
       .then(result => {
@@ -133,7 +130,7 @@ export class ActivityPersistenceService {
   getMostRecentTimeblock(): TimeBlock {
     const date = new Date();
     const hour = date.getUTCHours();
-    let minute: string | number = Math.floor(date.getUTCMinutes() / 5) * 5;
+    let minute: string | number = Math.floor(date.getUTCMinutes() / 2) * 2;
     // Pads minute with a 0.
     if (minute < 10) {
       minute = '0' + minute;
