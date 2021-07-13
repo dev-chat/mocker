@@ -93,14 +93,12 @@ export class ActivityPersistenceService {
       });
   }
 
-  // Idk, this might not even be what i want. I am too tired to figure it out.
   getMostRecentAverageActivity(time: TimeBlock, channel: string) {
     // Some bad sql practices here that need to be cleared up.
     const query = `SELECT AVG(x.count) as avg from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.dayOfWeek}" AND x.time="${time?.time}" AND x.channel="${channel}";`;
     return getRepository(Activity)
       .query(query)
       .then(result => {
-        console.log('most recent average');
         return result?.[0]?.avg ? parseInt(result?.[0]?.avg) : 0;
       });
   }
