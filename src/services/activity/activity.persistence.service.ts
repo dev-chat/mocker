@@ -109,7 +109,7 @@ export class ActivityPersistenceService {
   getMostRecentTimeblock(): TimeBlock {
     const date = new Date();
     const hour = date.getUTCHours();
-    let minute: string | number = date.getUTCMinutes();
+    let minute: string | number = Math.floor(date.getUTCMinutes() / 5) * 5;
     // Pads minute with a 0.
     if (minute < 10) {
       minute = '0' + minute;
