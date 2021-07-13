@@ -82,7 +82,7 @@ export class ActivityPersistenceService {
     return hottestChannels;
   }
 
-  getCurrentNumberOfMessages(time: TimeBlock, channel?: string) {
+  getCurrentNumberOfMessages(time: TimeBlock) {
     const query = `SELECT x.count as count, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.time="${time?.time}" AND x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}";`;
     return getRepository(Activity)
       .query(query)
