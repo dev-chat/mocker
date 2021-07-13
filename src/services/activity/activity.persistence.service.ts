@@ -56,8 +56,9 @@ export class ActivityPersistenceService {
     console.log(channels);
     console.log(mostRecentFiveMinBlock);
     const currentMessages = await this.getCurrentNumberOfMessages(mostRecentFiveMinBlock);
+    const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock);
+
     for (const channel of channels) {
-      const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock, channel.id);
       const channelTemp = {
         id: channel.id,
         name: channel.name,
@@ -93,12 +94,16 @@ export class ActivityPersistenceService {
       .then(result => (result?.[0]?.count ? parseInt(result?.[0]?.count) : 0));
   }
 
-  getMostRecentAverageActivity(time: TimeBlock, channel: string) {
+  getMostRecentAverageActivity(time: TimeBlock) {
     // Some bad sql practices here that need to be cleared up.
-    const query = `SELECT AVG(x.count) as avg from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.dayOfWeek}" AND x.time="${time?.time}" AND x.channel="${channel}";`;
+    const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.dayOfWeek}" AND x.time="${time?.time}" GROUP BY channel;`;
     console.log(query);
     return getRepository(Activity)
       .query(query)
+      .then(result => {
+        console.log(result);
+        return result;
+      })
       .then(result => (result?.[0]?.avg ? parseInt(result?.[0]?.avg) : 0));
   }
 
