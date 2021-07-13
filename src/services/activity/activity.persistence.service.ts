@@ -82,6 +82,7 @@ export class ActivityPersistenceService {
     }
     // Top 10 by day.
     const sortedDaily = dailyAverages.sort((a: any, b: any) => parseInt(a.avg) - parseInt(b.avg)).slice(0, 10);
+    console.log('sorted daily');
     console.log(sortedDaily);
     const sorted = sortedDaily.map((daily: any) => hottestChannels.find(x => x.id === daily.channel));
     // const sorted = hottestChannels.sort((a, b) => a.average - b.average).slice(0, 10);
@@ -96,6 +97,7 @@ export class ActivityPersistenceService {
     return getRepository(Activity)
       .query(query)
       .then(result => {
+        console.log('currnet number of messages');
         console.log(result);
         return result;
       });
@@ -107,6 +109,7 @@ export class ActivityPersistenceService {
     return getRepository(Activity)
       .query(query)
       .then(result => {
+        console.log('most recent average activity');
         console.log(result);
         return result;
       });
@@ -117,6 +120,7 @@ export class ActivityPersistenceService {
     return getRepository(Activity)
       .query(query)
       .then(result => {
+        console.log('daily averages');
         console.log(result);
         return result;
       });
