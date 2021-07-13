@@ -51,27 +51,39 @@ export class ActivityPersistenceService {
     const mostRecentFiveMinBlock = this.getMostRecentTimeblock();
     console.log(mostRecentFiveMinBlock);
     const channels = await this.web.getAllChannels().then(result => result.channels);
-    const hottestChannels: Record<string, string> = {};
+    const hottestChannels: Record<string, any> = {};
     console.log('all channels');
     console.log(channels);
     for (const channel of channels) {
       const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock, channel.id);
       const currentMessages = await this.getCurrentNumberOfMessages(mostRecentFiveMinBlock, channel.id);
       if (currentMessages > averageMessages) {
-        hottestChannels[channel] = 'hot';
+        hottestChannels[channel.id] = {
+          temperature: 'hot',
+          average: averageMessages.avg,
+          current: currentMessages.count,
+        };
       } else if (currentMessages < averageMessages / 2) {
-        hottestChannels[channel] = 'cold';
+        hottestChannels[channel.id] = {
+          temperature: 'cold',
+          average: averageMessages.avg,
+          current: currentMessages.count,
+        };
       } else {
-        hottestChannels[channel] = 'average';
+        hottestChannels[channel.id] = {
+          temperature: 'average',
+          average: averageMessages.avg,
+          current: currentMessages.count,
+        };
       }
+      console.log('hottest channels');
+      console.log(hottestChannels);
+      return hottestChannels;
     }
-    console.log('hottest channels');
-    console.log(hottestChannels);
-    return hottestChannels;
   }
 
   getCurrentNumberOfMessages(time: TimeBlock, channel: string) {
-    const query = `SELECT x.count as count from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}" AND x.channel="${channel}";`;
+    const query = `SELECT x.count as count from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.time=${time?.time} AND x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}" AND x.channel="${channel}";`;
     return getRepository(Activity)
       .query(query)
       .then(result => {
