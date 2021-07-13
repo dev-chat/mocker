@@ -3,7 +3,7 @@ import { Activity } from '../../shared/db/models/Activity';
 import { SlackUser } from '../../shared/db/models/SlackUser';
 import { EventRequest } from '../../shared/models/slack/slack-models';
 import { WebService } from '../web/web.service';
-import { TimeBlock } from './activity.model';
+import { Temperature, TimeBlock } from './activity.model';
 
 // Get the current day of the week and UTC time.
 // Gets the average number of events for the specified time frame, channel and day of the week.
@@ -51,12 +51,13 @@ export class ActivityPersistenceService {
     // Get most recent 5 minute block.
     const mostRecentFiveMinBlock = this.getMostRecentTimeblock();
     const channels = await this.web.getAllChannels().then(result => result.channels);
-    const hottestChannels = [];
+    const hottestChannels: Temperature[] = [];
     console.log('all channels');
     console.log(channels);
     console.log(mostRecentFiveMinBlock);
     const currentMessages = await this.getCurrentNumberOfMessages(mostRecentFiveMinBlock);
     const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock);
+    const dailyAverages = await this.getDailyAverage(mostRecentFiveMinBlock);
 
     for (const channel of channels) {
       const averageMessage = parseInt(averageMessages?.find((x: any) => x.channel === channel.id)?.avg || 0);
@@ -79,7 +80,10 @@ export class ActivityPersistenceService {
 
       hottestChannels.push(channelTemp);
     }
-    const sorted = hottestChannels.sort((a, b) => a.average - b.average).slice(0, 10);
+    // Top 10 by day.
+    const sortedDaily = dailyAverages.sort((a, b) => a.avg - b.avg).slice(0, 10);
+    const sorted = sortedDaily.map((daily: any) => hottestChannels.find(x => x.id === daily.channel));
+    // const sorted = hottestChannels.sort((a, b) => a.average - b.average).slice(0, 10);
     console.log('hottest channels');
     console.log(sorted);
     console.timeEnd('getHottestChannels');
@@ -99,6 +103,16 @@ export class ActivityPersistenceService {
   getMostRecentAverageActivity(time: TimeBlock) {
     // Some bad sql practices here that need to be cleared up.
     const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/300)*300), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.dayOfWeek}" AND x.time="${time?.time}" GROUP BY channel;`;
+    return getRepository(Activity)
+      .query(query)
+      .then(result => {
+        console.log(result);
+        return result;
+      });
+  }
+
+  getDailyAverage(time: TimeBlock) {
+    const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, COUNT(*) as count, channel from activity GROUP BY day, channel) as x WHERE x.day="${time.date.dayOfWeek}" GROUP BY channel;`;
     return getRepository(Activity)
       .query(query)
       .then(result => {
