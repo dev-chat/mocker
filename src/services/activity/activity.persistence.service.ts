@@ -41,11 +41,13 @@ export class ActivityPersistenceService {
       this.refreshTime = false;
       setTimeout(() => (this.refreshTime = true), 120000);
       const hottest: Temperature[] = await this.getHottestChannels();
-      let text = ``;
-      for (const chan of hottest) {
-        text += `#${chan.name}: ${this.getEmoji(chan.temperature)} \n`;
+      if (hottest.length > 0) {
+        let text = ``;
+        for (const chan of hottest) {
+          text += `#${chan.name}: ${this.getEmoji(chan.temperature)} \n`;
+        }
+        this.web.sendMessage('#hot', text);
       }
-      this.web.sendMessage('#hot', text);
     }
   }
 
@@ -95,7 +97,10 @@ export class ActivityPersistenceService {
       hottestChannels.push(channelTemp);
     }
     // Channels that are hot right now and in the top 10 by day.
-    const sorted = hottestChannels.sort((a: Temperature, b: Temperature) => b.current - a.current).slice(0, 10);
+    const sorted = hottestChannels
+      .filter(chan => chan.temperature === 'hot')
+      .sort((a: Temperature, b: Temperature) => b.current - a.current)
+      .slice(0, 10);
     console.log('hottest channels');
     console.log(sorted);
     console.timeEnd('getHottestChannels');
