@@ -35,12 +35,27 @@ export class ActivityPersistenceService {
     getRepository(Activity).insert(activity);
   }
 
-  updateLatestHotness() {
+  async updateLatestHotness() {
     // This should be in redis not here.
     if (this.refreshTime) {
       this.refreshTime = false;
       setTimeout(() => (this.refreshTime = true), 120000);
-      this.getHottestChannels();
+      const hottest: Temperature[] = await this.getHottestChannels();
+      let text = ``;
+      for (const chan of hottest) {
+        text += `${chan.name}: ${this.getEmoji(chan.temperature)} \n`;
+      }
+      this.web.sendMessage('#hot', text);
+    }
+  }
+
+  getEmoji(temp: string) {
+    if (temp === 'hot') {
+      return ':fire:';
+    } else if (temp === 'average') {
+      return ':neutral_face:';
+    } else {
+      return ':snowflake:';
     }
   }
 
