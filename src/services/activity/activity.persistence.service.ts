@@ -64,6 +64,7 @@ export class ActivityPersistenceService {
         hottestChannels[channel] = 'average';
       }
     }
+    console.log('hottest channels');
     console.log(hottestChannels);
     return hottestChannels;
   }
@@ -73,6 +74,7 @@ export class ActivityPersistenceService {
     return getRepository(Activity)
       .query(query)
       .then(result => {
+        console.log('current number of messages');
         console.log(result);
         return result;
       });
@@ -85,6 +87,7 @@ export class ActivityPersistenceService {
     return getRepository(Activity)
       .query(query)
       .then(result => {
+        console.log('most recent average');
         console.log(result);
         return result;
       });
