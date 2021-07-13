@@ -50,7 +50,7 @@ export class ActivityPersistenceService {
     // Get most recent 5 minute block.
     const mostRecentFiveMinBlock = this.getMostRecentTimeblock();
     console.log(mostRecentFiveMinBlock);
-    const channels = await this.web.getAllChannels();
+    const channels = await this.web.getAllChannels().then(result => result.channels);
     const hottestChannels: Record<string, string> = {};
     console.log('all channels');
     console.log(channels);
