@@ -81,11 +81,11 @@ export class ActivityPersistenceService {
       hottestChannels.push(channelTemp);
     }
     // Top 10 by day.
-    const sortedDaily = dailyAverages.sort((a: any, b: any) => parseInt(a.avg) - parseInt(b.avg)).slice(0, 10);
+    const sortedDaily = dailyAverages.slice(0, 10);
     console.log('sorted daily');
     console.log(sortedDaily);
+    // Channels that are hot right now and in the top 10 by day.
     const sorted = sortedDaily.map((daily: any) => hottestChannels.find(x => x.id === daily.channel));
-    // const sorted = hottestChannels.sort((a, b) => a.average - b.average).slice(0, 10);
     console.log('hottest channels');
     console.log(sorted);
     console.timeEnd('getHottestChannels');
@@ -116,7 +116,7 @@ export class ActivityPersistenceService {
   }
 
   getDailyAverage(time: TimeBlock) {
-    const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, COUNT(*) as count, channel from activity GROUP BY day, channel) as x WHERE x.day="${time.date.dayOfWeek}" GROUP BY channel;`;
+    const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, COUNT(*) as count, channel from activity GROUP BY day, channel) as x WHERE x.day="${time.date.dayOfWeek}" GROUP BY channel ORDER BY avg DESC;`;
     return getRepository(Activity)
       .query(query)
       .then(result => {
