@@ -55,8 +55,8 @@ export class ActivityPersistenceService {
     console.log('all channels');
     console.log(channels);
     for (const channel of channels) {
-      const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock, channel);
-      const currentMessages = await this.getCurrentNumberOfMessages(mostRecentFiveMinBlock, channel);
+      const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock, channel.id);
+      const currentMessages = await this.getCurrentNumberOfMessages(mostRecentFiveMinBlock, channel.id);
       if (currentMessages > averageMessages) {
         hottestChannels[channel] = 'hot';
       } else if (currentMessages < averageMessages / 2) {
