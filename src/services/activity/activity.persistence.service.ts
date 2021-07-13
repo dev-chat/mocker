@@ -60,19 +60,19 @@ export class ActivityPersistenceService {
       if (currentMessages > averageMessages) {
         hottestChannels[channel.id] = {
           temperature: 'hot',
-          average: averageMessages.avg,
+          average: averageMessages,
           current: currentMessages.count,
         };
       } else if (currentMessages < averageMessages / 2) {
         hottestChannels[channel.id] = {
           temperature: 'cold',
-          average: averageMessages.avg,
+          average: averageMessages,
           current: currentMessages.count,
         };
       } else {
         hottestChannels[channel.id] = {
           temperature: 'average',
-          average: averageMessages.avg,
+          average: averageMessages,
           current: currentMessages.count,
         };
       }
@@ -101,7 +101,7 @@ export class ActivityPersistenceService {
       .query(query)
       .then(result => {
         console.log('most recent average');
-        return result?.[0]?.avg ? parseInt(result?.[0]?.avg) : null;
+        return result?.[0]?.avg ? parseInt(result?.[0]?.avg) : 0;
       });
   }
 
