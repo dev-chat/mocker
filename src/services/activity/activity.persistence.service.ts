@@ -34,7 +34,7 @@ export class ActivityPersistenceService {
     getRepository(Activity).insert(activity);
   }
 
-  async getHottestChannels(channel: string) {
+  async getHottestChannels() {
     // Get top 10 most popular channels by daily average.
     // const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%Y-%c-%e") AS date, COUNT(*) AS count, channel  FROM activity GROUP BY date,channel) as x group by x.channel ORDER BY avg DESC LIMIT 0, 10;`;
     // Get most recent 5 minute block.
@@ -61,7 +61,7 @@ export class ActivityPersistenceService {
     const channels = await this.web.getAllChannels();
     const hottestChannels: Record<string, string> = {};
 
-    for (channel of channels) {
+    for (const channel of channels) {
       const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock, channel);
       const currentMessages = await this.getCurrentNumberOfMessages(mostRecentFiveMinBlock, channel);
       if (currentMessages > averageMessages) {
