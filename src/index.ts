@@ -66,7 +66,7 @@ const connectToDb = async (): Promise<void> => {
       .then(connection => {
         if (connection.isConnected) {
           slackService.getAllUsers();
-          slackService.getAllChannels();
+          slackService.getAndSaveAllChannels();
           console.log(`Connected to MySQL DB: ${options.database}`);
         } else {
           throw Error('Unable to connect to database');

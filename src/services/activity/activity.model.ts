@@ -4,7 +4,8 @@ export interface TimeBlock {
 }
 
 export interface TimeBlockDate {
-  day: number;
+  dayOfWeek: number;
+  dayOfMonth: number;
   month: number;
   year: number;
 }

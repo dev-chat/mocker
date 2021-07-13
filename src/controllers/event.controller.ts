@@ -127,7 +127,7 @@ function handleNewUserAdd(): void {
 }
 
 function handleNewChannelCreated(): void {
-  slackService.getAllChannels();
+  slackService.getAndSaveAllChannels();
 }
 
 function handleActivity(request: EventRequest): void {

@@ -73,7 +73,7 @@ export class SlackService {
     return text.includes('<!channel>') || text.includes('<!here>') || !!this.getUserId(text);
   }
 
-  public getAllChannels(): void {
+  public getAndSaveAllChannels(): void {
     this.web.getAllChannels().then(result => this.persistenceService.saveChannels(result.channels));
   }
 
