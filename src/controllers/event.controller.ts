@@ -132,6 +132,7 @@ function handleNewChannelCreated(): void {
 
 function handleActivity(request: EventRequest): void {
   activityPersistenceService.logActivity(request);
+  activityPersistenceService.updateLatestHotness();
 }
 // Change route to /event/handle instead.
 eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
