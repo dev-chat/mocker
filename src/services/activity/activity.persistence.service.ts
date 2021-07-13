@@ -72,7 +72,6 @@ export class ActivityPersistenceService {
     console.log(mostRecentFiveMinBlock);
     const currentMessages = await this.getCurrentNumberOfMessages(mostRecentFiveMinBlock);
     const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock);
-    const dailyAverages = await this.getDailyAverage(mostRecentFiveMinBlock);
 
     for (const channel of channels) {
       const averageMessage = parseInt(averageMessages?.find((x: any) => x.channel === channel.id)?.avg || 0);
@@ -95,12 +94,8 @@ export class ActivityPersistenceService {
 
       hottestChannels.push(channelTemp);
     }
-    // Top 10 by day.
-    const sortedDaily = dailyAverages.slice(0, 10);
-    console.log('sorted daily');
-    console.log(sortedDaily);
     // Channels that are hot right now and in the top 10 by day.
-    const sorted = sortedDaily.map((daily: any) => hottestChannels.find(x => x.id === daily.channel));
+    const sorted = hottestChannels.sort((a: Temperature, b: Temperature) => b.current - a.current).slice(0, 10);
     console.log('hottest channels');
     console.log(sorted);
     console.timeEnd('getHottestChannels');
@@ -125,17 +120,6 @@ export class ActivityPersistenceService {
       .query(query)
       .then(result => {
         console.log('most recent average activity');
-        console.log(result);
-        return result;
-      });
-  }
-
-  getDailyAverage(time: TimeBlock) {
-    const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, COUNT(*) as count, channel from activity GROUP BY day, channel) as x WHERE x.day="${time.date.dayOfWeek}" GROUP BY channel ORDER BY avg DESC;`;
-    return getRepository(Activity)
-      .query(query)
-      .then(result => {
-        console.log('daily averages');
         console.log(result);
         return result;
       });
