@@ -85,9 +85,7 @@ export class ActivityPersistenceService {
     console.log('sorted daily');
     console.log(sortedDaily);
     // Channels that are hot right now and in the top 10 by day.
-    const sorted = sortedDaily
-      .map((daily: any) => hottestChannels.find(x => x.id === daily.channel))
-      .sort((a: any, b: any) => b.current - a.current);
+    const sorted = sortedDaily.map((daily: any) => hottestChannels.find(x => x.id === daily.channel));
     console.log('hottest channels');
     console.log(sorted);
     console.timeEnd('getHottestChannels');
