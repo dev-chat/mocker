@@ -59,17 +59,19 @@ export class ActivityPersistenceService {
     const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock);
 
     for (const channel of channels) {
+      const averageMessage = averageMessages.find((x: any) => x.channelId === channel.id).avg || 0;
+      const currentMessage = currentMessages.find((x: any) => x.channelId === channel.id).count || 0;
       const channelTemp = {
         id: channel.id,
         name: channel.name,
         temperature: '',
-        average: averageMessages,
-        current: currentMessages,
+        average: averageMessage,
+        current: currentMessage,
       };
 
-      if (currentMessages > averageMessages) {
+      if (currentMessage > averageMessage) {
         channelTemp.temperature = 'hot';
-      } else if (currentMessages < averageMessages / 2) {
+      } else if (currentMessage < averageMessage / 2) {
         channelTemp.temperature = 'cold';
       } else {
         channelTemp.temperature = 'average';
@@ -90,8 +92,7 @@ export class ActivityPersistenceService {
       .then(result => {
         console.log(result);
         return result;
-      })
-      .then(result => (result?.[0]?.count ? parseInt(result?.[0]?.count) : 0));
+      });
   }
 
   getMostRecentAverageActivity(time: TimeBlock) {
@@ -103,8 +104,7 @@ export class ActivityPersistenceService {
       .then(result => {
         console.log(result);
         return result;
-      })
-      .then(result => (result?.[0]?.avg ? parseInt(result?.[0]?.avg) : 0));
+      });
   }
 
   getMostRecentTimeblock(): TimeBlock {
