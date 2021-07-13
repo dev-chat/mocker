@@ -49,29 +49,32 @@ export class ActivityPersistenceService {
     // const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%Y-%c-%e") AS date, COUNT(*) AS count, channel  FROM activity GROUP BY date,channel) as x group by x.channel ORDER BY avg DESC LIMIT 0, 10;`;
     // Get most recent 5 minute block.
     const mostRecentFiveMinBlock = this.getMostRecentTimeblock();
-    console.log(mostRecentFiveMinBlock);
     const channels = await this.web.getAllChannels().then(result => result.channels);
     const hottestChannels: Record<string, any> = {};
     console.log('all channels');
     console.log(channels);
+    console.log(mostRecentFiveMinBlock);
     for (const channel of channels) {
       const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock, channel.id);
       const currentMessages = await this.getCurrentNumberOfMessages(mostRecentFiveMinBlock, channel.id);
       if (currentMessages > averageMessages) {
         hottestChannels[channel.id] = {
           temperature: 'hot',
+          name: channel.name,
           average: averageMessages,
           current: currentMessages,
         };
       } else if (currentMessages < averageMessages / 2) {
         hottestChannels[channel.id] = {
           temperature: 'cold',
+          name: channel.name,
           average: averageMessages,
           current: currentMessages,
         };
       } else {
         hottestChannels[channel.id] = {
           temperature: 'average',
+          name: channel.name,
           average: averageMessages,
           current: currentMessages,
         };
