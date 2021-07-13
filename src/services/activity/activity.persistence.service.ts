@@ -76,10 +76,10 @@ export class ActivityPersistenceService {
           current: currentMessages.count,
         };
       }
-      console.log('hottest channels');
-      console.log(hottestChannels);
-      return hottestChannels;
     }
+    console.log('hottest channels');
+    console.log(hottestChannels);
+    return hottestChannels;
   }
 
   getCurrentNumberOfMessages(time: TimeBlock, channel: string) {
