@@ -141,7 +141,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
   } else {
     res.status(200).send();
     const request: EventRequest = req.body;
-    console.log(request);
+    // console.log(request);
     const isNewUserAdded = request.event.type === 'team_join';
     const isNewChannelCreated = request.event.type === 'channel_created';
     const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
