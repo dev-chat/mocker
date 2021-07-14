@@ -106,6 +106,7 @@ export class ActivityPersistenceService {
 
   getCurrentNumberOfMessages(time: TimeBlock) {
     const query = `SELECT IFNULL(x.count, 0) as count, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.time="${time?.time}" AND x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}";`;
+    console.log(query);
     return getRepository(Activity)
       .query(query)
       .then(result => {
@@ -118,6 +119,7 @@ export class ActivityPersistenceService {
   getMostRecentAverageActivity(time: TimeBlock) {
     // Some bad sql practices here that need to be cleared up.
     const query = `SELECT IFNULL(AVG(x.count), 0) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.dayOfWeek}" AND x.time="${time?.time}" GROUP BY channel;`;
+    console.log(query);
     return getRepository(Activity)
       .query(query)
       .then(result => {
