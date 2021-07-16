@@ -39,11 +39,9 @@ export class ActivityPersistenceService {
       setTimeout(() => (this.refreshTime = true), 120000);
       const hottest: Temperature[] = await this.getHottestChannels();
       if (hottest.length > 0) {
-        let text = ``;
+        let text = `==========================================`;
         for (const chan of hottest) {
-          text += `As of: eval(new Date().toLocalTimeString()) \n <#${chan.id}> : ${this.getEmoji(
-            chan.temperature,
-          )} \n`;
+          text += `\n <#${chan.id}> : ${this.getEmoji(chan.temperature)}`;
         }
         this.web.sendMessage('#hot', text);
       }
