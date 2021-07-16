@@ -66,8 +66,6 @@ export class ActivityPersistenceService {
     const mostRecentFiveMinBlock = this.getMostRecentTimeblock();
     const channels = await this.web.getAllChannels().then(result => result.channels);
     const hottestChannels: Temperature[] = [];
-    console.log('all channels');
-    console.log(channels);
     console.log(mostRecentFiveMinBlock);
     const currentMessages = await this.getCurrentNumberOfMessages(mostRecentFiveMinBlock);
     const averageMessages = await this.getMostRecentAverageActivity(mostRecentFiveMinBlock);
@@ -100,8 +98,7 @@ export class ActivityPersistenceService {
     // Channels that are hot right now and in the top 10 by day.
     const sorted = hottestChannels
       .filter(chan => chan.temperature === 'hot')
-      .sort((a: Temperature, b: Temperature) => b.current - a.current)
-      .slice(0, 10);
+      .sort((a: Temperature, b: Temperature) => b.current - a.current);
     console.log('hottest channels');
     console.log(sorted);
     console.timeEnd('getHottestChannels');
