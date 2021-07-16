@@ -75,6 +75,9 @@ export class ActivityPersistenceService {
     for (const channel of channels) {
       const averageMessage = parseInt(averageMessages?.find((x: any) => x.channel === channel.id)?.avg || 0);
       const currentMessage = parseInt(currentMessages?.find((x: any) => x.channel === channel.id)?.count || 0);
+      console.log(channel);
+      console.log('average', averageMessage);
+      console.log('current', currentMessage);
       const channelTemp = {
         id: channel.id,
         name: channel.name,
