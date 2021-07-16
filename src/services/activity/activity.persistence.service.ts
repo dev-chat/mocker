@@ -46,7 +46,7 @@ export class ActivityPersistenceService {
           text += `<#${hottest[i].id}> : ${this.getEmoji(hottest[i].temperature, hottest.length - i)}\n`;
         }
         if (this.timestamp) {
-          this.web.editMessage('#hot', text, this.timestamp);
+          this.web.editMessage('C027YMYC5CJ', text, this.timestamp);
         } else {
           this.timestamp = await this.web
             .sendMessage('#hot', text)
