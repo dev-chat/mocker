@@ -118,6 +118,11 @@ function handleBotMessage(request: EventRequest): void {
   webService.deleteMessage(request.event.channel, request.event.ts);
 }
 
+function deleteMessage(request: EventRequest): void {
+  console.log('Someone talked in #hot who was not a bot. Suppressing...');
+  webService.deleteMessage(request.event.channel, request.event.ts);
+}
+
 function handleReaction(request: EventRequest): void {
   reactionService.handleReaction(request.event, request.event.type === 'reaction_added', request.team_id);
 }
@@ -139,6 +144,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
   if (req.body.challenge) {
     res.send({ challenge: req.body.challenge });
   } else {
+    console.time('respond-to-event');
     res.status(200).send();
     const request: EventRequest = req.body;
     // console.log(request);
@@ -149,8 +155,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const isUserBackfired = await backfirePersistenceService.isBackfire(request.event.user, request.team_id);
     // TO DO: Add teamId to this call once counterPersistenceService uses redis.
     const isUserCounterMuzzled = await counterPersistenceService.isCounterMuzzled(request.event.user);
-
-    console.time('respond-to-event');
+    const isInHotAndNotBot = request.event.user !== 'ULG8SJRFF';
     if (isNewUserAdded) {
       handleNewUserAdd();
     } else if (isNewChannelCreated) {
@@ -165,6 +170,8 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       handleBotMessage(request);
     } else if (isReaction) {
       handleReaction(request);
+    } else if (isInHotAndNotBot) {
+      deleteMessage(request);
     }
     handleActivity(request);
     console.timeEnd('respond-to-event');
