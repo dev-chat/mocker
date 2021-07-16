@@ -9,7 +9,7 @@ import { Temperature, TimeBlock } from './activity.model';
 export class ActivityPersistenceService {
   private web: WebService = WebService.getInstance();
   private refreshTime = true;
-  private timestamp: string;
+  private timestamp = '';
 
   public static getInstance(): ActivityPersistenceService {
     if (!ActivityPersistenceService.instance) {
