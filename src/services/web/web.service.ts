@@ -5,6 +5,7 @@ import {
   WebAPICallResult,
   WebClient,
   ChatPostEphemeralArguments,
+  ChatUpdateArguments,
 } from '@slack/web-api';
 
 const MAX_RETRIES = 5;
@@ -58,7 +59,21 @@ export class WebService {
       channel,
       text,
     };
-    this.web.chat.postMessage(postRequest).catch(e => console.error(e));
+    this.web.chat
+      .postMessage(postRequest)
+      .then(result => console.log(result))
+      .catch(e => console.error(e));
+  }
+
+  public editMessage(channel: string, text: string, ts: string): void {
+    const token = process.env.MUZZLE_BOT_USER_TOKEN;
+    const update: ChatUpdateArguments = {
+      channel,
+      text,
+      ts,
+      token,
+    };
+    this.web.chat.update(update).catch(e => console.error(e));
   }
 
   public getAllUsers(): Promise<WebAPICallResult> {
