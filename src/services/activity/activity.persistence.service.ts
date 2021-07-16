@@ -71,29 +71,31 @@ export class ActivityPersistenceService {
     const averageMessages = await this.getMostRecentAverageActivity(timeblock);
 
     for (const channel of channels) {
-      const averageMessage = parseInt(averageMessages?.find((x: any) => x.channel === channel.id)?.avg || 0);
-      const currentMessage = parseInt(currentMessages?.find((x: any) => x.channel === channel.id)?.count || 0);
-      console.log('channel id', channel.id);
-      console.log('channel name', channel.name);
-      console.log('average', averageMessage);
-      console.log('current', currentMessage);
-      const channelTemp = {
-        id: channel.id,
-        name: channel.name,
-        temperature: '',
-        average: averageMessage,
-        current: currentMessage,
-      };
+      if (channel.name !== 'hot') {
+        const averageMessage = parseInt(averageMessages?.find((x: any) => x.channel === channel.id)?.avg || 0);
+        const currentMessage = parseInt(currentMessages?.find((x: any) => x.channel === channel.id)?.count || 0);
+        console.log('channel id', channel.id);
+        console.log('channel name', channel.name);
+        console.log('average', averageMessage);
+        console.log('current', currentMessage);
+        const channelTemp = {
+          id: channel.id,
+          name: channel.name,
+          temperature: '',
+          average: averageMessage,
+          current: currentMessage,
+        };
 
-      if (currentMessage > averageMessage) {
-        channelTemp.temperature = 'hot';
-      } else if (currentMessage < averageMessage / 2) {
-        channelTemp.temperature = 'cold';
-      } else {
-        channelTemp.temperature = 'average';
+        if (currentMessage > averageMessage) {
+          channelTemp.temperature = 'hot';
+        } else if (currentMessage < averageMessage / 2) {
+          channelTemp.temperature = 'cold';
+        } else {
+          channelTemp.temperature = 'average';
+        }
+
+        hottestChannels.push(channelTemp);
       }
-
-      hottestChannels.push(channelTemp);
     }
     // Channels that are hot right now and in the top 10 by day.
     const sorted = hottestChannels
