@@ -1,3 +1,4 @@
+import { WebAPICallResult } from '@slack/web-api';
 import { getRepository } from 'typeorm';
 import { Activity } from '../../shared/db/models/Activity';
 import { SlackUser } from '../../shared/db/models/SlackUser';
@@ -8,6 +9,7 @@ import { Temperature, TimeBlock } from './activity.model';
 export class ActivityPersistenceService {
   private web: WebService = WebService.getInstance();
   private refreshTime = true;
+  private timestamp: string;
 
   public static getInstance(): ActivityPersistenceService {
     if (!ActivityPersistenceService.instance) {
@@ -43,7 +45,17 @@ export class ActivityPersistenceService {
         for (let i = 0; i < hottest.length; i++) {
           text += `<#${hottest[i].id}> : ${this.getEmoji(hottest[i].temperature, hottest.length - i)}\n`;
         }
-        this.web.sendMessage('#hot', text);
+        if (this.timestamp) {
+          this.web.editMessage('#hot', text, this.timestamp);
+        } else {
+          this.timestamp = await this.web
+            .sendMessage('#hot', text)
+            .then((result: WebAPICallResult) => result.ts as string)
+            .catch(e => {
+              console.error(e);
+              return '';
+            });
+        }
       }
     }
   }

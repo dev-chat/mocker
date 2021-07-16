@@ -52,17 +52,20 @@ export class WebService {
   /**
    * Handles sending messages to the chat.
    */
-  public sendMessage(channel: string, text: string): void {
+  public sendMessage(channel: string, text: string): Promise<WebAPICallResult> {
     const token: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const postRequest: ChatPostMessageArguments = {
       token,
       channel,
       text,
     };
-    this.web.chat
+    return this.web.chat
       .postMessage(postRequest)
-      .then(result => console.log(result))
-      .catch(e => console.error(e));
+      .then(result => result)
+      .catch(e => {
+        console.error(e);
+        throw new Error(e);
+      });
   }
 
   public editMessage(channel: string, text: string, ts: string): void {
