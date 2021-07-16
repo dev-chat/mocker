@@ -41,7 +41,9 @@ export class ActivityPersistenceService {
       if (hottest.length > 0) {
         let text = ``;
         for (const chan of hottest) {
-          text += `<#${chan.id}> : ${this.getEmoji(chan.temperature)} \n`;
+          text += `As of: eval(new Date().toLocalTimeString()) \n <#${chan.id}> : ${this.getEmoji(
+            chan.temperature,
+          )} \n`;
         }
         this.web.sendMessage('#hot', text);
       }
