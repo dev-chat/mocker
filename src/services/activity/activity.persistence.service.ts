@@ -40,21 +40,22 @@ export class ActivityPersistenceService {
       const hottest: Temperature[] = await this.getHottestChannels();
       if (hottest.length > 0) {
         let text = ``;
-        for (const chan of hottest) {
-          text += `<#${chan.id}> : ${this.getEmoji(chan.temperature)}\n`;
+        for (let i = 0; i < hottest.length; i++) {
+          text += `<#${hottest[i].id}> : ${this.getEmoji(hottest[i].temperature, hottest.length - i)}\n`;
         }
         this.web.sendMessage('#hot', text);
       }
     }
   }
 
-  getEmoji(temp: string) {
+  getEmoji(temp: string, numberOfEmojis: number) {
+    const fire = ':fire:';
+    let text = '';
     if (temp === 'hot') {
-      return ':fire:';
-    } else if (temp === 'average') {
-      return ':neutral_face:';
-    } else {
-      return ':snowflake:';
+      for (let i = 0; i < numberOfEmojis; i++) {
+        text += fire;
+      }
+      return text;
     }
   }
 
