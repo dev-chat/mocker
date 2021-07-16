@@ -57,6 +57,7 @@ export class ActivityPersistenceService {
       }
       return text;
     }
+    return ':snowflake:';
   }
 
   async getHottestChannels() {
