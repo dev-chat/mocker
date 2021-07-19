@@ -74,6 +74,7 @@ export class WebService {
     const postRequest: ChatPostMessageArguments = {
       token,
       channel,
+      text,
       blocks: [
         {
           type: 'section',
