@@ -88,7 +88,7 @@ export class WebService {
           elements: [
             {
               type: 'mrkdwn',
-              text: `As of <!date^${timestamp}^{date_num} {time_secs}>| Some Undetermined Date and Time`,
+              text: `As of <!date^${timestamp}^{date_num} {time_secs}>| Some Undetermined Date and Time>`,
               verbatim: false,
             },
           ],
