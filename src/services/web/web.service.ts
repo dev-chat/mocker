@@ -81,7 +81,6 @@ export class WebService {
           text: {
             type: 'mrkdwn',
             text,
-            emoji: true,
           },
         },
         {
