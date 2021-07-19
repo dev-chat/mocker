@@ -9,7 +9,6 @@ import { Temperature, TimeBlock } from './activity.model';
 export class ActivityPersistenceService {
   private web: WebService = WebService.getInstance();
   private refreshTime = true;
-  private timestamp = '';
 
   public static getInstance(): ActivityPersistenceService {
     if (!ActivityPersistenceService.instance) {
@@ -45,17 +44,13 @@ export class ActivityPersistenceService {
         for (let i = 0; i < hottest.length; i++) {
           text += `<#${hottest[i].id}> : ${this.getEmoji(hottest[i].temperature, hottest.length - i)}\n`;
         }
-        if (this.timestamp) {
-          this.web.editMessage('C027YMYC5CJ', text, this.timestamp);
-        } else {
-          this.timestamp = await this.web
-            .sendMessage('#hot', text)
-            .then((result: WebAPICallResult) => result.ts as string)
-            .catch(e => {
-              console.error(e);
-              return '';
-            });
-        }
+        await this.web
+          .sendMessage('#hot', text)
+          .then((result: WebAPICallResult) => result.ts as string)
+          .catch(e => {
+            console.error(e);
+            return '';
+          });
       }
     }
   }
