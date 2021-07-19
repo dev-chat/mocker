@@ -88,7 +88,8 @@ export class WebService {
           elements: [
             {
               type: 'mrkdwn',
-              text: `As of <!date^${timestamp}^{date_num} {time_secs}|As of a date and time that cannot be determined>`,
+              text: `As of <!date^${timestamp}^{date_num} {time_secs}>| Some Undetermined Date and Time`,
+              verbatim: false,
             },
           ],
         },
