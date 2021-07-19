@@ -70,7 +70,7 @@ export class WebService {
 
   public sendBlockMessage(channel: string, text: string) {
     const token = process.env.MUZZLE_BOT_USER_TOKEN;
-    const timestamp = Date.now();
+    const timestamp = Math.floor(new Date().getTime() / 1000);
     const postRequest: ChatPostMessageArguments = {
       token,
       channel,
