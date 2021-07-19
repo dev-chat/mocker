@@ -45,7 +45,7 @@ export class ActivityPersistenceService {
           text += `\n<#${hottest[i].id}> : ${this.getEmoji(hottest[i].temperature, hottest.length - i)}`;
         }
         await this.web
-          .sendMessage('#hot', text)
+          .sendBlockMessage('#hot', text)
           .then((result: WebAPICallResult) => result.ts as string)
           .catch(e => {
             console.error(e);

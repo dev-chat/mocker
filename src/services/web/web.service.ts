@@ -68,6 +68,34 @@ export class WebService {
       });
   }
 
+  public sendBlockMessage(channel: string, text: string) {
+    const token = process.env.MUZZLE_BOT_USER_TOKEN;
+    const timestamp = new Date().getUTCMilliseconds();
+    const postRequest: ChatPostMessageArguments = {
+      token,
+      channel,
+      text,
+      blocks: [
+        {
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `As of <!date^${timestamp}^{date_num} {time_secs}|As of a date and time that cannot be determined`,
+            },
+          ],
+        },
+      ],
+    };
+    return this.web.chat
+      .postMessage(postRequest)
+      .then(result => result)
+      .catch(e => {
+        console.error(e);
+        throw new Error(e);
+      });
+  }
+
   public editMessage(channel: string, text: string, ts: string): void {
     const token = process.env.MUZZLE_BOT_USER_TOKEN;
     const update: ChatUpdateArguments = {
