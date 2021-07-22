@@ -109,7 +109,7 @@ export class MuzzleService extends SuppressorService {
         const language = this.translationService.getRandomLanguage();
         const wordsWithReplacementIfNeeded = text
           .split(' ')
-          .map(word => (word.length > 10 ? '' : word))
+          .map(word => (word.length > 10 ? '..mMm..' : word))
           .join(' ');
         const suppressedMessage = await this.translationService
           .translate(wordsWithReplacementIfNeeded, language)
