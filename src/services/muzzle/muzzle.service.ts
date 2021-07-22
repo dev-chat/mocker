@@ -107,12 +107,17 @@ export class MuzzleService extends SuppressorService {
       if (!suppressions || (suppressions && +suppressions < MAX_SUPPRESSIONS)) {
         await this.muzzlePersistenceService.incrementStatefulSuppressions(userId, teamId);
         const language = this.translationService.getRandomLanguage();
-
-        const suppressedMessage = await this.translationService.translate(text, language).catch(e => {
-          console.error('error on translation');
-          console.error(e);
-          return null;
-        });
+        const wordsWithReplacementIfNeeded = text
+          .split(' ')
+          .map(word => (word.length > 7 ? '..mMm..' : word))
+          .join(' ');
+        const suppressedMessage = await this.translationService
+          .translate(wordsWithReplacementIfNeeded, language)
+          .catch(e => {
+            console.error('error on translation');
+            console.error(e);
+            return null;
+          });
         if (suppressedMessage === null) {
           this.sendSuppressedMessage(text, +muzzle, this.muzzlePersistenceService);
         } else {
