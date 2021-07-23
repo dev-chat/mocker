@@ -128,7 +128,7 @@ export class WebService {
     const uploadRequest: FilesUploadArguments = {
       channels: channel,
       content,
-      filetype: 'markdown',
+      filetype: 'text',
       title,
       // eslint-disable-next-line @typescript-eslint/camelcase
       initial_comment: title,
