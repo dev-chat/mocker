@@ -13,7 +13,6 @@ export interface TimeBlockDate {
 export interface Temperature {
   id: string;
   name: string;
-  temperature: string;
   average: number;
   current: number;
 }

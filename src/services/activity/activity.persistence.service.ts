@@ -42,7 +42,7 @@ export class ActivityPersistenceService {
       if (hottest.length > 0) {
         let text = ``;
         for (let i = 0; i < hottest.length; i++) {
-          text += `\n<#${hottest[i].id}> : ${this.getEmoji(hottest[i].temperature, hottest.length - i)}`;
+          text += `\n<#${hottest[i].id}> : ${this.getEmoji(hottest.length - i)}`;
         }
         await this.web
           .sendBlockMessage('#hot', text)
@@ -55,16 +55,13 @@ export class ActivityPersistenceService {
     }
   }
 
-  getEmoji(temp: string, numberOfEmojis: number) {
+  getEmoji(numberOfEmojis: number) {
     const fire = ':fire:';
     let text = '';
-    if (temp === 'hot') {
-      for (let i = 0; i < numberOfEmojis; i++) {
-        text += fire;
-      }
-      return text;
+    for (let i = 0; i < numberOfEmojis; i++) {
+      text += fire;
     }
-    return ':snowflake:';
+    return text;
   }
 
   async getHottestChannels() {
@@ -83,25 +80,16 @@ export class ActivityPersistenceService {
         const channelTemp = {
           id: channel.id,
           name: channel.name,
-          temperature: '',
           average: averageMessage,
           current: currentMessage,
         };
 
         if (currentMessage > averageMessage) {
-          channelTemp.temperature = 'hot';
-        } else if (currentMessage < averageMessage / 2) {
-          channelTemp.temperature = 'cold';
-        } else {
-          channelTemp.temperature = 'average';
+          hottestChannels.push(channelTemp);
         }
-
-        hottestChannels.push(channelTemp);
       }
     }
-    const sorted = hottestChannels
-      .filter(chan => chan.temperature === 'hot')
-      .sort((a: Temperature, b: Temperature) => b.current - a.current);
+    const sorted = hottestChannels.sort((a: Temperature, b: Temperature) => b.current - a.current);
     console.log('hottest channels');
     console.log(sorted);
     console.timeEnd('getHottestChannels');
@@ -111,25 +99,13 @@ export class ActivityPersistenceService {
   getCurrentNumberOfMessages(time: TimeBlock) {
     const query = `SELECT x.count as count, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity WHERE eventType="message" GROUP BY day,time,date, channel) as x WHERE x.time="${time?.time}" AND x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}";`;
     console.log(query);
-    return getRepository(Activity)
-      .query(query)
-      .then(result => {
-        console.log('currnet number of messages');
-        console.log(result);
-        return result;
-      });
+    return getRepository(Activity).query(query);
   }
 
   getMostRecentAverageActivity(time: TimeBlock) {
     const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity WHERE eventType="message" GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.dayOfWeek}" AND x.time="${time?.time}" AND x.date!="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}" GROUP BY channel;`;
     console.log(query);
-    return getRepository(Activity)
-      .query(query)
-      .then(result => {
-        console.log('most recent average activity');
-        console.log(result);
-        return result;
-      });
+    return getRepository(Activity).query(query);
   }
 
   getMostRecentTimeblock(): TimeBlock {
@@ -142,7 +118,6 @@ export class ActivityPersistenceService {
     }
     const time = `${hour}:${minute}`;
 
-    // Final most recent 5 min block.
     return {
       time,
       date: {
