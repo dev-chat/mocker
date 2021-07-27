@@ -6,7 +6,9 @@ export const ABUSE_PENALTY_TIME = 300000;
 export const REPLACEMENT_TEXT = ['..mMm..', '..MICROSOFT..'];
 export const MAX_WORD_LENGTH = 10;
 export const USER_REGEX = /[<]@\w+/gm;
+export const MAX_TOTAL_MUZZLE_COUNT_LENGTH = 86400000;
 export enum MuzzleRedisTypeEnum {
   'Muzzled' = 'muzzled',
   'Requestor' = 'requestor',
+  'Muzzles' = 'muzzles',
 }

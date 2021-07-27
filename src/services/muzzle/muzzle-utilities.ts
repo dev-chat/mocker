@@ -35,8 +35,3 @@ export function getTimeString(time: number): string {
 export function isRandomEven(): boolean {
   return Math.floor(Math.random() * 2) % 2 === 0;
 }
-
-export function shouldBackfire(): boolean {
-  const chanceOfBackfire = 0.05;
-  return Math.random() <= chanceOfBackfire;
-}

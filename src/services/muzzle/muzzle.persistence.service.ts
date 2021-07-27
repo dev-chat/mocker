@@ -1,6 +1,12 @@
 import { UpdateResult, getRepository } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
-import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_TIME_BETWEEN_MUZZLES, MuzzleRedisTypeEnum } from './constants';
+import {
+  ABUSE_PENALTY_TIME,
+  MAX_MUZZLES,
+  MAX_TIME_BETWEEN_MUZZLES,
+  MAX_TOTAL_MUZZLE_COUNT_LENGTH,
+  MuzzleRedisTypeEnum,
+} from './constants';
 import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 import { StorePersistenceService } from '../store/store.persistence.service';
 
@@ -89,9 +95,20 @@ export class MuzzlePersistenceService {
         'EX',
         MAX_TIME_BETWEEN_MUZZLES,
       );
+      this.redis.setValueWithExpire(
+        this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Muzzles),
+        newNumber.toString(),
+        'EX',
+        MAX_TOTAL_MUZZLE_COUNT_LENGTH,
+      );
     } else if (requests < MAX_MUZZLES) {
       this.redis.setValue(this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor), newNumber);
+      this.redis.setValue(this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Muzzles), newNumber);
     }
+  }
+
+  public async getNumberOfMuzzles(requestorId: string, teamId: string) {
+    return this.redis.getValue(this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Muzzles));
   }
 
   /**

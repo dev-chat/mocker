@@ -11,7 +11,7 @@ export class MuzzleService extends SuppressorService {
    * Adds a user to the muzzled map and sets a timeout to remove the muzzle within a random time of 30 seconds to 3 minutes
    */
   public async addUserToMuzzled(userId: string, requestorId: string, teamId: string, channel: string): Promise<string> {
-    const shouldBackFire = shouldBackfire();
+    const shouldBackFire = await this.shouldBackfire(requestorId, teamId);
     const userName = await this.slackService.getUserNameById(userId, teamId);
     const requestorName = await this.slackService.getUserNameById(requestorId, teamId);
     const counter = this.counterPersistenceService.getCounterByRequestorId(userId);

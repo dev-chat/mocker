@@ -39,8 +39,6 @@ describe('MuzzleService', () => {
           jest
             .spyOn(persistenceService, 'isUserMuzzled')
             .mockImplementation(() => new Promise(resolve => resolve(false)));
-
-          jest.spyOn(muzzleUtils, 'shouldBackfire').mockImplementation(() => false);
         });
 
         it('should call MuzzlePersistenceService.addMuzzle()', async () => {
@@ -58,8 +56,6 @@ describe('MuzzleService', () => {
           const mockMuzzle = { id: 1 };
           const persistenceService = MuzzlePersistenceService.getInstance();
           addMuzzleMock = jest.spyOn(persistenceService, 'addMuzzle').mockResolvedValue(mockMuzzle as Muzzle);
-
-          jest.spyOn(muzzleUtils, 'shouldBackfire').mockImplementation(() => false);
 
           jest.spyOn(persistenceService, 'isUserMuzzled').mockImplementation(
             () =>
@@ -91,9 +87,6 @@ describe('MuzzleService', () => {
           const mockMuzzle = { id: 1 };
           const persistenceService = MuzzlePersistenceService.getInstance();
           addMuzzleMock = jest.spyOn(persistenceService, 'addMuzzle').mockResolvedValue(mockMuzzle as Muzzle);
-
-          jest.spyOn(muzzleUtils, 'shouldBackfire').mockImplementation(() => false);
-
           const mockIsUserMuzzled = jest.spyOn(persistenceService, 'isUserMuzzled');
 
           when(mockIsUserMuzzled)
@@ -115,9 +108,6 @@ describe('MuzzleService', () => {
         const mockMuzzle = { id: 1 };
         const persistenceService = MuzzlePersistenceService.getInstance();
         jest.spyOn(persistenceService, 'addMuzzle').mockResolvedValue(mockMuzzle as Muzzle);
-
-        jest.spyOn(muzzleUtils, 'shouldBackfire').mockImplementation(() => false);
-
         jest
           .spyOn(persistenceService, 'isMaxMuzzlesReached')
           .mockImplementation(() => new Promise(resolve => resolve(true)));

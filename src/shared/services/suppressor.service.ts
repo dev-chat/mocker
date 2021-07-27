@@ -186,4 +186,12 @@ export class SuppressorService {
 
     return returnText;
   }
+
+  public async shouldBackfire(requestorId: string, teamId: string): Promise<boolean> {
+    const muzzles = await this.muzzlePersistenceService
+      .getNumberOfMuzzles(requestorId, teamId)
+      .then(val => (val ? parseInt(val) : 0));
+    const chanceOfBackfire = 0.05 + muzzles * 0.01;
+    return Math.random() <= chanceOfBackfire;
+  }
 }
