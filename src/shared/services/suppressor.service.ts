@@ -192,6 +192,7 @@ export class SuppressorService {
       .getNumberOfMuzzles(requestorId, teamId)
       .then(val => (val ? parseInt(val) : 0));
     const chanceOfBackfire = 0.05 + muzzles * 0.01;
+    console.log(`Chance of Backfire for ${requestorId}: ${chanceOfBackfire}`);
     return Math.random() <= chanceOfBackfire;
   }
 }
