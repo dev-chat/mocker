@@ -1,5 +1,5 @@
 import { MAX_MUZZLES, MAX_SUPPRESSIONS } from './constants';
-import { getTimeString, getTimeToMuzzle, shouldBackfire } from './muzzle-utilities';
+import { getTimeString, getTimeToMuzzle } from './muzzle-utilities';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 import { CounterService } from '../counter/counter.service';
 import { StorePersistenceService } from '../store/store.persistence.service';
