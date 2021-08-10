@@ -17,6 +17,10 @@ export class SuppressorService {
   public counterPersistenceService = CounterPersistenceService.getInstance();
   public translationService = new TranslationService();
 
+  public isMuzzleBot(userId: string) {
+    return userId === 'ULG8SJRFF';
+  }
+
   public findUserIdInBlocks(obj: any, regEx: RegExp): string | undefined {
     let id;
     Object.keys(obj).forEach(key => {
