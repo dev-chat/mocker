@@ -1,4 +1,4 @@
-import { EventRequest } from '../models/slack/slack-models';
+import { EventRequest, SlackUser } from '../models/slack/slack-models';
 import { USER_ID_REGEX } from '../../services/counter/constants';
 import { SlackService } from '../../services/slack/slack.service';
 import { BackFirePersistenceService } from '../../services/backfire/backfire.persistence.service';
@@ -32,6 +32,27 @@ export class SuppressorService {
       }
       if (typeof obj[key] === 'object') {
         id = this.findUserIdInBlocks(obj[key], regEx);
+      }
+    });
+    return id;
+  }
+
+  // Built for spoiler only. This will not work on other block apps. Should improve this to be universal.
+  public async findUserInBlocks(blocks: any, users?: SlackUser[]): string | undefined {
+    const allUsers: SlackUser[] = users ? users : await this.slackService.getAllUsers();
+
+    let id;
+    const firstBlock = blocks[0]?.elements[0];
+    Object.keys(firstBlock).forEach(key => {
+      if (typeof firstBlock[key] === 'string') {
+        allUsers.forEach(user => {
+          if (firstBlock[key].includes(user.name)) {
+            id = user.id;
+          }
+        });
+      }
+      if (typeof firstBlock[key] === 'object') {
+        id = this.findUserInBlocks(firstBlock[key], allUsers);
       }
     });
     return id;
@@ -82,9 +103,15 @@ export class SuppressorService {
       let userIdByBlocks;
 
       if (request.event.blocks) {
-        const hasIdInBlock = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
-        if (hasIdInBlock) {
-          userIdByBlocks = this.slackService.getUserId(hasIdInBlock);
+        const userId = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
+        const userName = await this.findUserInBlocks(request.event.blocks);
+        console.log('ID found for spoiler muzzle:' + userName);
+        if (userId) {
+          userIdByBlocks = this.slackService.getUserId(userId);
+        }
+
+        if (userName) {
+          userIdByBlocks = userName;
         }
       }
 

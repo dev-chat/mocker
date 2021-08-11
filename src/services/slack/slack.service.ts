@@ -85,19 +85,21 @@ export class SlackService {
   /**
    * Retrieves a list of all users.
    */
-  public getAllUsers(): void {
+  public getAllUsers(): Promise<SlackUser[]> {
     console.log('Retrieving new user list...');
-    this.web
+    return this.web
       .getAllUsers()
       .then(resp => {
         console.log('New user list has been retrieved!');
         this.persistenceService.saveUsers(resp.members as SlackUser[]);
+        return resp.members as SlackUser[];
       })
       .catch(e => {
         console.error('Failed to retrieve users', e);
         console.timeEnd('retrieved user list in: ');
         console.error('Retrying in 5 seconds...');
         setTimeout(() => this.getAllUsers(), 5000);
+        throw new Error('Unable to retrieve users');
       });
   }
 }
