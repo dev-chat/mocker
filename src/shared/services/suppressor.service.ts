@@ -46,6 +46,7 @@ export class SuppressorService {
     Object.keys(firstBlock).forEach(key => {
       if (typeof firstBlock[key] === 'string') {
         allUsers.forEach(user => {
+          console.log(user);
           if (firstBlock[key].includes(user.name)) {
             id = user.id;
           }
