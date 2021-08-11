@@ -92,11 +92,11 @@ export class SuppressorService {
    * Determines whether or not a bot message should be removed.
    */
   public async shouldBotMessageBeMuzzled(request: EventRequest): Promise<boolean> {
-    if (
-      (request.event.bot_id || request.event.subtype === 'bot_message') &&
-      ((request.event.username && request.event.username.toLowerCase() !== 'muzzle') ||
-        (request.event.bot_profile && request.event.bot_profile.name.toLowerCase() !== 'muzzle'))
-    ) {
+    const isBot = await this.slackService
+      .getUserById(request.event.bot_id, request.team_id)
+      .then(user => user?.name !== 'muzzle' && user?.isBot);
+
+    if (isBot) {
       let userIdByEventText;
       let userIdByAttachmentText;
       let userIdByAttachmentPretext;

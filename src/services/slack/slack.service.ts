@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ChannelResponse, SlackUser } from '../../shared/models/slack/slack-models';
+import { SlackUser as SlackUserFromDB } from '../../shared/db/models/SlackUser';
 import { WebService } from '../web/web.service';
 import { USER_ID_REGEX } from './constants';
 import { SlackPersistenceService } from './slack.persistence.service';
@@ -101,5 +102,9 @@ export class SlackService {
         setTimeout(() => this.getAllUsers(), 5000);
         throw new Error('Unable to retrieve users');
       });
+  }
+
+  public getUserById(userId: string, teamId: string): Promise<SlackUserFromDB | undefined> {
+    return this.persistenceService.getUserById(userId, teamId);
   }
 }
