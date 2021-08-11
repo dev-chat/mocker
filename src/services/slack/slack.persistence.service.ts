@@ -49,7 +49,7 @@ export class SlackPersistenceService {
         slackId: user.id,
         name: user.profile.display_name || user.name,
         teamId: user.team_id,
-        botId: user?.profile?.bot_id,
+        botId: user?.profile?.bot_id ? user.profile.bot_id : '',
         isBot: !!user.is_bot,
       };
     });
