@@ -159,7 +159,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const isMuzzleBot = request.event.user === 'ULG8SJRFF';
     console.log(request);
     console.log(request.event);
-    console.log(request.event.blocks[0]);
+    console.log(request.event?.blocks[0]);
     if (isNewUserAdded) {
       handleNewUserAdd();
     } else if (isNewChannelCreated) {
