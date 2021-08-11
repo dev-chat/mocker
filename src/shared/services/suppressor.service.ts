@@ -43,19 +43,21 @@ export class SuppressorService {
     console.log(blocks);
     let id;
     const firstBlock = blocks[0]?.elements?.[0];
-    Object.keys(firstBlock).forEach(key => {
-      if (typeof firstBlock[key] === 'string') {
-        allUsers.forEach(user => {
-          console.log(user);
-          if (firstBlock[key].includes(user.name)) {
-            id = user.id;
-          }
-        });
-      }
-      if (typeof firstBlock[key] === 'object') {
-        id = this.findUserInBlocks(firstBlock[key], allUsers);
-      }
-    });
+    if (firstBlock) {
+      Object.keys(firstBlock).forEach(key => {
+        if (typeof firstBlock[key] === 'string') {
+          allUsers.forEach(user => {
+            console.log(user);
+            if (firstBlock[key].includes(user.name)) {
+              id = user.id;
+            }
+          });
+        }
+        if (typeof firstBlock[key] === 'object') {
+          id = this.findUserInBlocks(firstBlock[key], allUsers);
+        }
+      });
+    }
     return id;
   }
 
