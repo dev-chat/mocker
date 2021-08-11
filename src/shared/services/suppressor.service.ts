@@ -38,7 +38,7 @@ export class SuppressorService {
   }
 
   // Built for spoiler only. This will not work on other block apps. Should improve this to be universal.
-  public async findUserInBlocks(blocks: any, users?: SlackUser[]): string | undefined {
+  public async findUserInBlocks(blocks: any, users?: SlackUser[]): Promise<string | undefined> {
     const allUsers: SlackUser[] = users ? users : await this.slackService.getAllUsers();
 
     let id;
