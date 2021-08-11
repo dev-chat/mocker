@@ -20,6 +20,9 @@ export class SlackUser {
   @Column()
   public isBot!: boolean;
 
+  @Column()
+  public botId!: string;
+
   @OneToMany(
     _type => InventoryItem,
     inventoryItem => inventoryItem.owner,

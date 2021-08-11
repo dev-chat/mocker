@@ -71,7 +71,6 @@ export interface SlackUser {
   tz: string;
   tz_label: string;
   tz_offset: number;
-  profile: any;
   is_admin: boolean;
   is_owner: boolean;
   is_primary_owner: boolean;
@@ -80,4 +79,8 @@ export interface SlackUser {
   is_bot: boolean;
   is_app_user: boolean;
   updated: number;
+  profile: {
+    bot_id: string;
+    display_name: string;
+  };
 }

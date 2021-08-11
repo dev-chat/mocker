@@ -104,7 +104,7 @@ export class SlackService {
       });
   }
 
-  public getUserById(userId: string, teamId: string): Promise<SlackUserFromDB | undefined> {
-    return this.persistenceService.getUserById(userId, teamId);
+  public getBotByBotId(botId: string, teamId: string): Promise<SlackUserFromDB | undefined> {
+    return this.persistenceService.getBotByBotId(botId, teamId);
   }
 }

@@ -49,7 +49,8 @@ export class SlackPersistenceService {
         slackId: user.id,
         name: user.profile.display_name || user.name,
         teamId: user.team_id,
-        isBot: user.is_bot ? user.is_bot : false,
+        botId: user?.profile?.bot_id,
+        isBot: !!user.is_bot,
       };
     });
     try {
@@ -69,6 +70,10 @@ export class SlackPersistenceService {
 
   async getUserById(userId: string, teamId: string): Promise<SlackUser | undefined> {
     return getRepository(SlackUser).findOne({ slackId: userId, teamId });
+  }
+
+  async getBotByBotId(botId: string, teamId: string): Promise<SlackUser | undefined> {
+    return getRepository(SlackUser).findOne({ botId, teamId });
   }
 
   async getChannelById(channelId: string, teamId: string): Promise<SlackChannel | undefined> {
