@@ -40,9 +40,9 @@ export class SuppressorService {
   // Built for spoiler only. This will not work on other block apps. Should improve this to be universal.
   public async findUserInBlocks(blocks: any, users?: SlackUser[]): Promise<string | undefined> {
     const allUsers: SlackUser[] = users ? users : await this.slackService.getAllUsers();
-
+    console.log(blocks);
     let id;
-    const firstBlock = blocks[0]?.elements[0];
+    const firstBlock = blocks[0]?.elements?.[0];
     Object.keys(firstBlock).forEach(key => {
       if (typeof firstBlock[key] === 'string') {
         allUsers.forEach(user => {
@@ -102,7 +102,11 @@ export class SuppressorService {
       let userIdByCallbackId;
       let userIdByBlocks;
 
+      console.log('Bot message found');
+
       if (request.event.blocks) {
+        console.log('Has blocks');
+        console.log(request.event.blocks);
         const userId = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
         const userName = await this.findUserInBlocks(request.event.blocks);
         console.log('ID found for spoiler muzzle:' + userName);
