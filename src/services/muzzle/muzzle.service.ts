@@ -16,11 +16,15 @@ export class MuzzleService extends SuppressorService {
     const requestorName = await this.slackService.getUserNameById(requestorId, teamId);
     const counter = this.counterPersistenceService.getCounterByRequestorId(userId);
     const protectedUser = await this.storePersistenceService.isProtected(userId, teamId);
-    const isMuzzleBot = this.isMuzzleBot(userId);
+    const isBot = await this.isBot(userId, teamId);
 
+    console.log('userId', userId);
+    console.log('requestorId', requestorId);
+    console.log('teamId', teamId);
+    console.log('channel');
     return new Promise(async (resolve, reject) => {
-      if (isMuzzleBot) {
-        reject('Sorry, you cannot muzzle the muzzle.');
+      if (isBot) {
+        reject('Sorry, you cannot muzzle bots.');
       } else if (!userId) {
         reject(`Invalid username passed in. You can only muzzle existing slack users.`);
       } else if (await this.isSuppressed(userId, teamId)) {

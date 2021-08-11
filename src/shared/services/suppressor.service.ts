@@ -17,8 +17,8 @@ export class SuppressorService {
   public counterPersistenceService = CounterPersistenceService.getInstance();
   public translationService = new TranslationService();
 
-  public isMuzzleBot(userId: string) {
-    return userId === 'ULG8SJRFF';
+  public isBot(userId: string, teamId: string): Promise<boolean | undefined> {
+    return this.slackService.getUserById(userId, teamId).then(user => !!user?.isBot);
   }
 
   public findUserIdInBlocks(obj: any, regEx: RegExp): string | undefined {

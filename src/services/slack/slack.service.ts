@@ -107,4 +107,8 @@ export class SlackService {
   public getBotByBotId(botId: string, teamId: string): Promise<SlackUserFromDB | undefined> {
     return this.persistenceService.getBotByBotId(botId, teamId);
   }
+
+  public getUserById(userId: string, teamId: string): Promise<SlackUserFromDB | undefined> {
+    return this.persistenceService.getUserById(userId, teamId);
+  }
 }

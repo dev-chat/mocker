@@ -157,9 +157,6 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const isUserCounterMuzzled = await counterPersistenceService.isCounterMuzzled(request.event.user);
     const isInHotAndNotBot = request.event.user !== 'ULG8SJRFF' && request.event.channel === 'C027YMYC5CJ';
     const isMuzzleBot = request.event.user === 'ULG8SJRFF';
-    console.log(request);
-    console.log(request.event);
-    // console.log(request.event?.blocks[0]);
     if (isNewUserAdded) {
       handleNewUserAdd();
     } else if (isNewChannelCreated) {
