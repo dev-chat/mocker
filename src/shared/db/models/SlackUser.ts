@@ -17,6 +17,9 @@ export class SlackUser {
   @Column()
   public teamId!: string;
 
+  @Column()
+  public isBot!: boolean;
+
   @OneToMany(
     _type => InventoryItem,
     inventoryItem => inventoryItem.owner,
