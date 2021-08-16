@@ -203,4 +203,9 @@ export class MuzzlePersistenceService {
   private getRedisKeyName(userId: string, teamId: string, userType: MuzzleRedisTypeEnum, withSuppressions = false) {
     return `muzzle.${userType}.${userId}-${teamId}${withSuppressions ? '.suppressions' : ''}`;
   }
+
+  public getMuzzlesByTimePeriod(userId: string, teamId: string, start: string, end: string) {
+    const query = `SELECT COUNT(*) as count FROM muzzle WHERE createdAt >= '${start}' AND createdAt < '${end}' AND teamId='${teamId}' AND slackId='${userId}';`;
+    return getRepository(Muzzle).query(query);
+  }
 }

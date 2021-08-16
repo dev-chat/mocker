@@ -8,6 +8,7 @@ import { WebService } from '../../services/web/web.service';
 import { isRandomEven } from '../../services/muzzle/muzzle-utilities';
 import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../services/muzzle/constants';
 import { TranslationService } from './translation.service';
+import moment from 'moment';
 
 export class SuppressorService {
   public webService = WebService.getInstance();
@@ -228,11 +229,14 @@ export class SuppressorService {
   }
 
   public async shouldBackfire(requestorId: string, teamId: string): Promise<boolean> {
-    const muzzles = await this.muzzlePersistenceService
-      .getNumberOfMuzzles(requestorId, teamId)
-      .then(val => (val ? parseInt(val) : 0));
+    const start = moment()
+      .startOf('day')
+      .subtract(7, 'days')
+      .format('YYYY-MM-DD HH:mm:ss');
+    const end = moment().format('YYYY-MM-DD HH:mm:ss');
+    const muzzles = await this.muzzlePersistenceService.getMuzzlesByTimePeriod(requestorId, teamId, start, end);
     console.log(`Number of muzzles for ${requestorId}: ${muzzles}`);
-    const chanceOfBackfire = 0.05 + muzzles * 0.05;
+    const chanceOfBackfire = 0.05 + muzzles * 0.025;
     console.log(`Chance of Backfire for ${requestorId}: ${chanceOfBackfire}`);
     return Math.random() <= chanceOfBackfire;
   }
