@@ -86,13 +86,15 @@ export class SlackService {
   /**
    * Retrieves a list of all users.
    */
-  public getAllUsers(): Promise<SlackUser[]> {
+  public getAllUsers(shouldSave?: boolean): Promise<SlackUser[]> {
     console.log('Retrieving new user list...');
     return this.web
       .getAllUsers()
       .then(resp => {
         console.log('New user list has been retrieved!');
-        this.persistenceService.saveUsers(resp.members as SlackUser[]);
+        if (shouldSave) {
+          this.persistenceService.saveUsers(resp.members as SlackUser[]);
+        }
         return resp.members as SlackUser[];
       })
       .catch(e => {

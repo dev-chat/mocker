@@ -43,7 +43,6 @@ export class SlackPersistenceService {
 
   // This sucks because TypeORM sucks. Time to consider removing this ORM.
   async saveUsers(users: SlackUserModel[]): Promise<void> {
-    console.log(users);
     const dbUsers = users.map(user => {
       return {
         slackId: user.id,
