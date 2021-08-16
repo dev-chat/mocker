@@ -235,6 +235,7 @@ export class SuppressorService {
       .format('YYYY-MM-DD HH:mm:ss');
     const end = moment().format('YYYY-MM-DD HH:mm:ss');
     const muzzles = await this.muzzlePersistenceService.getMuzzlesByTimePeriod(requestorId, teamId, start, end);
+    Object.keys(muzzles).forEach(key => console.log(key));
     console.log(`Number of muzzles for ${requestorId}: ${muzzles}`);
     const chanceOfBackfire = 0.05 + muzzles * 0.025;
     console.log(`Chance of Backfire for ${requestorId}: ${chanceOfBackfire}`);
