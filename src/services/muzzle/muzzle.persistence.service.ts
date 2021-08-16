@@ -205,7 +205,7 @@ export class MuzzlePersistenceService {
   }
 
   public getMuzzlesByTimePeriod(userId: string, teamId: string, start: string, end: string) {
-    const query = `SELECT COUNT(*) as count FROM muzzle WHERE createdAt >= '${start}' AND createdAt < '${end}' AND teamId='${teamId}' AND slackId='${userId}';`;
+    const query = `SELECT COUNT(*) as count FROM muzzle WHERE createdAt >= '${start}' AND createdAt < '${end}' AND teamId='${teamId}' AND requestorId='${userId}';`;
     return getRepository(Muzzle)
       .query(query)
       .then(item => item.count);
