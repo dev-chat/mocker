@@ -87,11 +87,7 @@ export class MuzzlePersistenceService {
       this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor),
     );
     const requests: number = numberOfRequests ? +numberOfRequests : 0;
-    const outstandingMuzzles = await this.redis.getValue(
-      this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Muzzles),
-    );
     const newRequests = requests + 1;
-    const newOutstanding = outstandingMuzzles ? +outstandingMuzzles + 1 : 0;
     if (!numberOfRequests) {
       this.redis.setValueWithExpire(
         this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor),
@@ -99,20 +95,9 @@ export class MuzzlePersistenceService {
         'EX',
         MAX_TIME_BETWEEN_MUZZLES,
       );
-      this.redis.setValueWithExpire(
-        this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Muzzles),
-        newOutstanding.toString(),
-        'EX',
-        MAX_TOTAL_MUZZLE_COUNT_LENGTH,
-      );
     } else if (requests < MAX_MUZZLES) {
       this.redis.setValue(this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor), newRequests);
-      this.redis.setValue(this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Muzzles), newOutstanding);
     }
-  }
-
-  public async getNumberOfMuzzles(requestorId: string, teamId: string) {
-    return this.redis.getValue(this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Muzzles));
   }
 
   /**

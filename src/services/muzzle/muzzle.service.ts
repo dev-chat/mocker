@@ -18,10 +18,6 @@ export class MuzzleService extends SuppressorService {
     const protectedUser = await this.storePersistenceService.isProtected(userId, teamId);
     const isBot = await this.isBot(userId, teamId);
 
-    console.log('userId', userId);
-    console.log('requestorId', requestorId);
-    console.log('teamId', teamId);
-    console.log('channel');
     return new Promise(async (resolve, reject) => {
       if (isBot) {
         reject('Sorry, you cannot muzzle bots.');
