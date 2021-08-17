@@ -1,12 +1,6 @@
 import { UpdateResult, getRepository } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
-import {
-  ABUSE_PENALTY_TIME,
-  MAX_MUZZLES,
-  MAX_TIME_BETWEEN_MUZZLES,
-  MAX_TOTAL_MUZZLE_COUNT_LENGTH,
-  MuzzleRedisTypeEnum,
-} from './constants';
+import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_TIME_BETWEEN_MUZZLES, MuzzleRedisTypeEnum } from './constants';
 import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 import { StorePersistenceService } from '../store/store.persistence.service';
 
