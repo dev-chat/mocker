@@ -155,19 +155,19 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const isUserBackfired = await backfirePersistenceService.isBackfire(request.event.user, request.team_id);
     // TO DO: Add teamId to this call once counterPersistenceService uses redis.
     const isUserCounterMuzzled = await counterPersistenceService.isCounterMuzzled(request.event.user);
-    const isInHotAndNotBot = request.event.user !== 'ULG8SJRFF' && request.event.channel === 'C027YMYC5CJ';
     const isMuzzleBot = request.event.user === 'ULG8SJRFF';
+    const isInHotAndNotBot = !isMuzzleBot && request.event.channel === 'C027YMYC5CJ';
     if (isNewUserAdded) {
       handleNewUserAdd();
     } else if (isNewChannelCreated) {
       handleNewChannelCreated();
-    } else if (isMuzzled && !isReaction && !isMuzzleBot) {
+    } else if (isMuzzled && !isReaction) {
       handleMuzzledMessage(request);
-    } else if (isUserBackfired && !isReaction && !isMuzzleBot) {
+    } else if (isUserBackfired && !isReaction) {
       handleBackfire(request);
-    } else if (isUserCounterMuzzled && !isReaction && !isMuzzleBot) {
+    } else if (isUserCounterMuzzled && !isReaction) {
       handleCounterMuzzle(request);
-    } else if ((await suppressorService.shouldBotMessageBeMuzzled(request)) && !isReaction && !isMuzzleBot) {
+    } else if ((await suppressorService.shouldBotMessageBeMuzzled(request)) && !isReaction) {
       handleBotMessage(request);
     } else if (isReaction) {
       handleReaction(request);
