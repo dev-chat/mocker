@@ -14,4 +14,7 @@ export class SlackChannel {
 
   @Column()
   public teamId!: string;
+
+  @Column({ default: false })
+  public isDeleted!: boolean;
 }
