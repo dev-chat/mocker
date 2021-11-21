@@ -1,6 +1,8 @@
 import mysql.connector
 import os
 import time
+import requests
+
 print("Beginning channel moderation...")
 start = time.time()
 try:
@@ -28,9 +30,15 @@ mycursor.execute("select channelId, name from slack_channel WHERE channelId NOT 
 channelsToDelete = mycursor.fetchall()
 print('Channels retrieved!')
 
+userToken = os.getenv("MUZZLE_BOT_TOKEN")
 for channel in channelsToDelete:
   print("Deleting...", channel)
-  # Fire off request to delete from slack
-  # Upon success, change the isDeleted key to 1
-  # Upon failure, notify.
+  response = requests.post("https://slack.com/api/admin.conversations.delete", { 'token': userToken, 'channel': channel["channelId"] })
+  print(response.text);
+  if (response.ok == True):
+    mycursor.execute(f'UPDATE slack_channel SET isDeleted=1 WHERE channelId={channel["channelId"]};')
+  elif (response.ok == False):
+    print("Unable to delete slack channel")
+    print(response.text)
+
 print("Completed job in {time} seconds!".format(time=time.time() - start))
