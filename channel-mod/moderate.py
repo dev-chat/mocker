@@ -23,7 +23,7 @@ print("Connected!")
 mycursor = cnx.cursor(dictionary=True, buffered=True)
 
 print('Retrieving channels to delete...')
-mycursor.execute("select channelId, name from slack_channel WHERE channelId NOT IN(select distinct activity.channel as channelId from activity where activity.createdAt between now() - interval 90 day and now());")
+mycursor.execute("select channelId, name from slack_channel WHERE channelId NOT IN(select distinct activity.channel as channelId from activity where activity.createdAt between now() - interval 90 day and now()) AND slack_channel.isDeleted=0;")
 
 channelsToDelete = mycursor.fetchall()
 print('Channels retrieved!')
