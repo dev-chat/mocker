@@ -28,6 +28,7 @@ mycursor.execute("select channelId, name from slack_channel WHERE channelId NOT 
 channelsToDelete = mycursor.fetchall()
 print('Channels retrieved!')
 
+print("Deleting...")
 for channel in channelsToDelete:
   print(channel)
 print("Completed job in {time} seconds!".format(time=time.time() - start))
