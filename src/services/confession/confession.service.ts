@@ -10,9 +10,9 @@ export class ConfessionService {
   public async confess(requestorId: string, teamId: string, channelId: string, confession: string): Promise<void> {
     const message = (await this.shouldBackfire(requestorId, teamId))
       ? `<@${requestorId}> has confessed: 
-      \`${confession}\``
+\`${confession}\``
       : `Someone has confessed: 
-      \`${confession}\``;
+\`${confession}\``;
     this.webService.sendMessage(channelId, message);
   }
 
