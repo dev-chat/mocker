@@ -1,4 +1,4 @@
-import { getRepository } from 'typeorm';
+import { getRepository, UpdateResult } from 'typeorm';
 import { Counter } from '../../shared/db/models/Counter';
 import { CounterItem, CounterMuzzle } from '../../shared/models/counter/counter-models';
 import { getRemainingTime } from '../muzzle/muzzle-utilities';
@@ -43,14 +43,15 @@ export class CounterPersistenceService {
   }
 
   public addCounterMuzzleTime(userId: string, timeToAdd: number): void {
-    if (userId && this.counterMuzzles.has(userId)) {
-      const removalFn = this.counterMuzzles.get(userId)!.removalFn;
+    const counterMuzzle = this.counterMuzzles.get(userId);
+    if (userId && counterMuzzle) {
+      const removalFn = counterMuzzle.removalFn;
       const newTime = getRemainingTime(removalFn) + timeToAdd;
-      clearTimeout(this.counterMuzzles.get(userId)!.removalFn);
+      clearTimeout(counterMuzzle.removalFn);
       console.log(`Setting ${userId}'s muzzle time to ${newTime}`);
       this.counterMuzzles.set(userId, {
-        suppressionCount: this.counterMuzzles.get(userId)!.suppressionCount,
-        counterId: this.counterMuzzles.get(userId)!.counterId,
+        suppressionCount: counterMuzzle.suppressionCount,
+        counterId: counterMuzzle.counterId,
         removalFn: setTimeout(() => this.removeCounterMuzzle(userId), newTime),
       });
     }
@@ -158,5 +159,17 @@ export class CounterPersistenceService {
       requestorId,
       removalFn: setTimeout(() => this.removeCounter(counterId, false, '#general', teamId), COUNTER_TIME),
     });
+  }
+
+  public incrementMessageSuppressions(id: number): Promise<UpdateResult> {
+    return getRepository(Counter).increment({ id }, 'messagesSuppressed', 1);
+  }
+
+  public incrementWordSuppressions(id: number, suppressions: number): Promise<UpdateResult> {
+    return getRepository(Counter).increment({ id }, 'wordsSuppressed', suppressions);
+  }
+
+  public incrementCharacterSuppressions(id: number, charactersSuppressed: number): Promise<UpdateResult> {
+    return getRepository(Counter).increment({ id }, 'charactersSuppressed', charactersSuppressed);
   }
 }

@@ -13,10 +13,10 @@ import moment from 'moment';
 export class SuppressorService {
   public webService = WebService.getInstance();
   public slackService = SlackService.getInstance();
+  public translationService = new TranslationService();
   public backfirePersistenceService = BackFirePersistenceService.getInstance();
   public muzzlePersistenceService = MuzzlePersistenceService.getInstance();
   public counterPersistenceService = CounterPersistenceService.getInstance();
-  public translationService = new TranslationService();
 
   public isBot(userId: string, teamId: string): Promise<boolean | undefined> {
     return this.slackService.getUserById(userId, teamId).then(user => !!user?.isBot);
@@ -169,7 +169,7 @@ export class SuppressorService {
   public logTranslateSuppression(
     text: string,
     id: number,
-    persistenceService?: BackFirePersistenceService | MuzzlePersistenceService,
+    persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): void {
     const sentence = text.trim();
     const words = sentence.split(' ');
@@ -188,9 +188,39 @@ export class SuppressorService {
     }
   }
 
-  public async sendSuppressedMessage(channel: string, userId: string, text: string, timestamp: string): Promise<void> {
-    await this.webService.deleteMessage(channel, timestamp);
-    await this.webService.sendMessage(channel, `<@${userId}> says "${text}"`);
+  public async sendSuppressedMessage(
+    channel: string,
+    userId: string,
+    text: string,
+    timestamp: string,
+    dbId: number,
+    persistenceService: MuzzlePersistenceService | BackFirePersistenceService | CounterPersistenceService,
+  ): Promise<void> {
+    const textWithFallbackReplacments = text
+      .split(' ')
+      .map((word, idx) =>
+        this.getFallbackReplacementWord(
+          word,
+          idx === 0,
+          idx === text.length - 1,
+          REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)],
+        ),
+      )
+      .join(' ');
+
+    const suppressedMessage = await this.translationService.translate(textWithFallbackReplacments).catch(e => {
+      console.error('error on translation');
+      console.error(e);
+      return null;
+    });
+
+    if (suppressedMessage === null) {
+      this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
+    } else {
+      await this.logTranslateSuppression(text, dbId, persistenceService);
+      await this.webService.deleteMessage(channel, timestamp);
+      await this.webService.sendMessage(channel, `<@${userId}> says "${text}"`);
+    }
   }
 
   /**
@@ -199,7 +229,7 @@ export class SuppressorService {
   public sendFallbackSuppressedMessage(
     text: string,
     id: number,
-    persistenceService?: BackFirePersistenceService | MuzzlePersistenceService,
+    persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): string {
     const sentence = text.trim();
     const words = sentence.split(' ');
