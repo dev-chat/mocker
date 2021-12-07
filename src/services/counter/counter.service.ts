@@ -29,24 +29,6 @@ export class CounterService extends SuppressorService {
     return this.counterPersistenceService.getCounterByRequestorId(requestorId);
   }
 
-  public createCounterMuzzleMessage(text: string): string {
-    const words = text.split(' ');
-
-    let returnText = '';
-    let replacementWord;
-
-    for (let i = 0; i < words.length; i++) {
-      replacementWord = this.getReplacementWord(
-        words[i],
-        i === 0,
-        i === words.length - 1,
-        REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)],
-      );
-      returnText += replacementWord;
-    }
-    return returnText;
-  }
-
   public sendCounterMuzzledMessage(channel: string, userId: string, text: string, timestamp: string): void {
     const counterMuzzle: CounterMuzzle | undefined = this.counterPersistenceService.getCounterMuzzle(userId);
     if (counterMuzzle) {
@@ -57,7 +39,7 @@ export class CounterService extends SuppressorService {
           counterId: counterMuzzle!.counterId,
           removalFn: counterMuzzle!.removalFn,
         });
-        this.webService.sendMessage(channel, `<@${userId}> says "${this.createCounterMuzzleMessage(text)}"`);
+        this.webService.sendMessage(channel, `<@${userId}> says "${this.translationService.translate(text)}"`);
       }
     }
   }

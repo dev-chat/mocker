@@ -186,7 +186,7 @@ export class SuppressorService {
   /**
    * Takes in text and randomly muzzles words.
    */
-  public sendSuppressedMessage(
+  public sendFallbackSuppressedMessage(
     text: string,
     id: number,
     persistenceService?: BackFirePersistenceService | MuzzlePersistenceService,

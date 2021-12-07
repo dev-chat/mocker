@@ -1,4 +1,4 @@
-import { MAX_MUZZLES, MAX_SUPPRESSIONS } from './constants';
+import { MAX_MUZZLES, MAX_SUPPRESSIONS, MAX_WORD_LENGTH } from './constants';
 import { getTimeString, getTimeToMuzzle } from './muzzle-utilities';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 import { CounterService } from '../counter/counter.service';
@@ -109,20 +109,17 @@ export class MuzzleService extends SuppressorService {
       const suppressions = await this.muzzlePersistenceService.getSuppressions(userId, teamId);
       if (!suppressions || (suppressions && +suppressions < MAX_SUPPRESSIONS)) {
         await this.muzzlePersistenceService.incrementStatefulSuppressions(userId, teamId);
-        const language = this.translationService.getRandomLanguage();
         const wordsWithReplacementIfNeeded = text
           .split(' ')
-          .map(word => (word.length > 10 ? '..mMm..' : word))
+          .map(word => (word.length >= MAX_WORD_LENGTH ? '..mMm..' : word))
           .join(' ');
-        const suppressedMessage = await this.translationService
-          .translate(wordsWithReplacementIfNeeded, language)
-          .catch(e => {
-            console.error('error on translation');
-            console.error(e);
-            return null;
-          });
+        const suppressedMessage = await this.translationService.translate(wordsWithReplacementIfNeeded).catch(e => {
+          console.error('error on translation');
+          console.error(e);
+          return null;
+        });
         if (suppressedMessage === null) {
-          this.sendSuppressedMessage(text, +muzzle, this.muzzlePersistenceService);
+          this.sendFallbackSuppressedMessage(text, +muzzle, this.muzzlePersistenceService);
         } else {
           await this.logTranslateSuppression(text, +muzzle, this.muzzlePersistenceService);
         }

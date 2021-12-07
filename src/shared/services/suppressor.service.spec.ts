@@ -51,30 +51,30 @@ describe('SuppressorService', () => {
 
     it('should always muzzle a tagged user', () => {
       const testSentence = '<@U2TKJ> <@JKDSF> <@SDGJSK> <@LSKJDSG> <@lkjdsa> <@LKSJDF> <@SDLJG> <@jrjrjr> <@fudka>';
-      expect(suppressorService.sendSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService)).toBe(
-        '..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm..',
-      );
+      expect(
+        suppressorService.sendFallbackSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService),
+      ).toBe('..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm..');
     });
 
     it('should always muzzle <!channel>', () => {
       const testSentence = '<!channel>';
-      expect(suppressorService.sendSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService)).toBe(
-        '..mMm..',
-      );
+      expect(
+        suppressorService.sendFallbackSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService),
+      ).toBe('..mMm..');
     });
 
     it('should always muzzle <!here>', () => {
       const testSentence = '<!here>';
-      expect(suppressorService.sendSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService)).toBe(
-        '..mMm..',
-      );
+      expect(
+        suppressorService.sendFallbackSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService),
+      ).toBe('..mMm..');
     });
 
     it('should always muzzle a word with length > 10', () => {
       const testSentence = 'this.is.a.way.to.game.the.system';
-      expect(suppressorService.sendSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService)).toBe(
-        '..mMm..',
-      );
+      expect(
+        suppressorService.sendFallbackSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService),
+      ).toBe('..mMm..');
     });
   });
 

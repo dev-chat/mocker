@@ -1,7 +1,8 @@
 import Axios, { AxiosResponse } from 'axios';
 
 export class TranslationService {
-  public translate(text: string, lang: string): Promise<string> {
+  public translate(text: string): Promise<string> {
+    const lang = this.getRandomLanguage();
     return Axios.post(
       `https://translation.googleapis.com/language/translate/v2?key=${process.env.GOOGLE_TRANSLATE_API_KEY}`,
       {
@@ -18,7 +19,7 @@ export class TranslationService {
     });
   }
 
-  getRandomLanguage(): string {
+  private getRandomLanguage(): string {
     const roll = Math.random();
     if (roll >= 0.25) {
       return 'es';
