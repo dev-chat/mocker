@@ -29,12 +29,7 @@ export class CounterService extends SuppressorService {
     return this.counterPersistenceService.getCounterByRequestorId(requestorId);
   }
 
-  public async sendCounterMuzzledMessage(
-    channel: string,
-    userId: string,
-    text: string,
-    timestamp: string,
-  ): Promise<void> {
+  public sendCounterMuzzledMessage(channel: string, userId: string, text: string, timestamp: string): void {
     const counterMuzzle: CounterMuzzle | undefined = this.counterPersistenceService.getCounterMuzzle(userId);
     if (counterMuzzle) {
       this.webService.deleteMessage(channel, timestamp);
@@ -44,9 +39,7 @@ export class CounterService extends SuppressorService {
           counterId: counterMuzzle!.counterId,
           removalFn: counterMuzzle!.removalFn,
         });
-        const lang = this.translationService.getRandomLanguage();
-        const translated = await this.translationService.translate(text, lang);
-        this.webService.sendMessage(channel, `<@${userId}> says "${translated}"`);
+        this.webService.sendMessage(channel, `<@${userId}> says "${this.translationService.translate(text)}"`);
       }
     }
   }

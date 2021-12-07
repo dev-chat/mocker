@@ -20,14 +20,13 @@ export class BackfireService extends SuppressorService {
       if (suppressions && +suppressions < MAX_SUPPRESSIONS) {
         this.backfirePersistenceService.incrementMessageSuppressions(+backfireId);
         this.backfirePersistenceService.addSuppression(userId, teamId);
-        const language = this.translationService.getRandomLanguage();
-        const suppressedMessage = await this.translationService.translate(text, language).catch(e => {
+        const suppressedMessage = await this.translationService.translate(text).catch(e => {
           console.error('error on translation');
           console.error(e);
           return null;
         });
         if (suppressedMessage === null) {
-          this.sendSuppressedMessage(text, +backfireId, this.backfirePersistenceService);
+          this.sendFallbackSuppressedMessage(text, +backfireId, this.backfirePersistenceService);
         } else {
           await this.logTranslateSuppression(text, +backfireId, this.backfirePersistenceService);
         }
