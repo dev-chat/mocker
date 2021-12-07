@@ -41,14 +41,12 @@ export class SuppressorService {
   // Built for spoiler only. This will not work on other block apps. Should improve this to be universal.
   public async findUserInBlocks(blocks: any, users?: SlackUser[]): Promise<string | undefined> {
     const allUsers: SlackUser[] = users ? users : await this.slackService.getAllUsers();
-    console.log(blocks);
     let id;
     const firstBlock = blocks[0]?.elements?.[0];
     if (firstBlock) {
       Object.keys(firstBlock).forEach(key => {
         if (typeof firstBlock[key] === 'string') {
           allUsers.forEach(user => {
-            console.log(user);
             if (firstBlock[key].includes(user.name)) {
               id = user.id;
             }
@@ -108,11 +106,7 @@ export class SuppressorService {
       let userIdByCallbackId;
       let userIdByBlocks;
 
-      console.log('Bot message found');
-
       if (request.event.blocks) {
-        console.log('Has blocks');
-        console.log(request.event.blocks);
         const userId = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
         const userName = await this.findUserInBlocks(request.event.blocks);
         console.log('ID found for spoiler muzzle:' + userName);
@@ -235,7 +229,6 @@ export class SuppressorService {
       .format('YYYY-MM-DD HH:mm:ss');
     const end = moment().format('YYYY-MM-DD HH:mm:ss');
     const muzzles = await this.muzzlePersistenceService.getMuzzlesByTimePeriod(requestorId, teamId, start, end);
-    console.log(`Number of muzzles for ${requestorId}: ${muzzles}`);
     const chanceOfBackfire = 0.05 + muzzles * 0.025;
     console.log(`Chance of Backfire for ${requestorId}: ${chanceOfBackfire}`);
     return Math.random() <= chanceOfBackfire;

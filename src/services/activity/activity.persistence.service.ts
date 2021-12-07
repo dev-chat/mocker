@@ -69,7 +69,6 @@ export class ActivityPersistenceService {
     const timeblock = this.getMostRecentTimeblock();
     const channels = await this.web.getAllChannels().then(result => result.channels);
     const hottestChannels: Temperature[] = [];
-    console.log(timeblock);
     const currentMessages = await this.getCurrentNumberOfMessages(timeblock);
     const averageMessages = await this.getMostRecentAverageActivity(timeblock);
 
@@ -90,8 +89,6 @@ export class ActivityPersistenceService {
       }
     }
     const sorted = hottestChannels.sort((a: Temperature, b: Temperature) => b.current - a.current);
-    console.log('hottest channels');
-    console.log(sorted);
     console.timeEnd('getHottestChannels');
     return sorted;
   }
