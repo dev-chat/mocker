@@ -188,6 +188,11 @@ export class SuppressorService {
     }
   }
 
+  public async sendSuppressedMessage(channel: string, userId: string, text: string, timestamp: string): Promise<void> {
+    await this.webService.deleteMessage(channel, timestamp);
+    await this.webService.sendMessage(channel, `<@${userId}> says "${text}"`);
+  }
+
   /**
    * Takes in text and randomly muzzles words.
    */

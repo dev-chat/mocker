@@ -29,9 +29,8 @@ export class BackfireService extends SuppressorService {
           this.sendFallbackSuppressedMessage(text, +backfireId, this.backfirePersistenceService);
         } else {
           await this.logTranslateSuppression(text, +backfireId, this.backfirePersistenceService);
+          this.sendSuppressedMessage(channel, userId, suppressedMessage, timestamp);
         }
-
-        this.webService.sendMessage(channel, `<@${userId}> says "${suppressedMessage}"`);
       } else {
         this.backfirePersistenceService.trackDeletedMessage(+backfireId, text);
       }

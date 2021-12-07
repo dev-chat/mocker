@@ -29,17 +29,22 @@ export class CounterService extends SuppressorService {
     return this.counterPersistenceService.getCounterByRequestorId(requestorId);
   }
 
-  public sendCounterMuzzledMessage(channel: string, userId: string, text: string, timestamp: string): void {
+  public async sendCounterMuzzledMessage(
+    channel: string,
+    userId: string,
+    text: string,
+    timestamp: string,
+  ): Promise<void> {
     const counterMuzzle: CounterMuzzle | undefined = this.counterPersistenceService.getCounterMuzzle(userId);
     if (counterMuzzle) {
-      this.webService.deleteMessage(channel, timestamp);
-      if (counterMuzzle!.suppressionCount < MAX_SUPPRESSIONS) {
+      if (counterMuzzle.suppressionCount < MAX_SUPPRESSIONS) {
         this.counterPersistenceService.setCounterMuzzle(userId, {
-          suppressionCount: ++counterMuzzle!.suppressionCount,
-          counterId: counterMuzzle!.counterId,
-          removalFn: counterMuzzle!.removalFn,
+          suppressionCount: ++counterMuzzle.suppressionCount,
+          counterId: counterMuzzle.counterId,
+          removalFn: counterMuzzle.removalFn,
         });
-        this.webService.sendMessage(channel, `<@${userId}> says "${this.translationService.translate(text)}"`);
+        const message = await this.translationService.translate(text);
+        this.sendSuppressedMessage(channel, userId, message, timestamp);
       }
     }
   }

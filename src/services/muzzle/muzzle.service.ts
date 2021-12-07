@@ -92,9 +92,6 @@ export class MuzzleService extends SuppressorService {
     });
   }
 
-  /**
-   * Wrapper for sendMessage that handles suppression in memory and, if max suppressions are reached, handles suppression storage to disk.
-   */
   public async sendMuzzledMessage(
     channel: string,
     userId: string,
@@ -105,7 +102,6 @@ export class MuzzleService extends SuppressorService {
     console.time('send-muzzled-message');
     const muzzle: string | null = await this.muzzlePersistenceService.getMuzzle(userId, teamId);
     if (muzzle) {
-      this.webService.deleteMessage(channel, timestamp);
       const suppressions = await this.muzzlePersistenceService.getSuppressions(userId, teamId);
       if (!suppressions || (suppressions && +suppressions < MAX_SUPPRESSIONS)) {
         await this.muzzlePersistenceService.incrementStatefulSuppressions(userId, teamId);
@@ -122,9 +118,8 @@ export class MuzzleService extends SuppressorService {
           this.sendFallbackSuppressedMessage(text, +muzzle, this.muzzlePersistenceService);
         } else {
           await this.logTranslateSuppression(text, +muzzle, this.muzzlePersistenceService);
+          this.sendSuppressedMessage(channel, userId, text, timestamp);
         }
-
-        this.webService.sendMessage(channel, `<@${userId}> says "${suppressedMessage}"`);
       } else {
         this.muzzlePersistenceService.trackDeletedMessage(+muzzle, text);
       }
