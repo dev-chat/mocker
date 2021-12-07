@@ -42,7 +42,7 @@ export class ActivityPersistenceService {
       if (hottest.length > 0) {
         let text = ``;
         for (let i = 0; i < hottest.length; i++) {
-          text += `\n<#${hottest[i].id}> : ${this.getEmoji(hottest.length - i)}`;
+          text += `\n<#${hottest[i].channel}> : ${this.getEmoji(hottest.length - i)}`;
         }
         await this.web
           .sendBlockMessage('#hot', text)
@@ -64,46 +64,79 @@ export class ActivityPersistenceService {
     return text;
   }
 
-  async getHottestChannels() {
+  async getHottestChannels(): Promise<Temperature[]> {
     console.time('getHottestChannels');
     const timeblock = this.getMostRecentTimeblock();
-    const channels = await this.web.getAllChannels().then(result => result.channels);
-    const hottestChannels: Temperature[] = [];
-    const currentMessages = await this.getCurrentNumberOfMessages(timeblock);
-    const averageMessages = await this.getMostRecentAverageActivity(timeblock);
+    const hottestChannelsFromDb = await this.getHottestChannelsFromDB(timeblock);
+    console.log(hottestChannelsFromDb);
+    // for (const channel of channels) {
+    //   if (channel.name !== 'hot' && channel.id) {
+    //     const channelTemp = {
+    //       id: channel.id,
+    //       name: channel.name,
+    //       current: hottestChannelsFromDb.count,
+    //     };
 
-    for (const channel of channels) {
-      if (channel.name !== 'hot') {
-        const averageMessage = parseInt(averageMessages?.find((x: any) => x.channel === channel.id)?.avg || 0);
-        const currentMessage = parseInt(currentMessages?.find((x: any) => x.channel === channel.id)?.count || 0);
-        const channelTemp = {
-          id: channel.id,
-          name: channel.name,
-          average: averageMessage,
-          current: currentMessage,
-        };
-
-        if (currentMessage > averageMessage) {
-          hottestChannels.push(channelTemp);
-        }
-      }
-    }
-    const sorted = hottestChannels.sort((a: Temperature, b: Temperature) => b.current - a.current);
+    //     hottestChannels.push(channelTemp);
+    //   }
+    // }
     console.timeEnd('getHottestChannels');
-    return sorted;
+    return hottestChannelsFromDb;
   }
 
-  getCurrentNumberOfMessages(time: TimeBlock) {
-    const query = `SELECT x.count as count, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity WHERE eventType="message" GROUP BY day,time,date, channel) as x WHERE x.time="${time?.time}" AND x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}";`;
-    console.log('getCurrentNumberOfMessages query\n', query);
+  getHottestChannelsFromDB(time: TimeBlock) {
+    const query = `SELECT a.count, a.channel
+    FROM (
+    SELECT x.count as count, x.channel as channel 
+      FROM (
+        SELECT DATE_FORMAT(createdAt, "%w") as day, 
+        DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, 
+        DATE_FORMAT(createdAt, "%Y-%c-%e") as date,
+        COUNT(*) as count,
+        channel
+        FROM activity
+        WHERE eventType="message"
+        GROUP BY day,time,date, channel
+        ) as x 
+        WHERE x.time="${time.time}" AND x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}"
+      ) as a
+        CROSS JOIN
+        (
+        SELECT z.avg as avg, z.channel as channel
+        FROM
+        (
+          SELECT AVG(y.count) as avg, y.channel as channel
+          FROM (
+            SELECT DATE_FORMAT(createdAt, "%w") as day,
+            DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time,
+            DATE_FORMAT(createdAt, "%Y-%c-%e") as date,
+            COUNT(*) as count,
+            channel
+            FROM activity
+            WHERE eventType="message"
+            GROUP BY day,time,date, channel
+            ) as y
+          WHERE y.day="${time?.date?.dayOfWeek}" AND y.time="${time?.time}" AND y.date!="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}"
+          GROUP BY channel
+        ) as z
+        ) as b
+        WHERE a.count > b.avg GROUP BY a.channel, a.count;
+  `;
     return getRepository(Activity).query(query);
   }
 
-  getMostRecentAverageActivity(time: TimeBlock) {
-    const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity WHERE eventType="message" GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.dayOfWeek}" AND x.time="${time?.time}" AND x.date!="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}" GROUP BY channel;`;
-    console.log('getMostRecentAvg query\n', query);
-    return getRepository(Activity).query(query);
-  }
+  // Old queries for getting hottest channels. These were replace by above query and should likely be removed.
+  // getCurrentNumberOfMessages(time: TimeBlock) {
+  //   const query = `SELECT x.count as count, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity WHERE eventType="message" GROUP BY day,time,date, channel) as x WHERE x.time="${time?.time}" AND x.date="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}";`;
+  //   console.log('getCurrentNumberOfMessages query\n', query);
+  //   return getRepository(Activity).query(query);
+  // }
+
+  // getMostRecentAverageActivity(time: TimeBlock) {
+  //   const query = `SELECT AVG(x.count) as avg, x.channel as channel from (SELECT DATE_FORMAT(createdAt, "%w") as day, DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP (createdAt)/120)*120), "%k:%i") as time, DATE_FORMAT(createdAt, "%Y-%c-%e") as date, COUNT(*) as count, channel from activity WHERE eventType="message" GROUP BY day,time,date, channel) as x WHERE x.day="${time?.date?.dayOfWeek}" AND x.time="${time?.time}" AND x.date!="${time?.date?.year}-${time?.date?.month}-${time?.date?.dayOfMonth}" GROUP BY channel;`;
+  //   console.log('getMostRecentAvg query\n', query);
+  //   return getRepository(Activity).query(query);
+  // }
 
   getMostRecentTimeblock(): TimeBlock {
     const date = new Date();
