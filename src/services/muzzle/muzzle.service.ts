@@ -1,4 +1,4 @@
-import { MAX_MUZZLES, MAX_SUPPRESSIONS, MAX_WORD_LENGTH } from './constants';
+import { MAX_MUZZLES, MAX_SUPPRESSIONS } from './constants';
 import { getTimeString, getTimeToMuzzle } from './muzzle-utilities';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 import { CounterService } from '../counter/counter.service';

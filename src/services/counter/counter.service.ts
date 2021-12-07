@@ -1,5 +1,5 @@
 import { CounterMuzzle } from '../../shared/models/counter/counter-models';
-import { MAX_SUPPRESSIONS, REPLACEMENT_TEXT } from '../muzzle/constants';
+import { MAX_SUPPRESSIONS } from '../muzzle/constants';
 import { getTimeString } from '../muzzle/muzzle-utilities';
 import { COUNTER_TIME } from './constants';
 import { SuppressorService } from '../../shared/services/suppressor.service';
