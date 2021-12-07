@@ -11,8 +11,6 @@ export interface TimeBlockDate {
 }
 
 export interface Temperature {
-  id: string;
-  name: string;
-  average: number;
-  current: number;
+  count: number;
+  channel: string;
 }
