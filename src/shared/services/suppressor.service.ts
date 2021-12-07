@@ -198,13 +198,8 @@ export class SuppressorService {
   ): Promise<void> {
     const textWithFallbackReplacments = text
       .split(' ')
-      .map((word, idx) =>
-        this.getFallbackReplacementWord(
-          word,
-          idx === 0,
-          idx === text.length - 1,
-          REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)],
-        ),
+      .map(word =>
+        word.length >= MAX_WORD_LENGTH ? REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)] : word,
       )
       .join(' ');
 
@@ -219,7 +214,7 @@ export class SuppressorService {
     } else {
       await this.logTranslateSuppression(text, dbId, persistenceService);
       await this.webService.deleteMessage(channel, timestamp);
-      await this.webService.sendMessage(channel, `<@${userId}> says "${text}"`);
+      await this.webService.sendMessage(channel, `<@${userId}> says "${suppressedMessage}"`);
     }
   }
 
