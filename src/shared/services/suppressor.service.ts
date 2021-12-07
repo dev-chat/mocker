@@ -149,7 +149,12 @@ export class SuppressorService {
     return false;
   }
 
-  public getReplacementWord(word: string, isFirstWord: boolean, isLastWord: boolean, replacementText: string): string {
+  public getFallbackReplacementWord(
+    word: string,
+    isFirstWord: boolean,
+    isLastWord: boolean,
+    replacementText: string,
+  ): string {
     const text =
       isRandomEven() && word.length < MAX_WORD_LENGTH && word !== ' ' && !this.slackService.containsTag(word)
         ? `*${word}*`
@@ -200,7 +205,7 @@ export class SuppressorService {
     let replacementWord;
 
     for (let i = 0; i < words.length; i++) {
-      replacementWord = this.getReplacementWord(
+      replacementWord = this.getFallbackReplacementWord(
         words[i],
         i === 0,
         i === words.length - 1,
