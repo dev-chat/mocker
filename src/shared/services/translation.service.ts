@@ -11,6 +11,8 @@ export class TranslationService {
         format: 'text',
       },
     ).then((res: AxiosResponse) => {
+      console.log(text);
+      console.log('translating from en to ', lang);
       console.log(res?.data?.data?.translations?.[0].translatedText);
       return res?.data?.data?.translations?.[0].translatedText;
     });
