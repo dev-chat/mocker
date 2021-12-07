@@ -57,7 +57,6 @@ export class ReactionReportService extends ReportService {
       )
       .then(result => {
         const formatted = result.map((avgReaction: any) => {
-          console.log(avgReaction);
           return {
             value: avgReaction.avg,
             channel: this.slackService.getChannelName(avgReaction.channel, teamId),

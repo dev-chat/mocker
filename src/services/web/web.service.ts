@@ -37,9 +37,7 @@ export class WebService {
     };
 
     this.web.chat.delete(deleteRequest).catch(e => {
-      if (e.data.error === 'message_not_found') {
-        console.log('Message already deleted, no need to retry');
-      } else {
+      if (e.data.error !== 'message_not_found') {
         console.error(e);
         console.error('delete request was : ');
         console.error(deleteRequest);

@@ -29,7 +29,6 @@ muzzleController.post('/muzzle', async (req: Request, res: Response) => {
         res.send(e);
       });
     if (results) {
-      console.log(results);
       res.send(results);
     }
   }
