@@ -3,7 +3,7 @@ export const MAX_TIME_BETWEEN_MUZZLES = 3600;
 export const MAX_SUPPRESSIONS = 7;
 export const MAX_MUZZLES = 2;
 export const ABUSE_PENALTY_TIME = 300000;
-export const REPLACEMENT_TEXT = ['..mMm..', '..MICROSOFT..'];
+export const REPLACEMENT_TEXT = ['..mMm..'];
 export const MAX_WORD_LENGTH = 10;
 export const USER_REGEX = /[<]@\w+/gm;
 export enum MuzzleRedisTypeEnum {
