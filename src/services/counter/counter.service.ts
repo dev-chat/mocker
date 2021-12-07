@@ -43,8 +43,14 @@ export class CounterService extends SuppressorService {
           counterId: counterMuzzle.counterId,
           removalFn: counterMuzzle.removalFn,
         });
-        const message = await this.translationService.translate(text);
-        this.sendSuppressedMessage(channel, userId, message, timestamp);
+        this.sendSuppressedMessage(
+          channel,
+          userId,
+          text,
+          timestamp,
+          +counterMuzzle.counterId,
+          this.counterPersistenceService,
+        );
       }
     }
   }

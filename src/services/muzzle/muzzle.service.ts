@@ -105,21 +105,7 @@ export class MuzzleService extends SuppressorService {
       const suppressions = await this.muzzlePersistenceService.getSuppressions(userId, teamId);
       if (!suppressions || (suppressions && +suppressions < MAX_SUPPRESSIONS)) {
         await this.muzzlePersistenceService.incrementStatefulSuppressions(userId, teamId);
-        const wordsWithReplacementIfNeeded = text
-          .split(' ')
-          .map(word => (word.length >= MAX_WORD_LENGTH ? '..mMm..' : word))
-          .join(' ');
-        const suppressedMessage = await this.translationService.translate(wordsWithReplacementIfNeeded).catch(e => {
-          console.error('error on translation');
-          console.error(e);
-          return null;
-        });
-        if (suppressedMessage === null) {
-          this.sendFallbackSuppressedMessage(text, +muzzle, this.muzzlePersistenceService);
-        } else {
-          await this.logTranslateSuppression(text, +muzzle, this.muzzlePersistenceService);
-          this.sendSuppressedMessage(channel, userId, text, timestamp);
-        }
+        this.sendSuppressedMessage(channel, userId, text, timestamp, +muzzle, this.muzzlePersistenceService);
       } else {
         this.muzzlePersistenceService.trackDeletedMessage(+muzzle, text);
       }
