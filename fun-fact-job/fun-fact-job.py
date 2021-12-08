@@ -54,7 +54,7 @@ def sendSlackMessage(facts):
   try:
       response = client.api_call(
         api_method='chat.postMessage',
-        json={'channel': '#testbotz','text': message}
+        json={'channel': '#general','text': message}
       )
     
   except SlackApiError as e:
