@@ -1,2 +1,4 @@
 CREATE DATABASE fun_fact;
-CREATE TABLE fact (id VARCHAR(255), source VARCHAR(255));
+USE fun_fact;
+DROP TABLE fact;
+CREATE TABLE fact (fact VARCHAR(255), source VARCHAR(255));

@@ -4,47 +4,58 @@ import requests
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import ssl
+import random
 
 ssl._create_default_https_context = ssl._create_unverified_context
+urls = [
+  { "url": "https://uselessfacts.jsph.pl/random.json?language=en", "fieldName": "text" },
+  { "url": "https://api.api-ninjas.com/v1/facts?limit=1", "fieldName": "fact", "headers": { "X-Api-Key": "{ninjaApiKey}".format(ninjaApiKey=os.environ["API_NINJA_KEY"])}},
+  { "url": "https://catfact.ninja/fact", "fieldName": "fact" }
+  ]
 
 def getFacts(ctx):
   facts = []
   
   while(len(facts) < 5):
     fact = getFact()
-    if isNewFact(fact["id"], fact["source"], ctx):
-      addIdToDb(fact["id"], fact["source"], ctx)
+    if isNewFact(fact["fact"], fact["source"], ctx):
+      addIdToDb(fact["fact"], fact["source"], ctx)
       facts.append(fact)
 
   return facts
 
 def getFact():
-  url = "https://uselessfacts.jsph.pl/random.json?language=en"
-  fact = requests.get(url)
+  url = random.choice(urls)
+  if ("headers" in url):
+    fact = requests.get(url["url"], headers=url["headers"])
+  else:
+    fact = requests.get(url["url"])
+  
   if (fact):
     asJson = fact.json()
-    print(asJson)
-    return { "text": asJson['text'], "id": asJson['id'], "source": url }
+    if (isinstance(asJson, list)):
+      return { "fact": asJson[0][url["fieldName"]], "source": url["url"]}
+    else:
+      return { "fact": asJson[url["fieldName"]], "source": url["url"] }
   else:
     raise Exception("Unable to retrieve fact")
 
-def isNewFact(id, source, ctx):
+def isNewFact(fact, source, ctx):
   mycursor = ctx.cursor(dictionary=True, buffered=True)
-  query = "SELECT id FROM fact WHERE id='{id}' AND source='{source}';".format(id=id, source=source)
-  mycursor.execute(query)
+  mycursor.execute("SELECT fact FROM fact WHERE fact=%s AND source=%s;", (fact, source))
   dbFacts = mycursor.fetchall()
   return len(dbFacts) == 0
 
-def addIdToDb(id, source, ctx):
+def addIdToDb(fact, source, ctx):
   mycursor = ctx.cursor(dictionary=True, buffered=True)
-  query = "INSERT INTO fact (id, source) VALUES ('{id}', '{source}');".format(id=id, source=source)
-  mycursor.execute(query)
+  mycursor.execute("INSERT INTO fact (fact, source) VALUES (%s, %s);", (fact, source))
   ctx.commit()
 
 def formatString(facts):
   message = "*JR's Fun Facts*\n"
   for fact in facts:
-    message = message + "- {fact}\n".format(fact=fact["text"])
+    message = message + "- {fact}\n".format(fact=fact["fact"])
+  print(message)
   return message
 
 def sendSlackMessage(facts):
