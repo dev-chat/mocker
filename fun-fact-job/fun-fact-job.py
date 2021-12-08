@@ -3,6 +3,9 @@ import os
 import requests
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 def getFacts(ctx):
   facts = []
