@@ -55,7 +55,6 @@ def formatString(facts):
   message = "*JR's Fun Facts*\n"
   for fact in facts:
     message = message + "- {fact}\n".format(fact=fact["fact"])
-  print(message)
   return message
 
 def sendSlackMessage(facts):
