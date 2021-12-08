@@ -49,10 +49,11 @@ def sendSlackMessage(facts):
   client = WebClient(token=slack_token)
 
   try:
-      response = client.chat_postMessage(
-          channel="#testbotz",
-          text=message
+      response = client.api_call(
+        api_method='chat.postMessage',
+        json={'channel': '#testbotz','text': message}
       )
+    
   except SlackApiError as e:
       # You will get a SlackApiError if "ok" is False
       assert e.response["error"]
