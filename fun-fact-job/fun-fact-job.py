@@ -41,7 +41,7 @@ def addIdToDb(id, source, ctx):
   mycursor.execute(query)
 
 def formatString(facts):
-  message = "JR's Fun Facts\n"
+  message = "*JR's Fun Facts*\n"
   for fact in facts:
     message = message + "- {fact}\n".format(fact=fact["text"])
   return message
@@ -56,7 +56,6 @@ def sendSlackMessage(facts):
         api_method='chat.postMessage',
         json={'channel': '#testbotz','text': message}
       )
-      print(response)
     
   except SlackApiError as e:
       # You will get a SlackApiError if "ok" is False
