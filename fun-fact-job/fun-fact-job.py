@@ -66,9 +66,9 @@ def main():
         database='fun_fact'
       )
   except mysql.connector.Error as err:
-    if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+    if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
       raise Exception("Something is wrong with your user name or password")
-    elif err.errno == errorcode.ER_BAD_DB_ERROR:
+    elif err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
       raise Exception("Database does not exist")
     else:
       raise Exception(err)
