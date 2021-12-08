@@ -1,0 +1,2 @@
+CREATE DATABASE fun_fact;
+CREATE TABLE fact (id VARCHAR(255), source VARCHAR(255));
