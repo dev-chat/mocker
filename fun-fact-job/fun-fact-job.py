@@ -63,7 +63,8 @@ def main():
         host="localhost",
         user=os.getenv('TYPEORM_USERNAME'),
         password=os.getenv('TYPEORM_PASSWORD'),
-        database='fun_fact'
+        database='fun_fact',
+        auth_plugin='mysql_native_password'
       )
   except mysql.connector.Error as err:
     if err.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
