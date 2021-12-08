@@ -39,6 +39,7 @@ def addIdToDb(id, source, ctx):
   mycursor = ctx.cursor(dictionary=True, buffered=True)
   query = "INSERT INTO fact (id, source) VALUES ('{id}', '{source}');".format(id=id, source=source)
   mycursor.execute(query)
+  ctx.commit()
 
 def formatString(facts):
   message = "*JR's Fun Facts*\n"
