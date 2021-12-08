@@ -60,6 +60,7 @@ def sendSlackMessage(facts):
     
   except SlackApiError as e:
       # You will get a SlackApiError if "ok" is False
+      print(e)
       assert e.response["error"]
 
 def main():
