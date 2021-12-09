@@ -1,11 +1,11 @@
 import express, { Router } from 'express';
-import { WebService } from '../services/web/web.service';
+import { ConfessionService } from '../services/confession/confession.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 
 export const confessionController: Router = express.Router();
 
-const webService = WebService.getInstance();
+const confessionService = new ConfessionService();
 const suppressorService = new SuppressorService();
 
 confessionController.post('/confess', async (req, res) => {
@@ -15,9 +15,7 @@ confessionController.post('/confess', async (req, res) => {
   } else if (!request.text) {
     res.send('Sorry, you must send a message to confess.');
   } else {
-    const confession = `Someone has confessed: 
-    \`${request.text}\``;
-    webService.sendMessage(request.channel_id, confession);
+    confessionService.confess(request.user_id, request.team_id, request.channel_id, request.text);
     res.status(200).send();
   }
 });
