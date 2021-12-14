@@ -12,6 +12,10 @@ urls = [
   { "url": "https://api.api-ninjas.com/v1/facts?limit=1", "fieldName": "fact", "headers": { "X-Api-Key": "{ninjaApiKey}".format(ninjaApiKey=os.environ["API_NINJA_KEY"])}}
   ]
 
+quotes = [
+  { "url": "https://api.kanye.rest", "fieldName": "quote" }
+]
+
 def getFacts(ctx):
   facts = []
   
@@ -22,6 +26,11 @@ def getFacts(ctx):
       facts.append(fact)
 
   return facts
+
+def getQuote():
+  url = random.choice(quotes)
+  quote = request.get(url[url])
+  return quote
 
 def getFact():
   url = random.choice(urls)
@@ -51,7 +60,9 @@ def addIdToDb(fact, source, ctx):
   ctx.commit()
 
 def formatString(facts):
-  message = "*JR's Fun Facts*\n"
+  quote = getQuote()
+  message = "*SimpleTech's SimpleFacts*\n\n"
+  message = message + "_'{quote}'_ - Kanye West\n\n".format(quote=quote)
   for fact in facts:
     message = message + "- {fact}\n".format(fact=fact["fact"])
   return message
