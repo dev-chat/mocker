@@ -1,5 +1,5 @@
-cd /home/sfreeman/devchat/mocker/fun-fact-job
+. /home/sfreeman/.bash_profile
 PATH=/usr/local/bin:$PATH
-source /home/sfreeman/.bash_profile
+cd /home/sfreeman/devchat/mocker/fun-fact-job
 pipenv run python ./fun-fact-job.py
 
