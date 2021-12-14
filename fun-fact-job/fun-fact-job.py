@@ -9,8 +9,7 @@ import random
 ssl._create_default_https_context = ssl._create_unverified_context
 urls = [
   { "url": "https://uselessfacts.jsph.pl/random.json?language=en", "fieldName": "text" },
-  { "url": "https://api.api-ninjas.com/v1/facts?limit=1", "fieldName": "fact", "headers": { "X-Api-Key": "{ninjaApiKey}".format(ninjaApiKey=os.environ["API_NINJA_KEY"])}},
-  { "url": "https://catfact.ninja/fact", "fieldName": "fact" }
+  { "url": "https://api.api-ninjas.com/v1/facts?limit=1", "fieldName": "fact", "headers": { "X-Api-Key": "{ninjaApiKey}".format(ninjaApiKey=os.environ["API_NINJA_KEY"])}}
   ]
 
 def getFacts(ctx):
