@@ -29,7 +29,7 @@ def getFacts(ctx):
 
 def getQuote():
   url = random.choice(quotes)
-  quote = requests.get(url[url])
+  quote = requests.get(url["url"])
   return quote
 
 def getFact():
