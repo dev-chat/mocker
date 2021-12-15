@@ -30,7 +30,8 @@ def getFacts(ctx):
 def getQuote():
   url = random.choice(quotes)
   quote = requests.get(url["url"])
-  return quote
+  asJson = quote.json()
+  return asJson["quote"]
 
 def getFact():
   url = random.choice(urls)
