@@ -92,7 +92,7 @@ export class SuppressorService {
   /**
    * Determines whether or not a bot message should be removed.
    */
-  public async shouldBotMessageBeMuzzled(request: EventRequest): Promise<boolean> {
+  public async shouldBotMessageBeMuzzled(request: EventRequest): Promise<string | false> {
     const isBot = request.event.bot_id
       ? await this.slackService
           .getBotByBotId(request.event.bot_id, request.team_id)
@@ -139,12 +139,16 @@ export class SuppressorService {
         userIdByCallbackId,
         userIdByBlocks,
       );
-      return !!(
-        finalUserId &&
-        ((await this.muzzlePersistenceService.isUserMuzzled(finalUserId, request.team_id)) ||
-          (await this.backfirePersistenceService.isBackfire(finalUserId, request.team_id)) ||
-          (await this.counterPersistenceService.isCounterMuzzled(finalUserId)))
-      );
+      if (
+        !!(
+          finalUserId &&
+          ((await this.muzzlePersistenceService.isUserMuzzled(finalUserId, request.team_id)) ||
+            (await this.backfirePersistenceService.isBackfire(finalUserId, request.team_id)) ||
+            (await this.counterPersistenceService.isCounterMuzzled(finalUserId)))
+        )
+      ) {
+        return finalUserId;
+      }
     }
     return false;
   }

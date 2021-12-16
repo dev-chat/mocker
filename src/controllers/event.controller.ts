@@ -11,6 +11,7 @@ import { MuzzleService } from '../services/muzzle/muzzle.service';
 import { ReactionService } from '../services/reaction/reaction.service';
 import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
+import { CounterMuzzle } from '../shared/models/counter/counter-models';
 import { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 
@@ -113,9 +114,30 @@ async function handleCounterMuzzle(request: EventRequest): Promise<void> {
   }
 }
 
-function handleBotMessage(request: EventRequest): void {
+async function handleBotMessage(request: EventRequest, botUserToMuzzle: string): Promise<void> {
   console.log(`A user is muzzled and tried to send a bot message! Suppressing...`);
   webService.deleteMessage(request.event.channel, request.event.ts);
+  const muzzleId: string | null = await muzzlePersistenceService.getMuzzle(botUserToMuzzle, request.team_id);
+  if (muzzleId) {
+    muzzlePersistenceService.trackDeletedMessage(+muzzleId, 'A bot message');
+    return;
+  }
+
+  const backfireId: string | null = await backfirePersistenceService.getBackfireByUserId(
+    botUserToMuzzle,
+    request.team_id,
+  );
+  if (backfireId) {
+    backfirePersistenceService.trackDeletedMessage(+backfireId, 'A bot user message');
+    return;
+  }
+
+  const counter: CounterMuzzle | undefined = await counterPersistenceService.getCounterMuzzle(botUserToMuzzle);
+
+  if (counter && counter.counterId) {
+    counterPersistenceService.incrementMessageSuppressions(+counter.counterId);
+    return;
+  }
 }
 
 function deleteMessage(request: EventRequest): void {
@@ -157,6 +179,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const isUserCounterMuzzled = await counterPersistenceService.isCounterMuzzled(request.event.user);
     const isMuzzleBot = request.event.user === 'ULG8SJRFF';
     const isInHotAndNotBot = !isMuzzleBot && request.event.channel === 'C027YMYC5CJ';
+    const botUserToMuzzle = await suppressorService.shouldBotMessageBeMuzzled(request);
     if (isNewUserAdded) {
       handleNewUserAdd();
     } else if (isNewChannelCreated) {
@@ -167,8 +190,8 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       handleBackfire(request);
     } else if (isUserCounterMuzzled && !isReaction) {
       handleCounterMuzzle(request);
-    } else if ((await suppressorService.shouldBotMessageBeMuzzled(request)) && !isReaction) {
-      handleBotMessage(request);
+    } else if (botUserToMuzzle && !isReaction) {
+      handleBotMessage(request, botUserToMuzzle);
     } else if (isReaction) {
       handleReaction(request);
     } else if (isInHotAndNotBot) {
