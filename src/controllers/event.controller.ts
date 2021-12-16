@@ -133,7 +133,7 @@ async function handleBotMessage(request: EventRequest, botUserToMuzzle: string):
   }
 
   const counter: CounterMuzzle | undefined = await counterPersistenceService.getCounterMuzzle(botUserToMuzzle);
-
+  console.log(counter);
   if (counter && counter.counterId) {
     counterPersistenceService.incrementMessageSuppressions(+counter.counterId);
     return;
