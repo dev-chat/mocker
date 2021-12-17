@@ -13,7 +13,7 @@ urls = [
   ]
 
 quotes = [
-  { "url": "https://api.kanye.rest", "fieldName": "quote" }
+  { "url": "https://quotes.rest/qod.json?category=inspire" }
 ]
 
 def getFacts(ctx):
@@ -31,7 +31,10 @@ def getQuote():
   url = random.choice(quotes)
   quote = requests.get(url["url"])
   asJson = quote.json()
-  return asJson["quote"]
+  print(asJson)
+  return { 
+    "text": "{quote} - {author}".format(quote=asJson["contents"]["quotes"][0]["quote"], author=asJson["contents"]["quotes"][0]["author"]),
+    "image_url": "https://theysaidso.com/quote/image/{image_id}".format(image_id=asJson["contents"]["quotes"][0]["id"]) }
 
 def getFact():
   url = random.choice(urls)
@@ -60,29 +63,85 @@ def addIdToDb(fact, source, ctx):
   mycursor.execute("INSERT INTO fact (fact, source) VALUES (%s, %s);", (fact, source))
   ctx.commit()
 
-def formatString(facts):
-  quote = getQuote()
-  message = "*SimpleTech's SimpleFacts*\n\n"
-  message = message + "_'{quote}'_ - Kanye West\n\n".format(quote=quote)
-  for fact in facts:
-    message = message + "- {fact}\n".format(fact=fact["fact"])
-  return message
-
 def sendSlackMessage(facts):
-  message = formatString(facts)
+  quote = getQuote()
+  blocks = createBlocks(quote, facts)
   slack_token = os.environ["MUZZLE_BOT_TOKEN"]
   client = WebClient(token=slack_token)
 
   try:
       response = client.api_call(
         api_method='chat.postMessage',
-        json={'channel': '#general','text': message}
+        json={'channel': '#general','blocks': blocks}
       )
     
   except SlackApiError as e:
       # You will get a SlackApiError if "ok" is False
       print(e)
       assert e.response["error"]
+
+def createBlocks(quote, facts):
+  blocks = [
+      {
+        "type": "header",
+        "text": {
+          "type": "plain_text",
+          "text": "SimpleTech's SimpleFacts :tm:",
+          "emoji": True
+        }
+      },
+      {
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text": "*Inspirational Quote of the Day* \n"
+          }
+        ]
+      },
+      {
+        "type": "image",
+        "image_url": "{image_url}".format(image_url=quote["image_url"]),
+        "alt_text": "marg"
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text": "*Today's Facts:*"
+          }
+        ]
+      }
+    ]
+
+  for fact in facts:
+    blocks.append(
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "> {fact}".format(fact=fact["fact"])
+        }
+      })
+  
+  blocks.append(
+    {
+        "type": "context",
+        "elements": [
+          {
+            "type": "mrkdwn",
+            "text": "Disclaimer: SimpleTech's SimpleFacts :tm: offer no guarantee to the validity of the facts provided."
+          }
+        ]
+    }
+  )
+
+  
+  return blocks
 
 def main():
   try:
