@@ -72,7 +72,7 @@ def sendSlackMessage(facts):
   try:
       response = client.api_call(
         api_method='chat.postMessage',
-        json={'channel': '#general','blocks': blocks}
+        json={'channel': '#testbotz','blocks': blocks}
       )
     
   except SlackApiError as e:
@@ -117,16 +117,19 @@ def createBlocks(quote, facts):
         ]
       }
     ]
-
+  
+  factString = ""
   for fact in facts:
-    blocks.append(
-      {
-        "type": "section",
-        "text": {
-          "type": "mrkdwn",
-          "text": "> {fact}".format(fact=fact["fact"])
-        }
-      })
+    factString = factString + "• {fact}\n".format(fact=fact["fact"])
+
+  blocks.append(
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "{fact}".format(fact=factString)
+      }
+    })
   
   blocks.append(
     {
