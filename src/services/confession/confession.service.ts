@@ -14,6 +14,7 @@ export class ConfessionService {
     //       : `Someone has confessed:
     // \`${confession}\``;
     //     this.webService.sendMessage(channelId, message);
+    console.log(`${requestorId} - ${teamId} attempted to confess ${confession} in ${channelId}`);
     this.webService.sendMessage(channelId, `:chicken: <@${requestorId}> :chicken: says: \`${confession}\``);
   }
 
