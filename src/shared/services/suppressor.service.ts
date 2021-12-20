@@ -172,7 +172,7 @@ export class SuppressorService {
 
   public logTranslateSuppression(
     text: string,
-    id: number | string,
+    id: number,
     persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): void {
     const sentence = text.trim();
@@ -186,13 +186,9 @@ export class SuppressorService {
     }
 
     if (persistenceService) {
-      if (typeof id === 'number') {
-        persistenceService.incrementMessageSuppressions(id);
-        persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
-        persistenceService.incrementWordSuppressions(id, wordsSuppressed);
-      } else {
-        persistenceService.incrementMessageSuppressions(id);
-      }
+      persistenceService.incrementMessageSuppressions(id);
+      persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
+      persistenceService.incrementWordSuppressions(id, wordsSuppressed);
     }
   }
 

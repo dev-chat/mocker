@@ -161,22 +161,15 @@ export class CounterPersistenceService {
     });
   }
 
-  public incrementMessageSuppressions(userId: number): void {
-    const counterMuzzle: CounterMuzzle | undefined = this.getCounterMuzzle(userId);
-    if (counterMuzzle) {
-      this.setCounterMuzzle(userId, {
-        suppressionCount: ++counterMuzzle.suppressionCount,
-        counterId: counterMuzzle.counterId,
-        removalFn: counterMuzzle.removalFn,
-      });
-    }
+  public incrementMessageSuppressions(id: number): Promise<UpdateResult> {
+    return getRepository(Counter).increment({ id }, 'messagesSuppressed', 1);
   }
 
-  public incrementCharacterSuppressions(_id: number): void {
-    console.log('counterPersistenceService.incrementCharacterSuppressions() not implemented.');
+  public incrementWordSuppressions(id: number, suppressions: number): Promise<UpdateResult> {
+    return getRepository(Counter).increment({ id }, 'wordsSuppressed', suppressions);
   }
 
-  public incrementWordSuppressions(_id: number): void {
-    console.log('counterPersistenceService.incrementWordSuppressions() not implemented.');
+  public incrementCharacterSuppressions(id: number, charactersSuppressed: number): Promise<UpdateResult> {
+    return getRepository(Counter).increment({ id }, 'charactersSuppressed', charactersSuppressed);
   }
 }
