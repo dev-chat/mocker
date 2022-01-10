@@ -62,8 +62,8 @@ export class DefineService {
 
     for (let i = 0; i < defArr.length; i++) {
       if (defArr[i].word.toLowerCase() === definedWord.toLowerCase()) {
-        const replaceNewLine = new RegExp('/\r\ng');
-        const replaceBracket = new RegExp('/[]g');
+        const replaceNewLine = /\r\ng/;
+        const replaceBracket = /[]g/;
         const definition = defArr[i].definition.replace(replaceNewLine, '\n\n<').replace(replaceBracket, '');
 
         blocks.push({
