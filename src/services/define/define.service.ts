@@ -63,10 +63,10 @@ export class DefineService {
     for (let i = 0; i < defArr.length; i++) {
       if (defArr[i].word.toLowerCase() === definedWord.toLowerCase()) {
         const definition = defArr[i].definition
-          .replace('\r', '')
-          .replace('\n', '\n\n>')
-          .replace('[', '')
-          .replace(']', '');
+          .replaceAll('\r\n', '\n\n<')
+          .replaceAll('[', '')
+          .replaceAll(']', '');
+
         blocks.push({
           type: 'section',
           text: {
