@@ -66,9 +66,7 @@ export class DefineService {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `> ${this.formatUrbanD(
-              `${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition, false).replace('\r\n', '\n')}`,
-            )}`,
+            text: `> ${this.formatUrbanD(`${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition, false)}`)}`,
           },
         });
       }
@@ -84,6 +82,7 @@ export class DefineService {
    * Takes in a definition and removes brackets.
    */
   private formatUrbanD(definition: string): string {
+    console.log(definition);
     let formattedDefinition = '';
     for (const letter of definition) {
       if (letter !== '[' && letter !== ']') {
