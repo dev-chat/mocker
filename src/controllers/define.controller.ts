@@ -22,7 +22,7 @@ defineController.post('/define', async (req: Request, res: Response) => {
       res.send('Something went wrong while retrieving your definition');
     } else {
       res.status(200).send();
-      const text = `*${defineService.capitalizeFirstLetter(request.text)}*`;
+      const text = `${defineService.capitalizeFirstLetter(request.text)}`;
       const definitions = defineService.formatDefs(defined.list, request.text);
       const blocks: KnownBlock[] = [
         {
