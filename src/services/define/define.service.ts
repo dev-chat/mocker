@@ -1,6 +1,5 @@
 import Axios, { AxiosResponse } from 'axios';
 import { Definition, UrbanDictionaryResponse } from '../../shared/models/define/define-models';
-import { Attachment } from '../../shared/models/slack/slack-models';
 
 export class DefineService {
   public static getInstance(): DefineService {
