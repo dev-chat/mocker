@@ -68,7 +68,7 @@ export class DefineService {
         const definition = defArr[i].definition
           .replace(carriageReturn, '')
           .replace(replaceBracket, '')
-          .replace(newLine, '\n\n<');
+          .replace(newLine, '\n\n>');
 
         blocks.push({
           type: 'section',
