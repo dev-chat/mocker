@@ -67,7 +67,7 @@ export class DefineService {
           text: {
             type: 'mrkdwn',
             text: `> ${this.formatUrbanD(
-              `${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition.replace('\r\n', '\n'), false)}`,
+              `${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition.replace('\r\n', '  '), false)}`,
             )}`,
           },
         });
