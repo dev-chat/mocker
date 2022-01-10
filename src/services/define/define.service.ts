@@ -66,9 +66,9 @@ export class DefineService {
         const replaceBracket = /[\[\]]/g;
         const newLine = /\n/g;
         const definition = defArr[i].definition
-          .replace(carriageReturn, '')
-          .replace(replaceBracket, '')
-          .replace(newLine, '\n\n- ');
+          .replace(newLine, '')
+          .replace(carriageReturn, '\n\n')
+          .replace(replaceBracket, '');
 
         blocks.push({
           type: 'section',
