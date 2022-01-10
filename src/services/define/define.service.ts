@@ -62,13 +62,16 @@ export class DefineService {
 
     for (let i = 0; i < defArr.length; i++) {
       if (defArr[i].word.toLowerCase() === definedWord.toLowerCase()) {
+        const definition = defArr[i].definition
+          .replace('\r', '')
+          .replace('\n', '\n\n>')
+          .replace('[', '')
+          .replace(']', '');
         blocks.push({
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `> ${this.formatUrbanD(
-              `${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition.replace('\r\n', '\n\n>'), false)}`,
-            )}`,
+            text: `> ${`${i + 1}. ${this.capitalizeFirstLetter(definition)}`}`,
           },
         });
       }
@@ -79,18 +82,5 @@ export class DefineService {
     }
 
     return blocks;
-  }
-  /**
-   * Takes in a definition and removes brackets.
-   */
-  private formatUrbanD(definition: string): string {
-    console.log(definition);
-    let formattedDefinition = '';
-    for (const letter of definition) {
-      if (letter !== '[' && letter !== ']') {
-        formattedDefinition += letter;
-      }
-    }
-    return formattedDefinition;
   }
 }
