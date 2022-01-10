@@ -48,7 +48,7 @@ defineController.post('/define', async (req: Request, res: Response) => {
         elements: [
           {
             type: 'mrkdwn',
-            text: `:sparkles: Definition requested by <@${request.user_id}>, and provided by users just like you. :sparkles:`,
+            text: `:sparkles: _Definition requested by <@${request.user_id}>, and provided by users just like you._ :sparkles:`,
           },
         ],
       });
