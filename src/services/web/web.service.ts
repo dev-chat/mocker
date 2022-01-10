@@ -6,6 +6,8 @@ import {
   WebClient,
   ChatPostEphemeralArguments,
   ChatUpdateArguments,
+  KnownBlock,
+  Block,
 } from '@slack/web-api';
 
 const MAX_RETRIES = 5;
@@ -59,49 +61,18 @@ export class WebService {
   /**
    * Handles sending messages to the chat.
    */
-  public sendMessage(channel: string, text: string): Promise<WebAPICallResult> {
+  public sendMessage(channel: string, text: string, blocks?: Block[] | KnownBlock[]): Promise<WebAPICallResult> {
     const token: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const postRequest: ChatPostMessageArguments = {
       token,
       channel,
       text,
     };
-    return this.web.chat
-      .postMessage(postRequest)
-      .then(result => result)
-      .catch(e => {
-        console.error(e);
-        throw new Error(e);
-      });
-  }
 
-  public sendBlockMessage(channel: string, text: string) {
-    const token = process.env.MUZZLE_BOT_USER_TOKEN;
-    const timestamp = Math.floor(new Date().getTime() / 1000);
-    const postRequest: ChatPostMessageArguments = {
-      token,
-      channel,
-      text,
-      blocks: [
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text,
-          },
-        },
-        {
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: `<!date^${timestamp}^Posted {date_num} {time_secs}|Posted at some point today>`,
-              verbatim: false,
-            },
-          ],
-        },
-      ],
-    };
+    if (blocks) {
+      postRequest.blocks = blocks;
+    }
+
     return this.web.chat
       .postMessage(postRequest)
       .then(result => result)

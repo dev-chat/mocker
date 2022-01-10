@@ -1,13 +1,13 @@
 import express, { Request, Response, Router } from 'express';
 import { DefineService } from '../services/define/define.service';
-import { SlackService } from '../services/slack/slack.service';
+import { WebService } from '../services/web/web.service';
 import { UrbanDictionaryResponse } from '../shared/models/define/define-models';
-import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
+import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 
 export const defineController: Router = express.Router();
 const suppressorService = new SuppressorService();
-const slackService = SlackService.getInstance();
+const webService = WebService.getInstance();
 const defineService = DefineService.getInstance();
 
 defineController.post('/define', async (req: Request, res: Response) => {
@@ -21,13 +21,34 @@ defineController.post('/define', async (req: Request, res: Response) => {
       res.send('Something went wrong while retrieving your definition');
     } else {
       res.status(200).send();
-      const response: ChannelResponse = {
-        // eslint-disable-next-line @typescript-eslint/camelcase
-        response_type: 'in_channel',
-        text: `*${defineService.capitalizeFirstLetter(request.text)}*`,
-        attachments: defineService.formatDefs(defined.list, request.text),
-      };
-      slackService.sendResponse(request.response_url, response);
+      const text = `*${defineService.capitalizeFirstLetter(request.text)}*`;
+      const definitions = defineService.formatDefs(defined.list, request.text);
+      const blocks = [
+        {
+          type: 'header',
+          text: {
+            type: 'plain_text',
+            text,
+          },
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: definitions,
+          },
+        },
+        {
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `Definition requested by <$${request.user_id}>`,
+            },
+          ],
+        },
+      ];
+      webService.sendMessage(request.channel_id, text, blocks);
     }
   }
 });

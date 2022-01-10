@@ -44,8 +44,29 @@ export class ActivityPersistenceService {
         for (let i = 0; i < hottest.length; i++) {
           text += `\n<#${hottest[i].channel}> : ${this.getEmoji(hottest.length - i)}`;
         }
+        const timestamp = Math.floor(new Date().getTime() / 1000);
+        const blocks = [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text,
+            },
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: `<!date^${timestamp}^Posted {date_num} {time_secs}|Posted at some point today>`,
+                verbatim: false,
+              },
+            ],
+          },
+        ];
+
         await this.web
-          .sendBlockMessage('#hot', text)
+          .sendMessage('#hot', text, blocks)
           .then((result: WebAPICallResult) => result.ts as string)
           .catch(e => {
             console.error(e);

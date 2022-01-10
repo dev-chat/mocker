@@ -45,29 +45,26 @@ export class DefineService {
   /**
    * Takes in an array of definitions and breaks them down into a shortened list depending on maxDefs
    */
-  public formatDefs(defArr: Definition[], definedWord: string, maxDefs = 3): { text: string }[] {
+  public formatDefs(defArr: Definition[], definedWord: string, maxDefs = 3): string {
     if (!defArr || defArr.length === 0) {
-      return [{ text: 'Sorry, no definitions found.' }];
+      return 'Sorry, no definitions found.';
     }
 
-    const formattedArr: Attachment[] = [];
+    let definitions = '';
 
     for (let i = 0; i < defArr.length; i++) {
       if (defArr[i].word.toLowerCase() === definedWord.toLowerCase()) {
-        formattedArr.push({
-          text: this.formatUrbanD(
-            `${formattedArr.length + 1}. ${this.capitalizeFirstLetter(defArr[i].definition, false)}`,
-          ),
-          // eslint-disable-next-line @typescript-eslint/camelcase
-          mrkdown_in: ['text'],
-        });
+        definitions += `${this.formatUrbanD(
+          `${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition, false)}`,
+        )} \n`;
       }
 
-      if (formattedArr.length === maxDefs) {
-        return formattedArr;
+      if (i === maxDefs - 1) {
+        return definitions;
       }
     }
-    return formattedArr.length ? formattedArr : [{ text: 'Sorry, no definitions found.' }];
+
+    return definitions.length ? definitions : 'Sorry, no definitions found.';
   }
   /**
    * Takes in a definition and removes brackets.
