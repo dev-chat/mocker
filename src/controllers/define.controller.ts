@@ -32,6 +32,9 @@ defineController.post('/define', async (req: Request, res: Response) => {
             text,
           },
         },
+        {
+          type: 'divider',
+        },
       ];
 
       definitions.map(def => blocks.push(def));
@@ -45,6 +48,8 @@ defineController.post('/define', async (req: Request, res: Response) => {
           },
         ],
       });
+
+      console.log(blocks);
 
       webService.sendMessage(request.channel_id, text, blocks);
     }
