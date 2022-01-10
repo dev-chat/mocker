@@ -51,7 +51,7 @@ export class DefineService {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: 'Sorry, no definitions found.',
+          text: '> Sorry, no definitions found.',
         },
       },
     ];
