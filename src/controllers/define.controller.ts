@@ -1,3 +1,4 @@
+import { KnownBlock } from '@slack/web-api';
 import express, { Request, Response, Router } from 'express';
 import { DefineService } from '../services/define/define.service';
 import { WebService } from '../services/web/web.service';
@@ -23,7 +24,7 @@ defineController.post('/define', async (req: Request, res: Response) => {
       res.status(200).send();
       const text = `*${defineService.capitalizeFirstLetter(request.text)}*`;
       const definitions = defineService.formatDefs(defined.list, request.text);
-      const blocks = [
+      const blocks: KnownBlock[] = [
         {
           type: 'header',
           text: {
@@ -31,23 +32,20 @@ defineController.post('/define', async (req: Request, res: Response) => {
             text,
           },
         },
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: definitions,
-          },
-        },
-        {
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: `Definition requested by <$${request.user_id}>`,
-            },
-          ],
-        },
       ];
+
+      definitions.map(def => blocks.push(def));
+
+      blocks.push({
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `Definition requested by <@${request.user_id}>`,
+          },
+        ],
+      });
+
       webService.sendMessage(request.channel_id, text, blocks);
     }
   }

@@ -1,3 +1,4 @@
+import { KnownBlock } from '@slack/web-api';
 import Axios, { AxiosResponse } from 'axios';
 import { Definition, UrbanDictionaryResponse } from '../../shared/models/define/define-models';
 
@@ -44,26 +45,38 @@ export class DefineService {
   /**
    * Takes in an array of definitions and breaks them down into a shortened list depending on maxDefs
    */
-  public formatDefs(defArr: Definition[], definedWord: string, maxDefs = 3): string {
+  public formatDefs(defArr: Definition[], definedWord: string, maxDefs = 3): KnownBlock[] {
     if (!defArr || defArr.length === 0) {
-      return 'Sorry, no definitions found.';
+      return [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: 'Sorry, no definitions found.',
+          },
+        },
+      ];
     }
 
-    let definitions = '';
+    const blocks: KnownBlock[] = [];
 
     for (let i = 0; i < defArr.length; i++) {
       if (defArr[i].word.toLowerCase() === definedWord.toLowerCase()) {
-        definitions += `${this.formatUrbanD(
-          `${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition, false)}`,
-        )} \n`;
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `> ${this.formatUrbanD(`${i + 1}. ${this.capitalizeFirstLetter(defArr[i].definition, false)}`)}`,
+          },
+        });
       }
 
       if (i === maxDefs - 1) {
-        return definitions;
+        return blocks;
       }
     }
 
-    return definitions.length ? definitions : 'Sorry, no definitions found.';
+    return blocks;
   }
   /**
    * Takes in a definition and removes brackets.
