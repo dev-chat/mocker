@@ -76,7 +76,7 @@ export class DefineService {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `> ${`${i + 1}. ${this.capitalizeFirstLetter(definition)}`}`,
+            text: `> ${`${i + 1}. ${this.capitalizeFirstLetter(definition, false)}`}`,
           },
         });
       }
