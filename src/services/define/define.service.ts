@@ -46,16 +46,18 @@ export class DefineService {
    * Takes in an array of definitions and breaks them down into a shortened list depending on maxDefs
    */
   public formatDefs(defArr: Definition[], definedWord: string, maxDefs = 3): KnownBlock[] {
-    if (!defArr || defArr.length === 0) {
-      return [
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: 'Sorry, no definitions found.',
-          },
+    const noDefFound: KnownBlock[] = [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: 'Sorry, no definitions found.',
         },
-      ];
+      },
+    ];
+
+    if (!defArr || defArr.length === 0) {
+      return noDefFound;
     }
 
     const blocks: KnownBlock[] = [];
@@ -80,6 +82,6 @@ export class DefineService {
       }
     }
 
-    return blocks;
+    return blocks.length > 0 ? blocks : noDefFound;
   }
 }
