@@ -76,12 +76,12 @@ export class DefineService {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `> ${`${i + 1}. ${this.capitalizeFirstLetter(definition, false)}`}`,
+            text: `> ${`${blocks.length + 1}. ${this.capitalizeFirstLetter(definition, false)}`}`,
           },
         });
       }
 
-      if (i === maxDefs - 1) {
+      if (blocks.length === maxDefs) {
         return blocks;
       }
     }
