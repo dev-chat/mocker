@@ -29,7 +29,7 @@ def getFacts(ctx):
 
 def getQuote():
   url = random.choice(quotes)
-  quote = requests.get(url["url"])
+  quote = requests.get(url["url"], verify=False)
   asJson = quote.json()
   print(asJson)
   return { 
@@ -39,9 +39,9 @@ def getQuote():
 def getFact():
   url = random.choice(urls)
   if ("headers" in url):
-    fact = requests.get(url["url"], headers=url["headers"])
+    fact = requests.get(url["url"], headers=url["headers"], verify=False)
   else:
-    fact = requests.get(url["url"])
+    fact = requests.get(url["url"], verify=False)
   
   if (fact):
     asJson = fact.json()
