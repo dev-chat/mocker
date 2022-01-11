@@ -214,7 +214,9 @@ export class SuppressorService {
     });
 
     if (suppressedMessage === null) {
-      this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
+      await this.webService.deleteMessage(channel, timestamp);
+      const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
+      await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`);
     } else {
       await this.logTranslateSuppression(text, dbId, persistenceService);
       await this.webService.deleteMessage(channel, timestamp);
