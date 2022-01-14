@@ -71,6 +71,7 @@ async function handleBackfire(request: EventRequest): Promise<void> {
   const userName = await slackService.getUserNameById(request.event.user, request.team_id);
   if (!containsTag) {
     console.log(`${userName} | ${request.event.user} is backfired! Suppressing his voice...`);
+    webService.deleteMessage(request.event.channel, request.event.ts);
     backfireService.sendBackfiredMessage(
       request.event.channel,
       request.event.user,
