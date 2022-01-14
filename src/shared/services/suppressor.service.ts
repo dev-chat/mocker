@@ -204,8 +204,15 @@ export class SuppressorService {
     dbId: number,
     persistenceService: MuzzlePersistenceService | BackFirePersistenceService | CounterPersistenceService,
   ): Promise<void> {
-    const textWithFallbackReplacments = text
-      .split(' ')
+    await this.webService.deleteMessage(channel, timestamp);
+
+    const words = text.split(' ');
+
+    if (words.length > 1000) {
+      return;
+    }
+
+    const textWithFallbackReplacments = words
       .map(word =>
         word.length >= MAX_WORD_LENGTH ? REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)] : word,
       )
@@ -218,12 +225,10 @@ export class SuppressorService {
     });
 
     if (suppressedMessage === null) {
-      await this.webService.deleteMessage(channel, timestamp);
       const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
       await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`);
     } else {
       await this.logTranslateSuppression(text, dbId, persistenceService);
-      await this.webService.deleteMessage(channel, timestamp);
       await this.webService.sendMessage(channel, `<@${userId}> says "${suppressedMessage}"`);
     }
   }
