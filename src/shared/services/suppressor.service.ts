@@ -185,10 +185,14 @@ export class SuppressorService {
       charactersSuppressed += words[i].length;
     }
 
-    if (persistenceService) {
-      persistenceService.incrementMessageSuppressions(id);
-      persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
-      persistenceService.incrementWordSuppressions(id, wordsSuppressed);
+    try {
+      if (persistenceService) {
+        persistenceService.incrementMessageSuppressions(id);
+        persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
+        persistenceService.incrementWordSuppressions(id, wordsSuppressed);
+      }
+    } catch (e) {
+      console.error(e);
     }
   }
 

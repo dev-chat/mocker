@@ -20,6 +20,7 @@ export class BackfireService extends SuppressorService {
         this.backfirePersistenceService.addSuppression(userId, teamId);
         this.sendSuppressedMessage(channel, userId, text, timestamp, +backfireId, this.backfirePersistenceService);
       } else {
+        this.webService.deleteMessage(channel, timestamp);
         this.backfirePersistenceService.trackDeletedMessage(+backfireId, text);
       }
     }
