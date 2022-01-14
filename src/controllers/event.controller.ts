@@ -37,6 +37,7 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
 
   if (!containsTag) {
     console.log(`${userName} | ${request.event.user} is muzzled! Suppressing his voice...`);
+    webService.deleteMessage(request.event.channel, request.event.ts);
     muzzleService.sendMuzzledMessage(
       request.event.channel,
       request.event.user,
