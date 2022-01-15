@@ -25,7 +25,7 @@ export class WebService {
   /**
    * Handles deletion of messages.
    */
-  public deleteMessage(channel: string, ts: string, times = 0): void {
+  public deleteMessage(channel: string, ts: string, user: string, times = 0): void {
     if (times > MAX_RETRIES) {
       return;
     }
@@ -38,24 +38,25 @@ export class WebService {
       as_user: true,
     };
 
-    this.web.chat.delete(deleteRequest).catch(e => {
-      if (e.data.error !== 'message_not_found') {
+    this.web.chat
+      .delete(deleteRequest)
+      .then(r => {
+        if (r.error) {
+          console.error(r.error);
+          console.error(deleteRequest);
+          console.log(user);
+        }
+      })
+      .catch(e => {
         console.error(e);
-        console.error('delete request was : ');
-        console.error(deleteRequest);
-        console.error('Unable to delete message. Retrying in 5 seconds...');
-        setTimeout(() => this.deleteMessage(channel, ts, times + 1), 5000);
-      }
-    });
-  }
-
-  public sendDebugMessage(userId: string, text: string) {
-    const options: ChatPostEphemeralArguments = {
-      channel: userId,
-      text,
-      user: userId,
-    };
-    return this.web.chat.postEphemeral(options);
+        if (e.data.error !== 'message_not_found') {
+          console.error(e);
+          console.error('delete request was : ');
+          console.error(deleteRequest);
+          console.error('Unable to delete message. Retrying in 5 seconds...');
+          setTimeout(() => this.deleteMessage(channel, ts, user, times + 1), 5000);
+        }
+      });
   }
 
   /**

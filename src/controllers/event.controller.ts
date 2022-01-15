@@ -37,7 +37,7 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
 
   if (!containsTag) {
     console.log(`${userName} | ${request.event.user} is muzzled! Suppressing his voice...`);
-    webService.deleteMessage(request.event.channel, request.event.ts);
+    webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
     muzzleService.sendMuzzledMessage(
       request.event.channel,
       request.event.user,
@@ -52,7 +52,7 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
         `${userName} attempted to tag someone or change the channel topic. Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
       );
       muzzlePersistenceService.addMuzzleTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
-      webService.deleteMessage(request.event.channel, request.event.ts);
+      webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
       muzzlePersistenceService.trackDeletedMessage(+muzzleId, request.event.text);
       webService.sendMessage(
         request.event.channel,
@@ -71,7 +71,7 @@ async function handleBackfire(request: EventRequest): Promise<void> {
   const userName = await slackService.getUserNameById(request.event.user, request.team_id);
   if (!containsTag) {
     console.log(`${userName} | ${request.event.user} is backfired! Suppressing his voice...`);
-    webService.deleteMessage(request.event.channel, request.event.ts);
+    webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
     backfireService.sendBackfiredMessage(
       request.event.channel,
       request.event.user,
@@ -83,7 +83,7 @@ async function handleBackfire(request: EventRequest): Promise<void> {
     const backfireId = backfireService.getBackfire(request.event.user, request.team_id);
     console.log(`${userName} attempted to tag someone. Backfire increased by ${ABUSE_PENALTY_TIME}!`);
     backfireService.addBackfireTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
-    webService.deleteMessage(request.event.channel, request.event.ts);
+    webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
     backfireService.trackDeletedMessage(+backfireId, request.event.text);
     webService.sendMessage(
       request.event.channel,
@@ -108,7 +108,7 @@ async function handleCounterMuzzle(request: EventRequest): Promise<void> {
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
     console.log(`${userName} attempted to tag someone. Counter Muzzle increased by ${ABUSE_PENALTY_TIME}!`);
     counterPersistenceService.addCounterMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
-    webService.deleteMessage(request.event.channel, request.event.ts);
+    webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
     webService.sendMessage(
       request.event.channel,
       `:rotating_light: <@${request.event.user}> attempted to @ while countered! Muzzle increased by ${getTimeString(
@@ -120,7 +120,7 @@ async function handleCounterMuzzle(request: EventRequest): Promise<void> {
 
 async function handleBotMessage(request: EventRequest, botUserToMuzzle: string): Promise<void> {
   console.log(`A user is muzzled and tried to send a bot message! Suppressing...`);
-  webService.deleteMessage(request.event.channel, request.event.ts);
+  webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
   const muzzleId: string | null = await muzzlePersistenceService.getMuzzle(botUserToMuzzle, request.team_id);
   if (muzzleId) {
     muzzlePersistenceService.trackDeletedMessage(+muzzleId, 'A bot message');
@@ -146,7 +146,7 @@ async function handleBotMessage(request: EventRequest, botUserToMuzzle: string):
 
 function deleteMessage(request: EventRequest): void {
   console.log('Someone talked in #hot who was not a bot. Suppressing...');
-  webService.deleteMessage(request.event.channel, request.event.ts);
+  webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
 }
 
 function handleReaction(request: EventRequest): void {

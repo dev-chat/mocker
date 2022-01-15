@@ -204,7 +204,7 @@ export class SuppressorService {
     dbId: number,
     persistenceService: MuzzlePersistenceService | BackFirePersistenceService | CounterPersistenceService,
   ): Promise<void> {
-    await this.webService.deleteMessage(channel, timestamp);
+    await this.webService.deleteMessage(channel, timestamp, userId);
 
     const words = text.split(' ');
 
