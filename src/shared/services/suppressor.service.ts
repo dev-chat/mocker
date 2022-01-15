@@ -208,23 +208,25 @@ export class SuppressorService {
 
     const words = text.split(' ');
 
-    if (words.length > 1000) {
-      return;
-    }
-
     const textWithFallbackReplacments = words
       .map(word =>
         word.length >= MAX_WORD_LENGTH ? REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)] : word,
       )
       .join(' ');
 
-    const suppressedMessage = await this.translationService.translate(textWithFallbackReplacments).catch(e => {
-      console.error('error on translation');
-      console.error(e);
-      return null;
-    });
+    let suppressedMessage;
+    const shouldFallBack =
+      words.length >= 500 ||
+      (await this.translationService
+        .translate(textWithFallbackReplacments)
+        .then(message => (suppressedMessage = message))
+        .catch(e => {
+          console.error('error on translation');
+          console.error(e);
+          return null;
+        })) == null;
 
-    if (suppressedMessage === null) {
+    if (shouldFallBack) {
       const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
       await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`);
     } else {
