@@ -50,8 +50,6 @@ defineController.post('/define', async (req: Request, res: Response) => {
         ],
       });
 
-      console.log(blocks);
-
       webService.sendMessage(request.channel_id, text, blocks);
     }
   }
