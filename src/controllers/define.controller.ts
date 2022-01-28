@@ -32,9 +32,6 @@ defineController.post('/define', async (req: Request, res: Response) => {
             text,
           },
         },
-        {
-          type: 'divider',
-        },
       ];
 
       definitions.map(def => blocks.push(def));
