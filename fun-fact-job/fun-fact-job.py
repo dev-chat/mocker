@@ -79,7 +79,7 @@ def sendSlackMessage(facts):
   client = WebClient(token=slack_token)
 
   try:
-      response = client.api_call(
+      client.api_call(
         api_method='chat.postMessage',
         json={'channel': '#general','blocks': blocks}
       )
@@ -90,6 +90,8 @@ def sendSlackMessage(facts):
       assert e.response["error"]
 
 def createBlocks(quote, facts):
+  print(quote)
+  print(facts)
   blocks = [
       {
         "type": "header",
