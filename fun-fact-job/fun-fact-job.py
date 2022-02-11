@@ -1,10 +1,11 @@
 import mysql.connector
 import os
 import requests
+import random
+import ssl
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from urllib3 import Retry
-import random
 
 urls = [
   { "url": "https://uselessfacts.jsph.pl/random.json?language=en", "fieldName": "text" },
@@ -14,6 +15,7 @@ urls = [
 quotes = [
   { "url": "https://quotes.rest/qod.json?category=inspire" }
 ]
+ssl._create_default_https_context = ssl._create_unverified_context
 
 session = requests.session()
 retry = Retry(
