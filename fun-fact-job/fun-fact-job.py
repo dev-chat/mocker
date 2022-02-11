@@ -41,10 +41,8 @@ def getFacts(ctx):
 def getQuote():
   url = random.choice(quotes)
   quote = session.get(url["url"])
-  print(quote)
   if (quote.ok):
     asJson = quote.json()
-    print(asJson)
     return { 
       "text": "{quote} - {author}".format(quote=asJson["contents"]["quotes"][0]["quote"], author=asJson["contents"]["quotes"][0]["author"]),
       "image_url": "https://theysaidso.com/quote/image/{image_id}".format(image_id=asJson["contents"]["quotes"][0]["id"]) }
@@ -98,8 +96,6 @@ def sendSlackMessage(facts):
       assert e.response["error"]
 
 def createBlocks(quote, facts):
-  print(quote)
-  print(facts)
   blocks = [
     {
       "type": "header",
