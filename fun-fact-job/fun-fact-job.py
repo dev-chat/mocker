@@ -40,11 +40,16 @@ def getQuote():
   url = random.choice(quotes)
   quote = session.get(url["url"])
   print(quote)
-  asJson = quote.json()
-  print(asJson)
-  return { 
-    "text": "{quote} - {author}".format(quote=asJson["contents"]["quotes"][0]["quote"], author=asJson["contents"]["quotes"][0]["author"]),
-    "image_url": "https://theysaidso.com/quote/image/{image_id}".format(image_id=asJson["contents"]["quotes"][0]["id"]) }
+  if (quote.ok):
+    asJson = quote.json()
+    print(asJson)
+    return { 
+      "text": "{quote} - {author}".format(quote=asJson["contents"]["quotes"][0]["quote"], author=asJson["contents"]["quotes"][0]["author"]),
+      "image_url": "https://theysaidso.com/quote/image/{image_id}".format(image_id=asJson["contents"]["quotes"][0]["id"]) }
+  else:
+    return {
+      "error": "Issue with quote API - non 200 status code"
+    }
 
 def getFact():
   url = random.choice(urls)
@@ -94,15 +99,16 @@ def createBlocks(quote, facts):
   print(quote)
   print(facts)
   blocks = [
-      {
-        "type": "header",
-        "text": {
-          "type": "plain_text",
-          "text": "SimpleTech's SimpleFacts :tm:",
-          "emoji": True
-        }
-      },
-      {
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "SimpleTech's SimpleFacts :tm:",
+        "emoji": True
+      }
+    }]
+  if (quote and quote['error'] == None):
+    blocks.append({
         "type": "section",
         "fields": [
           {
@@ -110,15 +116,17 @@ def createBlocks(quote, facts):
             "text": "*Inspirational Quote of the Day* \n"
           }
         ]
-      },
-      {
+      })
+    blocks.append({
         "type": "image",
         "image_url": "{image_url}".format(image_url=quote["image_url"]),
         "alt_text": "marg"
-      },
-      {
+      })
+    blocks.append({
         "type": "divider"
-      },
+      })
+  
+  blocks.append(
       {
         "type": "section",
         "fields": [
@@ -127,8 +135,7 @@ def createBlocks(quote, facts):
             "text": "*Today's Facts:*"
           }
         ]
-      }
-    ]
+      })
   
   factString = ""
   for fact in facts:
