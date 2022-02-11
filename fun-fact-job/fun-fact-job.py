@@ -3,10 +3,9 @@ import os
 import requests
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-import ssl
+from urllib3 import Retry
 import random
 
-ssl._create_default_https_context = ssl._create_unverified_context
 urls = [
   { "url": "https://uselessfacts.jsph.pl/random.json?language=en", "fieldName": "text" },
   { "url": "https://api.api-ninjas.com/v1/facts?limit=1", "fieldName": "fact", "headers": { "X-Api-Key": "{ninjaApiKey}".format(ninjaApiKey=os.environ["API_NINJA_KEY"])}}
@@ -15,6 +14,16 @@ urls = [
 quotes = [
   { "url": "https://quotes.rest/qod.json?category=inspire" }
 ]
+
+session = requests.session()
+retry = Retry(
+  total=5,
+  backoff_factor=10
+)
+
+adapter = requests.adapters.HTTPAdapter(max_retries=retry)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
 
 def getFacts(ctx):
   facts = []
@@ -29,7 +38,7 @@ def getFacts(ctx):
 
 def getQuote():
   url = random.choice(quotes)
-  quote = requests.get(url["url"], verify=False)
+  quote = session.get(url["url"], verify=False)
   asJson = quote.json()
   print(asJson)
   return { 
@@ -39,9 +48,9 @@ def getQuote():
 def getFact():
   url = random.choice(urls)
   if ("headers" in url):
-    fact = requests.get(url["url"], headers=url["headers"], verify=False)
+    fact = session.get(url["url"], headers=url["headers"], verify=False)
   else:
-    fact = requests.get(url["url"], verify=False)
+    fact = session.get(url["url"], verify=False)
   
   if (fact):
     asJson = fact.json()
