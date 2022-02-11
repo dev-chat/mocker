@@ -39,6 +39,7 @@ def getFacts(ctx):
 def getQuote():
   url = random.choice(quotes)
   quote = session.get(url["url"])
+  print(quote)
   asJson = quote.json()
   print(asJson)
   return { 
