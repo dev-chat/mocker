@@ -105,7 +105,7 @@ def createBlocks(quote, facts):
         "emoji": True
       }
     }]
-  if (quote and quote['error'] == None):
+  if (quote and 'error' not in quote):
     blocks.append({
         "type": "section",
         "fields": [
