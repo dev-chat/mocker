@@ -23,6 +23,8 @@ export class TranslationService {
     const roll = Math.random();
     if (roll >= 0.25) {
       return 'es';
+    } else if (roll >= 0.23 && roll < 0.25) {
+      return 'ru';
     }
     return 'de';
   }
