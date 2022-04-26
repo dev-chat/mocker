@@ -117,10 +117,12 @@ def createBlocks(quote, facts):
         ]
       })
     blocks.append({
-        "type": "image",
-        "image_url": "{image_url}".format(image_url=quote["image_url"]),
-        "alt_text": "marg"
-      })
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "{quote}".format(fact=quote["text"])
+      }
+    })
     blocks.append({
         "type": "divider"
       })
