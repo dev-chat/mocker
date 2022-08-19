@@ -20,7 +20,7 @@ listController.post('/list/retrieve', async (req, res) => {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     const report = await reportService.getListReport(request.channel_id);
-    webService.uploadFile(req.body.channel_id, report, `${request.channel_name}'s List`, request.user_id);
+    webService.uploadFile(req.body.channel_id, report, `#${request.channel_name}'s List`, request.user_id);
     res.status(200).send();
   }
 });
