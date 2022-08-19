@@ -12,6 +12,9 @@ export class List {
   public teamId!: string;
 
   @Column()
+  public channelId!: string;
+
+  @Column()
   public text!: string;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

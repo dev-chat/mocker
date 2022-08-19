@@ -19,8 +19,8 @@ listController.post('/list/retrieve', async (req, res) => {
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
-    const report = await reportService.getListReport();
-    webService.uploadFile(req.body.channel_id, report, 'The List', request.user_id);
+    const report = await reportService.getListReport(request.channel_id);
+    webService.uploadFile(req.body.channel_id, report, `${request.channel_name}'s List`, request.user_id);
     res.status(200).send();
   }
 });
@@ -34,7 +34,7 @@ listController.post('/list/add', async (req, res) => {
   } else if (request.text.length >= 255) {
     res.send('Sorry, items added to The List must be less than 255 characters');
   } else {
-    listPersistenceService.store(request.user_id, request.text, request.team_id);
+    listPersistenceService.store(request.user_id, request.text, request.team_id, request.channel_id);
     const response: ChannelResponse = {
       // eslint-disable-next-line @typescript-eslint/camelcase
       response_type: 'in_channel',

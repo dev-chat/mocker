@@ -11,11 +11,12 @@ export class ListPersistenceService {
 
   private static instance: ListPersistenceService;
 
-  public store(requestorId: string, text: string, teamId: string): Promise<List> {
+  public store(requestorId: string, text: string, teamId: string, channelId: string): Promise<List> {
     const listItem = new List();
     listItem.requestorId = requestorId;
     listItem.text = text;
     listItem.teamId = teamId;
+    listItem.channelId = channelId;
     return getRepository(List).save(listItem);
   }
 
