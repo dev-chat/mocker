@@ -12,6 +12,15 @@ export class Counter {
   public counteredId?: string;
 
   @Column()
+  public messagesSuppressed!: number;
+
+  @Column()
+  public wordsSuppressed!: number;
+
+  @Column()
+  public charactersSuppressed!: number;
+
+  @Column()
   public teamId!: string;
 
   @Column()
