@@ -105,8 +105,9 @@ describe('define-utils', () => {
       expect(defineService.formatDefs(testArray, 'test', 10).length).toBe(5);
     });
 
-    it(`should return [{ "Sorry, no definitions found" }] if defArr === 0`, () => {
-      expect(defineService.formatDefs([], 'test')[0].text).toBe('Sorry, no definitions found.');
+    it(`should return "> Sorry, no definitions found" if defArr === 0`, () => {
+      const expected = [{ text: { text: '> Sorry, no definitions found.', type: 'mrkdwn' }, type: 'section' }];
+      expect(defineService.formatDefs([], 'test')).toEqual(expected);
     });
   });
 });

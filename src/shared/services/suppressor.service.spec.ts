@@ -3,16 +3,14 @@ import { UpdateResult } from 'typeorm';
 import { SuppressorService } from './suppressor.service';
 import { EventRequest } from '../models/slack/slack-models';
 import { MuzzlePersistenceService } from '../../services/muzzle/muzzle.persistence.service';
-import { MAX_WORD_LENGTH } from '../../services/muzzle/constants';
 import { SlackService } from '../../services/slack/slack.service';
+import { SlackUser } from '../db/models/SlackUser';
 
 describe('SuppressorService', () => {
   let suppressorService: SuppressorService;
-  let slackInstance: SlackService;
 
   beforeEach(() => {
     suppressorService = new SuppressorService();
-    slackInstance = SlackService.getInstance();
     jest.useFakeTimers();
   });
 
@@ -32,21 +30,6 @@ describe('SuppressorService', () => {
       jest
         .spyOn(MuzzlePersistenceService.getInstance(), 'incrementWordSuppressions')
         .mockResolvedValue(mockResolve as UpdateResult);
-      jest
-        .spyOn(suppressorService, 'getReplacementWord')
-        .mockImplementation((word: string, isFirstWord: boolean, isLastWord: boolean, replacementText: string) => {
-          const isRandomEven = (): boolean => true;
-          replacementText = '..mMm..';
-          const text =
-            isRandomEven() && word.length < MAX_WORD_LENGTH && word !== ' ' && !slackInstance.containsTag(word)
-              ? `*${word}*`
-              : replacementText;
-
-          if ((isFirstWord && !isLastWord) || (!isFirstWord && !isLastWord)) {
-            return `${text} `;
-          }
-          return text;
-        });
     });
 
     it('should always muzzle a tagged user', () => {
@@ -96,6 +79,9 @@ describe('SuppressorService', () => {
           ],
         },
       } as EventRequest;
+      jest
+        .spyOn(SlackService.getInstance(), 'getBotByBotId')
+        .mockResolvedValue({ name: 'test', slackId: '123' } as SlackUser);
     });
 
     describe('when a user is muzzled', () => {
@@ -138,9 +124,7 @@ describe('SuppressorService', () => {
 
     describe('when a user is not muzzled', () => {
       beforeEach(() => {
-        jest
-          .spyOn(MuzzlePersistenceService.getInstance(), 'isUserMuzzled')
-          .mockImplementation(() => new Promise(resolve => resolve(false)));
+        jest.spyOn(MuzzlePersistenceService.getInstance(), 'isUserMuzzled').mockResolvedValue(false);
       });
 
       it('should return false if there is no id present in any fields', async () => {

@@ -56,7 +56,7 @@ export class DefineService {
       },
     ];
 
-    if (!defArr || defArr.length === 0) {
+    if (!defArr || !defArr.length) {
       return noDefFound;
     }
 
