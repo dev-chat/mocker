@@ -1,4 +1,4 @@
-import { EventRequest, SlackUser } from '../models/slack/slack-models';
+import { EventRequest } from '../models/slack/slack-models';
 import { USER_ID_REGEX } from '../../services/counter/constants';
 import { SlackService } from '../../services/slack/slack.service';
 import { BackFirePersistenceService } from '../../services/backfire/backfire.persistence.service';
@@ -9,6 +9,7 @@ import { isRandomEven } from '../../services/muzzle/muzzle-utilities';
 import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../services/muzzle/constants';
 import { TranslationService } from './translation.service';
 import moment from 'moment';
+import { SlackUser } from '../db/models/SlackUser';
 
 export class SuppressorService {
   public webService = WebService.getInstance();
