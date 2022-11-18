@@ -102,7 +102,7 @@ export class MuzzleService extends SuppressorService {
     timestamp: string,
   ): Promise<void> {
     console.time('send-muzzled-message');
-    const muzzle: string | null = await this.muzzlePersistenceService.getMuzzle(userId, teamId).catch(e => {
+    const muzzle = await this.muzzlePersistenceService.getMuzzle(userId, teamId).catch(e => {
       console.error('error retrieving muzzle', e);
       return null;
     });
@@ -110,9 +110,9 @@ export class MuzzleService extends SuppressorService {
       const suppressions = await this.muzzlePersistenceService.getSuppressions(userId, teamId);
       if (!suppressions || (suppressions && +suppressions < MAX_SUPPRESSIONS)) {
         await this.muzzlePersistenceService.incrementStatefulSuppressions(userId, teamId);
-        this.sendSuppressedMessage(channel, userId, text, timestamp, +muzzle, this.muzzlePersistenceService);
+        this.sendSuppressedMessage(channel, userId, text, timestamp, muzzle, this.muzzlePersistenceService);
       } else {
-        this.muzzlePersistenceService.trackDeletedMessage(+muzzle, text);
+        this.muzzlePersistenceService.trackDeletedMessage(muzzle, text);
       }
     }
     console.timeEnd('send-muzzled-message');
