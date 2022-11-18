@@ -97,16 +97,17 @@ export class SlackService {
   /**
    * Retrieves a list of all users.
    */
-  public getAllUsers(shouldSave?: boolean): Promise<SlackUser[]> {
+  public async getAllUsers(): Promise<SlackUserFromDB[]> {
     console.log('Retrieving new user list...');
+    const cached = await this.persistenceService.getCachedUsers();
+    if (!!cached) {
+      return cached as SlackUserFromDB[];
+    }
     return this.web
       .getAllUsers()
       .then(resp => {
         console.log('New user list has been retrieved!');
-        if (shouldSave) {
-          this.persistenceService.saveUsers(resp.members as SlackUser[]);
-        }
-        return resp.members as SlackUser[];
+        return this.persistenceService.saveUsers(resp.members as SlackUser[]).catch(e => e);
       })
       .catch(e => {
         console.error('Failed to retrieve users', e);
