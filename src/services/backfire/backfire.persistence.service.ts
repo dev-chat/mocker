@@ -61,9 +61,11 @@ export class BackFirePersistenceService {
       const newTime = Math.floor(timeRemaining + timeToAdd / 1000);
       await this.redis.expire(this.getRedisKeyName(userId, teamId), newTime);
       await this.redis.expire(this.getRedisKeyName(userId, teamId, true), newTime);
-      const backfireId = await this.redis.getValue(this.getRedisKeyName(userId, teamId));
+      const backfireId = await this.redis
+        .getValue(this.getRedisKeyName(userId, teamId))
+        .then(id => (id ? +id : undefined));
       if (backfireId) {
-        this.incrementBackfireTime(+backfireId, timeToAdd);
+        this.incrementBackfireTime(backfireId, timeToAdd);
       }
       console.log(`Setting ${userId}'s backfire time to ${newTime}`);
     }
