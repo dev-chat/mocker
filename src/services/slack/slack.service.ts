@@ -31,7 +31,7 @@ export class SlackService {
       return undefined;
     }
     const regArray = user.match(USER_ID_REGEX);
-    return regArray ? regArray[0].slice(2) : '';
+    return regArray ? regArray[0].slice(2) : undefined;
   }
 
   public getUserIdByName(userName: string, teamId: string): Promise<string | undefined> {

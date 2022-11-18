@@ -103,12 +103,6 @@ export class SuppressorService {
       return false;
     }
 
-    for (let i = 0; i < request?.event?.blocks?.length; i++) {
-      console.log(request?.event?.blocks[i]);
-      for (let j = 0; j < request?.event?.blocks[i]?.elements?.length; j++) {
-        console.log(request.event.blocks[i]?.elements[j]);
-      }
-    }
     let userIdByEventText;
     let userIdByAttachmentText;
     let userIdByAttachmentPretext;
