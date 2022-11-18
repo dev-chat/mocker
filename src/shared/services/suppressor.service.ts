@@ -93,69 +93,71 @@ export class SuppressorService {
    * Determines whether or not a bot message should be removed.
    */
   public async shouldBotMessageBeMuzzled(request: EventRequest): Promise<string | false> {
-    const isBot = request.event.bot_id
-      ? await this.slackService
-          .getBotByBotId(request.event.bot_id, request.team_id)
-          .then(user => user?.name !== 'muzzle' && user?.slackId !== 'ULG8SJRFF')
-      : false;
+    if (!request.event.bot_id) {
+      return false;
+    }
+    const bot = await this.slackService.getBotByBotId(request.event.bot_id, request.team_id);
 
-    if (isBot) {
-      console.log(request.event.blocks);
-      for (let i = 0; i < request?.event?.blocks?.length; i++) {
-        console.log(request?.event?.blocks[i]);
-        for (let j = 0; j < request?.event?.blocks[i]?.elements?.length; j++) {
-          console.log(request.event.blocks[i]?.elements[j]);
-        }
+    const isMuzzleBot = bot?.name === 'muzzle' || bot?.name === 'muzzle3';
+
+    if (isMuzzleBot) {
+      return false;
+    }
+
+    for (let i = 0; i < request?.event?.blocks?.length; i++) {
+      console.log(request?.event?.blocks[i]);
+      for (let j = 0; j < request?.event?.blocks[i]?.elements?.length; j++) {
+        console.log(request.event.blocks[i]?.elements[j]);
       }
-      let userIdByEventText;
-      let userIdByAttachmentText;
-      let userIdByAttachmentPretext;
-      let userIdByCallbackId;
-      let userIdByBlocks;
+    }
+    let userIdByEventText;
+    let userIdByAttachmentText;
+    let userIdByAttachmentPretext;
+    let userIdByCallbackId;
+    let userIdByBlocks;
 
-      if (request.event.blocks) {
-        const userId = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
-        const userName = await this.findUserInBlocks(request.event.blocks);
+    if (request.event.blocks) {
+      const userId = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
+      const userName = await this.findUserInBlocks(request.event.blocks);
 
-        if (userId) {
-          userIdByBlocks = this.slackService.getUserId(userId);
-        }
-
-        if (userName) {
-          userIdByBlocks = userName;
-        }
+      if (userId) {
+        userIdByBlocks = this.slackService.getUserId(userId);
       }
 
-      if (request.event.text) {
-        userIdByEventText = this.slackService.getUserId(request.event.text);
+      if (userName) {
+        userIdByBlocks = userName;
       }
+    }
 
-      if (request.event.attachments && request.event.attachments.length) {
-        userIdByAttachmentText = this.slackService.getUserId(request.event.attachments[0].text);
-        userIdByAttachmentPretext = this.slackService.getUserId(request.event.attachments[0].pretext);
+    if (request.event.text) {
+      userIdByEventText = this.slackService.getUserId(request.event.text);
+    }
 
-        if (request.event.attachments[0].callback_id) {
-          userIdByCallbackId = this.slackService.getUserIdByCallbackId(request.event.attachments[0].callback_id);
-        }
+    if (request.event.attachments && request.event.attachments.length) {
+      userIdByAttachmentText = this.slackService.getUserId(request.event.attachments[0].text);
+      userIdByAttachmentPretext = this.slackService.getUserId(request.event.attachments[0].pretext);
+
+      if (request.event.attachments[0].callback_id) {
+        userIdByCallbackId = this.slackService.getUserIdByCallbackId(request.event.attachments[0].callback_id);
       }
+    }
 
-      const finalUserId = this.slackService.getBotId(
-        userIdByEventText,
-        userIdByAttachmentText,
-        userIdByAttachmentPretext,
-        userIdByCallbackId,
-        userIdByBlocks,
-      );
-      if (
-        !!(
-          finalUserId &&
-          ((await this.muzzlePersistenceService.isUserMuzzled(finalUserId, request.team_id)) ||
-            (await this.backfirePersistenceService.isBackfire(finalUserId, request.team_id)) ||
-            (await this.counterPersistenceService.isCounterMuzzled(finalUserId)))
-        )
-      ) {
-        return finalUserId;
-      }
+    const finalUserId = this.slackService.getBotId(
+      userIdByEventText,
+      userIdByAttachmentText,
+      userIdByAttachmentPretext,
+      userIdByCallbackId,
+      userIdByBlocks,
+    );
+    if (
+      !!(
+        finalUserId &&
+        ((await this.muzzlePersistenceService.isUserMuzzled(finalUserId, request.team_id)) ||
+          (await this.backfirePersistenceService.isBackfire(finalUserId, request.team_id)) ||
+          (await this.counterPersistenceService.isCounterMuzzled(finalUserId)))
+      )
+    ) {
+      return finalUserId;
     }
     return false;
   }
