@@ -279,9 +279,10 @@ export class SuppressorService {
 
   public async shouldBackfire(requestorId: string, teamId: string): Promise<boolean> {
     const start = moment()
-      .startOf('week')
+      .subtract(7, 'days')
       .format('YYYY-MM-DD HH:mm:ss');
     const end = moment().format('YYYY-MM-DD HH:mm:ss');
+
     const muzzles = await this.muzzlePersistenceService.getMuzzlesByTimePeriod(requestorId, teamId, start, end);
     const chanceOfBackfire = 0.05 + muzzles * 0.05;
     console.log(`Chance of Backfire for ${requestorId}: ${chanceOfBackfire}`);
