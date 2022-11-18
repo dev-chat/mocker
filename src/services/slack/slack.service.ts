@@ -26,9 +26,9 @@ export class SlackService {
    * Retrieves the user id from a string.
    * Expected format is <@U235KLKJ>
    */
-  public getUserId(user: string): string {
+  public getUserId(user: string): string | undefined {
     if (!user) {
-      return '';
+      return undefined;
     }
     const regArray = user.match(USER_ID_REGEX);
     return regArray ? regArray[0].slice(2) : '';

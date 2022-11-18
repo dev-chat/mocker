@@ -18,10 +18,10 @@ const reportService = new MuzzleReportService();
 // TODO: This should have the logic from the addUserToMuzzled function in muzzleService.
 muzzleController.post('/muzzle', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
-  const userId: string = slackService.getUserId(request.text);
-  if (request.user_id === userId) {
+  const userId = slackService.getUserId(request.text);
+  if (userId && request.user_id === userId) {
     res.send('Sorry, you cannot muzzle yourself anymore. JP ruined it.');
-  } else {
+  } else if (userId) {
     const results = await muzzleService
       .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
       .catch(e => {
@@ -31,6 +31,8 @@ muzzleController.post('/muzzle', async (req: Request, res: Response) => {
     if (results) {
       res.send(results);
     }
+  } else {
+    res.send('Sorry, you must specify a valid Slack user.');
   }
 });
 
