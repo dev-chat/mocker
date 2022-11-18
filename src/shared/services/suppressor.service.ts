@@ -38,7 +38,6 @@ export class SuppressorService {
     return id;
   }
 
-  // Built for spoiler only. This will not work on other block apps. Should improve this to be universal.
   public async findUserInBlocks(blocks: any, users?: SlackUser[]): Promise<string | undefined> {
     const allUsers: SlackUser[] = users ? users : await this.slackService.getAllUsers();
     let id;
@@ -115,6 +114,7 @@ export class SuppressorService {
     let userIdByAttachmentPretext;
     let userIdByCallbackId;
     let userIdByBlocks;
+    let userIdByBlocksSpoiler;
 
     if (request.event.blocks) {
       const userId = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
@@ -125,7 +125,7 @@ export class SuppressorService {
       }
 
       if (userName) {
-        userIdByBlocks = userName;
+        userIdByBlocksSpoiler = userName;
       }
     }
 
@@ -148,6 +148,7 @@ export class SuppressorService {
       userIdByAttachmentPretext,
       userIdByCallbackId,
       userIdByBlocks,
+      userIdByBlocksSpoiler,
     );
     if (
       !!(

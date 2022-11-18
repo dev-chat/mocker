@@ -59,13 +59,14 @@ export class SlackService {
    * Retrieves a Slack user id from the various fields in which a userId can exist inside of a bot response.
    */
   public getBotId(
-    fromText: string | undefined,
-    fromAttachmentText: string | undefined,
-    fromPretext: string | undefined,
-    fromCallbackId: string | undefined,
-    fromBlocksId?: string | undefined,
+    fromText?: string,
+    fromAttachmentText?: string,
+    fromPretext?: string,
+    fromCallbackId?: string,
+    fromBlocksId?: string,
+    fromBlocksIdSpoiler?: string,
   ): string | undefined {
-    return fromText || fromAttachmentText || fromPretext || fromCallbackId || fromBlocksId;
+    return fromText || fromAttachmentText || fromPretext || fromCallbackId || fromBlocksId || fromBlocksIdSpoiler;
   }
   /**
    * Determines whether or not a user is trying to @user, @channel or @here while muzzled.
