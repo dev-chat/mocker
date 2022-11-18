@@ -123,8 +123,10 @@ export class MuzzlePersistenceService {
     }
   }
 
-  public async getMuzzle(userId: string, teamId: string): Promise<string | null> {
-    return await this.redis.getValue(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled));
+  public async getMuzzle(userId: string, teamId: string): Promise<number | undefined> {
+    return await this.redis
+      .getValue(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled))
+      .then(id => (id ? +id : undefined));
   }
 
   public async getSuppressions(userId: string, teamId: string): Promise<string | null> {

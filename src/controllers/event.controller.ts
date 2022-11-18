@@ -12,7 +12,6 @@ import { ReactionService } from '../services/reaction/reaction.service';
 import { SentimentService } from '../services/sentiment/sentiment.service';
 import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
-import { CounterMuzzle } from '../shared/models/counter/counter-models';
 import { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 
@@ -46,14 +45,14 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
       request.event.ts,
     );
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
-    const muzzleId: string | null = await muzzlePersistenceService.getMuzzle(request.event.user, request.team_id);
+    const muzzleId = await muzzlePersistenceService.getMuzzle(request.event.user, request.team_id);
     if (muzzleId) {
       console.log(
         `${userName} attempted to tag someone or change the channel topic. Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
       );
       muzzlePersistenceService.addMuzzleTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
       webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
-      muzzlePersistenceService.trackDeletedMessage(+muzzleId, request.event.text);
+      muzzlePersistenceService.trackDeletedMessage(muzzleId, request.event.text);
       webService
         .sendMessage(
           request.event.channel,
@@ -82,19 +81,23 @@ async function handleBackfire(request: EventRequest): Promise<void> {
       request.team_id,
     );
   } else if (containsTag && (!request.event.subtype || request.event.subtype === 'channel_topic')) {
-    const backfireId = backfireService.getBackfire(request.event.user, request.team_id);
-    console.log(`${userName} attempted to tag someone. Backfire increased by ${ABUSE_PENALTY_TIME}!`);
-    backfireService.addBackfireTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
-    webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
-    backfireService.trackDeletedMessage(+backfireId, request.event.text);
-    webService
-      .sendMessage(
-        request.event.channel,
-        `:rotating_light: <@${request.event.user}> attempted to @ while muzzled! Muzzle increased by ${getTimeString(
-          ABUSE_PENALTY_TIME,
-        )} :rotating_light:`,
-      )
-      .catch(e => console.error(e));
+    const backfireId = await backfireService.getBackfire(request.event.user, request.team_id);
+    if (backfireId) {
+      console.log(`${userName} attempted to tag someone. Backfire increased by ${ABUSE_PENALTY_TIME}!`);
+      backfireService.addBackfireTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
+      webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
+      backfireService.trackDeletedMessage(backfireId, request.event.text);
+      webService
+        .sendMessage(
+          request.event.channel,
+          `:rotating_light: <@${request.event.user}> attempted to @ while muzzled! Muzzle increased by ${getTimeString(
+            ABUSE_PENALTY_TIME,
+          )} :rotating_light:`,
+        )
+        .catch(e => console.error(e));
+    } else {
+      console.log(`Unable to find backfireId for ${request.event.user}`);
+    }
   }
 }
 
@@ -127,25 +130,22 @@ async function handleCounterMuzzle(request: EventRequest): Promise<void> {
 async function handleBotMessage(request: EventRequest, botUserToMuzzle: string): Promise<void> {
   console.log(`A user is muzzled and tried to send a bot message! Suppressing...`);
   webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
-  const muzzleId: string | null = await muzzlePersistenceService.getMuzzle(botUserToMuzzle, request.team_id);
+  const muzzleId = await muzzlePersistenceService.getMuzzle(botUserToMuzzle, request.team_id);
   if (muzzleId) {
-    muzzlePersistenceService.trackDeletedMessage(+muzzleId, 'A bot message');
+    muzzlePersistenceService.trackDeletedMessage(muzzleId, 'A bot message');
     return;
   }
 
-  const backfireId: string | null = await backfirePersistenceService.getBackfireByUserId(
-    botUserToMuzzle,
-    request.team_id,
-  );
+  const backfireId = await backfirePersistenceService.getBackfireByUserId(botUserToMuzzle, request.team_id);
   if (backfireId) {
-    backfirePersistenceService.trackDeletedMessage(+backfireId, 'A bot user message');
+    backfirePersistenceService.trackDeletedMessage(backfireId, 'A bot user message');
     return;
   }
 
-  const counter: CounterMuzzle | undefined = await counterPersistenceService.getCounterMuzzle(botUserToMuzzle);
-  console.log(counter);
-  if (counter && counter.counterId) {
-    counterPersistenceService.incrementMessageSuppressions(+counter.counterId);
+  const counter = await counterPersistenceService.getCounterMuzzle(botUserToMuzzle);
+
+  if (counter?.counterId) {
+    counterPersistenceService.incrementMessageSuppressions(counter.counterId);
     return;
   }
 }

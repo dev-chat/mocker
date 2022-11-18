@@ -71,8 +71,8 @@ export class BackFirePersistenceService {
     }
   }
 
-  public getBackfireByUserId(userId: string, teamId: string): Promise<string | null> {
-    return this.redis.getValue(this.getRedisKeyName(userId, teamId));
+  public getBackfireByUserId(userId: string, teamId: string): Promise<number | undefined> {
+    return this.redis.getValue(this.getRedisKeyName(userId, teamId)).then(id => (id ? +id : undefined));
   }
 
   /**

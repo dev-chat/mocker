@@ -28,8 +28,8 @@ export class BackfireService extends SuppressorService {
     }
   }
 
-  public async getBackfire(userId: string, teamId: string): Promise<string | null> {
-    return await this.backfirePersistenceService.getBackfireByUserId(userId, teamId);
+  public getBackfire(userId: string, teamId: string): Promise<number | undefined> {
+    return this.backfirePersistenceService.getBackfireByUserId(userId, teamId);
   }
 
   public trackDeletedMessage(id: number, text: string): void {
