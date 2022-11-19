@@ -14,32 +14,24 @@ export class ReactionPersistenceService {
   private static instance: ReactionPersistenceService;
 
   public saveReaction(event: Event, value: number, teamId: string): Promise<Reaction> {
-    return new Promise(async (resolve, reject) => {
-      const reaction = new Reaction();
-      reaction.affectedUser = event.item_user;
-      reaction.reactingUser = event.user;
-      reaction.reaction = event.reaction;
-      reaction.value = value;
-      reaction.type = event.item.type;
-      reaction.channel = event.item.channel;
-      reaction.teamId = teamId;
+    const reaction = new Reaction();
+    reaction.affectedUser = event.item_user;
+    reaction.reactingUser = event.user;
+    reaction.reaction = event.reaction;
+    reaction.value = value;
+    reaction.type = event.item.type;
+    reaction.channel = event.item.channel;
+    reaction.teamId = teamId;
 
-      // Kind ugly dawg, wtf.
-      await getRepository(Reaction)
-        .save(reaction)
-        .then(async () => {
-          if (value === 1) {
-            await this.incrementRep(event.item_user, teamId)
-              .then(() => resolve())
-              .catch(e => reject(e));
-          } else {
-            await this.decrementRep(event.item_user, teamId)
-              .then(() => resolve())
-              .catch(e => reject(e));
-          }
-        })
-        .catch(e => console.error(e));
-    });
+    return getRepository(Reaction)
+      .save(reaction)
+      .then(x => {
+        if (value === 1) {
+          return this.incrementRep(event.item_user, teamId).then(_ => x);
+        } else {
+          return this.decrementRep(event.item_user, teamId).then(_ => x);
+        }
+      });
   }
 
   public async removeReaction(event: Event, value: number, teamId: string): Promise<void> {
