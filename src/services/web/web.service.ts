@@ -79,7 +79,8 @@ export class WebService {
       .then(result => result)
       .catch(e => {
         console.error(e);
-        throw new Error(e);
+        console.log(postRequest);
+        return e;
       });
   }
 
@@ -124,7 +125,7 @@ export class WebService {
             : `Oops! I tried to post the stats you requested but it looks like something went wrong. Please try again later.`,
         user: userId,
       };
-      this.web.chat.postEphemeral(options);
+      this.web.chat.postEphemeral(options).catch(e => console.error(e));
     });
   }
 }
