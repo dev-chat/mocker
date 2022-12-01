@@ -111,7 +111,7 @@ export class SuppressorService {
     let userIdByBlocks;
     let userIdByBlocksSpoiler;
 
-    if (request.event.blocks.length) {
+    if (request?.event?.blocks?.length) {
       const userId = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
       const userName = await this.findUserInBlocks(request.event.blocks);
 
