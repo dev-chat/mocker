@@ -73,7 +73,7 @@ aiController.post('/ai/image', async (req, res) => {
       return;
     }
 
-    const blocks = [
+    const blocks: KnownBlock[] = [
       {
         type: 'image',
         // eslint-disable-next-line @typescript-eslint/camelcase
@@ -81,7 +81,6 @@ aiController.post('/ai/image', async (req, res) => {
         // eslint-disable-next-line @typescript-eslint/camelcase
         alt_text: request.text,
       },
-      ,
       {
         type: 'context',
         elements: [
@@ -92,6 +91,6 @@ aiController.post('/ai/image', async (req, res) => {
         ],
       },
     ];
-    webService.sendMessage(request.channel_id, request.text, blocks as KnownBlock[]);
+    webService.sendMessage(request.channel_id, request.text, blocks);
   }
 });
