@@ -13,6 +13,9 @@ export class AIService {
         prompt: text,
         temperature: 0.6,
       })
-      .then(x => x.data.choices[0].text);
+      .then(x => {
+        console.log(x.data);
+        return x.data.choices[0].text;
+      });
   }
 }
