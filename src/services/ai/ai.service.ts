@@ -46,7 +46,7 @@ export class AIService {
         return x.data.data[0]?.url;
       })
       .catch(e => {
-        this.inflightRequests.filter(x => x !== user);
+        this.inflightRequests = this.inflightRequests.filter(x => x !== user);
         throw e;
       });
   }
