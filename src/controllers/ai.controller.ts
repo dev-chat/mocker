@@ -24,6 +24,8 @@ aiController.post('/ai/text', async (req, res) => {
     res.status(200).send('Processing your request. Please be patient...');
     const generatedText: string | undefined = await aiService.generateText(request.user_id, request.text).catch(e => {
       console.error(e);
+      const errorMessage = `Sorry! Your request for ${request.text} failed. Please try again.`;
+      webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
       return undefined;
     });
 
@@ -66,6 +68,8 @@ aiController.post('/ai/image', async (req, res) => {
     res.status(200).send('Processing your request. Please be patient...');
     const generatedImage: string | undefined = await aiService.generateImage(request.user_id, request.text).catch(e => {
       console.error(e);
+      const errorMessage = `Sorry! Your request for ${request.text} failed. Please try again.`;
+      webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
       return undefined;
     });
 

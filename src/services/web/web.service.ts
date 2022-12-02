@@ -59,6 +59,24 @@ export class WebService {
       });
   }
 
+  public sendEphemeral(channel: string, text: string, user: string): Promise<WebAPICallResult> {
+    const token: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
+    const postRequest: ChatPostEphemeralArguments = {
+      token,
+      channel,
+      text,
+      user,
+    };
+    return this.web.chat
+      .postEphemeral(postRequest)
+      .then(result => result)
+      .catch(e => {
+        console.error(e);
+        console.log(postRequest);
+        return e;
+      });
+  }
+
   /**
    * Handles sending messages to the chat.
    */
