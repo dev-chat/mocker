@@ -24,8 +24,7 @@ export class AIService {
       .then(x => {
         this.inflightRequests = this.inflightRequests.filter(x => x != user);
         console.log(x.data);
-        // Arbitrary 2 removes the first two /n characters in the response.
-        return x.data.choices[0].text;
+        return x.data.choices[0].text?.trim();
       });
   }
 }
