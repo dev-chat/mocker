@@ -9,9 +9,8 @@ export class AIService {
   public generateText(text: string): Promise<string | undefined> {
     return this.openai
       .createCompletion({
-        model: 'text-davinci-002',
+        model: 'text-davinci-003',
         prompt: text,
-        temperature: 0.6,
       })
       .then(x => {
         console.log(x.data);
