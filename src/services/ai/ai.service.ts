@@ -25,6 +25,10 @@ export class AIService {
         this.inflightRequests = this.inflightRequests.filter(x => x != user);
         console.log(x.data);
         return x.data.choices[0].text?.trim();
+      })
+      .catch(e => {
+        this.inflightRequests.filter(x => x !== user);
+        throw e;
       });
   }
 
@@ -40,6 +44,10 @@ export class AIService {
         this.inflightRequests = this.inflightRequests.filter(x => x != user);
         console.log(x.data.data);
         return x.data.data[0]?.url;
+      })
+      .catch(e => {
+        this.inflightRequests.filter(x => x !== user);
+        throw e;
       });
   }
 }
