@@ -36,7 +36,7 @@ aiController.post('/ai/text', async (req, res) => {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `\`\`\`\`${generatedText}\`\`\`\``,
+          text: `\`\`\`${generatedText}\`\`\``,
         },
       },
       {
