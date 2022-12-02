@@ -11,6 +11,8 @@ export class AIService {
       .createCompletion({
         model: 'text-davinci-003',
         prompt: text,
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        max_tokens: 1000,
       })
       .then(x => {
         console.log(x.data);
