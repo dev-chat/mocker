@@ -19,7 +19,7 @@ aiController.post('/ai/text', async (req, res) => {
     res.send('Sorry, you must send a message to generate text.');
   } else {
     // Need to do this to avoid timeout issues.
-    res.status(200).send();
+    res.status(200).send('Processing your request. Please be patient...');
     const generatedText: string | undefined = await aiService.generateText(request.text).catch(e => {
       console.error(e);
       return undefined;
