@@ -27,4 +27,19 @@ export class AIService {
         return x.data.choices[0].text?.trim();
       });
   }
+
+  public generateImage(user: string, text: string): Promise<string | undefined> {
+    this.inflightRequests.push(user);
+    return this.openai
+      .createImage({
+        prompt: text,
+        n: 1,
+        size: '1024x1024',
+      })
+      .then(x => {
+        this.inflightRequests = this.inflightRequests.filter(x => x != user);
+        console.log(x.data.data);
+        return x.data.data[0]?.url;
+      });
+  }
 }
