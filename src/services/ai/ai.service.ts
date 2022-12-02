@@ -38,7 +38,7 @@ export class AIService {
       .createImage({
         prompt: text,
         n: 1,
-        size: '1024x1024',
+        size: '256x256',
       })
       .then(x => {
         this.inflightRequests = this.inflightRequests.filter(x => x != user);
