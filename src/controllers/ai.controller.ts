@@ -17,10 +17,12 @@ aiController.post('/ai/text', async (req, res) => {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('Sorry, you must send a message to generate text.');
+  } else if (aiService.isAlreadyInflight(request.user_id)) {
+    res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
   } else {
     // Need to do this to avoid timeout issues.
     res.status(200).send('Processing your request. Please be patient...');
-    const generatedText: string | undefined = await aiService.generateText(request.text).catch(e => {
+    const generatedText: string | undefined = await aiService.generateText(request.user_id, request.text).catch(e => {
       console.error(e);
       return undefined;
     });
