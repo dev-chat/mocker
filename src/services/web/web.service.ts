@@ -152,7 +152,7 @@ export class WebService {
     const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const uploadRequest: FilesUploadArguments = {
       file: buffer,
-      filetype: 'auto',
+      filetype: 'png',
       title,
       // eslint-disable-next-line @typescript-eslint/camelcase
       initial_comment: title,
