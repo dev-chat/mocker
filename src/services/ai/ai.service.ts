@@ -1,7 +1,11 @@
 import { Configuration, OpenAIApi } from 'openai';
+<<<<<<< HEAD
 import { AIPersistenceService } from './ai.persistence';
 
 const MAX_AI_REQUESTS_PER_DAY = 7;
+=======
+import { uuid } from 'uuidv4';
+>>>>>>> 007881d (Added buffer logic)
 
 export class AIService {
   private redis = AIPersistenceService.getInstance();
@@ -41,18 +45,28 @@ export class AIService {
       .finally(() => this.redis.removeInflight(userId, teamId));
   }
 
+<<<<<<< HEAD
   public async generateImage(userId: string, teamId: string, text: string): Promise<string | undefined> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
+=======
+  public generateImage(user: string, text: string): Promise<Buffer | undefined> {
+    this.inflightRequests.push(user);
+>>>>>>> 007881d (Added buffer logic)
     return this.openai
       .createImage({
         prompt: text,
         n: 1,
         size: '256x256',
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        response_format: 'b64_json',
       })
       .then(x => {
         console.log(x.data.data);
-        return x.data.data[0]?.url;
+        if (x.data.data[0]?.b64_json) {
+          return Buffer.from(x.data.data[0]?.b64_json);
+        }
+        return;
       })
       .catch(async e => {
         await this.redis.decrementDailyRequests(userId, teamId);

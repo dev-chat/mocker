@@ -9,6 +9,7 @@ import {
   KnownBlock,
   Block,
 } from '@slack/web-api';
+import { ImageUpload } from './ImageUpload.interface';
 
 const MAX_RETRIES = 5;
 
@@ -145,5 +146,40 @@ export class WebService {
       };
       this.web.chat.postEphemeral(options).catch(e => console.error(e));
     });
+  }
+
+  public uploadImage(buffer: Buffer, channel: string, title: string, userId: string): Promise<string | void> {
+    const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
+    const uploadRequest: FilesUploadArguments = {
+      file: buffer,
+      filetype: 'auto',
+      title,
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      initial_comment: title,
+      token: muzzleToken,
+    };
+
+    return this.web.files
+      .upload(uploadRequest)
+      .then((x: WebAPICallResult) => {
+        const response = x as ImageUpload;
+        if (response.ok) {
+          console.log(response);
+          return response?.file?.permalink;
+        }
+        throw new Error('Failure on upload');
+      })
+      .catch((e: any) => {
+        console.error(e);
+        const options: ChatPostEphemeralArguments = {
+          channel,
+          text:
+            e.data.error === 'not_in_channel'
+              ? `Oops! I tried to post the image you requested but it looks like I haven't been added to that channel yet. Can you please add me? Just type \`@muzzle\` in the channel!`
+              : `Oops! I tried to post the image you requested but it looks like something went wrong. Please try again later.`,
+          user: userId,
+        };
+        this.web.chat.postEphemeral(options).catch(e => console.error(e));
+      });
   }
 }

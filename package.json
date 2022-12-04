@@ -40,7 +40,8 @@
     "openai": "^3.1.0",
     "sentiment": "^5.0.2",
     "typeorm": "^0.2.25",
-    "typescript": "^3.9.7"
+    "typescript": "^3.9.7",
+    "uuidv4": "^6.2.13"
   },
   "devDependencies": {
     "eslint": "^6.8.0",

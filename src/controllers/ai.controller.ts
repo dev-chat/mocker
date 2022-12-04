@@ -4,6 +4,7 @@ import { SuppressorService } from '../shared/services/suppressor.service';
 import { KnownBlock } from '@slack/web-api';
 import { AIService } from '../services/ai/ai.service';
 import { WebService } from '../services/web/web.service';
+import { uuid } from 'uuidv4';
 
 export const aiController: Router = express.Router();
 
@@ -85,11 +86,24 @@ aiController.post('/ai/image', async (req, res) => {
       return;
     }
 
+    const uploadedImage = await webService
+      .uploadImage(generatedImage, request.channel_id, uuid(), request.user_id)
+      .catch(e => {
+        console.error(e);
+        const errorMessage = `\`Sorry! Your request for ${request.text} failed to upload to Slack. Please try again.\``;
+        webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
+        return undefined;
+      });
+
+    if (!uploadedImage) {
+      return;
+    }
+
     const blocks: KnownBlock[] = [
       {
         type: 'image',
         // eslint-disable-next-line @typescript-eslint/camelcase
-        image_url: generatedImage,
+        image_url: uploadedImage,
         // eslint-disable-next-line @typescript-eslint/camelcase
         alt_text: request.text,
       },
