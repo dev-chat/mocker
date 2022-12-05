@@ -167,7 +167,7 @@ export class WebService {
         const response = x as ImageUpload;
         if (response.ok) {
           console.log(response?.files[0]?.file);
-          return response?.files?.[0].file.permalink;
+          return response?.files?.[0].file.url_private_download;
         }
         throw new Error('Failure on upload');
       })
