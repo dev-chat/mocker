@@ -153,6 +153,7 @@ export class WebService {
     const uploadRequest: FilesUploadArguments = {
       file: buffer,
       title,
+      name: title,
       // eslint-disable-next-line @typescript-eslint/camelcase
       initial_comment: title,
       token: muzzleToken,
