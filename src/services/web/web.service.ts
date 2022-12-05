@@ -166,8 +166,8 @@ export class WebService {
       .then((x: WebAPICallResult) => {
         const response = x as ImageUpload;
         if (response.ok) {
-          console.log(response);
-          return response?.file?.permalink;
+          console.log(response?.files[0]?.file);
+          return response?.files?.[0].file.permalink;
         }
         throw new Error('Failure on upload');
       })
