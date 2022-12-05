@@ -1,19 +1,28 @@
 import { Configuration, OpenAIApi } from 'openai';
+import { AIPersistenceService } from './ai.persistence';
+
+const MAX_AI_REQUESTS_PER_DAY = 7;
 
 export class AIService {
-  inflightRequests: string[] = [];
+  private redis = AIPersistenceService.getInstance();
   private openai = new OpenAIApi(
     new Configuration({
       apiKey: process.env.OPENAI_API_KEY,
     }),
   );
 
-  public isAlreadyInflight(user: string): boolean {
-    return this.inflightRequests.includes(user);
+  public isAlreadyInflight(userId: string, teamId: string): Promise<boolean> {
+    return this.redis.getInflight(userId, teamId).then(x => !!x);
   }
 
-  public generateText(user: string, text: string): Promise<string | undefined> {
-    this.inflightRequests.push(user);
+  public isAlreadyAtMaxRequests(userId: string, teamId: string): Promise<boolean> {
+    return this.redis.getDailyRequests(userId, teamId).then(x => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
+  }
+
+  public async generateText(userId: string, teamId: string, text: string): Promise<string | undefined> {
+    await this.redis.setInflight(userId, teamId);
+    await this.redis.setDailyRequests(userId, teamId);
+
     return this.openai
       .createCompletion({
         model: 'text-davinci-003',
@@ -22,18 +31,19 @@ export class AIService {
         max_tokens: 1000,
       })
       .then(x => {
-        this.inflightRequests = this.inflightRequests.filter(x => x != user);
         console.log(x.data);
         return x.data.choices[0].text?.trim();
       })
-      .catch(e => {
-        this.inflightRequests = this.inflightRequests.filter(x => x !== user);
+      .catch(async e => {
+        await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
-      });
+      })
+      .finally(() => this.redis.removeInflight(userId, teamId));
   }
 
-  public generateImage(user: string, text: string): Promise<string | undefined> {
-    this.inflightRequests.push(user);
+  public async generateImage(userId: string, teamId: string, text: string): Promise<string | undefined> {
+    await this.redis.setInflight(userId, teamId);
+    await this.redis.setDailyRequests(userId, teamId);
     return this.openai
       .createImage({
         prompt: text,
@@ -41,13 +51,13 @@ export class AIService {
         size: '256x256',
       })
       .then(x => {
-        this.inflightRequests = this.inflightRequests.filter(x => x != user);
         console.log(x.data.data);
         return x.data.data[0]?.url;
       })
-      .catch(e => {
-        this.inflightRequests = this.inflightRequests.filter(x => x !== user);
+      .catch(async e => {
+        await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
-      });
+      })
+      .finally(async () => await this.redis.removeInflight(userId, teamId));
   }
 }

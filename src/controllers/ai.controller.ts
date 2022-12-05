@@ -17,17 +17,21 @@ aiController.post('/ai/text', async (req, res) => {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('Sorry, you must send a message to generate text.');
-  } else if (aiService.isAlreadyInflight(request.user_id)) {
+  } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
     res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
+  } else if (await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id)) {
+    res.send('Sorry, you have reached your maximum number of requests per day. Try again tomorrow.');
   } else {
     // Need to do this to avoid timeout issues.
     res.status(200).send('Processing your request. Please be patient...');
-    const generatedText: string | undefined = await aiService.generateText(request.user_id, request.text).catch(e => {
-      console.error(e);
-      const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
-      webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
-      return undefined;
-    });
+    const generatedText: string | undefined = await aiService
+      .generateText(request.user_id, request.team_id, request.text)
+      .catch(e => {
+        console.error(e);
+        const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
+        webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
+        return undefined;
+      });
 
     if (!generatedText) {
       return;
@@ -61,17 +65,21 @@ aiController.post('/ai/image', async (req, res) => {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('Sorry, you must send a message to generate text.');
-  } else if (aiService.isAlreadyInflight(request.user_id)) {
+  } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
     res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
+  } else if (await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id)) {
+    res.send('Sorry, you have reached your maximum number of requests per day. Try again tomorrow.');
   } else {
     // Need to do this to avoid timeout issues.
     res.status(200).send('Processing your request. Please be patient...');
-    const generatedImage: string | undefined = await aiService.generateImage(request.user_id, request.text).catch(e => {
-      console.error(e);
-      const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
-      webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
-      return undefined;
-    });
+    const generatedImage: string | undefined = await aiService
+      .generateImage(request.user_id, request.team_id, request.text)
+      .catch(e => {
+        console.error(e);
+        const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
+        webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
+        return undefined;
+      });
 
     if (!generatedImage) {
       return;
