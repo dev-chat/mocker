@@ -156,6 +156,7 @@ export class WebService {
       title,
       name: title,
       filename: `${title}.png`,
+      filetype: 'png',
       // eslint-disable-next-line @typescript-eslint/camelcase
       initial_comment: title,
       token: muzzleToken,
@@ -167,13 +168,7 @@ export class WebService {
         const response = x as ImageUpload;
         if (response.ok) {
           console.log(response?.files[0]?.file);
-          return this.web.files.sharedPublicURL({ file: response?.files?.[0]?.file?.id }).then(x => {
-            if (x.ok) {
-              return x.file?.permalink_public;
-            } else {
-              throw new Error(`Failure on making ${response?.files?.[0]?.file?.id} public.`);
-            }
-          });
+          return response?.files[0]?.file.url_private_download;
         }
         throw new Error('Failure on upload');
       })
