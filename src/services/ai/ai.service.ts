@@ -27,7 +27,7 @@ export class AIService {
         return x.data.choices[0].text?.trim();
       })
       .catch(e => {
-        this.inflightRequests.filter(x => x !== user);
+        this.inflightRequests = this.inflightRequests.filter(x => x !== user);
         throw e;
       });
   }
