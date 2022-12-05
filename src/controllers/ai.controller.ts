@@ -117,6 +117,6 @@ aiController.post('/ai/image', async (req, res) => {
         ],
       },
     ];
-    webService.sendMessage(request.channel_id, request.text, blocks);
+    webService.sendMessage(request.channel_id, request.text, blocks, true);
   }
 });
