@@ -159,7 +159,7 @@ export class WebService {
       token: muzzleToken,
       options: {
         filename: title,
-        contentType: 'png',
+        contentType: 'image/png',
         knownLength: buffer.length,
       },
     };
