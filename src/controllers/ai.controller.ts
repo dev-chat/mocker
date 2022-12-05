@@ -73,7 +73,7 @@ aiController.post('/ai/image', async (req, res) => {
   } else {
     // Need to do this to avoid timeout issues.
     res.status(200).send('Processing your request. Please be patient...');
-    const generatedImage: string | undefined = await aiService
+    const generatedImage: Buffer | undefined = await aiService
       .generateImage(request.user_id, request.team_id, request.text)
       .catch(e => {
         console.error(e);
