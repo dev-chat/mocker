@@ -8,6 +8,7 @@ import {
   ChatUpdateArguments,
   KnownBlock,
   Block,
+  FilesUploadV2Arguments,
 } from '@slack/web-api';
 import { ImageUpload } from './ImageUpload.interface';
 
@@ -150,7 +151,7 @@ export class WebService {
 
   public uploadImage(buffer: Buffer, channel: string, title: string, userId: string): Promise<string | void> {
     const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
-    const uploadRequest: FilesUploadArguments = {
+    const uploadRequest: FilesUploadV2Arguments = {
       file: buffer,
       title,
       name: title,
@@ -165,7 +166,7 @@ export class WebService {
     };
 
     return this.web.files
-      .upload(uploadRequest)
+      .uploadV2(uploadRequest)
       .then((x: WebAPICallResult) => {
         const response = x as ImageUpload;
         if (response.ok) {
