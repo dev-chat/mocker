@@ -157,6 +157,11 @@ export class WebService {
       // eslint-disable-next-line @typescript-eslint/camelcase
       initial_comment: title,
       token: muzzleToken,
+      options: {
+        filename: title,
+        contentType: 'png',
+        knownLength: buffer.length,
+      },
     };
 
     return this.web.files
