@@ -55,7 +55,7 @@ export class AIService {
       .then(x => {
         console.log(x.data.data);
         if (x.data.data[0]?.b64_json) {
-          return Buffer.from(`data:image/png;base64,${x.data.data[0]?.b64_json}`, 'base64');
+          return Buffer.from(x.data.data[0]?.b64_json, 'base64');
         }
         return;
       })
