@@ -155,14 +155,10 @@ export class WebService {
       file: buffer,
       title,
       name: title,
+      filename: title,
       // eslint-disable-next-line @typescript-eslint/camelcase
       initial_comment: title,
       token: muzzleToken,
-      options: {
-        filename: title,
-        contentType: 'image/png',
-        knownLength: buffer.length,
-      },
     };
 
     return this.web.files
