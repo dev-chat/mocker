@@ -111,8 +111,8 @@ export class StorePersistenceService {
     return flat.length > 0 && flat[0];
   }
 
-  async removeKey(key: string) {
-    this.redisService.removeKey(key);
+  removeKey(key: string): Promise<number> {
+    return this.redisService.removeKey(key);
   }
 
   // TODO: Fix this query. This is so nasty.
@@ -197,7 +197,7 @@ export class StorePersistenceService {
       });
   }
 
-  private getRedisKeyName(userId: string, teamId: string, itemId?: number) {
+  private getRedisKeyName(userId: string, teamId: string, itemId?: number): string {
     return `store.item.${userId}-${teamId}${itemId ? `.${itemId}` : ''}`;
   }
 }
