@@ -28,6 +28,8 @@ storeController.post('/store/buy', async (req, res) => {
   } else {
     itemId = textArgs[0];
   }
+  console.log(itemId);
+  console.log(request.team_id);
   const isValidItem = await storeService.isValidItem(itemId, request.team_id);
 
   if (!isValidItem) {

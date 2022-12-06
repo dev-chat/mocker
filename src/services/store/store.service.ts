@@ -31,10 +31,12 @@ export class StoreService {
 
   async isValidItem(itemId: string, teamId: string): Promise<boolean> {
     const id = +itemId;
+    console.log('isVAlidItem id', id);
     if (isNaN(id) || !Number.isFinite(itemId)) {
       return false;
     } else {
       const isItem = await this.storePersistenceService.getItem(id, teamId);
+      console.log('isItem', isItem);
       return !!isItem;
     }
   }
