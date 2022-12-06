@@ -36,12 +36,12 @@ storeController.post('/store/buy', async (req, res) => {
     return;
   }
 
-  const canAffordItem = await storeService.canAfford(request.text, request.user_id, request.team_id);
+  const canAffordItem = await storeService.canAfford(itemId, request.user_id, request.team_id);
   const isUserRequired = await storeService.isUserRequired(itemId);
 
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
-  } else if (!request.text) {
+  } else if (!itemId) {
     res.send('You must provide an item_id in order to buy an item');
   } else if (!canAffordItem) {
     res.send(`Sorry, you can't afford that item.`);
@@ -78,7 +78,7 @@ storeController.post('/store/buy', async (req, res) => {
           userId: request.user_id,
           teamId: request.team_id,
         });
-        res.status(500).send(`Failure occurred when trying to buy ${request.text}`);
+        res.status(500).send(`Failure occurred when trying to buy ${itemId}`);
         return undefined;
       });
 
