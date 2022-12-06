@@ -10,14 +10,22 @@ export class ItemService {
   items = [
     {
       id: 1,
-      interaction: async (userId: string, teamId: string, usedOnUser: string, _channel: string): Promise<string> => {
-        return await this.storeService.useItem('1', userId, teamId, usedOnUser);
+      interaction: (userId: string, teamId: string, usedOnUser: string, _channel: string): Promise<string> => {
+        return this.storeService.useItem('1', userId, teamId, usedOnUser).catch(e => {
+          console.error(e);
+          throw new Error(`Sorry, unable to set 50 Cal at this time. Please try again later.`);
+        });
       },
     },
     {
       id: 2,
-      interaction: async (userId: string, teamId: string, usedOnUser: string, _channel: string): Promise<string> => {
-        return await this.storeService.useItem('2', userId, teamId, usedOnUser);
+      interaction: (userId: string, teamId: string, usedOnUser: string, _channel: string): Promise<string> => {
+        return this.storeService.useItem('2', userId, teamId, usedOnUser).catch(e => {
+          console.error(e);
+          throw new Error(
+            `Sorry, unable to set Guardian Angel on <@${usedOnUser}> at this time. Please try again later.`,
+          );
+        });
       },
     },
     {
@@ -28,11 +36,27 @@ export class ItemService {
           await this.suppressorService.removeSuppression(usedOnUser, teamId);
           await this.webService
             .sendMessage(channel, `:zombie: <@${usedOnUser}> has been resurrected by <@${userId}>! :zombie:`)
-            .catch(e => console.error(e));
-          return await this.storeService.useItem('3', userId, teamId, usedOnUser);
+            .catch(e => {
+              console.error(e);
+              throw new Error(`Unable to resurrect <@${usedOnUser}>. Please try again.`);
+            });
+          return this.storeService.useItem('3', userId, teamId, usedOnUser);
         } else {
-          return 'Sorry, the user you are trying to resurrect is not currently dead.';
+          throw new Error('Sorry, the user you are trying to resurrect is not currently dead.');
         }
+      },
+    },
+    {
+      id: 4,
+      interaction: async (userId: string, teamId: string, usedOnUser: string, _channel: string): Promise<string> => {
+        const isActive = await this.storeService.isItemActive(userId, teamId, 4);
+        if (isActive) {
+          throw new Error(`Sorry, unable to purchase Moon Token at this time. You already have one active.`);
+        }
+        return this.storeService.useItem('4', userId, teamId, usedOnUser).catch(e => {
+          console.error(e);
+          throw new Error(`Sorry, unable to purchase Moon Token at this time. Please try again later.`);
+        });
       },
     },
   ];

@@ -52,6 +52,24 @@ storeController.post('/store/buy', async (req, res) => {
   } else if (isUserRequired && (!userIdForItem || userIdForItem === request.user_id)) {
     res.send('Sorry, this item can only be used on other people. Try `/use item_id @user` in order to use this item.');
   } else {
+    const useReceipt = await itemService
+      .useItem(itemId, request.user_id, request.team_id, userIdForItem as string, request.channel_name)
+      .catch(e => {
+        console.error(e, {
+          item: itemId,
+          userId: request.user_id,
+          teamId: request.team_id,
+          userIdForItem,
+          channel: request.channel_name,
+        });
+        res.status(500).send(e);
+        return undefined;
+      });
+
+    if (!useReceipt) {
+      return;
+    }
+
     const purchaseReceipt: string | undefined = await storeService
       .buyItem(itemId, request.user_id, request.team_id)
       .catch(e => {
@@ -67,24 +85,6 @@ storeController.post('/store/buy', async (req, res) => {
     console.log(purchaseReceipt);
 
     if (!purchaseReceipt) {
-      return;
-    }
-
-    const useReceipt = await itemService
-      .useItem(itemId, request.user_id, request.team_id, userIdForItem as string, request.channel_name)
-      .catch(e => {
-        console.error(e, {
-          item: itemId,
-          userId: request.user_id,
-          teamId: request.team_id,
-          userIdForItem,
-          channel: request.channel_name,
-        });
-        res.status(500).send(`Failure occurred when trying to use ${request.text}`);
-        return undefined;
-      });
-
-    if (!useReceipt) {
       return;
     }
 
