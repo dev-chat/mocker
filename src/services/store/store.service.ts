@@ -33,6 +33,8 @@ export class StoreService {
     const id = +itemId;
     console.log('isVAlidItem id', id);
     if (isNaN(id) || !Number.isFinite(itemId)) {
+      console.log(isNaN(id));
+      console.log(!Number.isFinite(itemId));
       return false;
     } else {
       const isItem = await this.storePersistenceService.getItem(id, teamId);
