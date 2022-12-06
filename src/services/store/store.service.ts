@@ -35,7 +35,6 @@ export class StoreService {
       return false;
     } else {
       const isItem = await this.storePersistenceService.getItem(id, teamId);
-      console.log('isItem', isItem);
       return !!isItem;
     }
   }
