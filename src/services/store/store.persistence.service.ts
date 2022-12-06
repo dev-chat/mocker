@@ -167,15 +167,19 @@ export class StorePersistenceService {
             getMsForSpecifiedRange(itemById.min_active_ms, itemById.max_active_ms),
           );
         } else if (!itemById?.isStackable) {
-          return `Unable to use your item. This item is not stackable.`;
+          throw new Error(`Unable to use your item. This item is not stackable.`);
         }
       } else if (!existingKey.length && itemById) {
-        this.redisService.setValueWithExpire(
-          keyName,
-          `${userId}-${teamId}`,
-          'PX',
-          getMsForSpecifiedRange(itemById.min_active_ms, itemById.max_active_ms),
-        );
+        if (itemById.min_active_ms !== 0 && itemById.max_active_ms !== 0) {
+          this.redisService.setValueWithExpire(
+            keyName,
+            `${userId}-${teamId}`,
+            'PX',
+            getMsForSpecifiedRange(itemById.min_active_ms, itemById.max_active_ms),
+          );
+        } else {
+          this.redisService.setValue(keyName, 'true');
+        }
       }
     }
 
