@@ -46,9 +46,9 @@ export class StoreService {
     return userRep && price ? price <= userRep : false;
   }
 
-  async buyItem(itemId: string, userId: string, teamId: string): Promise<string> {
+  buyItem(itemId: string, userId: string, teamId: string): Promise<string> {
     const id = +itemId;
-    return await this.storePersistenceService.buyItem(id, userId, teamId);
+    return this.storePersistenceService.buyItem(id, userId, teamId);
   }
 
   async isUserRequired(itemId: string | undefined): Promise<boolean> {

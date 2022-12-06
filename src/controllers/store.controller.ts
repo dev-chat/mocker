@@ -53,10 +53,10 @@ storeController.post('/store/buy', async (req, res) => {
     res.send('Sorry, this item can only be used on other people. Try `/use item_id @user` in order to use this item.');
   } else {
     const purchaseReceipt: string | undefined = await storeService
-      .buyItem(request.text, request.user_id, request.team_id)
+      .buyItem(itemId, request.user_id, request.team_id)
       .catch(e => {
         console.error(e, {
-          item: request.text,
+          item: itemId,
           userId: request.user_id,
           teamId: request.team_id,
         });
