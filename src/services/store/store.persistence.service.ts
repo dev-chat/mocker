@@ -126,6 +126,8 @@ export class StorePersistenceService {
     const priceByTeam = await getManager().query(
       `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
     );
+    console.log(itemById);
+    console.log(userById);
     if (itemById && userById) {
       await this.reactionPersistenceService.spendRep(userId, teamId, priceByTeam[0].price);
       const purchase = new Purchase();
