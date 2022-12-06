@@ -91,9 +91,3 @@ storeController.post('/store/buy', async (req, res) => {
     res.status(200).send(useReceipt);
   }
 });
-
-storeController.post('/store/inventory', async (req, res) => {
-  const request: SlashCommandRequest = req.body;
-  const inventory: string = await storeService.getInventory(request.user_id, request.team_id);
-  res.status(200).send(inventory);
-});

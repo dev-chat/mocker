@@ -8,7 +8,7 @@ export class StoreService {
   async listItems(slackId: string, teamId: string): Promise<string> {
     const items = await this.storePersistenceService.getItems(teamId);
     const rep = await this.reactionPersistenceService.getUserRep(slackId, teamId);
-    let view = `Welcome to the Muzzle Store! \n \n Purchase items by typing \`/buy item_id\` where item_id is the number shown below! \n \n Once purchased, you can use items by typing \`/use item_id\` or you can view them in your inventory by typing \`/inventory\`. \n \n`;
+    let view = `Welcome to the Muzzle Store! \n \n Purchase items by typing \`/buy item_id\` where item_id is the number shown below! \n \n Once purchased, the item will be immediately used. \n \n`;
     items.map(item => {
       view += `*${item.id}. ${item.name}* \n *Cost:* ${item.price} rep \n *Description:* ${
         item.description
@@ -51,14 +51,6 @@ export class StoreService {
     return await this.storePersistenceService.buyItem(id, userId, teamId);
   }
 
-  async isOwnedByUser(itemId: string | undefined, userId: string, teamId: string): Promise<boolean> {
-    if (itemId) {
-      const id = +itemId;
-      return await this.storePersistenceService.isOwnedByUser(id, userId, teamId);
-    }
-    return false;
-  }
-
   async isUserRequired(itemId: string | undefined): Promise<boolean> {
     if (itemId) {
       const id = +itemId;
@@ -73,16 +65,5 @@ export class StoreService {
       return `Sorry, ${itemId} is not a valid item.`;
     }
     return await this.storePersistenceService.useItem(id, userId, teamId, userIdForItem);
-  }
-
-  async getInventory(userId: string, teamId: string): Promise<string> {
-    const inventory = await this.storePersistenceService.getInventory(userId, teamId);
-    const rep = await this.reactionPersistenceService.getUserRep(userId, teamId);
-    let view = '*Inventory* \n Use items by typing `/use item_id` where item_id is the number shown below. \n \n';
-    inventory.map(inventory => {
-      view += `*${inventory.name}* \n *Description:* ${inventory.description} \n *Item_Id:* ${inventory.itemId} \n \n`;
-    });
-    view += `Rep: ${rep ? rep : 0}`;
-    return view;
   }
 }
