@@ -64,6 +64,14 @@ export class StoreService {
     if (isNaN(id)) {
       return `Sorry, ${itemId} is not a valid item.`;
     }
-    return await this.storePersistenceService.useItem(id, userId, teamId, userIdForItem);
+    return this.storePersistenceService.useItem(id, userId, teamId, userIdForItem);
+  }
+
+  isItemActive(userId: string, teamId: string, itemId: number): Promise<boolean> {
+    return this.storePersistenceService.isItemActive(userId, teamId, itemId);
+  }
+
+  removeEffect(userId: string, teamId: string, itemId: number): Promise<number> {
+    return this.storePersistenceService.removeKey(this.storePersistenceService.getRedisKeyName(userId, teamId, itemId));
   }
 }

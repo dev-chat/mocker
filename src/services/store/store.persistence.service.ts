@@ -47,6 +47,10 @@ export class StorePersistenceService {
     }
   }
 
+  isItemActive(userId: string, teamId: string, itemId: number): Promise<boolean> {
+    return this.redisService.getValue(this.getRedisKeyName(userId, teamId, itemId)).then(x => !!x);
+  }
+
   // Returns active OFFENSIVE items.
   async getActiveItems(userId: string, teamId: string): Promise<string[]> {
     const defensiveItems = await getRepository(Item).find({ isDefensive: true });
@@ -197,7 +201,7 @@ export class StorePersistenceService {
       });
   }
 
-  private getRedisKeyName(userId: string, teamId: string, itemId?: number): string {
+  getRedisKeyName(userId: string, teamId: string, itemId?: number): string {
     return `store.item.${userId}-${teamId}${itemId ? `.${itemId}` : ''}`;
   }
 }

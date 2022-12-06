@@ -4,23 +4,31 @@ import { SuppressorService } from '../shared/services/suppressor.service';
 import { KnownBlock } from '@slack/web-api';
 import { AIService } from '../services/ai/ai.service';
 import { WebService } from '../services/web/web.service';
+import { StoreService } from '../services/store/store.service';
 
 export const aiController: Router = express.Router();
 
 const webService = WebService.getInstance();
 const suppressorService = new SuppressorService();
 const aiService = new AIService();
+const storeService = new StoreService();
 
 aiController.post('/ai/text', async (req, res) => {
   const request: SlashCommandRequest = req.body;
+  // Hardcoded 4 for Moon Token Item Id.
+  const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
+
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('Sorry, you must send a message to generate text.');
   } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
     res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
-  } else if (await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id)) {
-    res.send('Sorry, you have reached your maximum number of requests per day. Try again tomorrow.');
+    // Check here if they also have available moon tokens.
+  } else if ((await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id)) && !hasAvailableMoonToken) {
+    res.send(
+      'Sorry, you have reached your maximum number of requests per day. Try again tomorrow or consider purchasing a Moon Token in the store.',
+    );
   } else {
     // Need to do this to avoid timeout issues.
     res.status(200).send('Processing your request. Please be patient...');
@@ -56,19 +64,28 @@ aiController.post('/ai/text', async (req, res) => {
       },
     ];
     webService.sendMessage(request.channel_id, request.text, blocks);
+
+    if (hasAvailableMoonToken) {
+      storeService.removeEffect(request.user_id, request.team_id, 4);
+    }
   }
 });
 
 aiController.post('/ai/image', async (req, res) => {
   const request: SlashCommandRequest = req.body;
+  // Hardcoded 4 for Moon Token Item Id.
+  const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
+
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('Sorry, you must send a message to generate text.');
   } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
     res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
-  } else if (await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id)) {
-    res.send('Sorry, you have reached your maximum number of requests per day. Try again tomorrow.');
+  } else if ((await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id)) && !hasAvailableMoonToken) {
+    res.send(
+      'Sorry, you have reached your maximum number of requests per day. Try again tomorrow, or consider purchasing a Moon Token in the store.',
+    );
   } else {
     // Need to do this to avoid timeout issues.
     res.status(200).send('Processing your request. Please be patient...');
@@ -104,5 +121,8 @@ aiController.post('/ai/image', async (req, res) => {
       },
     ];
     webService.sendMessage(request.channel_id, request.text, blocks);
+    if (hasAvailableMoonToken) {
+      storeService.removeEffect(request.user_id, request.team_id, 4);
+    }
   }
 });
