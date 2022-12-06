@@ -128,13 +128,14 @@ export class StorePersistenceService {
     );
     console.log(itemById);
     console.log(userById);
+    console.log(itemById && userById);
     if (itemById && userById) {
       await this.reactionPersistenceService.spendRep(userId, teamId, priceByTeam[0].price);
       const purchase = new Purchase();
       purchase.item = itemById.id;
       purchase.price = priceByTeam[0].price;
       purchase.user = userById.id;
-      await getRepository(Purchase)
+      return getRepository(Purchase)
         .insert(purchase)
         .then(_result => `Congratulations! You have purchased *_${itemById.name}!_*`)
         .catch(e => {
