@@ -47,10 +47,10 @@ storeController.post('/store/buy', async (req, res) => {
     res.send(`Sorry, you can't afford that item.`);
   } else if (!isUserRequired && userIdForItem) {
     res.send(
-      'Sorry, this item cannot be used on other people. Try `/use item_id`. You do not need to specify a user you wish to use this on.',
+      'Sorry, this item cannot be used on other people. Try `/buy item_id`. You do not need to specify a user you wish to use this on.',
     );
   } else if (isUserRequired && (!userIdForItem || userIdForItem === request.user_id)) {
-    res.send('Sorry, this item can only be used on other people. Try `/use item_id @user` in order to use this item.');
+    res.send('Sorry, this item can only be used on other people. Try `/buy item_id @user` in order to use this item.');
   } else {
     const useReceipt = await itemService
       .useItem(itemId, request.user_id, request.team_id, userIdForItem as string, request.channel_name)
