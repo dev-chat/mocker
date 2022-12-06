@@ -17,6 +17,7 @@ aiController.post('/ai/text', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   // Hardcoded 4 for Moon Token Item Id.
   const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
+  const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
 
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
@@ -25,7 +26,7 @@ aiController.post('/ai/text', async (req, res) => {
   } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
     res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
     // Check here if they also have available moon tokens.
-  } else if ((await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id)) && !hasAvailableMoonToken) {
+  } else if (isAlreadyAtMaxRequests && !hasAvailableMoonToken) {
     res.send(
       'Sorry, you have reached your maximum number of requests per day. Try again tomorrow or consider purchasing a Moon Token in the store.',
     );
@@ -65,7 +66,7 @@ aiController.post('/ai/text', async (req, res) => {
     ];
     webService.sendMessage(request.channel_id, request.text, blocks);
 
-    if (hasAvailableMoonToken) {
+    if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
       storeService.removeEffect(request.user_id, request.team_id, 4);
     }
   }
@@ -75,6 +76,7 @@ aiController.post('/ai/image', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   // Hardcoded 4 for Moon Token Item Id.
   const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
+  const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
 
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
@@ -82,7 +84,7 @@ aiController.post('/ai/image', async (req, res) => {
     res.send('Sorry, you must send a message to generate text.');
   } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
     res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
-  } else if ((await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id)) && !hasAvailableMoonToken) {
+  } else if (isAlreadyAtMaxRequests && !hasAvailableMoonToken) {
     res.send(
       'Sorry, you have reached your maximum number of requests per day. Try again tomorrow, or consider purchasing a Moon Token in the store.',
     );
@@ -121,7 +123,7 @@ aiController.post('/ai/image', async (req, res) => {
       },
     ];
     webService.sendMessage(request.channel_id, request.text, blocks);
-    if (hasAvailableMoonToken) {
+    if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
       storeService.removeEffect(request.user_id, request.team_id, 4);
     }
   }
