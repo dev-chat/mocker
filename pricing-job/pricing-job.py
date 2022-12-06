@@ -9,7 +9,8 @@ try:
       host="localhost",
       user=os.getenv('TYPEORM_USERNAME'),
       password=os.getenv('TYPEORM_PASSWORD'),
-      database=os.getenv('TYPEORM_DATABASE')
+      database=os.getenv('TYPEORM_DATABASE'),
+      auth_plugin='mysql_native_password'
     )
 except mysql.connector.Error as err:
   if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
