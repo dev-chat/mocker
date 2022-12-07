@@ -55,7 +55,15 @@ for team in teams:
   medianIdx = math.floor((len(repMap) + 1 ) / 2)
   print(medianIdx)
   repList = list(repMap.items())
-  print(repList[medianIdx][1])
+  medianRep = repList[medianIdx][1]
+  for item in items:
+    item_id = item['id']
+    team_id= team['teamId']
+    price = float(median) * item['pricePct']
+    item_query="INSERT INTO price(itemId, teamId, price, itemIdId) VALUES({item_id}, '{team_id}', {price}, {item_id});".format(item_id=item_id, team_id=team_id, price=price)
+    mycursor.execute(item_query)
+    cnx.commit()
+  print("Completed update for {team}".format(team=team['teamId']))
 # for team in teams:
 #   # get total earned rep by team
 #   # get total spent rep by team
