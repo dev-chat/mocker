@@ -1,1 +1,1 @@
-- Change the pricing-job so that it calculates the median properly.
+- Added where team to pricing-job and add team column to purchase
