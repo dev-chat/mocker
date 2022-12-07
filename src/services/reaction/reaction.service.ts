@@ -30,7 +30,7 @@ export class ReactionService {
   private handleRemovedReaction(event: Event, teamId: string): void {
     const reactionValue = reactionValues[event.reaction];
     if (this.shouldReactionBeLogged(reactionValue)) {
-      this.reactionPersistenceService.removeReaction(event, reactionValue, teamId);
+      this.reactionPersistenceService.removeReaction(event, teamId);
     }
   }
 }
