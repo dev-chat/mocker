@@ -1,0 +1,1 @@
+- Change the pricing-job so that it calculates the median properly.
