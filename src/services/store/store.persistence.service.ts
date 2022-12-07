@@ -1,7 +1,6 @@
 import { getRepository, getManager } from 'typeorm';
 import { Item } from '../../shared/db/models/Item';
 import { SlackUser } from '../../shared/db/models/SlackUser';
-import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
 import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 import { getMsForSpecifiedRange } from '../muzzle/muzzle-utilities';
 import { Purchase } from '../../shared/db/models/Purchase';
@@ -17,7 +16,6 @@ export class StorePersistenceService {
   }
 
   private static instance: StorePersistenceService;
-  private reactionPersistenceService: ReactionPersistenceService = ReactionPersistenceService.getInstance();
   private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
 
   async getItems(teamId: string): Promise<any[]> {
