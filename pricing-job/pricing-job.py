@@ -39,16 +39,16 @@ for team in teams:
   totalEarnedRepQuery= """SELECT SUM(value) as sum, affectedUser FROM reaction GROUP BY affectedUser ORDER BY sum DESC;"""
   mycursor.execute(totalEarnedRepQuery)
   totalEarnedRep = mycursor.fetchall()
+  #get total spent rep by team per user
   totalSpentRepQuery = """SELECT SUM(price) as sum, user FROM purchase GROUP BY user ORDER BY sum DESC;"""
   mycursor.execute(totalSpentRepQuery)
   totalRepSpent = mycursor.fetchall()
   repMap = {}
   for totalRep in totalEarnedRep:
     repMap[totalRep['affectedUser']] = totalRep['sum']
-  print(repMap)
-  print(totalRepSpent)
   for totalSpent in totalRepSpent:
     repMap[totalSpent['user']] = repMap[totalSpent['user']] - totalSpent['sum']
+  repMap = {key: val for key, val in sorted(repMap.items(), key = lambda ele: ele[1], reverse = True)}
   print(repMap)
 
 # for team in teams:
