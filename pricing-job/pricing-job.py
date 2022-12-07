@@ -40,7 +40,7 @@ for team in teams:
   mycursor.execute(totalEarnedRepQuery)
   totalEarnedRep = mycursor.fetchall()
   totalSpentRepQuery = """SELECT SUM(price) as sum, user FROM purchase GROUP BY affectedUser ORDER BY sum DESC;"""
-  totalRepSpent = mycursor.fetchAll()
+  totalRepSpent = mycursor.fetchall()
   repMap = {}
   for totalRep in totalEarnedRep:
     repMap[totalRep['affectedUser']] = totalRep['sum']
