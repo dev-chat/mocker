@@ -1,6 +1,8 @@
 import mysql.connector
 import os
 import time
+import math
+
 print("Beginning pricing job...")
 start = time.time()
 try:
@@ -50,7 +52,7 @@ for team in teams:
     repMap[totalSpent['user']] = repMap[totalSpent['user']] - totalSpent['sum']
   repMap = {key: val for key, val in sorted(repMap.items(), key = lambda ele: ele[1], reverse = True)}
   print(repMap)
-  medianIdx = (len(repMap) + 1 ) / 2
+  medianIdx = math.floor((len(repMap) + 1 ) / 2)
   print(medianIdx)
 # for team in teams:
 #   # get total earned rep by team
