@@ -45,6 +45,7 @@ for team in teams:
   for totalRep in totalEarnedRep:
     repMap[totalRep['affectedUser']] = totalRep['sum']
   print(repMap)
+  print(totalRepSpent)
   for totalSpent in totalRepSpent:
     repMap[totalSpent['user']] = repMap[totalSpent['user']] - totalSpent['sum']
   print(repMap)
