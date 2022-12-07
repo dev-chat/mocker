@@ -56,6 +56,10 @@ export class ReactionPersistenceService {
       .query(totalRepSpentQuery, [dbUserId])
       .then(x => (!x ? 0 : x));
 
+    console.log(totalRepEarned);
+    console.log(totalRepSpent);
+    console.log(totalRepEarned - totalRepSpent);
+
     return { totalRepEarned, totalRepSpent, totalRepAvailable: totalRepEarned - totalRepSpent };
   }
 
