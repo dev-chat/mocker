@@ -44,7 +44,7 @@ export class ReactionReportService extends ReportService {
             user:
               userRep.reactingUser !== 'ADMIN'
                 ? await this.slackService.getUserNameById(userRep.reactingUser, teamId)
-                : 'Da Bros Stimulus Package December 2022',
+                : 'Stimulus - December 2022',
             rep: `${this.getSentiment(userRep.rep, totalRep)} (${((userRep.rep / totalRep) * 100).toPrecision(3)}%)`,
           };
         }),
