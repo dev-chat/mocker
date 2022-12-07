@@ -131,7 +131,7 @@ export class StorePersistenceService {
       const purchase = new Purchase();
       purchase.item = itemById.id;
       purchase.price = priceByTeam[0].price;
-      purchase.user = userById.id;
+      purchase.user = userId;
       return getRepository(Purchase)
         .insert(purchase)
         .then(_result => `Congratulations! You have purchased *_${itemById.name}!_*`)
