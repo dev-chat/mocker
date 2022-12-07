@@ -12,7 +12,7 @@ export class Purchase {
     _type => SlackUser,
     slackUser => slackUser.slackId,
   )
-  public user!: number;
+  public user!: string;
 
   @Column()
   @OneToMany(
