@@ -6,6 +6,7 @@ import { getMsForSpecifiedRange } from '../muzzle/muzzle-utilities';
 import { Purchase } from '../../shared/db/models/Purchase';
 import { UsedItem } from '../../shared/db/models/UsedItem';
 import { ItemKill } from '../../shared/db/models/ItemKill';
+import { report } from 'process';
 
 export class StorePersistenceService {
   public static getInstance(): StorePersistenceService {
