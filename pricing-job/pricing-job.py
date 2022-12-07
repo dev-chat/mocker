@@ -36,13 +36,17 @@ items = mycursor.fetchall()
 print('Not implemented! Unable to get updated pricing because this logic needs to be revisited.')
 for team in teams:
   # get total earned rep by team per user.
-  totalEarnedRepQuery= """SELECT SUM(value) as sum, affectedUser FROM reaction GROUP BY affectedUser ORDER BY sum desc;"""
+  totalEarnedRepQuery= """SELECT SUM(value) as sum, affectedUser FROM reaction GROUP BY affectedUser ORDER BY sum DESC;"""
   mycursor.execute(totalEarnedRepQuery)
   totalEarnedRep = mycursor.fetchall()
+  totalSpentRepQuery = """SELECT SUM(price) as sum, user FROM purchase GROUP BY affectedUser ORDER BY sum DESC;"""
+  totalRepSpent = mycursor.fetchAll()
   repMap = {}
-  print(totalEarnedRep)
   for totalRep in totalEarnedRep:
     repMap[totalRep['affectedUser']] = totalRep['sum']
+  print(repMap)
+  for totalSpent in totalRepSpent:
+    repMap[totalSpent['user']] = repMap[totalSpent['user']] - totalSpent['sum']
   print(repMap)
 
 # for team in teams:
