@@ -54,6 +54,8 @@ for team in teams:
   print(repMap)
   medianIdx = math.floor((len(repMap) + 1 ) / 2)
   print(medianIdx)
+  repList = list(repMap.items())
+  print(repList[medianIdx])
 # for team in teams:
 #   # get total earned rep by team
 #   # get total spent rep by team
