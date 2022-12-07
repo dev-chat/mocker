@@ -39,7 +39,7 @@ for team in teams:
   totalEarnedRepQuery= """SELECT SUM(value) as sum, affectedUser FROM reaction GROUP BY affectedUser ORDER BY sum DESC;"""
   mycursor.execute(totalEarnedRepQuery)
   totalEarnedRep = mycursor.fetchall()
-  totalSpentRepQuery = """SELECT SUM(price) as sum, user FROM purchase GROUP BY affectedUser ORDER BY sum DESC;"""
+  totalSpentRepQuery = """SELECT SUM(price) as sum, user FROM purchase GROUP BY user ORDER BY sum DESC;"""
   mycursor.execute(totalSpentRepQuery)
   totalRepSpent = mycursor.fetchall()
   repMap = {}
