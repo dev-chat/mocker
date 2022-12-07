@@ -68,7 +68,7 @@ export class ReactionReportService extends ReportService {
       return 'Esteemed';
     } else if (percent >= 0.1 && percent < 0.15) {
       return 'Well Liked';
-    } else if (percent >= 0.5 && percent < 0.1) {
+    } else if (percent >= 0.05 && percent < 0.1) {
       return 'Liked';
     } else if (percent >= 0.01 && percent < 0.05) {
       return 'Respected';
