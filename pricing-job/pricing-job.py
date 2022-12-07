@@ -50,7 +50,8 @@ for team in teams:
     repMap[totalSpent['user']] = repMap[totalSpent['user']] - totalSpent['sum']
   repMap = {key: val for key, val in sorted(repMap.items(), key = lambda ele: ele[1], reverse = True)}
   print(repMap)
-
+  medianIdx = (len(repMap) + 1 ) / 2
+  print(medianIdx)
 # for team in teams:
 #   # get total earned rep by team
 #   # get total spent rep by team
