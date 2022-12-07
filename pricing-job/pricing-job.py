@@ -34,6 +34,13 @@ print('Items retrieved!')
 
 items = mycursor.fetchall()
 print('Not implemented! Unable to get updated pricing because this logic needs to be revisited.')
+for team in teams:
+  # get total earned rep by team per user.
+  totalEarnedRepQuery= """SELECT SUM(value) as sum, affectedUser FROM reaction GROUP BY affectedUser ORDER BY sum desc;"""
+  mycursor.execute(totalEarnedRepQuery)
+  totalEarnedRep = mycursor.fetchall()
+  print(totalEarnedRep)
+
 # for team in teams:
 #   # get total earned rep by team
 #   # get total spent rep by team
