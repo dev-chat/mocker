@@ -39,7 +39,11 @@ for team in teams:
   totalEarnedRepQuery= """SELECT SUM(value) as sum, affectedUser FROM reaction GROUP BY affectedUser ORDER BY sum desc;"""
   mycursor.execute(totalEarnedRepQuery)
   totalEarnedRep = mycursor.fetchall()
+  repMap = {}
   print(totalEarnedRep)
+  for totalRep in totalEarnedRep:
+    repMap[totalRep['affectedUser']] = totalRep['sum']
+  print(repMap)
 
 # for team in teams:
 #   # get total earned rep by team
