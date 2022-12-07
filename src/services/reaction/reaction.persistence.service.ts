@@ -69,7 +69,7 @@ export class ReactionPersistenceService {
   public getRepByUser(userId: string, teamId: string): Promise<ReactionByUser[]> {
     return getRepository(Reaction)
       .query(
-        `SELECT reactingUser, SUM(value) as rep FROM reaction WHERE affectedUser=? AND teamId=? AND reactingUser != 'ADMIN' GROUP BY reactingUser ORDER BY rep DESC;`,
+        `SELECT reactingUser, SUM(value) as rep FROM reaction WHERE affectedUser=? AND teamId=? GROUP BY reactingUser ORDER BY rep DESC;`,
         [userId, teamId],
       )
       .then(value => value)
