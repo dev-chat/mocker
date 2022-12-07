@@ -130,7 +130,6 @@ export class StorePersistenceService {
     console.log(userById);
     console.log(itemById && userById);
     if (itemById && userById) {
-      await this.reactionPersistenceService.spendRep(userId, teamId, priceByTeam[0].price);
       const purchase = new Purchase();
       purchase.item = itemById.id;
       purchase.price = priceByTeam[0].price;
