@@ -44,16 +44,19 @@ export class ReactionPersistenceService {
 
   public async getTotalRep(userId: string, teamId: string): Promise<TotalRep> {
     await getRepository(Rep).increment({ user: userId, teamId }, 'timesChecked', 1);
+    const user = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
+    if (!user) {
+      throw new Error(`Unable to find user: ${userId} on team ${teamId}`);
+    }
+
     const totalRepEarnedQuery = 'SELECT SUM(VALUE) as sum FROM reaction WHERE affectedUser=? AND teamId=?;';
     const totalRepEarned = await getRepository(Reaction)
-      .query(totalRepEarnedQuery, [userId, teamId])
+      .query(totalRepEarnedQuery, [user.slackId, user.teamId])
       .then(x => (!x[0].sum ? 0 : x[0].sum));
-    const dbUserId = await getRepository(SlackUser)
-      .findOne({ slackId: userId, teamId })
-      .then(x => x?.id);
+
     const totalRepSpentQuery = 'SELECT SUM(PRICE) as sum FROM purchase WHERE user=?;';
     const totalRepSpent = await getRepository(Purchase)
-      .query(totalRepSpentQuery, [dbUserId])
+      .query(totalRepSpentQuery, [user.slackId])
       .then(x => (!x[0].sum ? 0 : x[0].sum));
 
     console.log(totalRepEarned);
