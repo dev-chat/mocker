@@ -54,21 +54,21 @@ export class ReactionReportService extends ReportService {
     const percent = rep / totalRep;
     if (percent >= 0.5) {
       return 'Worshipped';
-    } else if (percent >= 0.41 && percent < 0.5) {
+    } else if (percent >= 0.4 && percent < 0.5) {
       return 'Enamored';
-    } else if (percent >= 0.36 && percent < 0.4) {
+    } else if (percent >= 0.35 && percent < 0.4) {
       return 'Adored';
-    } else if (percent >= 0.31 && percent < 0.35) {
+    } else if (percent >= 0.3 && percent < 0.35) {
       return 'Loved';
-    } else if (percent >= 0.26 && percent < 0.3) {
+    } else if (percent >= 0.25 && percent < 0.3) {
       return 'Endeared';
-    } else if (percent >= 0.21 && percent < 0.25) {
+    } else if (percent >= 0.2 && percent < 0.25) {
       return 'Admired';
-    } else if (percent >= 0.16 && percent < 0.2) {
+    } else if (percent >= 0.15 && percent < 0.2) {
       return 'Esteemed';
-    } else if (percent >= 0.11 && percent < 0.15) {
+    } else if (percent >= 0.1 && percent < 0.15) {
       return 'Well Liked';
-    } else if (percent >= 0.6 && percent < 0.1) {
+    } else if (percent >= 0.5 && percent < 0.1) {
       return 'Liked';
     } else if (percent >= 0.01 && percent < 0.05) {
       return 'Respected';
