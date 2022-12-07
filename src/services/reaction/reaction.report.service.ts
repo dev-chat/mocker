@@ -1,71 +1,33 @@
 import Table from 'easy-table';
-import { getRepository } from 'typeorm';
 import { ReportService } from '../../shared/services/report.service';
-import { Rep } from '../../shared/db/models/Rep';
 import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.model';
-import { Reaction } from '../../shared/db/models/Reaction';
+import { ReactionPersistenceService } from './reaction.persistence.service';
 
 export class ReactionReportService extends ReportService {
-  public async getRep(userId: string, teamId: string): Promise<string> {
-    const spendingRep = await this.getTotalRep(userId, teamId).catch(() => {
-      throw new Error(`Unable to retrieve your rep due to an error!`);
-    });
+  reactionPersistenceService = ReactionPersistenceService.getInstance();
 
-    const message = spendingRep
-      ? `\n*You currently have _${spendingRep.rep}_ rep available to spend.*`
+  public async getRep(userId: string, teamId: string): Promise<string> {
+    const { totalRepAvailable, totalRepEarned } = await this.reactionPersistenceService
+      .getTotalRep(userId, teamId)
+      .catch(() => {
+        throw new Error(`Unable to retrieve your rep due to an error!`);
+      });
+
+    const message = totalRepAvailable
+      ? `\n*You currently have _${totalRepAvailable}_ rep available to spend.*`
       : `You do not currently have any rep.`;
 
-    const repByUser = await this.getRepByUser(userId, teamId)
+    const repByUser = await this.reactionPersistenceService
+      .getRepByUser(userId, teamId)
       .then(async (perUserRep: ReactionByUser[] | undefined) => {
-        const total = perUserRep?.reduce((totalRep, currVal) => Number(totalRep) + Number(currVal.rep), 0) || 0;
-        console.log(total);
-        return await this.formatRepByUser(perUserRep, teamId, total);
+        return await this.formatRepByUser(perUserRep, teamId, totalRepEarned);
       })
-      .catch(e => console.error(e));
+      .catch(e => {
+        console.error(e);
+        throw new Error(e);
+      });
 
     return `${repByUser}\n\n${message}`;
-  }
-
-  public getTotalRep(userId: string, teamId: string): Promise<Rep | undefined> {
-    return new Promise(async (resolve, reject) => {
-      await getRepository(Rep)
-        .findOne({ user: userId, teamId })
-        .then(async value => {
-          await getRepository(Rep)
-            .increment({ user: userId, teamId }, 'timesChecked', 1)
-            .catch(e => console.error(`Error logging check for user ${userId}. \n ${e}`));
-          resolve(value);
-        })
-        .catch(e => reject(e));
-    });
-  }
-
-  public getRepByUser(userId: string, teamId: string): Promise<ReactionByUser[] | undefined> {
-    return new Promise(async (resolve, reject) => {
-      await getRepository(Reaction)
-        .query(
-          `SELECT reactingUser, SUM(value) as rep FROM reaction WHERE affectedUser=? AND teamId=? GROUP BY reactingUser ORDER BY rep DESC;`,
-          [userId, teamId],
-        )
-        .then(value => resolve(value))
-        .catch(e => reject(e));
-    });
-  }
-
-  public getRepByChannel(teamId: string): Promise<any[] | undefined> {
-    return getRepository(Reaction)
-      .query(
-        `SELECT AVG(value) as avg, channel WHERE teamId=${teamId} FROM reaction GROUP BY channel ORDER BY avg DESC;`,
-      )
-      .then(result => {
-        const formatted = result.map((avgReaction: any) => {
-          return {
-            value: avgReaction.avg,
-            channel: this.slackService.getChannelName(avgReaction.channel, teamId),
-          };
-        });
-        return formatted;
-      });
   }
 
   private async formatRepByUser(
@@ -90,25 +52,25 @@ export class ReactionReportService extends ReportService {
 
   private getSentiment(rep: number, totalRep: number): string {
     const percent = rep / totalRep;
-    if (percent >= 0.9) {
+    if (percent >= 0.5) {
       return 'Worshipped';
-    } else if (percent >= 0.8 && percent < 0.9) {
+    } else if (percent >= 0.41 && percent < 0.5) {
       return 'Enamored';
-    } else if (percent >= 0.7 && percent < 0.8) {
+    } else if (percent >= 0.36 && percent < 0.4) {
       return 'Adored';
-    } else if (percent >= 0.6 && percent < 0.7) {
+    } else if (percent >= 0.31 && percent < 0.35) {
       return 'Loved';
-    } else if (percent >= 0.5 && percent < 0.6) {
+    } else if (percent >= 0.26 && percent < 0.3) {
       return 'Endeared';
-    } else if (percent >= 0.4 && percent < 0.5) {
+    } else if (percent >= 0.21 && percent < 0.25) {
       return 'Admired';
-    } else if (percent >= 0.3 && percent < 0.4) {
+    } else if (percent >= 0.16 && percent < 0.2) {
       return 'Esteemed';
-    } else if (percent >= 0.2 && percent < 0.3) {
+    } else if (percent >= 0.11 && percent < 0.15) {
       return 'Well Liked';
-    } else if (percent >= 0.1 && percent < 0.2) {
+    } else if (percent >= 0.6 && percent < 0.1) {
       return 'Liked';
-    } else if (percent >= 0.01 && percent < 0.1) {
+    } else if (percent >= 0.01 && percent < 0.05) {
       return 'Respected';
     }
     return 'Neutral';

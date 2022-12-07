@@ -11,9 +11,6 @@ export class Rep {
   @Column()
   public teamId!: string;
 
-  @Column()
-  public rep!: number;
-
   @Column({ default: () => 0 })
   public timesChecked!: number;
 }

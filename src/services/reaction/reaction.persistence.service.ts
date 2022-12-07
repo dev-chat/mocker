@@ -1,8 +1,11 @@
 import { getRepository } from 'typeorm';
+import { Purchase } from '../../shared/db/models/Purchase';
 import { Reaction } from '../../shared/db/models/Reaction';
 import { Rep } from '../../shared/db/models/Rep';
+import { SlackUser } from '../../shared/db/models/SlackUser';
+import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.model';
 import { Event } from '../../shared/models/slack/slack-models';
-
+import { TotalRep } from './reaction.interface';
 export class ReactionPersistenceService {
   public static getInstance(): ReactionPersistenceService {
     if (!ReactionPersistenceService.instance) {
@@ -23,18 +26,10 @@ export class ReactionPersistenceService {
     reaction.channel = event.item.channel;
     reaction.teamId = teamId;
 
-    return getRepository(Reaction)
-      .save(reaction)
-      .then(x => {
-        if (value === 1) {
-          return this.incrementRep(event.item_user, teamId).then(_ => x);
-        } else {
-          return this.decrementRep(event.item_user, teamId).then(_ => x);
-        }
-      });
+    return getRepository(Reaction).save(reaction);
   }
 
-  public async removeReaction(event: Event, value: number, teamId: string): Promise<void> {
+  public async removeReaction(event: Event, teamId: string): Promise<void> {
     await getRepository(Reaction)
       .delete({
         reaction: event.reaction,
@@ -44,76 +39,35 @@ export class ReactionPersistenceService {
         channel: event.item.channel,
         teamId: teamId,
       })
-      .then(() => {
-        value === 1 ? this.decrementRep(event.item_user, teamId) : this.incrementRep(event.item_user, teamId);
-      })
       .catch(e => e);
   }
 
-  public getUserRep(userId: string, teamId: string) {
-    return getRepository(Rep)
-      .findOne({ user: userId, teamId })
-      .then(rep => rep?.rep);
+  public async getTotalRep(userId: string, teamId: string): Promise<TotalRep> {
+    await getRepository(Rep).increment({ user: userId, teamId }, 'timesChecked', 1);
+    const totalRepEarnedQuery = 'SELECT SUM(VALUE) FROM reaction WHERE affectedUser=? AND teamId=?;';
+    const totalRepEarned = await getRepository(Reaction)
+      .query(totalRepEarnedQuery, [userId, teamId])
+      .then(x => (!x ? 0 : x));
+    const dbUserId = await getRepository(SlackUser)
+      .findOne({ slackId: userId, teamId })
+      .then(x => x?.id);
+    const totalRepSpentQuery = 'SELECT SUM(PRICE) FROM purchase WHERE user=?;';
+    const totalRepSpent = await getRepository(Purchase)
+      .query(totalRepSpentQuery, [dbUserId])
+      .then(x => (!x ? 0 : x));
+
+    return { totalRepEarned, totalRepSpent, totalRepAvailable: totalRepEarned - totalRepSpent };
   }
 
-  public spendRep(userId: string, teamId: string, price: number) {
-    return getRepository(Rep).decrement({ user: userId, teamId }, 'rep', price);
-  }
-
-  private async isRepUserPresent(affectedUser: string, teamId: string): Promise<boolean | void> {
-    return getRepository(Rep)
-      .findOne({ user: affectedUser, teamId })
-      .then(user => !!user)
-      .catch(e => console.error(e));
-  }
-
-  private incrementRep(affectedUser: string, teamId: string): Promise<void> {
-    return new Promise(async (resolve, reject) => {
-      // Check for affectedUser
-      const isUserExisting = await this.isRepUserPresent(affectedUser, teamId);
-
-      if (isUserExisting) {
-        // If it exists, increment rep by one.
-        return getRepository(Rep)
-          .increment({ user: affectedUser, teamId }, 'rep', 1)
-          .then(() => resolve())
-          .catch(e => reject(e));
-      } else {
-        // If it does not exist, create a new user with a rep of 1.
-        const newRepUser = new Rep();
-        newRepUser.user = affectedUser;
-        newRepUser.rep = 1;
-        newRepUser.teamId = teamId;
-        return getRepository(Rep)
-          .save(newRepUser)
-          .then(() => resolve())
-          .catch(e => reject(e));
-      }
-    });
-  }
-
-  private decrementRep(affectedUser: string, teamId: string): Promise<void> {
-    return new Promise(async (resolve, reject) => {
-      // Check for affectedUser
-      const isUserExisting = await this.isRepUserPresent(affectedUser, teamId);
-
-      if (isUserExisting) {
-        // If it exists, decrement rep by one.
-        return getRepository(Rep)
-          .decrement({ user: affectedUser, teamId }, 'rep', 1)
-          .then(() => resolve())
-          .catch(e => reject(e));
-      } else {
-        // If it does not exist, create a new user with a rep of -1.
-        const newRepUser = new Rep();
-        newRepUser.user = affectedUser;
-        newRepUser.rep = -1;
-        newRepUser.teamId = teamId;
-        return getRepository(Rep)
-          .save(newRepUser)
-          .then(() => resolve())
-          .catch(e => reject(e));
-      }
-    });
+  public getRepByUser(userId: string, teamId: string): Promise<ReactionByUser[]> {
+    return getRepository(Reaction)
+      .query(
+        `SELECT reactingUser, SUM(value) as rep FROM reaction WHERE affectedUser=? AND teamId=? GROUP BY reactingUser ORDER BY rep DESC;`,
+        [userId, teamId],
+      )
+      .then(value => value)
+      .catch(e => {
+        throw new Error(e);
+      });
   }
 }
