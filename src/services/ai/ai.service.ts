@@ -41,7 +41,7 @@ export class AIService {
       .finally(() => this.redis.removeInflight(userId, teamId));
   }
 
-  public async generateImage(userId: string, teamId: string, text: string): Promise<string | undefined> {
+  public async generateImage(userId: string, teamId: string, text: string): Promise<string> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
     return this.openai
@@ -51,8 +51,12 @@ export class AIService {
         size: '256x256',
       })
       .then(x => {
-        console.log(x.data.data);
-        return x.data.data[0]?.url;
+        const { url } = x.data.data[0];
+        if (url) {
+          return url;
+        } else {
+          throw new Error(`No URL was returned by OpenAI for prompt: ${text}`);
+        }
       })
       .catch(async e => {
         await this.redis.decrementDailyRequests(userId, teamId);

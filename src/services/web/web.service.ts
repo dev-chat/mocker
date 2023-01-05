@@ -8,7 +8,13 @@ import {
   ChatUpdateArguments,
   KnownBlock,
   Block,
+  FilesGetUploadURLExternalArguments,
+  FilesGetUploadURLExternalResponse,
 } from '@slack/web-api';
+import path from 'path';
+import fs from 'fs';
+import Axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
 const MAX_RETRIES = 5;
 
@@ -144,6 +150,58 @@ export class WebService {
         user: userId,
       };
       this.web.chat.postEphemeral(options).catch(e => console.error(e));
+    });
+  }
+
+  public async getUploadUrl(filePath: string, filename: string): Promise<string> {
+    const fileSizeInBytes = (await fs.promises.stat(filePath)).size;
+    const fileUploadOptions: FilesGetUploadURLExternalArguments = {
+      filename,
+      length: fileSizeInBytes,
+    };
+    return this.web.files.getUploadURLExternal(fileUploadOptions).then(x => {
+      if (x.upload_url) {
+        return x.upload_url;
+      }
+      throw new Error('Unable to generate an upload url');
+    });
+  }
+
+  public async uploadFileV2(filePath: string, filename: string) {
+    const uploadUrl = await this.getUploadUrl(filePath, filename);
+    console.log('uploadUrl', uploadUrl);
+    const body = (await fs.promises.readFile(filePath)).buffer;
+    return Axios.post(
+      uploadUrl,
+      { body },
+      {
+        headers: {
+          authorization: `Bearer ${process.env.MUZZLE_BOT_USER_TOKEN}`,
+        },
+      },
+    )
+      .then(x => {
+        console.log(x);
+        console.log(x.data);
+        return x;
+      })
+      .catch(e => console.error(e));
+  }
+
+  public getImageFromUrl(url: string): Promise<string> {
+    return Axios.get(url, { responseType: 'stream' }).then(response => {
+      return new Promise((resolve, reject) => {
+        const uuid = uuidv4();
+        const location = path.join(process.cwd(), '/images', `${uuid}.png`);
+        const writeStream = fs.createWriteStream(location);
+        response.data.pipe(writeStream);
+        writeStream.on('close', () => {
+          resolve(location);
+        });
+        writeStream.on('error', e => {
+          reject(e);
+        });
+      });
     });
   }
 }
