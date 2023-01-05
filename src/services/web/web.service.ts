@@ -170,15 +170,11 @@ export class WebService {
     const uploadUrl = await this.getUploadUrl(filePath, filename);
     console.log('uploadUrl', uploadUrl);
     const body = (await fs.promises.readFile(filePath)).buffer;
-    return Axios.post(
-      uploadUrl,
-      { body },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.MUZZLE_BOT_USER_TOKEN}`,
-        },
+    return Axios.post(uploadUrl, body, {
+      headers: {
+        Authorization: `Bearer ${process.env.MUZZLE_BOT_USER_TOKEN}`,
       },
-    )
+    })
       .then(x => {
         console.log(x);
         console.log(x.data);
