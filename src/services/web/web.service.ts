@@ -11,6 +11,7 @@ import {
   FilesGetUploadURLExternalArguments,
   FilesGetUploadURLExternalResponse,
   FilesCompleteUploadExternalArguments,
+  FilesInfoArguments,
 } from '@slack/web-api';
 import path from 'path';
 import fs from 'fs';
@@ -186,7 +187,12 @@ export class WebService {
           // eslint-disable-next-line @typescript-eslint/camelcase
           files: [{ id: file_id as string }],
         };
-        return this.web.files.completeUploadExternal(options).then(y => console.log(y));
+        return this.web.files.completeUploadExternal(options).then(y => {
+          console.log(y);
+          // eslint-disable-next-line @typescript-eslint/camelcase
+          const option: FilesInfoArguments = { file: file_id as string };
+          return this.web.files.info(option);
+        });
       })
       .then(z => console.log(z))
       .catch(e => console.error(e));
