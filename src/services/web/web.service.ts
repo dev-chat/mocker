@@ -169,33 +169,27 @@ export class WebService {
     });
   }
 
-  public async uploadFileV2(filePath: string, filename: string) {
+  public async uploadFileV2(filePath: string, filename: string): Promise<string | undefined> {
     // eslint-disable-next-line @typescript-eslint/camelcase
     const { upload_url, file_id } = await this.getUploadUrl(filePath, filename);
     console.log('uploadUrl', upload_url);
     console.log('uploadFileId', file_id);
     const body = (await fs.promises.readFile(filePath)).buffer;
     // eslint-disable-next-line @typescript-eslint/camelcase
-    return Axios.post(upload_url as string, body, {
+    await Axios.post(upload_url as string, body, {
       headers: {
         Authorization: `Bearer ${process.env.MUZZLE_BOT_USER_TOKEN}`,
       },
-    })
-      .then(() => {
-        console.log('completed file upload');
-        const options: FilesCompleteUploadExternalArguments = {
-          // eslint-disable-next-line @typescript-eslint/camelcase
-          files: [{ id: file_id as string }],
-        };
-        return this.web.files.completeUploadExternal(options).then(y => {
-          console.log(y);
-          // eslint-disable-next-line @typescript-eslint/camelcase
-          const option: FilesInfoArguments = { file: file_id as string };
-          return this.web.files.info(option);
-        });
-      })
-      .then(z => console.log(z))
-      .catch(e => console.error(e));
+    });
+    const options: FilesCompleteUploadExternalArguments = {
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      files: [{ id: file_id as string }],
+    };
+    await this.web.files.completeUploadExternal(options);
+
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    const option: FilesInfoArguments = { file: file_id as string };
+    return this.web.files.info(option).then(fileInfo => fileInfo.file?.url_private);
   }
 
   public getImageFromUrl(url: string): Promise<Record<string, string>> {
