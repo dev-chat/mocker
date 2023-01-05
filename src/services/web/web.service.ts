@@ -175,7 +175,7 @@ export class WebService {
       { body },
       {
         headers: {
-          authorization: `Bearer ${process.env.MUZZLE_BOT_USER_TOKEN}`,
+          Authorization: `Bearer ${process.env.MUZZLE_BOT_USER_TOKEN}`,
         },
       },
     )
