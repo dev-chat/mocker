@@ -187,7 +187,7 @@ export class WebService {
       .catch(e => console.error(e));
   }
 
-  public getImageFromUrl(url: string): Promise<string> {
+  public getImageFromUrl(url: string): Promise<Record<string, string>> {
     return Axios.get(url, { responseType: 'stream' }).then(response => {
       return new Promise((resolve, reject) => {
         const uuid = uuidv4();
@@ -195,7 +195,7 @@ export class WebService {
         const writeStream = fs.createWriteStream(location);
         response.data.pipe(writeStream);
         writeStream.on('close', () => {
-          resolve(location);
+          resolve({ filePath: location, fileName: `${uuid}.png` });
         });
         writeStream.on('error', e => {
           reject(e);

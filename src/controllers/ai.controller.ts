@@ -94,7 +94,7 @@ aiController.post('/ai/image', async (req, res) => {
     const generatedImage = await aiService
       .generateImage(request.user_id, request.team_id, request.text)
       .then(url => webService.getImageFromUrl(url))
-      .then(filePath => webService.uploadFileV2(request.channel_id, filePath))
+      .then(imageMetadata => webService.uploadFileV2(imageMetadata.filePath, imageMetadata.fileName))
       .catch(e => {
         console.error(e);
         const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
