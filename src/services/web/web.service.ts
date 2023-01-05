@@ -190,7 +190,10 @@ export class WebService {
 
     // eslint-disable-next-line @typescript-eslint/camelcase
     const option: FilesInfoArguments = { file: file_id as string };
-    return this.web.files.info(option).then(fileInfo => fileInfo.file?.url_private);
+    return this.web.files.info(option).then(fileInfo => {
+      console.log(fileInfo.file);
+      return fileInfo.file?.url_private;
+    });
   }
 
   public getImageFromUrl(url: string): Promise<Record<string, string>> {
