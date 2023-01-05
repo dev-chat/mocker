@@ -9,6 +9,8 @@ import {
   KnownBlock,
   Block,
   FilesGetUploadURLExternalArguments,
+  FilesGetUploadURLExternalResponse,
+  FilesCompleteUploadExternalArguments,
 } from '@slack/web-api';
 import path from 'path';
 import fs from 'fs';
@@ -152,7 +154,7 @@ export class WebService {
     });
   }
 
-  public async getUploadUrl(filePath: string, filename: string): Promise<string> {
+  public async getUploadUrl(filePath: string, filename: string): Promise<FilesGetUploadURLExternalResponse> {
     const fileSizeInBytes = (await fs.promises.stat(filePath)).size;
     const fileUploadOptions: FilesGetUploadURLExternalArguments = {
       filename,
@@ -160,26 +162,33 @@ export class WebService {
     };
     return this.web.files.getUploadURLExternal(fileUploadOptions).then(x => {
       if (x.upload_url) {
-        return x.upload_url;
+        return x;
       }
       throw new Error('Unable to generate an upload url');
     });
   }
 
   public async uploadFileV2(filePath: string, filename: string) {
-    const uploadUrl = await this.getUploadUrl(filePath, filename);
-    console.log('uploadUrl', uploadUrl);
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    const { upload_url, file_id } = await this.getUploadUrl(filePath, filename);
+    console.log('uploadUrl', upload_url);
+    console.log('uploadFileId', file_id);
     const body = (await fs.promises.readFile(filePath)).buffer;
-    return Axios.post(uploadUrl, body, {
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    return Axios.post(upload_url as string, body, {
       headers: {
         Authorization: `Bearer ${process.env.MUZZLE_BOT_USER_TOKEN}`,
       },
     })
       .then(x => {
-        console.log(x);
-        console.log(x.data);
-        return x;
+        console.log('completed file upload');
+        const options: FilesCompleteUploadExternalArguments = {
+          // eslint-disable-next-line @typescript-eslint/camelcase
+          files: [{ id: file_id as string }],
+        };
+        return this.web.files.completeUploadExternal(options).then(y => console.log(y));
       })
+      .then(z => console.log(z))
       .catch(e => console.error(e));
   }
 
