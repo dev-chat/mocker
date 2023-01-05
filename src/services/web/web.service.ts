@@ -180,7 +180,7 @@ export class WebService {
         Authorization: `Bearer ${process.env.MUZZLE_BOT_USER_TOKEN}`,
       },
     })
-      .then(x => {
+      .then(() => {
         console.log('completed file upload');
         const options: FilesCompleteUploadExternalArguments = {
           // eslint-disable-next-line @typescript-eslint/camelcase
