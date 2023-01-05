@@ -192,7 +192,7 @@ export class WebService {
     const option: FilesInfoArguments = { file: file_id as string };
     return this.web.files.info(option).then(fileInfo => {
       console.log(fileInfo.file);
-      return fileInfo.file?.url_private;
+      return fileInfo.file?.permalink;
     });
   }
 
