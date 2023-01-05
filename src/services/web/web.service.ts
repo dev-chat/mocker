@@ -9,7 +9,6 @@ import {
   KnownBlock,
   Block,
   FilesGetUploadURLExternalArguments,
-  FilesGetUploadURLExternalResponse,
 } from '@slack/web-api';
 import path from 'path';
 import fs from 'fs';
