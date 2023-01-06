@@ -17,6 +17,7 @@ import path from 'path';
 import fs from 'fs';
 import Axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { URLSearchParams } from 'url';
 
 const MAX_RETRIES = 5;
 
@@ -170,46 +171,34 @@ export class WebService {
     });
   }
 
-  public async uploadFileV2(filePath: string, filename: string): Promise<string | undefined> {
-    // eslint-disable-next-line @typescript-eslint/camelcase
-    const { upload_url, file_id } = await this.getUploadUrl(filePath, filename);
-    console.log('uploadUrl', upload_url);
-    console.log('uploadFileId', file_id);
-    const body = (await fs.promises.readFile(filePath)).buffer;
-    // eslint-disable-next-line @typescript-eslint/camelcase
-    await Axios.post(upload_url as string, body, {
+  public async uploadFileToImgur(base64Image: string): Promise<string | undefined> {
+    const formData = new URLSearchParams();
+    formData.append('image', base64Image);
+    return Axios.post('https://api.imgur.com/3/image', formData, {
       headers: {
-        Authorization: `Bearer ${process.env.MUZZLE_BOT_USER_TOKEN}`,
+        Authorization: `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
       },
-    });
-    const options: FilesCompleteUploadExternalArguments = {
-      // eslint-disable-next-line @typescript-eslint/camelcase
-      files: [{ id: file_id as string }],
-    };
-    await this.web.files.completeUploadExternal(options);
-
-    // eslint-disable-next-line @typescript-eslint/camelcase
-    const option: FilesInfoArguments = { file: file_id as string };
-    return this.web.files.info(option).then(fileInfo => {
-      console.log(fileInfo.file);
-      return fileInfo.file?.permalink;
-    });
-  }
-
-  public getImageFromUrl(url: string): Promise<Record<string, string>> {
-    return Axios.get(url, { responseType: 'stream' }).then(response => {
-      return new Promise((resolve, reject) => {
-        const uuid = uuidv4();
-        const location = path.join(process.cwd(), '/images', `${uuid}.png`);
-        const writeStream = fs.createWriteStream(location);
-        response.data.pipe(writeStream);
-        writeStream.on('close', () => {
-          resolve({ filePath: location, fileName: `${uuid}.png` });
-        });
-        writeStream.on('error', e => {
-          reject(e);
-        });
+    })
+      .then(x => x.data.data.link)
+      .catch(e => {
+        throw e;
       });
-    });
   }
+
+  // public getImageFromUrl(url: string): Promise<Record<string, string>> {
+  //   return Axios.get(url, { responseType: 'stream' }).then(response => {
+  //     return new Promise((resolve, reject) => {
+  //       const uuid = uuidv4();
+  //       const location = path.join(process.cwd(), '/images', `${uuid}.png`);
+  //       const writeStream = fs.createWriteStream(location);
+  //       response.data.pipe(writeStream);
+  //       writeStream.on('close', () => {
+  //         resolve({ filePath: location, fileName: `${uuid}.png` });
+  //       });
+  //       writeStream.on('error', e => {
+  //         reject(e);
+  //       });
+  //     });
+  //   });
+  // }
 }

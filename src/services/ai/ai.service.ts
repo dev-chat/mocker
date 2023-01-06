@@ -49,13 +49,18 @@ export class AIService {
         prompt: text,
         n: 1,
         size: '256x256',
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        response_format: 'b64_json',
       })
       .then(x => {
-        const { url } = x.data.data[0];
-        if (url) {
-          return url;
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        const { b64_json } = x.data.data[0];
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        if (b64_json) {
+          // eslint-disable-next-line @typescript-eslint/camelcase
+          return b64_json;
         } else {
-          throw new Error(`No URL was returned by OpenAI for prompt: ${text}`);
+          throw new Error(`No b64_json was returned by OpenAI for prompt: ${text}`);
         }
       })
       .catch(async e => {
