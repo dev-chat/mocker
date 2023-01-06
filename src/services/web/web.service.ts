@@ -10,13 +10,9 @@ import {
   Block,
   FilesGetUploadURLExternalArguments,
   FilesGetUploadURLExternalResponse,
-  FilesCompleteUploadExternalArguments,
-  FilesInfoArguments,
 } from '@slack/web-api';
-import path from 'path';
 import fs from 'fs';
 import Axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
 import { URLSearchParams } from 'url';
 
 const MAX_RETRIES = 5;
