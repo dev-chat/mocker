@@ -8,10 +8,7 @@ import {
   ChatUpdateArguments,
   KnownBlock,
   Block,
-  FilesGetUploadURLExternalArguments,
-  FilesGetUploadURLExternalResponse,
 } from '@slack/web-api';
-import fs from 'fs';
 import Axios from 'axios';
 import { URLSearchParams } from 'url';
 
@@ -150,20 +147,6 @@ export class WebService {
         user: userId,
       };
       this.web.chat.postEphemeral(options).catch(e => console.error(e));
-    });
-  }
-
-  public async getUploadUrl(filePath: string, filename: string): Promise<FilesGetUploadURLExternalResponse> {
-    const fileSizeInBytes = (await fs.promises.stat(filePath)).size;
-    const fileUploadOptions: FilesGetUploadURLExternalArguments = {
-      filename,
-      length: fileSizeInBytes,
-    };
-    return this.web.files.getUploadURLExternal(fileUploadOptions).then(x => {
-      if (x.upload_url) {
-        return x;
-      }
-      throw new Error('Unable to generate an upload url');
     });
   }
 
