@@ -1,1 +1,1 @@
-- Added where team to pricing-job and add team column to purchase
+- Make pricing based on recent purchases

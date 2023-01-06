@@ -9,6 +9,8 @@ import {
   KnownBlock,
   Block,
 } from '@slack/web-api';
+import Axios from 'axios';
+import { URLSearchParams } from 'url';
 
 const MAX_RETRIES = 5;
 
@@ -97,6 +99,7 @@ export class WebService {
       .then(result => result)
       .catch(e => {
         console.error(e);
+        console.error(e.data);
         console.log(postRequest);
         return e;
       });
@@ -145,5 +148,19 @@ export class WebService {
       };
       this.web.chat.postEphemeral(options).catch(e => console.error(e));
     });
+  }
+
+  public async uploadFileToImgur(base64Image: string): Promise<string | undefined> {
+    const formData = new URLSearchParams();
+    formData.append('image', base64Image);
+    return Axios.post('https://api.imgur.com/3/image', formData, {
+      headers: {
+        Authorization: `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
+      },
+    })
+      .then(x => x.data.data.link)
+      .catch(e => {
+        throw e;
+      });
   }
 }

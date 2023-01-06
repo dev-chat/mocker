@@ -41,7 +41,7 @@ export class AIService {
       .finally(() => this.redis.removeInflight(userId, teamId));
   }
 
-  public async generateImage(userId: string, teamId: string, text: string): Promise<string | undefined> {
+  public async generateImage(userId: string, teamId: string, text: string): Promise<string> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
     return this.openai
@@ -49,10 +49,19 @@ export class AIService {
         prompt: text,
         n: 1,
         size: '256x256',
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        response_format: 'b64_json',
       })
       .then(x => {
-        console.log(x.data.data);
-        return x.data.data[0]?.url;
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        const { b64_json } = x.data.data[0];
+        // eslint-disable-next-line @typescript-eslint/camelcase
+        if (b64_json) {
+          // eslint-disable-next-line @typescript-eslint/camelcase
+          return b64_json;
+        } else {
+          throw new Error(`No b64_json was returned by OpenAI for prompt: ${text}`);
+        }
       })
       .catch(async e => {
         await this.redis.decrementDailyRequests(userId, teamId);
