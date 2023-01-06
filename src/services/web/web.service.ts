@@ -180,21 +180,4 @@ export class WebService {
         throw e;
       });
   }
-
-  // public getImageFromUrl(url: string): Promise<Record<string, string>> {
-  //   return Axios.get(url, { responseType: 'stream' }).then(response => {
-  //     return new Promise((resolve, reject) => {
-  //       const uuid = uuidv4();
-  //       const location = path.join(process.cwd(), '/images', `${uuid}.png`);
-  //       const writeStream = fs.createWriteStream(location);
-  //       response.data.pipe(writeStream);
-  //       writeStream.on('close', () => {
-  //         resolve({ filePath: location, fileName: `${uuid}.png` });
-  //       });
-  //       writeStream.on('error', e => {
-  //         reject(e);
-  //       });
-  //     });
-  //   });
-  // }
 }
