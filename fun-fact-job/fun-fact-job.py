@@ -54,9 +54,7 @@ def getQuote():
 def getTrends():
   url = "https://api.twitter.com/1.1/trends/place.json?id=2459115"
   token = os.getenv("TWITTER_API_BEARER")
-  print(token)
-  trends = session.get(url, headers= { "Authorization": "Bearer {token}".format(token=token)})
-  print(trends)
+  trends = session.get(url, headers={ 'Authorization': 'Bearer {token}'.format(token=token)})
   if (trends):
     trendJson = trends.json()
     return trendJson[0]["trends"][0:5]
@@ -100,7 +98,7 @@ def sendSlackMessage(facts):
   try:
       client.api_call(
         api_method='chat.postMessage',
-        json={'channel': '#testbotz','blocks': blocks}
+        json={'channel': '#general','blocks': blocks}
       )
     
   except SlackApiError as e:
@@ -119,7 +117,6 @@ def createBlocks(quote, facts, trends):
       }
     }]
   if (quote and 'error' not in quote):
-    print(quote)
     blocks.append({
         "type": "section",
         "fields": [
@@ -179,7 +176,7 @@ def createBlocks(quote, facts, trends):
         "fields": [
           {
             "type": "mrkdwn",
-            "text": "*Today's Liberal Agenda:*"
+            "text": "*Today's Trends:*"
           }
         ]
       })
