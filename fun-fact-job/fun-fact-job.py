@@ -51,6 +51,16 @@ def getQuote():
       "error": "Issue with quote API - non 200 status code"
     }
 
+def getTrends():
+  url = "https://api.twitter.com/1.1/trends/place.json"
+  token = os.getenv("TWITTER_API_BEARER")
+  trends = session.get(url, headers= { "Authorization": "Bearer {token}".format(token=token)})
+  if (trends):
+    trendJson = trends.json()
+    return trendJson[0]["trends"][0:5]
+  else:
+    raise Exception("Unable to get trends from Twitter")
+
 def getFact():
   url = random.choice(urls)
   if ("headers" in url):
@@ -80,14 +90,15 @@ def addIdToDb(fact, source, ctx):
 
 def sendSlackMessage(facts):
   quote = getQuote()
-  blocks = createBlocks(quote, facts)
+  trends = getTrends()
+  blocks = createBlocks(quote, facts, trends)
   slack_token = os.environ["MUZZLE_BOT_TOKEN"]
   client = WebClient(token=slack_token)
 
   try:
       client.api_call(
         api_method='chat.postMessage',
-        json={'channel': '#general','blocks': blocks}
+        json={'channel': '#testbotz','blocks': blocks}
       )
     
   except SlackApiError as e:
@@ -95,7 +106,7 @@ def sendSlackMessage(facts):
       print(e)
       assert e.response["error"]
 
-def createBlocks(quote, facts):
+def createBlocks(quote, facts, trends):
   blocks = [
     {
       "type": "header",
@@ -150,6 +161,37 @@ def createBlocks(quote, facts):
         "text": "{fact}".format(fact=factString)
       }
     })
+
+  blocks.append({
+        "type": "divider"
+      })
+
+  trendString = ""
+
+  for trend in trends:
+    trendString = trendString + "<{url}|{topic}>\n".format(url=trend["url"], topic=trend["name"])
+  
+  blocks.append(
+      {
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text": "*Today's Liberal Agenda:*"
+          }
+        ]
+      })
+
+  blocks.append(
+      {
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text": "{trendString}".format(trendString=trendString)
+          }
+        ]
+      })
   
   blocks.append(
     {
