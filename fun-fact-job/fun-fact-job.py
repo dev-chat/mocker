@@ -52,7 +52,7 @@ def getQuote():
     }
 
 def getTrends():
-  url = "https://api.twitter.com/1.1/trends/place.json?id=2459115"
+  url = "https://api.twitter.com/1.1/trends/place.json?id=23424977"
   token = os.getenv("TWITTER_API_BEARER")
   trends = session.get(url, headers={ 'Authorization': 'Bearer {token}'.format(token=token)})
   if (trends):
