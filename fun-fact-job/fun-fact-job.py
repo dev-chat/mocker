@@ -56,6 +56,7 @@ def getTrends():
   token = os.getenv("TWITTER_API_BEARER")
   print(token)
   trends = session.get(url, headers= { "Authorization": "Bearer {token}".format(token=token)})
+  print(trends)
   if (trends):
     trendJson = trends.json()
     return trendJson[0]["trends"][0:5]
