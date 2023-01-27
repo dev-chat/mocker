@@ -79,7 +79,7 @@ def getJoke():
     if (jokeJson["type"] == "single"):
       return jokeJson["joke"]
     elif(jokeJson["type"] == "twopart"):
-      return "{setup} \n\n _{delivery}_".format(setup=jokeJson["setup"], delivery=jokeJson["delivery"])
+      return "{setup} \n\n {delivery}".format(setup=jokeJson["setup"], delivery=jokeJson["delivery"])
   else:
     raise Exception("Unable to retrieve Joke of the Day")
 
