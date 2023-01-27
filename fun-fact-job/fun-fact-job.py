@@ -76,6 +76,7 @@ def getJoke(ctx):
 
   if(joke):
     jokeJson = joke.json()
+    print(jokeJson)
     if (isNewJoke(jokeJson["id"], ctx)):
       addJokeIdToDb(jokeJson["id"],ctx)
       if (jokeJson["type"] == "single"):
@@ -115,6 +116,7 @@ def addIdToDb(fact, source, ctx):
   ctx.commit()
 
 def isNewJoke(id, ctx):
+  print(id)
   mycursor = ctx.cursor(dictionary=True, buffered=True)
   mycursor.execute("SELECT id FROM joke WHERE id=%s;", str(id))
   jokes = mycursor.fetchall()
@@ -122,7 +124,7 @@ def isNewJoke(id, ctx):
 
 def addJokeIdToDb(id, ctx):
   mycursor = ctx.cursor(dictionary=True, buffered=True)
-  mycursor.execute("INSERT INTO joke (id) VALUES (%s)", str(id))
+  mycursor.execute("INSERT INTO joke (id) VALUES (%s);", str(id))
   ctx.commit()
 
 def sendSlackMessage(facts):
