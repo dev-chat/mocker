@@ -253,7 +253,7 @@ def createBlocks(quote, facts, trends, onThisDay):
 						"emoji": True
 					},
 					"value": "{title}".format(title=otd["title"]),
-					"url": "{url}".format(otd["url"])
+					"url": "{url}".format(url=otd["url"])
 				})
 
   blocks.append({
