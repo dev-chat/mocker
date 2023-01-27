@@ -126,10 +126,9 @@ def addJokeIdToDb(id, ctx):
   mycursor.execute("INSERT INTO joke (id) VALUES (%s);", (str(id),))
   ctx.commit()
 
-def sendSlackMessage(facts):
+def sendSlackMessage(facts, joke):
   quote = getQuote()
   onThisDay = getOnThisDay()
-  joke = getJoke()
   blocks = createBlocks(quote, facts, onThisDay, joke)
   slack_token = os.environ["MUZZLE_BOT_TOKEN"]
   client = WebClient(token=slack_token)
