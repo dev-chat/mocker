@@ -51,16 +51,6 @@ def getQuote():
     return {
       "error": "Issue with quote API - non 200 status code"
     }
-
-def getTrends():
-  url = "https://api.twitter.com/1.1/trends/place.json?id=23424977"
-  token = os.getenv("TWITTER_API_BEARER")
-  trends = session.get(url, headers={ 'Authorization': 'Bearer {token}'.format(token=token)})
-  if (trends):
-    trendJson = trends.json()
-    return trendJson[0]["trends"][0:5]
-  else:
-    raise Exception("Unable to get trends from Twitter")
   
 def getOnThisDay():
   date = datetime.datetime.now()
@@ -75,11 +65,8 @@ def getOnThisDay():
   onThisDay = session.get(url)
   if (onThisDay):
     onThisDayJson = onThisDay.json()
-    otdRange = onThisDayJson["selected"][0:5]
-    result = []
-    for otd in otdRange:
-      result.append({ "text": otd["text"], "url": otd["pages"][0]["content_urls"]["desktop"]["page"], "image": otd["pages"][0]["thumbnail"]["source"], "title": otd["pages"][0]["title"]})
-    return result
+    otd = onThisDayJson["selected"][0]
+    return { "text": otd["text"], "url": otd["pages"][0]["content_urls"]["desktop"]["page"], "image": otd["pages"][0]["thumbnail"]["source"], "title": otd["pages"][0]["title"]}
   else:
     raise Exception("Unable to retrieve Wikipedia On This Day")
 
@@ -112,9 +99,8 @@ def addIdToDb(fact, source, ctx):
 
 def sendSlackMessage(facts):
   quote = getQuote()
-  trends = getTrends()
   onThisDay = getOnThisDay()
-  blocks = createBlocks(quote, facts, trends, onThisDay)
+  blocks = createBlocks(quote, facts, onThisDay)
   slack_token = os.environ["MUZZLE_BOT_TOKEN"]
   client = WebClient(token=slack_token)
 
@@ -129,7 +115,7 @@ def sendSlackMessage(facts):
       print(e)
       assert e.response["error"]
 
-def createBlocks(quote, facts, trends, onThisDay):
+def createBlocks(quote, facts, otd):
   blocks = [
     {
       "type": "header",
@@ -156,10 +142,11 @@ def createBlocks(quote, facts, trends, onThisDay):
         "text": "{quote}".format(quote=quote["text"])
       }
     })
-    blocks.append({
-        "type": "divider"
-      })
-  
+
+  blocks.append({
+    "type": "divider"
+  })
+
   blocks.append(
       {
         "type": "section",
@@ -188,34 +175,6 @@ def createBlocks(quote, facts, trends, onThisDay):
         "type": "divider"
       })
 
-  trendString = ""
-
-  for trend in trends:
-    trendString = trendString + "<{url}|{topic}>\n".format(url=trend["url"], topic=trend["name"])
-  
-  blocks.append(
-    {
-      "type": "section",
-      "fields": [
-        {
-          "type": "mrkdwn",
-          "text": "*Daily Trends:*"
-        }
-      ]
-    })
-
-  blocks.append(
-    {
-      "type": "section",
-      "text": {
-          "type": "mrkdwn",
-          "text": "{trendString}".format(trendString=trendString)
-        }
-    })
-
-  blocks.append({
-    "type": "divider"
-  })
 
   blocks.append(
     {
@@ -228,21 +187,20 @@ def createBlocks(quote, facts, trends, onThisDay):
       ]
     })
 
-  for otd in onThisDay:
-    blocks.append(
-      {
-        "type": "section",
-        "text": {
-          "type": "mrkdwn",
-          "text": "{text} \n\n <{url}|Learn More>".format(text=otd["text"], url=otd["url"])
-        },
-        "accessory": {
-          "type": "image",
-          "image_url": "{url}".format(url=otd["image"]),
-          "alt_text": "{title}".format(title=otd["title"])
-        }
+  blocks.append(
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "{text} \n\n <{url}|Learn More>".format(text=otd["text"], url=otd["url"])
+      },
+      "accessory": {
+        "type": "image",
+        "image_url": "{url}".format(url=otd["image"]),
+        "alt_text": "{title}".format(title=otd["title"])
       }
-    )
+    }
+  )
 
   blocks.append({
     "type": "divider"
