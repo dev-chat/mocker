@@ -134,7 +134,7 @@ def sendSlackMessage(facts, joke, quote, onThisDay):
   try:
       client.api_call(
         api_method='chat.postMessage',
-        json={'channel': '#testbotz','blocks': blocks}
+        json={'channel': '#general','blocks': blocks}
       )
     
   except SlackApiError as e:
