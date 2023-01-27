@@ -1,6 +1,6 @@
 CREATE DATABASE fun_fact;
 USE fun_fact;
 DROP TABLE fact;
-CREATE TABLE fact (fact VARCHAR(255), source VARCHAR(255));
+CREATE TABLE fact (factId int NOT NULL AUTO_INCREMENT, fact longtext, source VARCHAR(255), PRIMARY KEY(factId));
 DROP TABLE joke;
-CREATE TABLE joke (id VARCHAR(255));
+CREATE TABLE joke (jokeId int NOT NULL AUTO_INCREMENT, id VARCHAR(255), PRIMARY KEY(jokeId));
