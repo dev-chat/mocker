@@ -67,9 +67,9 @@ def getOnThisDay():
   day = date.day
   month = date.month
   if (day <= 9):
-    day = "0"+day
+    day = "0"+str(day)
   if (month <= 9):
-    month = "0"+month
+    month = "0"+str(month)
 
   url="https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/{month}/{day}".format(month=month, day=day)
   onThisDay = session.get(url)
