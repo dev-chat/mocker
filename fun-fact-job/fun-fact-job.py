@@ -70,6 +70,19 @@ def getOnThisDay():
   else:
     raise Exception("Unable to retrieve Wikipedia On This Day")
 
+def getJoke():
+  url = "https://v2.jokeapi.dev/joke/Miscellaneous,Pun,Spooky?blacklistFlags=racist,sexist"
+  joke = session.get(url)
+
+  if(joke):
+    jokeJson = joke.json()
+    if (jokeJson["type"] == "single"):
+      return jokeJson["joke"]
+    elif(jokeJson["type" == "twopart"]):
+      return "{setup} \n\n _{delivery}_".format(setup=jokeJson["setup"], delivery=jokeJson["delivery"])
+  else:
+    raise Exception("Unable to retrieve Joke of the Day")
+
 def getFact():
   url = random.choice(urls)
   if ("headers" in url):
@@ -100,7 +113,8 @@ def addIdToDb(fact, source, ctx):
 def sendSlackMessage(facts):
   quote = getQuote()
   onThisDay = getOnThisDay()
-  blocks = createBlocks(quote, facts, onThisDay)
+  joke = getJoke()
+  blocks = createBlocks(quote, facts, onThisDay, joke)
   slack_token = os.environ["MUZZLE_BOT_TOKEN"]
   client = WebClient(token=slack_token)
 
@@ -115,7 +129,7 @@ def sendSlackMessage(facts):
       print(e)
       assert e.response["error"]
 
-def createBlocks(quote, facts, otd):
+def createBlocks(quote, facts, otd, joke):
   blocks = [
     {
       "type": "header",
@@ -126,6 +140,10 @@ def createBlocks(quote, facts, otd):
       }
     }]
   if (quote and 'error' not in quote):
+    blocks.append({
+    "type": "divider"
+    })
+
     blocks.append({
         "type": "section",
         "fields": [
@@ -140,6 +158,30 @@ def createBlocks(quote, facts, otd):
       "text": {
         "type": "mrkdwn",
         "text": "{quote}".format(quote=quote["text"])
+      }
+    })
+
+  blocks.append({
+    "type": "divider"
+  })
+
+  blocks.append(
+      {
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text": "*Daily Joke:*"
+          }
+        ]
+      })
+
+  blocks.append(
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "{joke}".format(joke=joke)
       }
     })
 
