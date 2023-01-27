@@ -217,8 +217,6 @@ def createBlocks(quote, facts, trends, onThisDay):
     "type": "divider"
   })
 
-  elements = []
-
   blocks.append(
     {
       "type": "section",
@@ -245,20 +243,6 @@ def createBlocks(quote, facts, trends, onThisDay):
         }
       }
     )
-    elements.append({
-					"type": "button",
-					"text": {
-						"type": "plain_text",
-						"text": "{title}".format(title=otd["title"]),
-						"emoji": True
-					},
-					"value": "{title}".format(title=otd["title"]),
-					"url": "{url}".format(url=otd["url"])
-				})
-
-  blocks.append({
-    "type": "divider"
-  })
 
   blocks.append({
     "type": "divider"
