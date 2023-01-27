@@ -236,7 +236,7 @@ def createBlocks(quote, facts, trends, onThisDay):
         "type": "section",
         "text": {
           "type": "mrkdwn",
-          "text": "{text}".format(text=otd["text"])
+          "text": "{text} \n\n <{url}|Learn More>".format(text=otd["text"], url=otd["url"])
         },
         "accessory": {
           "type": "image",
@@ -259,11 +259,6 @@ def createBlocks(quote, facts, trends, onThisDay):
   blocks.append({
     "type": "divider"
   })
-
-  {
-		"type": "actions",
-		"elements": elements
-	}
 
   blocks.append({
     "type": "divider"
