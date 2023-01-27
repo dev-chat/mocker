@@ -1,3 +1,4 @@
+import datetime
 import mysql.connector
 import os
 import requests
@@ -60,6 +61,27 @@ def getTrends():
     return trendJson[0]["trends"][0:5]
   else:
     raise Exception("Unable to get trends from Twitter")
+  
+def getOnThisDay():
+  date = datetime.datetime.now()
+  day = date.day
+  month = date.month
+  if (day <= 9):
+    day = "0"+day
+  if (month <= 9):
+    month = "0"+month
+
+  url="https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/{month}/{day}".format(month=month, day=day)
+  onThisDay = session.get(url)
+  if (onThisDay):
+    onThisDayJson = onThisDay.json()
+    otdRange = onThisDayJson["selected"][0:5]
+    result = []
+    for otd in otdRange:
+      result.append({ "text": otd["text"], "url": otd["pages"][0]["content_urls"]["desktop"]["page"]})
+    return result
+  else:
+    raise Exception("Unable to retrieve Wikipedia On This Day")
 
 def getFact():
   url = random.choice(urls)
@@ -91,7 +113,8 @@ def addIdToDb(fact, source, ctx):
 def sendSlackMessage(facts):
   quote = getQuote()
   trends = getTrends()
-  blocks = createBlocks(quote, facts, trends)
+  onThisDay = getOnThisDay()
+  blocks = createBlocks(quote, facts, trends, onThisDay)
   slack_token = os.environ["MUZZLE_BOT_TOKEN"]
   client = WebClient(token=slack_token)
 
@@ -106,7 +129,7 @@ def sendSlackMessage(facts):
       print(e)
       assert e.response["error"]
 
-def createBlocks(quote, facts, trends):
+def createBlocks(quote, facts, trends, onThisDay):
   blocks = [
     {
       "type": "header",
@@ -143,7 +166,7 @@ def createBlocks(quote, facts, trends):
         "fields": [
           {
             "type": "mrkdwn",
-            "text": "*Today's Facts:*"
+            "text": "*Daily Facts:*"
           }
         ]
       })
@@ -171,27 +194,61 @@ def createBlocks(quote, facts, trends):
     trendString = trendString + "<{url}|{topic}>\n".format(url=trend["url"], topic=trend["name"])
   
   blocks.append(
-      {
-        "type": "section",
-        "fields": [
-          {
-            "type": "mrkdwn",
-            "text": "*Today's Trends:*"
-          }
-        ]
-      })
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Daily Trends:*"
+        }
+      ]
+    })
 
   blocks.append(
-      {
-        "type": "section",
-        "fields": [
-          {
-            "type": "mrkdwn",
-            "text": "{trendString}".format(trendString=trendString)
-          }
-        ]
-      })
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "{trendString}".format(trendString=trendString)
+        }
+      ]
+    })
+
+  blocks.append({
+    "type": "divider"
+  })
+
+  otdString = ""
+
+  for otd in onThisDay:
+    otdString = otdString + "{text} <{url}|Learn More>\n".format(text=otd["text"], url=otd["url"])
   
+  blocks.append(
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*On This Day:*"
+        }
+      ]
+    })
+
+  blocks.append({
+    "type": "section",
+    "fields": [
+      {
+        "type": "mrkdwn",
+        "text": "{otdString}".format(otdString=otdString)
+      }
+    ]
+  })
+
+  blocks.append({
+    "type": "divider"
+  })
+
   blocks.append(
     {
         "type": "context",
