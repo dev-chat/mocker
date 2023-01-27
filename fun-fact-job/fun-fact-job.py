@@ -116,13 +116,13 @@ def addIdToDb(fact, source, ctx):
 
 def isNewJoke(id, ctx):
   mycursor = ctx.cursor(dictionary=True, buffered=True)
-  mycursor.execute("SELECT id FROM joke WHERE id=%s;", id)
+  mycursor.execute("SELECT id FROM joke WHERE id=%s;", str(id))
   jokes = mycursor.fetchall()
   return len(jokes) == 0
 
 def addJokeIdToDb(id, ctx):
   mycursor = ctx.cursor(dictionary=True, buffered=True)
-  mycursor.execute("INSERT INTO joke (id) VALUES (%s)", id)
+  mycursor.execute("INSERT INTO joke (id) VALUES (%s)", str(id))
   ctx.commit()
 
 def sendSlackMessage(facts):
