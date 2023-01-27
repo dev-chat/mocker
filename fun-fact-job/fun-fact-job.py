@@ -116,7 +116,7 @@ def addIdToDb(fact, source, ctx):
   ctx.commit()
 
 def isNewJoke(id, ctx):
-  print(id)
+  print(str(id))
   mycursor = ctx.cursor(dictionary=True, buffered=True)
   mycursor.execute("SELECT id FROM joke WHERE id=%s;", str(id))
   jokes = mycursor.fetchall()
