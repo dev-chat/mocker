@@ -70,16 +70,20 @@ def getOnThisDay():
   else:
     raise Exception("Unable to retrieve Wikipedia On This Day")
 
-def getJoke():
+def getJoke(ctx):
   url = "https://v2.jokeapi.dev/joke/Miscellaneous,Pun,Spooky?blacklistFlags=racist,sexist"
   joke = session.get(url)
 
   if(joke):
     jokeJson = joke.json()
-    if (jokeJson["type"] == "single"):
-      return jokeJson["joke"]
-    elif(jokeJson["type"] == "twopart"):
-      return "{setup} \n\n {delivery}".format(setup=jokeJson["setup"], delivery=jokeJson["delivery"])
+    if (isNewJoke(jokeJson["id"], ctx)):
+      addJokeIdToDb(jokeJson["id"],ctx)
+      if (jokeJson["type"] == "single"):
+        return jokeJson["joke"]
+      elif(jokeJson["type"] == "twopart"):
+        return "{setup} \n\n {delivery}".format(setup=jokeJson["setup"], delivery=jokeJson["delivery"])
+    else:
+      getJoke(ctx)
   else:
     raise Exception("Unable to retrieve Joke of the Day")
 
@@ -108,6 +112,17 @@ def isNewFact(fact, source, ctx):
 def addIdToDb(fact, source, ctx):
   mycursor = ctx.cursor(dictionary=True, buffered=True)
   mycursor.execute("INSERT INTO fact (fact, source) VALUES (%s, %s);", (fact, source))
+  ctx.commit()
+
+def isNewJoke(id, ctx):
+  mycursor = ctx.cursor(dictionary=True, buffered=True)
+  mycursor.execute("SELECT id FROM joke WHERE id=%s;", (id))
+  jokes = mycursor.fetchall()
+  return len(jokes) == 0
+
+def addJokeIdToDb(id, ctx):
+  mycursor = ctx.cursor(dictionary=True, buffered=True)
+  mycursor.execute("INSERT INTO joke (id) VALUES (%s)", id)
   ctx.commit()
 
 def sendSlackMessage(facts):
@@ -283,7 +298,8 @@ def main():
 
 
   facts = getFacts(cnx)
-  sendSlackMessage(facts)
+  joke = getJoke(cnx)
+  sendSlackMessage(facts, joke)
 
 
 main()
