@@ -78,7 +78,7 @@ def getOnThisDay():
     otdRange = onThisDayJson["selected"][0:5]
     result = []
     for otd in otdRange:
-      result.append({ "text": otd["text"], "url": otd["pages"][0]["content_urls"]["desktop"]["page"]})
+      result.append({ "text": otd["text"], "url": otd["pages"][0]["content_urls"]["desktop"]["page"], "image": otd["pages"][0]["thumbnail"]["source"], "title": otd["pages"][0]["title"]})
     return result
   else:
     raise Exception("Unable to retrieve Wikipedia On This Day")
@@ -207,23 +207,18 @@ def createBlocks(quote, facts, trends, onThisDay):
   blocks.append(
     {
       "type": "section",
-      "fields": [
-        {
+      "text": {
           "type": "mrkdwn",
           "text": "{trendString}".format(trendString=trendString)
         }
-      ]
     })
 
   blocks.append({
     "type": "divider"
   })
 
-  otdString = ""
+  elements = []
 
-  for otd in onThisDay:
-    otdString = otdString + "{text} <{url}|Learn More>\n".format(text=otd["text"], url=otd["url"])
-  
   blocks.append(
     {
       "type": "section",
@@ -235,15 +230,40 @@ def createBlocks(quote, facts, trends, onThisDay):
       ]
     })
 
-  blocks.append({
-    "type": "section",
-    "fields": [
+  for otd in onThisDay:
+    blocks.append(
       {
-        "type": "mrkdwn",
-        "text": "{otdString}".format(otdString=otdString)
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "{text}".format(text=otd["text"])
+        },
+        "accessory": {
+          "type": "image",
+          "image_url": "{url}".format(url=otd["image"]),
+          "alt_text": "{title}".format(title=otd["title"])
+        }
       }
-    ]
+    )
+    elements.append({
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "{title}".format(title=otd["title"]),
+						"emoji": True
+					},
+					"value": "{title}".format(title=otd["title"]),
+					"url": "{url}".format(otd["url"])
+				})
+
+  blocks.append({
+    "type": "divider"
   })
+
+  {
+		"type": "actions",
+		"elements": elements
+	}
 
   blocks.append({
     "type": "divider"
