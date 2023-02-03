@@ -66,7 +66,14 @@ aiController.post('/ai/text', async (req, res) => {
         ],
       },
     ];
-    webService.sendMessage(request.channel_id, request.text, blocks);
+    webService.sendMessage(request.channel_id, request.text, blocks).catch(e => {
+      console.error(e);
+      aiService.decrementDaiyRequests(request.user_id, request.team_id);
+      webService.sendMessage(
+        request.user_id,
+        'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? That is not supported yet.',
+      );
+    });
 
     if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
       storeService.removeEffect(request.user_id, request.team_id, 4);
@@ -127,7 +134,14 @@ aiController.post('/ai/image', async (req, res) => {
         ],
       },
     ];
-    webService.sendMessage(request.channel_id, request.text, blocks);
+    webService.sendMessage(request.channel_id, request.text, blocks).catch(e => {
+      console.error(e);
+      aiService.decrementDaiyRequests(request.user_id, request.team_id);
+      webService.sendMessage(
+        request.user_id,
+        'Sorry, unable to send the requested image to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? That is not supported yet.',
+      );
+    });
     if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
       storeService.removeEffect(request.user_id, request.team_id, 4);
     }

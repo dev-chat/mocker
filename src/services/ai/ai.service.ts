@@ -11,6 +11,10 @@ export class AIService {
     }),
   );
 
+  public decrementDaiyRequests(userId: string, teamId: string) {
+    return this.redis.decrementDailyRequests(userId, teamId);
+  }
+
   public isAlreadyInflight(userId: string, teamId: string): Promise<boolean> {
     return this.redis.getInflight(userId, teamId).then(x => !!x);
   }
