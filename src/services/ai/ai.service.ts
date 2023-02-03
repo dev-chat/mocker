@@ -34,8 +34,8 @@ export class AIService {
         // eslint-disable-next-line @typescript-eslint/camelcase
         max_tokens: 1000,
       })
-      .then(x => {
-        console.log(x.data);
+      .then(async x => {
+        await this.redis.removeInflight(userId, teamId);
         return x.data.choices[0].text?.trim();
       })
       .catch(async e => {
@@ -56,7 +56,9 @@ export class AIService {
         // eslint-disable-next-line @typescript-eslint/camelcase
         response_format: 'b64_json',
       })
-      .then(x => {
+      .then(async x => {
+        await this.redis.removeInflight(userId, teamId);
+
         // eslint-disable-next-line @typescript-eslint/camelcase
         const { b64_json } = x.data.data[0];
         // eslint-disable-next-line @typescript-eslint/camelcase
