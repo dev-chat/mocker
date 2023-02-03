@@ -71,7 +71,7 @@ aiController.post('/ai/text', async (req, res) => {
       aiService.decrementDaiyRequests(request.user_id, request.team_id);
       webService.sendMessage(
         request.user_id,
-        'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? That is not supported yet.',
+        'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token.',
       );
     });
 
@@ -139,7 +139,7 @@ aiController.post('/ai/image', async (req, res) => {
       aiService.decrementDaiyRequests(request.user_id, request.team_id);
       webService.sendMessage(
         request.user_id,
-        'Sorry, unable to send the requested image to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? That is not supported yet.',
+        'Sorry, unable to send the requested image to Slack. You have been credited for your Moon Token.',
       );
     });
     if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
