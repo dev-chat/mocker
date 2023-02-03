@@ -11,7 +11,7 @@ export class AIService {
     }),
   );
 
-  public decrementDaiyRequests(userId: string, teamId: string) {
+  public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
     return this.redis.decrementDailyRequests(userId, teamId);
   }
 
@@ -39,10 +39,10 @@ export class AIService {
         return x.data.choices[0].text?.trim();
       })
       .catch(async e => {
+        await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
-      })
-      .finally(() => this.redis.removeInflight(userId, teamId));
+      });
   }
 
   public async generateImage(userId: string, teamId: string, text: string): Promise<string> {
@@ -68,9 +68,9 @@ export class AIService {
         }
       })
       .catch(async e => {
+        await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
-      })
-      .finally(async () => await this.redis.removeInflight(userId, teamId));
+      });
   }
 }
