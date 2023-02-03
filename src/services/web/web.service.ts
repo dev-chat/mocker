@@ -101,7 +101,7 @@ export class WebService {
         console.error(e);
         console.error(e.data);
         console.log(postRequest);
-        return e;
+        throw e;
       });
   }
 
