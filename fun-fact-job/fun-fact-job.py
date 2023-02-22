@@ -255,10 +255,12 @@ def createBlocks(quote, facts, otd, joke):
   )
 
   if (otd["image"]):
-    blocks.append("accessory": {
+    blocks.append({
+      "accessory": {
         "type": "image",
         "image_url": "{url}".format(url=otd["image"]),
         "alt_text": "{title}".format(title=otd["title"])
+      }
       })
 
   blocks.append({
