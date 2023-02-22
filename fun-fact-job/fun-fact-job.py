@@ -66,7 +66,9 @@ def getOnThisDay():
   if (onThisDay):
     onThisDayJson = onThisDay.json()
     otd = onThisDayJson["selected"][0]
-    return { "text": otd["text"], "url": otd["pages"][0]["content_urls"]["desktop"]["page"], "image": otd["pages"][0]["thumbnail"]["source"], "title": otd["pages"][0]["title"]}
+    firstPage = otd["pages"][0]
+    hasThumbnail = firstPage["thumbnail"] != None
+    return { "text": otd["text"], "url":firstPage["content_urls"]["desktop"]["page"], "image": firstPage["thumbnail"]["source"] if hasThumbnail else None, "title": firstPage["title"]}
   else:
     raise Exception("Unable to retrieve Wikipedia On This Day")
 
@@ -248,14 +250,16 @@ def createBlocks(quote, facts, otd, joke):
       "text": {
         "type": "mrkdwn",
         "text": "{text} \n\n <{url}|Learn More>".format(text=otd["text"], url=otd["url"])
-      },
-      "accessory": {
-        "type": "image",
-        "image_url": "{url}".format(url=otd["image"]),
-        "alt_text": "{title}".format(title=otd["title"])
       }
     }
   )
+
+  if (otd["image"]):
+    blocks.append("accessory": {
+        "type": "image",
+        "image_url": "{url}".format(url=otd["image"]),
+        "alt_text": "{title}".format(title=otd["title"])
+      })
 
   blocks.append({
     "type": "divider"
