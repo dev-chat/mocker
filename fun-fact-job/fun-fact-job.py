@@ -67,6 +67,7 @@ def getOnThisDay():
     onThisDayJson = onThisDay.json()
     otd = onThisDayJson["selected"][0]
     firstPage = otd["pages"][0]
+    print(firstPage)
     hasThumbnail = firstPage["thumbnail"] != None
     return { "text": otd["text"], "url":firstPage["content_urls"]["desktop"]["page"], "image": firstPage["thumbnail"]["source"] if hasThumbnail else None, "title": firstPage["title"]}
   else:
