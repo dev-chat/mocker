@@ -33,6 +33,7 @@ export class AIService {
         messages: [{ role: 'system', content: text }],
         // eslint-disable-next-line @typescript-eslint/camelcase
         max_tokens: 1000,
+        user: `${userId}-DaBros2016`,
       })
       .then(async x => {
         await this.redis.removeInflight(userId, teamId);
@@ -55,6 +56,7 @@ export class AIService {
         size: '256x256',
         // eslint-disable-next-line @typescript-eslint/camelcase
         response_format: 'b64_json',
+        user: `${userId}-DaBros2016`,
       })
       .then(async x => {
         await this.redis.removeInflight(userId, teamId);
