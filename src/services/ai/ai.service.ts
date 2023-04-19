@@ -28,15 +28,15 @@ export class AIService {
     await this.redis.setDailyRequests(userId, teamId);
 
     return this.openai
-      .createCompletion({
-        model: 'text-davinci-003',
-        prompt: text,
+      .createChatCompletion({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'system', content: text }],
         // eslint-disable-next-line @typescript-eslint/camelcase
         max_tokens: 1000,
       })
       .then(async x => {
         await this.redis.removeInflight(userId, teamId);
-        return x.data.choices[0].text?.trim();
+        return x.data.choices[0].message?.content?.trim();
       })
       .catch(async e => {
         await this.redis.removeInflight(userId, teamId);
