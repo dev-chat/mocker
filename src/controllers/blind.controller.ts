@@ -23,7 +23,7 @@ blindController.post('/blind/message', async (req, res) => {
       elements: [
         {
           type: 'mrkdwn',
-          text: `:siren: *An important message from JR in the Blind*:siren:`,
+          text: `:siren: *An important message from JR in the Blind* :siren:`,
         },
       ],
     },
