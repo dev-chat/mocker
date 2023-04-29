@@ -1,21 +1,22 @@
 import express, { Router } from 'express';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { KnownBlock } from '@slack/web-api';
-import { WebService } from '../services/web/web.service';
+// import { WebService } from '../services/web/web.service';
 
 export const blindController: Router = express.Router();
 
-const webService = WebService.getInstance();
+// const webService = WebService.getInstance();
 
 blindController.post('/blind/message', async (req, res) => {
   const request: SlashCommandRequest = req.body;
+  console.log(request);
 
   const blocks: KnownBlock[] = [
     {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `\`\`\`${req.body.text}\`\`\``,
+        text: `\`\`\`${request.text}\`\`\``,
       },
     },
     {
@@ -28,13 +29,16 @@ blindController.post('/blind/message', async (req, res) => {
       ],
     },
   ];
-  webService
-    .sendMessage(request.channel_id, request.text, blocks)
-    .then(x => {
-      res.status(200).send({ message: x });
-    })
-    .catch(e => {
-      console.error(e);
-      res.status(500).send({ message: e });
-    });
+
+  console.log(blocks);
+  res.send(200);
+  // webService
+  //   .sendMessage(request.channel_id, request.text, blocks)
+  //   .then(x => {
+  //     res.status(200).send({ message: x });
+  //   })
+  //   .catch(e => {
+  //     console.error(e);
+  //     res.status(500).send({ message: e });
+  //   });
 });
