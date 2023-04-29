@@ -15,7 +15,7 @@ blindController.post('/blind/message', async (req, res) => {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*${req.body.text}*`,
+        text: `\`\`\`${req.body.text}\`\`\``,
       },
     },
     {
