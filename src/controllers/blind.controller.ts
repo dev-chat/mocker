@@ -12,20 +12,22 @@ blindController.post('/blind/message', async (req, res) => {
 
   const blocks: KnownBlock[] = [
     {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: 'A Message from JR',
+        emoji: true,
+      },
+    },
+    {
+      type: 'divider',
+    },
+    {
       type: 'section',
       text: {
         type: 'mrkdwn',
         text: `\`\`\`${request.text}\`\`\``,
       },
-    },
-    {
-      type: 'context',
-      elements: [
-        {
-          type: 'mrkdwn',
-          text: `:siren: *An important message from JR in the Blind* :siren:`,
-        },
-      ],
     },
   ];
 
