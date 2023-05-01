@@ -1,21 +1,27 @@
 import express, { Router } from 'express';
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { KnownBlock } from '@slack/web-api';
 import { WebService } from '../services/web/web.service';
+
+interface BlindRequest {
+  title?: string;
+  text: string;
+  channel_id: string;
+  token: string;
+}
 
 export const blindController: Router = express.Router();
 
 const webService = WebService.getInstance();
 
 blindController.post('/blind/message', async (req, res) => {
-  const request: SlashCommandRequest = req.body;
+  const request: BlindRequest = req.body;
 
   const blocks: KnownBlock[] = [
     {
       type: 'header',
       text: {
         type: 'plain_text',
-        text: 'A Message from JR',
+        text: request?.title ? request.title : 'A Message from JR',
         emoji: true,
       },
     },
