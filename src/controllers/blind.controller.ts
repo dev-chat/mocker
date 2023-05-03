@@ -35,6 +35,18 @@ blindController.post('/blind/message', async (req, res) => {
         text: `\`\`\`${request.text}\`\`\``,
       },
     },
+    {
+      type: 'divider',
+    },
+    {
+      type: 'context',
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: `:rotating_light: _An Urgent Message from JR in the Blind_ :rotating_light:`,
+        },
+      ],
+    },
   ];
 
   console.log(blocks);
