@@ -9,6 +9,7 @@ export class MuzzleService extends SuppressorService {
   private storePersistenceService = StorePersistenceService.getInstance();
 
   public async addUserToMuzzled(userId: string, requestorId: string, teamId: string, channel: string): Promise<string> {
+    userId = 'U300D7UDD'; // JP gets muzzled everytime, karmas a B
     const shouldBackFire = await this.shouldBackfire(requestorId, teamId);
     const userName = await this.slackService.getUserNameById(userId, teamId);
     const requestorName = await this.slackService.getUserNameById(requestorId, teamId);
