@@ -20,6 +20,7 @@ export class ActivityPersistenceService {
   private static instance: ActivityPersistenceService;
 
   async logActivity(request: EventRequest) {
+    console.log(request.event.user);
     const user: SlackUser | undefined = await getRepository(SlackUser).findOne({
       slackId: request?.event?.user,
       teamId: request?.team_id,
