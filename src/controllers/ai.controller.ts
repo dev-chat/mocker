@@ -49,7 +49,7 @@ aiController.post('/ai/text', async (req, res) => {
     }
 
     const blocks: KnownBlock[] = [];
-    const chunks = generatedText.match(/[\s\S]{1,2999}/g);
+    const chunks = generatedText.match(/[\s\S]{1,2986}/g);
     console.log(generatedText);
     console.log(chunks);
     if (chunks) {
