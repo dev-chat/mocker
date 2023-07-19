@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
-import { KnownBlock, MrkdwnElement, SectionBlock } from '@slack/web-api';
+import { KnownBlock } from '@slack/web-api';
 import { AIService } from '../services/ai/ai.service';
 import { WebService } from '../services/web/web.service';
 import { StoreService } from '../services/store/store.service';
@@ -49,21 +49,17 @@ aiController.post('/ai/text', async (req, res) => {
     }
 
     const blocks: KnownBlock[] = [];
-    const chunks = generatedText.match(/[\s\S]{1,2000}/g);
+    const chunks = generatedText.match(/[\s\S]{1,3000}/g);
     if (chunks) {
-      const section: SectionBlock = {
-        type: 'section',
-        fields: [] as MrkdwnElement[],
-      };
-
       chunks.forEach(chunk => {
-        section?.fields?.push({
-          type: 'mrkdwn',
-          text: `${chunk}`,
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `${chunk}`,
+          },
         });
       });
-
-      blocks.push(section);
     }
 
     blocks.push({
