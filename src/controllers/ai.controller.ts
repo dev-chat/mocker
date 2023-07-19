@@ -62,6 +62,8 @@ aiController.post('/ai/text', async (req, res) => {
           text: `${chunk}`,
         });
       });
+
+      blocks.push(section);
     }
 
     blocks.push({
