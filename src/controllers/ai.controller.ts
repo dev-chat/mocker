@@ -15,6 +15,7 @@ const storeService = new StoreService();
 
 const getChunks = (text: string): string[] => {
   let characterCount = 0;
+  let currentChunk = 0;
   const chunks: string[] = [];
 
   text.split(' ').forEach(word => {
@@ -22,10 +23,14 @@ const getChunks = (text: string): string[] => {
     if (characterCount >= 2920) {
       characterCount = word.length;
       chunks.push(`${word} `);
+      currentChunk += 1;
+    } else if (!chunks[currentChunk]) {
+      chunks[currentChunk] = `${word} `;
     } else {
-      chunks[chunks.length] += `${word} `;
+      chunks[currentChunk] += `${word} `;
     }
   });
+
   return chunks;
 };
 
@@ -67,7 +72,7 @@ aiController.post('/ai/text', async (req, res) => {
     const blocks: KnownBlock[] = [];
 
     const chunks = getChunks(generatedText);
-    console.log(chunks);
+
     if (chunks) {
       chunks.forEach(chunk => {
         blocks.push({
