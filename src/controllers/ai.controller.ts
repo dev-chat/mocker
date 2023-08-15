@@ -19,9 +19,9 @@ const getChunks = (text: string): string[] => {
   const chunks: string[] = [];
 
   text.split(' ').forEach(word => {
-    characterCount += word.length;
+    characterCount += word.length + 1;
     if (characterCount >= 2920) {
-      characterCount = word.length;
+      characterCount = word.length + 1;
       chunks.push(`${word} `);
       currentChunk += 1;
     } else if (!chunks[currentChunk]) {
@@ -100,6 +100,7 @@ aiController.post('/ai/text', async (req, res) => {
       ],
     });
 
+    console.log(blocks);
     webService.sendMessage(request.channel_id, request.text, blocks).catch(e => {
       console.error(e);
       aiService.decrementDaiyRequests(request.user_id, request.team_id);
