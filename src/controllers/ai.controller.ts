@@ -75,6 +75,7 @@ aiController.post('/ai/text', async (req, res) => {
 
     if (chunks) {
       chunks.forEach(chunk => {
+        console.log(chunk.length);
         blocks.push({
           type: 'section',
           text: {
