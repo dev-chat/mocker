@@ -67,6 +67,7 @@ aiController.post('/ai/text', async (req, res) => {
     const blocks: KnownBlock[] = [];
 
     const chunks = getChunks(generatedText);
+    console.log(chunks);
     if (chunks) {
       chunks.forEach(chunk => {
         blocks.push({
