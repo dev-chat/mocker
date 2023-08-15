@@ -13,6 +13,22 @@ const suppressorService = new SuppressorService();
 const aiService = new AIService();
 const storeService = new StoreService();
 
+const getChunks = (text: string): string[] => {
+  let characterCount = 0;
+  const chunks: string[] = [];
+
+  text.split(' ').forEach(word => {
+    characterCount += word.length;
+    if (characterCount >= 2920) {
+      characterCount = word.length;
+      chunks.push(`${word} `);
+    } else {
+      chunks[chunks.length] += `${word} `;
+    }
+  });
+  return chunks;
+};
+
 aiController.post('/ai/text', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   // Hardcoded 4 for Moon Token Item Id.
@@ -49,7 +65,8 @@ aiController.post('/ai/text', async (req, res) => {
     }
 
     const blocks: KnownBlock[] = [];
-    const chunks = generatedText.match(/[\s\S]{1,3000}/g);
+
+    const chunks = getChunks(generatedText);
     if (chunks) {
       chunks.forEach(chunk => {
         blocks.push({
