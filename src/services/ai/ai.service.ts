@@ -1,7 +1,7 @@
 import { Configuration, OpenAIApi } from 'openai';
 import { AIPersistenceService } from './ai.persistence';
 
-const MAX_AI_REQUESTS_PER_DAY = 7;
+const MAX_AI_REQUESTS_PER_DAY = 10;
 
 export class AIService {
   private redis = AIPersistenceService.getInstance();
