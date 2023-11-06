@@ -52,7 +52,7 @@ export class AIService {
         model: 'dall-e-3',
         prompt: text,
         n: 1,
-        size: '256x256',
+        size: '1024x1024',
         // eslint-disable-next-line @typescript-eslint/camelcase
         response_format: 'b64_json',
         user: `${userId}-DaBros2016`,
