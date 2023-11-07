@@ -139,7 +139,7 @@ aiController.post('/ai/image', async (req, res) => {
     res.status(200).send('Processing your request. Please be patient...');
     const generatedImage = await aiService
       .generateImage(request.user_id, request.team_id, request.text)
-      .then(base64Image => webService.uploadFileToImgur(base64Image))
+      .then(base64Image => webService.uploadFileToImgBB(base64Image))
       .catch(e => {
         console.error(e);
         const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;

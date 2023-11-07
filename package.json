@@ -40,9 +40,11 @@
     "openai": "^4.16.1",
     "sentiment": "^5.0.2",
     "typeorm": "^0.2.25",
-    "typescript": "^3.9.7"
+    "typescript": "^3.9.7",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@types/uuid": "^9.0.6",
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-prettier": "^3.1.3",

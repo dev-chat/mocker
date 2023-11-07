@@ -11,6 +11,7 @@ import {
 } from '@slack/web-api';
 import Axios from 'axios';
 import { URLSearchParams } from 'url';
+import { v4 as uuid } from 'uuid';
 
 const MAX_RETRIES = 5;
 
@@ -159,6 +160,23 @@ export class WebService {
       },
     })
       .then(x => x.data.data.link)
+      .catch(e => {
+        throw e;
+      });
+  }
+
+  public async uploadFileToImgBB(base64Image: string): Promise<string | undefined> {
+    const formData = new URLSearchParams();
+    formData.append('image', base64Image);
+
+    return Axios.post(
+      `https://api.imgbb.com/1/upload?expiration=600&key=${process.env.IMG_BB_API_KEY}&name=${uuid()}`,
+      formData,
+    )
+      .then(x => {
+        console.log(x.data);
+        return x.data.data.url;
+      })
       .catch(e => {
         throw e;
       });
