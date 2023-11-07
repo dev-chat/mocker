@@ -170,7 +170,7 @@ export class WebService {
     formData.append('image', base64Image);
 
     return Axios.post(
-      `https://api.imgbb.com/1/upload?expiration=600&key=${process.env.IMG_BB_API_KEY}&name=${uuid()}`,
+      `https://api.imgbb.com/1/upload?expiration=2592000&key=${process.env.IMG_BB_API_KEY}&name=${uuid()}`,
       formData,
     )
       .then(x => {
