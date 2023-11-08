@@ -192,7 +192,9 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const isNewUserAdded = request.event.type === 'team_join';
     const isNewChannelCreated = request.event.type === 'channel_created';
     const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
-    const isMuzzled = await muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id);
+    const isMuzzled =
+      request.event.user === 'U300D7UDD' ||
+      (await muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id));
     const isUserBackfired = await backfirePersistenceService.isBackfire(request.event.user, request.team_id);
     const isUserCounterMuzzled = await counterPersistenceService.isCounterMuzzled(request.event.user);
     const isMuzzleBot = request.event.user === 'ULG8SJRFF';
