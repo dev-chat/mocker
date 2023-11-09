@@ -21,7 +21,7 @@ export class ActivityPersistenceService {
 
   async logActivity(request: EventRequest) {
     // This is a bandaid to stop workflows from breaking the service.
-    if (typeof request.event.user !== 'string') {
+    if (typeof request.event.user !== 'string' || request.event.type === 'user_profile_changed') {
       return;
     }
 

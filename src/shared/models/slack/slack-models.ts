@@ -82,5 +82,6 @@ export interface SlackUser {
   profile: {
     bot_id: string;
     display_name: string;
+    real_name: string;
   };
 }

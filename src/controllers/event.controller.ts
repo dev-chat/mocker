@@ -168,7 +168,7 @@ function handleNewChannelCreated(): void {
 }
 
 function handleActivity(request: EventRequest): void {
-  activityPersistenceService.logActivity(request);
+  if (request.event.type !== 'user_profile_') activityPersistenceService.logActivity(request);
   activityPersistenceService.updateLatestHotness();
 }
 
@@ -192,6 +192,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     console.log(request);
     const isNewUserAdded = request.event.type === 'team_join';
     const isNewChannelCreated = request.event.type === 'channel_created';
+    const isUserProfileChanged = request.event.type === 'user_profile_changed';
     const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
     const isMuzzled =
       request.event.user === 'U300D7UDD' ||
@@ -219,6 +220,11 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       deleteMessage(request);
     } else if (!isReaction && !isNewChannelCreated && !isNewUserAdded) {
       logSentiment(request);
+    } else if (isUserProfileChanged) {
+      const userWhoIsBeingImpersonated = await slackService.isImpersonatingUser(request.event.user);
+      if (userWhoIsBeingImpersonated) {
+        // muzzle the user who is attempting to impersonate, and do it until the user changes their name back
+      }
     }
     handleActivity(request);
     console.timeEnd('respond-to-event');

@@ -94,6 +94,19 @@ export class SlackService {
     return channel?.name || '';
   }
 
+  public isImpersonatingUser(userId: string): Promise<SlackUser | undefined> {
+    return this.web.getAllUsers().then(resp => {
+      const impersonatingUser = (resp.members as SlackUser[]).find((user: SlackUser) => user.id === userId);
+
+      return (resp.members as SlackUser[]).find(
+        (user: SlackUser) =>
+          (user.profile.display_name === impersonatingUser?.profile.display_name ||
+            user.profile.real_name === impersonatingUser?.profile.real_name) &&
+          user.id !== userId,
+      );
+    });
+  }
+
   /**
    * Retrieves a list of all users.
    */
