@@ -219,7 +219,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       handleReaction(request);
     } else if (isInHotAndNotBot) {
       deleteMessage(request);
-    } else if (!isReaction && !isNewChannelCreated && !isNewUserAdded) {
+    } else if (!isReaction && !isNewChannelCreated && !isNewUserAdded && !isUserProfileChanged) {
       logSentiment(request);
     } else if (isUserProfileChanged) {
       const userWhoIsBeingImpersonated = await slackService.isImpersonatingUser(request.event.user);
