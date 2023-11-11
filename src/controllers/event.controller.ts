@@ -192,7 +192,6 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     console.time('respond-to-event');
     res.status(200).send();
     const request: EventRequest = req.body;
-    console.log(request);
     const isNewUserAdded = request.event.type === 'team_join';
     const isNewChannelCreated = request.event.type === 'channel_created';
     const isUserProfileChanged = request.event.type === 'user_profile_changed';
@@ -222,6 +221,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     } else if (!isReaction && !isNewChannelCreated && !isNewUserAdded && !isUserProfileChanged) {
       logSentiment(request);
     } else if (isUserProfileChanged) {
+      console.log(request);
       const userWhoIsBeingImpersonated = await slackService.isImpersonatingUser(request.event.user);
       if (userWhoIsBeingImpersonated) {
         // muzzle the user who is attempting to impersonate, and do it until the user changes their name back
