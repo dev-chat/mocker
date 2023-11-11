@@ -240,7 +240,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
         });
       } else {
         // unmuzzle the user who was impersonated, or do nothing if this person was not impersonating
-        await muzzleService.removePermaMuzzle(request.event.user, request.team_id);
+        await muzzleService.removePermaMuzzle(((request.event.user as unknown) as any).id, request.team_id);
       }
     }
     handleActivity(request);
