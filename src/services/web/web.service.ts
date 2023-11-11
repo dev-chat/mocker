@@ -9,9 +9,6 @@ import {
   KnownBlock,
   Block,
 } from '@slack/web-api';
-import Axios from 'axios';
-import { URLSearchParams } from 'url';
-import { v4 as uuid } from 'uuid';
 
 const MAX_RETRIES = 5;
 
