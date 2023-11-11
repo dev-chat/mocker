@@ -23,6 +23,7 @@ def getRandomListItem(ctx):
   mycursor = ctx.cursor(dictionary=True, buffered=True)
   mycursor.execute("SELECT u.name, l.text, l.createdAt FROM list AS l INNER JOIN slack_user AS u ON u.slackId=l.requestorId WHERE l.channelId='C2ZVBM51V' ORDER BY RAND() LIMIT 1")
   randomItem = mycursor.fetchall()
+  print(randomItem[0]["createdAt"])
   return "On {date}, {name} added the following to the list:\n{item}\nThoughts?".format(date=datetime.datetime.strptime(randomItem[0]["createdAt"], '%Y-%m-%d %H:%M:%S').strftime('%A, %B %d, %Y'), item=randomItem[0]["text"], name=randomItem[0]["name"])
 
 def sendSlackMessage(listItem):
