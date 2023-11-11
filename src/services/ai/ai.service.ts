@@ -1,5 +1,8 @@
 import { OpenAI } from 'openai';
 import { AIPersistenceService } from './ai.persistence';
+import path from 'path';
+import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 
 const MAX_AI_REQUESTS_PER_DAY = 10;
 
@@ -44,6 +47,21 @@ export class AIService {
       });
   }
 
+  public async writeToDiskAndReturnUrl(base64Image: string): Promise<string> {
+    console.log(base64Image);
+    const dir = path.join(__dirname, '../../images');
+    const filename = `${uuidv4()}.png`;
+    const filePath = path.join(dir, filename);
+    const base64Data = base64Image.replace(/^data:image\/png;base64,/, '');
+
+    return new Promise((resolve, reject) =>
+      fs.writeFile(filePath, base64Data, 'base64', err => {
+        if (err) reject(err);
+        resolve(`http://muzzle.lol:8080/${filename}`);
+      }),
+    );
+  }
+
   public async generateImage(userId: string, teamId: string, text: string): Promise<string> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
@@ -65,7 +83,7 @@ export class AIService {
         // eslint-disable-next-line @typescript-eslint/camelcase
         if (b64_json) {
           // eslint-disable-next-line @typescript-eslint/camelcase
-          return b64_json;
+          return this.writeToDiskAndReturnUrl(b64_json);
         } else {
           throw new Error(`No b64_json was returned by OpenAI for prompt: ${text}`);
         }
