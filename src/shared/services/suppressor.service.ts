@@ -64,8 +64,7 @@ export class SuppressorService {
     return (
       (await this.muzzlePersistenceService.isUserMuzzled(userId, teamId)) ||
       (await this.backfirePersistenceService.isBackfire(userId, teamId)) ||
-      (await this.counterPersistenceService.isCounterMuzzled(userId)) ||
-      userId === 'U300D7UDD'
+      (await this.counterPersistenceService.isCounterMuzzled(userId))
     );
   }
 
