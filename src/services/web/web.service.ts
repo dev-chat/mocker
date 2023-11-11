@@ -150,35 +150,4 @@ export class WebService {
       this.web.chat.postEphemeral(options).catch(e => console.error(e));
     });
   }
-
-  public async uploadFileToImgur(base64Image: string): Promise<string | undefined> {
-    const formData = new URLSearchParams();
-    formData.append('image', base64Image);
-    return Axios.post('https://api.imgur.com/3/image', formData, {
-      headers: {
-        Authorization: `Client-ID ${process.env.IMGUR_CLIENT_ID}`,
-      },
-    })
-      .then(x => x.data.data.link)
-      .catch(e => {
-        throw e;
-      });
-  }
-
-  public async uploadFileToImgBB(base64Image: string): Promise<string | undefined> {
-    const formData = new URLSearchParams();
-    formData.append('image', base64Image);
-
-    return Axios.post(
-      `https://api.imgbb.com/1/upload?expiration=2592000&key=${process.env.IMG_BB_API_KEY}&name=${uuid()}`,
-      formData,
-    )
-      .then(x => {
-        console.log(x.data);
-        return x.data.data.url;
-      })
-      .catch(e => {
-        throw e;
-      });
-  }
 }
