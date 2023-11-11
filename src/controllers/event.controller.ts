@@ -222,7 +222,8 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       logSentiment(request);
     } else if (isUserProfileChanged) {
       console.log(request);
-      const userWhoIsBeingImpersonated = await slackService.isImpersonatingUser(request.event.user);
+      const userWhoIsBeingImpersonated = await slackService.getImpersonatedUser(request.event.user);
+      console.log('userWhoIsBeingImpersonated', userWhoIsBeingImpersonated);
       if (userWhoIsBeingImpersonated) {
         // muzzle the user who is attempting to impersonate, and do it until the user changes their name back
         await muzzleService.permaMuzzle(request.event.user, request.team_id).then(() => {
@@ -233,7 +234,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
             )
             .catch(e => console.error(e));
         });
-      } else if (!userWhoIsBeingImpersonated) {
+      } else {
         // unmuzzle the user who was impersonated, or do nothing if this person was not impersonating
         await muzzleService.removePermaMuzzle(request.event.user, request.team_id);
       }

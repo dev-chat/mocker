@@ -94,15 +94,15 @@ export class SlackService {
     return channel?.name || '';
   }
 
-  public isImpersonatingUser(userId: string): Promise<SlackUser | undefined> {
+  public getImpersonatedUser(userId: string): Promise<SlackUser | undefined> {
     return this.web.getAllUsers().then(resp => {
-      const impersonatingUser = (resp.members as SlackUser[]).find((user: SlackUser) => user.id === userId);
-      console.log('impersonatinUserProfile', impersonatingUser?.profile);
+      const potentialImpersonator = (resp.members as SlackUser[]).find((user: SlackUser) => user.id === userId);
+      console.log('impersonatinUserProfile', potentialImpersonator?.profile);
       return (resp.members as SlackUser[]).find(
-        (user: SlackUser) =>
-          (user.profile.display_name === impersonatingUser?.profile.display_name ||
-            user.profile.real_name === impersonatingUser?.profile.real_name) &&
-          user.id !== impersonatingUser?.id,
+        (victim: SlackUser) =>
+          (victim.profile.display_name === potentialImpersonator?.profile.display_name ||
+            victim.profile.real_name === potentialImpersonator?.profile.real_name) &&
+          victim.id !== potentialImpersonator?.id,
       );
     });
   }
