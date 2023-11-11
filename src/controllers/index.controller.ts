@@ -5,6 +5,7 @@ import { confessionController } from './confession.controller';
 import { counterController } from './counter.controller';
 import { defineController } from './define.controller';
 import { eventController } from './event.controller';
+import { healthController } from './health.controller';
 import { listController } from './list.controller';
 import { mockController } from './mock.controller';
 import { muzzleController } from './muzzle.controller';
@@ -20,6 +21,7 @@ export const controllers = [
   counterController,
   defineController,
   eventController,
+  healthController,
   listController,
   mockController,
   muzzleController,
