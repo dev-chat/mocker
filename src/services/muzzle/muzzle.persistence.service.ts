@@ -17,6 +17,39 @@ export class MuzzlePersistenceService {
   private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
   private storePersistenceService = StorePersistenceService.getInstance();
 
+  public addPermaMuzzle(userId: string, teamId: string): Promise<Muzzle> {
+    const muzzle = new Muzzle();
+    muzzle.requestorId = 'perma-muzzle';
+    muzzle.muzzledId = userId;
+    muzzle.teamId = teamId;
+    muzzle.messagesSuppressed = 0;
+    muzzle.wordsSuppressed = 0;
+    muzzle.charactersSuppressed = 0;
+    muzzle.milliseconds = 0;
+    return getRepository(Muzzle)
+      .save(muzzle)
+      .then(async muzzleFromDb => {
+        await this.redis.setValue(
+          this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled),
+          muzzleFromDb.id.toString(),
+        );
+        await this.redis.setValue(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled, true), '0');
+        return muzzleFromDb;
+      });
+  }
+
+  public async removePermaMuzzle(userId: string, teamId: string): Promise<boolean> {
+    const muzzleId: string | null = await this.redis.getValue(
+      this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled),
+    );
+    if (muzzleId) {
+      await this.redis.removeKey(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled));
+      await this.redis.removeKey(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled, true));
+      return true;
+    }
+    return false;
+  }
+
   public addMuzzle(
     requestorId: string,
     muzzledId: string,

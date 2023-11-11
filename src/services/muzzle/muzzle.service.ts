@@ -3,14 +3,21 @@ import { getTimeString, getTimeToMuzzle } from './muzzle-utilities';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 import { CounterService } from '../counter/counter.service';
 import { StorePersistenceService } from '../store/store.persistence.service';
+import { Muzzle } from '../../shared/db/models/Muzzle';
 
 export class MuzzleService extends SuppressorService {
   private counterService = new CounterService();
   private storePersistenceService = StorePersistenceService.getInstance();
 
-  public async permaMuzzle(userId: string, teamId: string): Promise<string> {
-    console.log(`shouldve perma-muzzled ${userId}`);
-    return userId + teamId;
+  public permaMuzzle(impersonatingUserId: string, teamId: string): Promise<Muzzle> {
+    console.log(`perma-muzzling ${impersonatingUserId}`);
+
+    return this.muzzlePersistenceService.addPermaMuzzle(impersonatingUserId, teamId);
+  }
+
+  public removePermaMuzzle(impersonatingUserId: string, teamId: string): Promise<boolean> {
+    console.log('removing perma-muzzle for', impersonatingUserId);
+    return this.muzzlePersistenceService.removePermaMuzzle(impersonatingUserId, teamId);
   }
 
   public async addUserToMuzzled(userId: string, requestorId: string, teamId: string, channel: string): Promise<string> {
