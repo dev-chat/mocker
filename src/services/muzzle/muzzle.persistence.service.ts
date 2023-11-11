@@ -29,6 +29,7 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle)
       .save(muzzle)
       .then(async muzzleFromDb => {
+        console.log(muzzleFromDb);
         await this.redis.setValue(
           this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled),
           muzzleFromDb.id.toString(),

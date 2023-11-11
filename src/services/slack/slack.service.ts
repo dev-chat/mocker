@@ -97,12 +97,12 @@ export class SlackService {
   public isImpersonatingUser(userId: string): Promise<SlackUser | undefined> {
     return this.web.getAllUsers().then(resp => {
       const impersonatingUser = (resp.members as SlackUser[]).find((user: SlackUser) => user.id === userId);
-
+      console.log('impersonatinUserProfile', impersonatingUser?.profile);
       return (resp.members as SlackUser[]).find(
         (user: SlackUser) =>
           (user.profile.display_name === impersonatingUser?.profile.display_name ||
             user.profile.real_name === impersonatingUser?.profile.real_name) &&
-          user.id !== userId,
+          user.id !== impersonatingUser?.id,
       );
     });
   }
