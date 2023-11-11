@@ -224,6 +224,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       const userWhoIsBeingImpersonated = await slackService.isImpersonatingUser(request.event.user);
       if (userWhoIsBeingImpersonated) {
         // muzzle the user who is attempting to impersonate, and do it until the user changes their name back
+        muzzleService.permaMuzzle(request.event.user, request.team_id);
       }
     }
     handleActivity(request);

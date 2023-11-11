@@ -8,15 +8,9 @@ export class MuzzleService extends SuppressorService {
   private counterService = new CounterService();
   private storePersistenceService = StorePersistenceService.getInstance();
 
-  public async handleImpersonation(userId: string, teamId: string, username: string): Promise<any> {
-    const userName = await this.slackService.getUserNameById(userId, teamId);
-    // if the uesrname matches any other username in the db, muzzle that user
-    if (impersonatedUser) {
-      const timeToMuzzle =
-        getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(impersonatedUser, teamId));
-      await this.muzzlePersistenceService.addMuzzle(impersonatedUser, userId, teamId, timeToMuzzle);
-      return `:cop: <@${userId}> attempted to impersonate <@${impersonatedUser}> but was caught! :cop:`;
-    }
+  public async permaMuzzle(userId: string, teamId: string): Promise<string> {
+    console.log(`shouldve perma-muzzled ${userId}`);
+    return userId + teamId;
   }
 
   public async addUserToMuzzled(userId: string, requestorId: string, teamId: string, channel: string): Promise<string> {
