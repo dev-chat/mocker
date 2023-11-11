@@ -20,7 +20,7 @@ session.mount('https://', adapter)
 
 def getRandomListItem(ctx):
   mycursor = ctx.cursor(dictionary=True, buffered=True)
-  mycursor.execute("SELECT u.name, l.text FROM list AS l INNER JOIN slack_user AS u ON u.slackId=l.requestorId WHERE l.channelId=C2ZVBM51V ORDER BY RAND() LIMIT 1", (user, item))
+  mycursor.execute("SELECT u.name, l.text FROM list AS l INNER JOIN slack_user AS u ON u.slackId=l.requestorId WHERE l.channelId=C2ZVBM51V ORDER BY RAND() LIMIT 1")
   randomItem = mycursor.fetchall()
   return "{item} - {name}".format(item=randomItem[0]["text"], name=randomItem[0]["name"])
 
