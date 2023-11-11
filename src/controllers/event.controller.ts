@@ -168,7 +168,10 @@ function handleNewChannelCreated(): void {
 }
 
 function handleActivity(request: EventRequest): void {
-  if (request.event.type !== 'user_profile_') activityPersistenceService.logActivity(request);
+  if (request.event.type !== 'user_profile_changed') {
+    return;
+  }
+  activityPersistenceService.logActivity(request);
   activityPersistenceService.updateLatestHotness();
 }
 
