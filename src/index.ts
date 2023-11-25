@@ -26,7 +26,8 @@ const signatureVerification = (req: any, res: Response, next: NextFunction) => {
     req.body.token === process.env.CLAPPER_TOKEN ||
     req.body.token === process.env.MOCKER_TOKEN ||
     req.body.token === process.env.DEFINE_TOKEN ||
-    req.body.token === process.env.BLIND_TOKEN
+    req.body.token === process.env.BLIND_TOKEN ||
+    req.hostname === 'localhost'
   ) {
     next();
   } else {
