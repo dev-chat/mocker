@@ -30,7 +30,7 @@ def sendSlackMessage():
   try:
       client.api_call(
         api_method='chat.postMessage',
-        json={'channel': '#general','text': ':siren: ALERT! ALERT! MUZZLE IS DOWN! :siren:'}
+        json={'channel': '#muzzlefeedback','text': ':siren: MUZZLE IS DOWN!! :siren:'}
       )
     
   except SlackApiError as e:
