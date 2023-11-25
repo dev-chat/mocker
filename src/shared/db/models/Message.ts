@@ -18,7 +18,7 @@ export class Message {
   @Column({ default: 'NOT_AVAILABLE' })
   public channel!: string;
 
-  @Column()
+  @Column('text')
   public message!: string;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
