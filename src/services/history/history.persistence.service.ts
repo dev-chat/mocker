@@ -36,7 +36,7 @@ export class HistoryPersistenceService {
     const teamId = request.team_id;
     const channel = request.channel_id;
     const query = `
-    select message.*, slack_user.name, message.createdAt from message INNER JOIN slack_user ON slack_user.id=message.userIdId WHERE message.createdAt >= NOW() - INTERVAL 30 MINUTE AND message.teamId=? AND message.channel=? ORDER BY createdAt ASC;`;
+    select message.*, slack_user.name, message.createdAt from message INNER JOIN slack_user ON slack_user.id=message.userIdId WHERE message.createdAt >= NOW() - INTERVAL 30 MINUTE AND message.teamId=? AND message.channel=? AND message.userIdId != 39 ORDER BY createdAt ASC;`;
 
     return getRepository(Message).query(query, [teamId, channel]);
   }
