@@ -1,5 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany } from 'typeorm';
 import { Activity } from './Activity';
+import { Message } from './Message';
 
 @Entity()
 @Unique(['slackId', 'teamId'])
@@ -27,4 +28,10 @@ export class SlackUser {
     activity => activity.userId,
   )
   public activity!: Activity[];
+
+  @OneToMany(
+    _type => Message,
+    message => message.userId,
+  )
+  public messages!: Message[];
 }
