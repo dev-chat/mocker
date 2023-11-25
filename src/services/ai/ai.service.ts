@@ -98,7 +98,7 @@ export class AIService {
   public formatHistory(history: MessageWithName[]): string {
     return history
       .map(x => {
-        return `${x.name} said: ${x.message}`;
+        return `${x.name}: ${x.message}`;
       })
       .join('\n');
   }
@@ -112,7 +112,7 @@ export class AIService {
         messages: [
           {
             role: 'system',
-            content: 'please give a summary of the conversation that occurred in the following array of messages:',
+            content: 'please give a bulleted summary of the conversation that occurred in the following messages:',
           },
           { role: 'system', content: history },
         ],
