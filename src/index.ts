@@ -27,7 +27,7 @@ const signatureVerification = (req: any, res: Response, next: NextFunction) => {
     req.body.token === process.env.MOCKER_TOKEN ||
     req.body.token === process.env.DEFINE_TOKEN ||
     req.body.token === process.env.BLIND_TOKEN ||
-    req.hostname === 'localhost'
+    req.hostname === '127.0.0.1'
   ) {
     next();
   } else {
