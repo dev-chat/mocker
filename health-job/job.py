@@ -15,6 +15,7 @@ session.mount('https://', adapter)
 def getHealth():
   url = "https://muzzle.lol:3000/health"
   health = session.get(url)
+  print(health)
   if (health.ok == False):
     sendSlackMessage()
 
