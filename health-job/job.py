@@ -7,11 +7,6 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from urllib3 import Retry
 
-urls = [
-  { "url": "https://uselessfacts.jsph.pl/random.json?language=en", "fieldName": "text" },
-  { "url": "https://api.api-ninjas.com/v1/facts?limit=1", "fieldName": "fact", "headers": { "X-Api-Key": "{ninjaApiKey}".format(ninjaApiKey=os.environ["API_NINJA_KEY"])}}
-  ]
-
 ssl._create_default_https_context = ssl._create_unverified_context
 
 session = requests.session()
@@ -24,16 +19,26 @@ adapter = requests.adapters.HTTPAdapter(max_retries=retry)
 session.mount('http://', adapter)
 session.mount('https://', adapter)
 
-def getFacts(ctx):
-  facts = []
-  
-  while(len(facts) < 5):
-    fact = getFact()
-    if isNewFact(fact["fact"], fact["source"], ctx):
-      addIdToDb(fact["fact"], fact["source"], ctx)
-      facts.append(fact)
+def getHealth():
+  url = "https://muzzle.lol:3000/health"
+  health = session.get(url)
+  if (health.ok == False):
+    raise Exception("Health check failed")
 
-  return facts
+def sendSlackMessage(facts, joke, quote, onThisDay):
+  slack_token = os.environ["MUZZLE_BOT_TOKEN"]
+  client = WebClient(token=slack_token)
+
+  try:
+      client.api_call(
+        api_method='chat.postMessage',
+        json={'channel': '#general','blocks': blocks}
+      )
+    
+  except SlackApiError as e:
+      # You will get a SlackApiError if "ok" is False
+      print(e)
+      assert e.response["error"]
 
 def getQuote():
   url = random.choice(quotes)
