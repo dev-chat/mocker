@@ -1,7 +1,8 @@
 import { InsertResult, getRepository } from 'typeorm';
 import { SlackUser } from '../../shared/db/models/SlackUser';
-import { EventRequest } from '../../shared/models/slack/slack-models';
+import { EventRequest, SlashCommandRequest } from '../../shared/models/slack/slack-models';
 import { Message } from '../../shared/db/models/Message';
+import { MessageWithName } from '../../shared/models/message/message-with-name';
 
 export class HistoryPersistenceService {
   public static getInstance(): HistoryPersistenceService {
@@ -29,5 +30,14 @@ export class HistoryPersistenceService {
     message.userId = user as SlackUser;
     message.message = request.event.text;
     return getRepository(Message).insert(message);
+  }
+
+  async getHistory(request: SlashCommandRequest): Promise<MessageWithName[]> {
+    const teamId = request.team_id;
+    const channel = request.channel_id;
+    const query = `
+    select message.*, slack_user.name, message.createdAt from message INNER JOIN slack_user ON slack_user.id=message.userIdId WHERE message.createdAt >= NOW() - INTERVAL 30 MINUTE AND teamId=? AND channel=? ORDER BY createdAt DESC;`;
+
+    return getRepository(Message).query(query, [teamId, channel]);
   }
 }

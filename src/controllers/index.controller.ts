@@ -11,6 +11,7 @@ import { mockController } from './mock.controller';
 import { muzzleController } from './muzzle.controller';
 import { reactionController } from './reaction.controller';
 import { storeController } from './store.controller';
+import { summaryController } from './summary.controller';
 import { walkieController } from './walkie.controller';
 
 export const controllers = [
@@ -27,5 +28,6 @@ export const controllers = [
   muzzleController,
   reactionController,
   storeController,
+  summaryController,
   walkieController,
 ];

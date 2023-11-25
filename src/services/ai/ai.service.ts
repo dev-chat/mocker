@@ -3,6 +3,7 @@ import { AIPersistenceService } from './ai.persistence';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { MessageWithName } from '../../shared/models/message/message-with-name';
 
 const MAX_AI_REQUESTS_PER_DAY = 10;
 
@@ -87,6 +88,40 @@ export class AIService {
         } else {
           throw new Error(`No b64_json was returned by OpenAI for prompt: ${text}`);
         }
+      })
+      .catch(async e => {
+        await this.redis.removeInflight(userId, teamId);
+        await this.redis.decrementDailyRequests(userId, teamId);
+        throw e;
+      });
+  }
+
+  public formatHistory(history: MessageWithName[]): string {
+    return history
+      .map(x => {
+        return `${x.name} said: ${x.message}`;
+      })
+      .join('\n');
+  }
+
+  public async getSummary(userId: string, teamId: string, history: string): Promise<string | undefined> {
+    await this.redis.setInflight(userId, teamId);
+    await this.redis.setDailyRequests(userId, teamId);
+    return this.openai.chat.completions
+      .create({
+        model: 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content: 'please give a summary of the conversation that occurred in the following array of messages:',
+          },
+          { role: 'system', content: history },
+        ],
+        user: `${userId}-DaBros2016`,
+      })
+      .then(async x => {
+        await this.redis.removeInflight(userId, teamId);
+        return x.choices[0].message?.content?.trim();
       })
       .catch(async e => {
         await this.redis.removeInflight(userId, teamId);
