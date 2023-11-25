@@ -14,6 +14,7 @@ import { SlackService } from '../services/slack/slack.service';
 import { WebService } from '../services/web/web.service';
 import { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
+import { HistoryPersistenceService } from '../services/history/history.persistence.service';
 
 export const eventController: Router = express.Router();
 
@@ -29,6 +30,7 @@ const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const counterPersistenceService = CounterPersistenceService.getInstance();
 const activityPersistenceService = ActivityPersistenceService.getInstance();
+const historyPersistenceService = HistoryPersistenceService.getInstance();
 
 async function handleMuzzledMessage(request: EventRequest): Promise<void> {
   const containsTag = slackService.containsTag(request.event.text);
@@ -184,6 +186,10 @@ function logSentiment(request: EventRequest): void {
   );
 }
 
+function logHistory(request: EventRequest): void {
+  historyPersistenceService.logHistory(request);
+}
+
 // Change route to /event/handle instead.
 eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
   if (req.body.challenge) {
@@ -220,6 +226,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       deleteMessage(request);
     } else if (!isReaction && !isNewChannelCreated && !isNewUserAdded && !isUserProfileChanged) {
       logSentiment(request);
+      logHistory(request);
     } else if (isUserProfileChanged) {
       console.log(request);
       const userWhoIsBeingImpersonated = await slackService.getImpersonatedUser(
