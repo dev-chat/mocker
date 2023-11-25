@@ -6,10 +6,8 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-mysql-connector-python = "*"
-mysql-connector = "*"
 requests = "*"
 slack-sdk = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "~=3.8"
