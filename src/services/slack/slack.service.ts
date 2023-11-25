@@ -66,12 +66,6 @@ export class SlackService {
     fromBlocksId?: string,
     fromBlocksIdSpoiler?: string,
   ): string | undefined {
-    console.log(fromText);
-    console.log(fromAttachmentText);
-    console.log(fromPretext);
-    console.log(fromCallbackId);
-    console.log(fromBlocksId);
-    console.log(fromBlocksIdSpoiler);
     return fromText || fromAttachmentText || fromPretext || fromCallbackId || fromBlocksId || fromBlocksIdSpoiler;
   }
   /**

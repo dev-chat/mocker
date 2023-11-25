@@ -228,7 +228,6 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       logSentiment(request);
       logHistory(request);
     } else if (isUserProfileChanged) {
-      console.log(request);
       const userWhoIsBeingImpersonated = await slackService.getImpersonatedUser(
         ((request.event.user as unknown) as any).id,
       );

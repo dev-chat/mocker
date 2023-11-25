@@ -50,7 +50,6 @@ summaryController.post('/summary', async (req, res) => {
 
     if (chunks) {
       chunks.forEach(chunk => {
-        console.log(chunk.length);
         blocks.push({
           type: 'section',
           text: {
@@ -75,7 +74,6 @@ summaryController.post('/summary', async (req, res) => {
       ],
     });
 
-    console.log(blocks);
     webService.sendMessage(request.channel_id, request.text, blocks).catch(e => {
       console.error(e);
       aiService.decrementDaiyRequests(request.user_id, request.team_id);
