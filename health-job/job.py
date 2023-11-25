@@ -13,10 +13,14 @@ session.mount('http://', adapter)
 session.mount('https://', adapter)
 
 def getHealth():
-  url = "http://127.0.0.1:3000/health"
-  health = session.get(url)
-  print(health)
-  if (health.ok == False):
+  try:
+    url = "http://127.0.0.1:3000/health"
+    health = session.get(url)
+    print(health)
+    if (health.ok == False):
+      sendSlackMessage()
+  except requests.exceptions.ConnectionError as e:
+    print(e)
     sendSlackMessage()
 
 def sendSlackMessage():
