@@ -69,7 +69,7 @@ summaryController.post('/summary', async (req, res) => {
       elements: [
         {
           type: 'mrkdwn',
-          text: `:book: _Summary of the last 30 minutes as requested by <@${request.user_id}>_ :book:`,
+          text: `:book: _Summary as requested by <@${request.user_id}>_ :book:`,
         },
       ],
     });
