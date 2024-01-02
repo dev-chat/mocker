@@ -112,7 +112,7 @@ export class AIService {
         messages: [
           {
             role: 'system',
-            content: 'please give a bulleted summary of the conversation that occurred in the following messages:',
+            content: 'please give 5 bullet summary of the conversation that occurred in the following messages:',
           },
           { role: 'system', content: history },
         ],
