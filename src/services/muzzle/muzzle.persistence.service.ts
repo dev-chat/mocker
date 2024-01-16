@@ -92,7 +92,7 @@ export class MuzzlePersistenceService {
           if (defensiveItemId) {
             this.storePersistenceService.setItemKill(muzzleFromDb.id, [defensiveItemId]);
           }
-          resolve();
+          resolve(muzzleFromDb);
         })
         .catch(e => reject(e));
     });

@@ -1,7 +1,7 @@
 import { getRepository, UpdateResult } from 'typeorm';
 import { Counter } from '../../shared/db/models/Counter';
 import { CounterItem, CounterMuzzle } from '../../shared/models/counter/counter-models';
-import { getRemainingTime } from '../muzzle/muzzle-utilities';
+import { getRemainingTime, Timeout } from '../muzzle/muzzle-utilities';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { WebService } from '../web/web.service';
 import { COUNTER_TIME, SINGLE_DAY_MS } from './constants';
@@ -52,7 +52,7 @@ export class CounterPersistenceService {
       this.counterMuzzles.set(userId, {
         suppressionCount: counterMuzzle.suppressionCount,
         counterId: counterMuzzle.counterId,
-        removalFn: setTimeout(() => this.removeCounterMuzzle(userId), newTime),
+        removalFn: setTimeout(() => this.removeCounterMuzzle(userId), newTime) as Timeout,
       });
     }
   }
@@ -62,7 +62,7 @@ export class CounterPersistenceService {
   }
 
   public async setCounteredToTrue(id: number, requestorId: string | undefined): Promise<Counter> {
-    const counter = await getRepository(Counter).findOne(id);
+    const counter = await getRepository(Counter).findOne({ where: { id } });
     counter!.countered = true;
     if (requestorId) {
       counter!.counteredId = requestorId;
@@ -100,7 +100,7 @@ export class CounterPersistenceService {
     this.counterMuzzles.set(userId, {
       suppressionCount: 0,
       counterId,
-      removalFn: setTimeout(() => this.removeCounterMuzzle(userId), COUNTER_TIME),
+      removalFn: setTimeout(() => this.removeCounterMuzzle(userId), COUNTER_TIME) as Timeout,
     });
   }
 
@@ -159,7 +159,7 @@ export class CounterPersistenceService {
   private setCounterState(requestorId: string, counterId: number, teamId: string): void {
     this.counters.set(counterId, {
       requestorId,
-      removalFn: setTimeout(() => this.removeCounter(counterId, false, '#general', teamId), COUNTER_TIME),
+      removalFn: setTimeout(() => this.removeCounter(counterId, false, '#general', teamId), COUNTER_TIME) as Timeout,
     });
   }
 

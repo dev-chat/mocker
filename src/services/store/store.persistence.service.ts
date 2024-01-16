@@ -7,6 +7,9 @@ import { Purchase } from '../../shared/db/models/Purchase';
 import { UsedItem } from '../../shared/db/models/UsedItem';
 import { ItemKill } from '../../shared/db/models/ItemKill';
 
+interface ItemWithPrice extends Item {
+  price: number;
+}
 export class StorePersistenceService {
   public static getInstance(): StorePersistenceService {
     if (!StorePersistenceService.instance) {
@@ -18,7 +21,7 @@ export class StorePersistenceService {
   private static instance: StorePersistenceService;
   private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
 
-  async getItems(teamId: string): Promise<any[]> {
+  async getItems(teamId: string): Promise<ItemWithPrice[]> {
     const items = await getRepository(Item).find();
     const itemsWithPrices = await Promise.all(
       items.map(async (item: Item) => {
@@ -31,11 +34,11 @@ export class StorePersistenceService {
     return itemsWithPrices;
   }
 
-  async getItem(itemId: number, teamId: string): Promise<any | undefined> {
+  async getItem(itemId: number, teamId: string): Promise<ItemWithPrice | undefined> {
     if (isNaN(itemId)) {
       return undefined;
     } else {
-      const item = await getRepository(Item).findOne({ id: itemId });
+      const item = await getRepository(Item).findOne({ where: { id: itemId } });
       const price = await getManager().query(
         `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
       );
@@ -46,13 +49,13 @@ export class StorePersistenceService {
   }
 
   isItemActive(userId: string, teamId: string, itemId: number): Promise<boolean> {
-    return this.redisService.getValue(this.getRedisKeyName(userId, teamId, itemId)).then(x => !!x);
+    return this.redisService.getValue(this.getRedisKeyName(userId, teamId, itemId)).then((x) => !!x);
   }
 
   // Returns active OFFENSIVE items.
   async getActiveItems(userId: string, teamId: string): Promise<string[]> {
-    const defensiveItems = await getRepository(Item).find({ isDefensive: true });
-    return this.redisService.getPattern(this.getRedisKeyName(userId, teamId)).then(result => {
+    const defensiveItems = await getRepository(Item).find({ where: { isDefensive: true } });
+    return this.redisService.getPattern(this.getRedisKeyName(userId, teamId)).then((result) => {
       const items: string[] = result.map((item: string): string => {
         const itemArr = item.split('.');
         let isDefensive = false;
@@ -64,7 +67,7 @@ export class StorePersistenceService {
         // Hardcoded because we can rely on this being the itemName per getRedisKeyName
         return !isDefensive ? itemArr[3] : '';
       });
-      const filtered: string[] = items.filter(item => item !== '');
+      const filtered: string[] = items.filter((item) => item !== '');
       return filtered;
     });
   }
@@ -81,29 +84,27 @@ export class StorePersistenceService {
   }
 
   async getTimeModifiers(userId: string, teamId: string) {
-    const modifiers = await getRepository(Item).find({ isTimeModifier: true });
+    const modifiers = await getRepository(Item).find({ where: { isTimeModifier: true } });
     const time: number[] = await Promise.all(
-      modifiers.map(
-        async (modifier): Promise<number> => {
-          return this.redisService
-            .getPattern(this.getRedisKeyName(userId, teamId, modifier.id))
-            .then((result): number => {
-              return result.length
-                ? getMsForSpecifiedRange(modifier.min_modified_ms, modifier.max_modified_ms) * result.length
-                : 0;
-            });
-        },
-      ),
+      modifiers.map(async (modifier): Promise<number> => {
+        return this.redisService
+          .getPattern(this.getRedisKeyName(userId, teamId, modifier.id))
+          .then((result): number => {
+            return result.length
+              ? getMsForSpecifiedRange(modifier.min_modified_ms, modifier.max_modified_ms) * result.length
+              : 0;
+          });
+      }),
     );
 
     return time.reduce((accum, value) => accum + value);
   }
 
   async isProtected(userId: string, teamId: string): Promise<string | false> {
-    const protectorItems = await getRepository(Item).find({ isDefensive: true });
+    const protectorItems = await getRepository(Item).find({ where: { isDefensive: true } });
 
     const activeProtection: string[][] = await Promise.all(
-      protectorItems.map(async item => {
+      protectorItems.map(async (item) => {
         return this.redisService.getPattern(this.getRedisKeyName(userId, teamId, item.id));
       }),
     );
@@ -119,8 +120,8 @@ export class StorePersistenceService {
 
   // TODO: Fix this query. This is so nasty.
   async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
-    const itemById = await getRepository(Item).findOne(itemId);
-    const userById = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
+    const itemById = await getRepository(Item).findOne({ where: { id: itemId } });
+    const userById = await getRepository(SlackUser).findOne({ where: { slackId: userId, teamId } });
     const priceByTeam = await getManager().query(
       `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
     );
@@ -134,8 +135,8 @@ export class StorePersistenceService {
       purchase.user = userById.slackId;
       return getRepository(Purchase)
         .insert(purchase)
-        .then(_result => `Congratulations! You have purchased *_${itemById.name}!_*`)
-        .catch(e => {
+        .then(() => `Congratulations! You have purchased *_${itemById.name}!_*`)
+        .catch((e) => {
           console.error('Error on updating purchase table');
           console.error(e);
           return `Sorry, unable to buy ${itemById.name}. Please try again later.`;
@@ -146,12 +147,16 @@ export class StorePersistenceService {
 
   // TODO: Fix this query.
   async useItem(itemId: number, userId: string, teamId: string, userIdForItem?: string): Promise<string> {
-    const usingUser: SlackUser | undefined = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
-    const receivingUser: SlackUser | undefined = await getRepository(SlackUser).findOne({
-      slackId: userIdForItem,
-      teamId,
+    const usingUser: SlackUser | null = await getRepository(SlackUser).findOne({
+      where: { slackId: userId, teamId },
     });
-    const itemById: Item | undefined = await getRepository(Item).findOne(itemId);
+    const receivingUser: SlackUser | null = await getRepository(SlackUser).findOne({
+      where: {
+        slackId: userIdForItem,
+        teamId,
+      },
+    });
+    const itemById: Item | null = await getRepository(Item).findOne({ where: { id: itemId } });
     if (itemById?.isEffect) {
       const keyName = this.getRedisKeyName(receivingUser ? receivingUser.slackId : userId, teamId, itemId);
       const existingKey = await this.redisService.getPattern(keyName);
@@ -195,8 +200,8 @@ export class StorePersistenceService {
 
   isUserRequired(itemId: number): Promise<boolean> {
     return getRepository(Item)
-      .findOne({ id: itemId })
-      .then(item => {
+      .findOne({ where: { id: itemId } })
+      .then((item) => {
         if (item) {
           return item.requiresUser;
         } else {

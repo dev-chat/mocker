@@ -1,4 +1,4 @@
-import ioredis, { Redis } from 'ioredis';
+import { Redis } from 'ioredis';
 
 export class RedisPersistenceService {
   public static getInstance(): RedisPersistenceService {
@@ -8,9 +8,12 @@ export class RedisPersistenceService {
     return RedisPersistenceService.instance;
   }
 
+  constructor() {
+    RedisPersistenceService.redis.on('connect', () => console.log('Successfully connected to Redis'));
+  }
+
   private static instance: RedisPersistenceService;
-  private static redis: Redis = new ioredis().on('connect', () => console.log('Connected to Redis.'));
-  private static subscriber: Redis = new ioredis().on('connect', () => console.log('Created new subscriber'));
+  private static redis: Redis = new Redis();
 
   getValue(key: string): Promise<string | null> {
     return RedisPersistenceService.redis.get(key);
@@ -20,8 +23,13 @@ export class RedisPersistenceService {
     return RedisPersistenceService.redis.set(key, value, 'KEEPTTL');
   }
 
-  setValueWithExpire(key: string, value: string | number, expiryMode: string, time: number): Promise<string | null> {
-    return RedisPersistenceService.redis.set(key, value, expiryMode, time);
+  setValueWithExpire(key: string, value: string | number, expiryMode: string, time: number): Promise<unknown | null> {
+    if (expiryMode === 'EX') {
+      return RedisPersistenceService.redis.setex(key, time, value);
+    } else if (expiryMode === 'PX') {
+      return RedisPersistenceService.redis.psetex(key, time, value);
+    }
+    throw Error(`Unknown expiryMode: ${expiryMode}. Please use EX or PX.`);
   }
 
   getTimeRemaining(key: string): Promise<number> {
@@ -33,8 +41,8 @@ export class RedisPersistenceService {
   }
 
   // Left off here.
-  subscribe(channel: string): Promise<number> {
-    return RedisPersistenceService.subscriber.subscribe(channel);
+  subscribe(channel: string): Promise<unknown> {
+    return RedisPersistenceService.redis.subscribe(channel);
   }
 
   getPattern(pattern: string): Promise<string[]> {

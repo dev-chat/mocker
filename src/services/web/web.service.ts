@@ -8,6 +8,7 @@ import {
   ChatUpdateArguments,
   KnownBlock,
   Block,
+  ConversationsListResponse,
 } from '@slack/web-api';
 
 const MAX_RETRIES = 5;
@@ -34,20 +35,19 @@ export class WebService {
       token: muzzleToken,
       channel,
       ts,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       as_user: true,
     };
 
     this.web.chat
       .delete(deleteRequest)
-      .then(r => {
+      .then((r) => {
         if (r.error) {
           console.error(r.error);
           console.error(deleteRequest);
           console.log(user);
         }
       })
-      .catch(e => {
+      .catch((e) => {
         console.error(e);
         if (e.data.error !== 'message_not_found') {
           console.error(e);
@@ -69,8 +69,8 @@ export class WebService {
     };
     return this.web.chat
       .postEphemeral(postRequest)
-      .then(result => result)
-      .catch(e => {
+      .then((result) => result)
+      .catch((e) => {
         console.error(e);
         console.log(postRequest);
         return e;
@@ -94,8 +94,8 @@ export class WebService {
 
     return this.web.chat
       .postMessage(postRequest)
-      .then(result => result)
-      .catch(e => {
+      .then((result) => result)
+      .catch((e) => {
         console.error(e);
         console.error(e.data);
         console.log(postRequest);
@@ -111,15 +111,15 @@ export class WebService {
       ts,
       token,
     };
-    this.web.chat.update(update).catch(e => console.error(e));
+    this.web.chat.update(update).catch((e) => console.error(e));
   }
 
   public getAllUsers(): Promise<WebAPICallResult> {
     return this.web.users.list();
   }
 
-  public getAllChannels(): Promise<any> {
-    return this.web.conversations.list().catch(e => console.log(e));
+  public getAllChannels(): Promise<ConversationsListResponse> {
+    return this.web.conversations.list();
   }
 
   public uploadFile(channel: string, content: string, title: string, userId: string): void {
@@ -129,22 +129,21 @@ export class WebService {
       content,
       filetype: 'auto',
       title,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       initial_comment: title,
       token: muzzleToken,
     };
 
-    this.web.files.upload(uploadRequest).catch((e: any) => {
+    this.web.files.upload(uploadRequest).catch((e: unknown) => {
       console.error(e);
       const options: ChatPostEphemeralArguments = {
         channel,
         text:
-          e.data.error === 'not_in_channel'
+          (e as Record<string, Record<string, string>>).data.error === 'not_in_channel'
             ? `Oops! I tried to post the stats you requested but it looks like I haven't been added to that channel yet. Can you please add me? Just type \`@muzzle\` in the channel!`
             : `Oops! I tried to post the stats you requested but it looks like something went wrong. Please try again later.`,
         user: userId,
       };
-      this.web.chat.postEphemeral(options).catch(e => console.error(e));
+      this.web.chat.postEphemeral(options).catch((e) => console.error(e));
     });
   }
 }

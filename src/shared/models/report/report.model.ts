@@ -13,26 +13,52 @@ export interface ReportRange {
   reportType: ReportType;
 }
 
-export interface MuzzleReport {
-  muzzled: MuzzleReportItem;
-  muzzlers: MuzzleReportItem;
-  accuracy: Accuracy[];
-  kdr: any[];
-  rawNemesis: any[];
-  successNemesis: any[];
-  backfires: any[];
-}
-
 export interface ReportCount {
   slackId: string;
   count: number;
 }
 
 export interface Accuracy {
-  requestorId: number;
+  requestorId: string;
   accuracy: number;
   kills: number;
   deaths: number;
+}
+
+export interface KDR {
+  requestorId: string;
+  kdr: number;
+  kills: number;
+  deaths: number;
+}
+
+export interface RawNemesis {
+  requestorId: string;
+  muzzledId: string;
+  killCount: number;
+}
+
+export interface SuccessNemesis {
+  requestorId: string;
+  muzzledId: string;
+  killCount: number;
+}
+
+export interface Backfires {
+  muzzledId: string;
+  backfires: number;
+  muzzles: number;
+  backfirePct: number;
+}
+
+export interface MuzzleReport {
+  muzzled: MuzzleReportItem;
+  muzzlers: MuzzleReportItem;
+  accuracy: Accuracy[];
+  kdr: KDR[];
+  rawNemesis: RawNemesis[];
+  successNemesis: SuccessNemesis[];
+  backfires: Backfires[];
 }
 
 interface MuzzleReportItem {

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/camelcase */
 interface ReactionValue {
   [key: string]: number;
 }

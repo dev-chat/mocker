@@ -129,9 +129,7 @@ aiController.post('/ai/image', async (req, res) => {
     const blocks: KnownBlock[] = [
       {
         type: 'image',
-        // eslint-disable-next-line @typescript-eslint/camelcase
         image_url: generatedImage,
-        // eslint-disable-next-line @typescript-eslint/camelcase
         alt_text: request.text,
       },
       {

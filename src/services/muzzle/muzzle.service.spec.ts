@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/camelcase */
 import { when } from 'jest-when';
 import { Muzzle } from '../../shared/db/models/Muzzle';
 import { WebService } from '../web/web.service';
 import { MAX_SUPPRESSIONS } from './constants';
-import * as muzzleUtils from './muzzle-utilities';
 import { MuzzlePersistenceService } from './muzzle.persistence.service';
 import { MuzzleService } from './muzzle.service';
 

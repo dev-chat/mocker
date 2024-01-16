@@ -64,7 +64,7 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
             ABUSE_PENALTY_TIME,
           )} :rotating_light:`,
         )
-        .catch(e => console.error(e));
+        .catch((e) => console.error(e));
     }
   }
 }
@@ -96,7 +96,7 @@ async function handleBackfire(request: EventRequest): Promise<void> {
             ABUSE_PENALTY_TIME,
           )} :rotating_light:`,
         )
-        .catch(e => console.error(e));
+        .catch((e) => console.error(e));
     } else {
       console.log(`Unable to find backfireId for ${request.event.user}`);
     }
@@ -125,7 +125,7 @@ async function handleCounterMuzzle(request: EventRequest): Promise<void> {
           ABUSE_PENALTY_TIME,
         )} :rotating_light:`,
       )
-      .catch(e => console.error(e));
+      .catch((e) => console.error(e));
   }
 }
 
@@ -229,24 +229,29 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       logHistory(request);
     } else if (isUserProfileChanged) {
       const userWhoIsBeingImpersonated = await slackService.getImpersonatedUser(
-        ((request.event.user as unknown) as any).id,
+        (request.event.user as unknown as Record<string, string>).id,
       );
       console.log('userWhoIsBeingImpersonated', userWhoIsBeingImpersonated);
       if (userWhoIsBeingImpersonated) {
         // muzzle the user who is attempting to impersonate, and do it until the user changes their name back
-        await muzzleService.permaMuzzle(((request.event.user as unknown) as any).id, request.team_id).then(() => {
-          return webService
-            .sendMessage(
-              '#general',
-              `:cop: <@${((request.event.user as unknown) as any).id}> is impersonating <@${
-                userWhoIsBeingImpersonated.id
-              }>! They are now muzzled until they assume their normal identity. :cop:`,
-            )
-            .catch(e => console.error(e));
-        });
+        await muzzleService
+          .permaMuzzle((request.event.user as unknown as Record<string, string>).id, request.team_id)
+          .then(() => {
+            return webService
+              .sendMessage(
+                '#general',
+                `:cop: <@${(request.event.user as unknown as Record<string, string>).id}> is impersonating <@${
+                  userWhoIsBeingImpersonated.id
+                }>! They are now muzzled until they assume their normal identity. :cop:`,
+              )
+              .catch((e) => console.error(e));
+          });
       } else {
         // unmuzzle the user who was impersonated, or do nothing if this person was not impersonating
-        await muzzleService.removePermaMuzzle(((request.event.user as unknown) as any).id, request.team_id);
+        await muzzleService.removePermaMuzzle(
+          (request.event.user as unknown as Record<string, string>).id,
+          request.team_id,
+        );
       }
     }
     handleActivity(request);

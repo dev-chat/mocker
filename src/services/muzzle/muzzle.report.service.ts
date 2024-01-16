@@ -2,8 +2,19 @@ import Table from 'easy-table';
 import moment from 'moment';
 import { getRepository, getManager } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
-import { ReportType, MuzzleReport, ReportCount, ReportRange, Accuracy } from '../../shared/models/report/report.model';
+import {
+  ReportType,
+  MuzzleReport,
+  ReportCount,
+  ReportRange,
+  Accuracy,
+  KDR,
+  Backfires,
+  RawNemesis,
+  SuccessNemesis,
+} from '../../shared/models/report/report.model';
 import { ReportService } from '../../shared/services/report.service';
+import { FormattedMuzzleReport } from './constants';
 
 export class MuzzleReportService extends ReportService {
   public async getMuzzleReport(reportType: ReportType, teamId: string): Promise<string> {
@@ -37,7 +48,7 @@ export class MuzzleReportService extends ReportService {
   }
 
   private async generateFormattedReport(report: MuzzleReport, reportType: ReportType, teamId: string): Promise<string> {
-    const formattedReport: any = await this.formatReport(report, teamId);
+    const formattedReport: FormattedMuzzleReport = await this.formatReport(report, teamId);
     return `
 ${this.getReportTitle(reportType)}
 
@@ -64,11 +75,11 @@ ${this.getReportTitle(reportType)}
 `;
   }
 
-  private async formatReport(report: MuzzleReport, teamId: string): Promise<any> {
+  private async formatReport(report: MuzzleReport, teamId: string): Promise<FormattedMuzzleReport> {
     const reportFormatted = {
       muzzled: {
         byInstances: await Promise.all(
-          report.muzzled.byInstances.map(async (instance: ReportCount) => {
+          report.muzzled.byInstances.map(async (instance) => {
             return {
               User: await this.slackService.getUserNameById(instance.slackId, teamId),
               Muzzles: instance.count,
@@ -78,7 +89,7 @@ ${this.getReportTitle(reportType)}
       },
       muzzlers: {
         byInstances: await Promise.all(
-          report.muzzlers.byInstances.map(async (instance: ReportCount) => {
+          report.muzzlers.byInstances.map(async (instance) => {
             return {
               User: await this.slackService.getUserNameById(instance.slackId, teamId),
               ['Muzzles Issued']: instance.count,
@@ -87,7 +98,7 @@ ${this.getReportTitle(reportType)}
         ),
       },
       accuracy: await Promise.all(
-        report.accuracy.map(async (instance: any) => {
+        report.accuracy.map(async (instance) => {
           return {
             User: await this.slackService.getUserNameById(instance.requestorId, teamId),
             Accuracy: instance.accuracy,
@@ -97,7 +108,7 @@ ${this.getReportTitle(reportType)}
         }),
       ),
       KDR: await Promise.all(
-        report.kdr.map(async (instance: any) => {
+        report.kdr.map(async (instance) => {
           return {
             User: await this.slackService.getUserNameById(instance.requestorId, teamId),
             KDR: instance.kdr,
@@ -107,7 +118,7 @@ ${this.getReportTitle(reportType)}
         }),
       ),
       rawNemesis: await Promise.all(
-        report.rawNemesis.map(async (instance: any) => {
+        report.rawNemesis.map(async (instance) => {
           return {
             Killer: await this.slackService.getUserNameById(instance.requestorId, teamId),
             Victim: await this.slackService.getUserNameById(instance.muzzledId, teamId),
@@ -116,7 +127,7 @@ ${this.getReportTitle(reportType)}
         }),
       ),
       successNemesis: await Promise.all(
-        report.successNemesis.map(async (instance: any) => {
+        report.successNemesis.map(async (instance) => {
           return {
             Killer: await this.slackService.getUserNameById(instance.requestorId, teamId),
             Victim: await this.slackService.getUserNameById(instance.muzzledId, teamId),
@@ -125,7 +136,7 @@ ${this.getReportTitle(reportType)}
         }),
       ),
       backfires: await Promise.all(
-        report.backfires.map(async (instance: any) => {
+        report.backfires.map(async (instance) => {
           return {
             User: await this.slackService.getUserNameById(instance.muzzledId, teamId),
             Backfires: instance.backfires,
@@ -282,7 +293,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
-  private getKdr(range: ReportRange, teamId: string): Promise<any[]> {
+  private getKdr(range: ReportRange, teamId: string): Promise<KDR[]> {
     const query =
       range.reportType === ReportType.AllTime
         ? `
@@ -316,7 +327,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
-  private getBackfireData(range: ReportRange, teamId: string): Promise<any[]> {
+  private getBackfireData(range: ReportRange, teamId: string): Promise<Backfires[]> {
     const query =
       range.reportType === ReportType.AllTime
         ? `
@@ -332,7 +343,7 @@ ${this.getReportTitle(reportType)}
     return getManager().query(query);
   }
 
-  private getNemesisByRaw(range: ReportRange, teamId: string): Promise<any[]> {
+  private getNemesisByRaw(range: ReportRange, teamId: string): Promise<RawNemesis[]> {
     const query =
       range.reportType === ReportType.AllTime
         ? `
@@ -381,7 +392,7 @@ ${this.getReportTitle(reportType)}
     return getRepository(Muzzle).query(query);
   }
 
-  private getNemesisBySuccessful(range: ReportRange, teamId: string): Promise<any[]> {
+  private getNemesisBySuccessful(range: ReportRange, teamId: string): Promise<SuccessNemesis[]> {
     const query =
       range.reportType === ReportType.AllTime
         ? `

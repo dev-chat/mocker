@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/camelcase */
 import { Definition } from '../../shared/models/define/define-models';
 import { DefineService } from './define.service';
 const testArray: Definition[] = [

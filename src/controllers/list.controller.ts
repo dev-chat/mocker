@@ -36,7 +36,6 @@ listController.post('/list/add', async (req, res) => {
   } else {
     listPersistenceService.store(request.user_id, request.text, request.team_id, request.channel_id);
     const response: ChannelResponse = {
-      // eslint-disable-next-line @typescript-eslint/camelcase
       response_type: 'in_channel',
       text: `\`${request.text}\` has been \`listed\``,
     };
@@ -56,7 +55,6 @@ listController.post('/list/remove', async (req, res) => {
       .remove(request.text)
       .then(() => {
         const response: ChannelResponse = {
-          // eslint-disable-next-line @typescript-eslint/camelcase
           response_type: 'in_channel',
           text: `\`${request.text}\` has been removed from \`The List\``,
         };

@@ -24,7 +24,6 @@ clapController.post('/clap', async (req, res) => {
           text: clapped,
         },
       ],
-      // eslint-disable-next-line @typescript-eslint/camelcase
       response_type: 'in_channel',
       text: `<@${request.user_id}>`,
     };

@@ -24,13 +24,13 @@ export class SlackUser {
   public botId!: string;
 
   @OneToMany(
-    _type => Activity,
+    () => Activity,
     activity => activity.userId,
   )
   public activity!: Activity[];
 
   @OneToMany(
-    _type => Message,
+    () => Message,
     message => message.userId,
   )
   public messages!: Message[];

@@ -20,9 +20,11 @@ export class HistoryPersistenceService {
       return;
     }
 
-    const user: SlackUser | undefined = await getRepository(SlackUser).findOne({
-      slackId: request?.event?.user,
-      teamId: request?.team_id,
+    const user: SlackUser | null = await getRepository(SlackUser).findOne({
+      where: {
+        slackId: request?.event?.user,
+        teamId: request?.team_id,
+      },
     });
     const message = new Message();
     message.channel = request.event.channel || request.event.item.channel;

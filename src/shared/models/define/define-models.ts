@@ -13,5 +13,5 @@ export interface Definition {
   example: string;
   thumbs_down: number;
   current_vote?: string;
-  sound_urls?: any[];
+  sound_urls?: unknown[];
 }

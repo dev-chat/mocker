@@ -24,7 +24,6 @@ mockController.post('/mock', async (req, res) => {
           text: mocked,
         },
       ],
-      // eslint-disable-next-line @typescript-eslint/camelcase
       response_type: 'in_channel',
       text: `<@${request.user_id}>`,
     };

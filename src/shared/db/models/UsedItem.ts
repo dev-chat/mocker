@@ -9,21 +9,21 @@ export class UsedItem {
 
   @Column()
   @OneToMany(
-    _type => SlackUser,
+    () => SlackUser,
     slackUser => slackUser.id,
   )
   public usingUser!: number;
 
   @Column()
   @OneToMany(
-    _type => SlackUser,
+    () => SlackUser,
     slackUser => slackUser.id,
   )
   public usedOnUser!: number;
 
   @Column()
   @OneToMany(
-    _type => Item,
+    () => Item,
     item => item.id,
   )
   public item!: number;

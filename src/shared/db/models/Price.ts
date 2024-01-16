@@ -8,7 +8,7 @@ export class Price {
 
   @Column()
   @ManyToOne(
-    _type => Item,
+    () => Item,
     item => item.id,
   )
   public itemId!: number;

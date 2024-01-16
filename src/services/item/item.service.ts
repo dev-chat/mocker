@@ -2,15 +2,20 @@ import { WebService } from '../web/web.service';
 import { SuppressorService } from '../../shared/services/suppressor.service';
 import { StoreService } from '../store/store.service';
 
+interface ItemDefinition {
+  id: number;
+  interaction: (userId: string, teamId: string, usedOnUser: string, channel?: string) => Promise<string>;
+}
+
 export class ItemService {
   webService = WebService.getInstance();
   suppressorService = new SuppressorService();
   storeService = new StoreService();
 
-  items = [
+  items: ItemDefinition[] = [
     {
       id: 1,
-      interaction: (userId: string, teamId: string, usedOnUser: string, _channel: string): Promise<string> => {
+      interaction: (userId, teamId, usedOnUser): Promise<string> => {
         return this.storeService.useItem('1', userId, teamId, usedOnUser).catch(e => {
           console.error(e);
           throw new Error(`Sorry, unable to set 50 Cal at this time. Please try again later.`);
@@ -19,7 +24,7 @@ export class ItemService {
     },
     {
       id: 2,
-      interaction: (userId: string, teamId: string, usedOnUser: string, _channel: string): Promise<string> => {
+      interaction: (userId, teamId, usedOnUser): Promise<string> => {
         return this.storeService.useItem('2', userId, teamId, usedOnUser).catch(e => {
           console.error(e);
           throw new Error(
@@ -30,12 +35,12 @@ export class ItemService {
     },
     {
       id: 3,
-      interaction: async (userId: string, teamId: string, usedOnUser: string, channel: string): Promise<string> => {
+      interaction: async (userId, teamId, usedOnUser, channel): Promise<string> => {
         const isUserMuzzled = await this.suppressorService.isSuppressed(usedOnUser, teamId);
         if (isUserMuzzled) {
           await this.suppressorService.removeSuppression(usedOnUser, teamId);
           await this.webService
-            .sendMessage(channel, `:zombie: <@${usedOnUser}> has been resurrected by <@${userId}>! :zombie:`)
+            .sendMessage(channel as string, `:zombie: <@${usedOnUser}> has been resurrected by <@${userId}>! :zombie:`)
             .catch(e => {
               console.error(e);
               throw new Error(`Unable to resurrect <@${usedOnUser}>. Please try again.`);
@@ -48,7 +53,7 @@ export class ItemService {
     },
     {
       id: 4,
-      interaction: async (userId: string, teamId: string, usedOnUser: string, _channel: string): Promise<string> => {
+      interaction: async (userId, teamId, usedOnUser): Promise<string> => {
         const isActive = await this.storeService.isItemActive(userId, teamId, 4);
         if (isActive) {
           throw new Error(`Sorry, unable to purchase Moon Token at this time. You already have one active.`);

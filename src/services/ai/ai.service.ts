@@ -33,7 +33,6 @@ export class AIService {
       .create({
         model: 'gpt-4',
         messages: [{ role: 'system', content: text }],
-        // eslint-disable-next-line @typescript-eslint/camelcase
         max_tokens: 1000,
         user: `${userId}-DaBros2016`,
       })
@@ -71,18 +70,14 @@ export class AIService {
         prompt: text,
         n: 1,
         size: '1024x1024',
-        // eslint-disable-next-line @typescript-eslint/camelcase
         response_format: 'b64_json',
         user: `${userId}-DaBros2016`,
       })
       .then(async x => {
         await this.redis.removeInflight(userId, teamId);
 
-        // eslint-disable-next-line @typescript-eslint/camelcase
         const { b64_json } = x.data[0];
-        // eslint-disable-next-line @typescript-eslint/camelcase
         if (b64_json) {
-          // eslint-disable-next-line @typescript-eslint/camelcase
           return this.writeToDiskAndReturnUrl(b64_json);
         } else {
           throw new Error(`No b64_json was returned by OpenAI for prompt: ${text}`);

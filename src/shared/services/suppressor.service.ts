@@ -20,12 +20,13 @@ export class SuppressorService {
   public counterPersistenceService = CounterPersistenceService.getInstance();
 
   public isBot(userId: string, teamId: string): Promise<boolean | undefined> {
-    return this.slackService.getUserById(userId, teamId).then(user => !!user?.isBot);
+    return this.slackService.getUserById(userId, teamId).then((user) => !!user?.isBot);
   }
 
-  public findUserIdInBlocks(obj: any, regEx: RegExp): string | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public findUserIdInBlocks(obj: Record<any, any>, regEx: RegExp): string | undefined {
     let id;
-    Object.keys(obj).forEach(key => {
+    Object.keys(obj).forEach((key) => {
       if (typeof obj[key] === 'string') {
         const found = obj[key].match(regEx);
         if (found) {
@@ -39,14 +40,15 @@ export class SuppressorService {
     return id;
   }
 
-  public async findUserInBlocks(blocks: any, users?: SlackUser[]): Promise<string | undefined> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async findUserInBlocks(blocks: Record<any, any>[], users?: SlackUser[]): Promise<string | undefined> {
     const allUsers: SlackUser[] = users ? users : await this.slackService.getAllUsers();
     let id;
     const firstBlock = blocks[0]?.elements?.[0];
     if (firstBlock) {
-      Object.keys(firstBlock).forEach(key => {
+      Object.keys(firstBlock).forEach((key) => {
         if (typeof firstBlock[key] === 'string') {
-          allUsers.forEach(user => {
+          allUsers.forEach((user) => {
             if (firstBlock[key].includes(user.name)) {
               id = user.id;
             }
@@ -214,7 +216,7 @@ export class SuppressorService {
     const words = text.split(' ');
 
     const textWithFallbackReplacments = words
-      .map(word =>
+      .map((word) =>
         word.length >= MAX_WORD_LENGTH ? REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)] : word,
       )
       .join(' ');
@@ -223,8 +225,8 @@ export class SuppressorService {
     const shouldFallBack =
       (await this.translationService
         .translate(textWithFallbackReplacments)
-        .then(message => (suppressedMessage = message))
-        .catch(e => {
+        .then((message) => (suppressedMessage = message))
+        .catch((e) => {
           console.error('error on translation');
           console.error(e);
           return null;
@@ -233,12 +235,12 @@ export class SuppressorService {
     if (words.length <= 250) {
       if (shouldFallBack) {
         const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
-        await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch(e => console.error(e));
+        await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => console.error(e));
       } else {
         await this.logTranslateSuppression(text, dbId, persistenceService);
         await this.webService
           .sendMessage(channel, `<@${userId}> says "${suppressedMessage}"`)
-          .catch(e => console.error(e));
+          .catch((e) => console.error(e));
       }
     }
   }
@@ -283,9 +285,7 @@ export class SuppressorService {
   }
 
   public async shouldBackfire(requestorId: string, teamId: string): Promise<boolean> {
-    const start = moment()
-      .subtract(7, 'days')
-      .format('YYYY-MM-DD HH:mm:ss');
+    const start = moment().subtract(7, 'days').format('YYYY-MM-DD HH:mm:ss');
     const end = moment().format('YYYY-MM-DD HH:mm:ss');
 
     const muzzles = await this.muzzlePersistenceService.getMuzzlesByTimePeriod(requestorId, teamId, start, end);

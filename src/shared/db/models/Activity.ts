@@ -7,7 +7,7 @@ export class Activity {
   public id!: number;
 
   @ManyToOne(
-    _type => SlackUser,
+    () => SlackUser,
     user => user.activity,
   )
   public userId!: SlackUser;

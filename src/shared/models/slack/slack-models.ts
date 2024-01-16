@@ -30,6 +30,11 @@ export interface EventRequest {
   authed_users: string[];
 }
 
+export interface EventItem {
+  type: string;
+  channel: string;
+}
+
 export interface Event {
   client_msg_id: string;
   type: string;
@@ -47,8 +52,9 @@ export interface Event {
   callback_id: string;
   item_user: string;
   reaction: string;
-  item: any; // Needs work, not optional either.
-  blocks: any[]; // same same
+  item: EventItem; // Needs work, not optional either.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  blocks: Record<any, any>[]; // same same
   bot_id: string;
   bot_profile: {
     name: string;

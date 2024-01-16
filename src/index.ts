@@ -2,17 +2,18 @@ import 'reflect-metadata'; // Necessary for TypeORM entities.
 import 'dotenv/config';
 import bodyParser from 'body-parser';
 import crypto from 'crypto';
-import express, { Application, Response, NextFunction } from 'express';
+import express, { Application, Response, NextFunction, Request } from 'express';
 import { createConnection, getConnectionOptions } from 'typeorm';
 
 import { SlackService } from './services/slack/slack.service';
 import { controllers } from './controllers/index.controller';
+import { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
-const signatureVerification = (req: any, res: Response, next: NextFunction) => {
-  const body = req.rawBody;
+const signatureVerification = (req: Request, res: Response, next: NextFunction) => {
+  const body = (req as RequestWithRawBody).rawBody;
   const timestamp = req.headers['x-slack-request-timestamp'];
   const slackSignature = req.headers['x-slack-signature'];
   const base = 'v0:' + timestamp + ':' + body;
@@ -47,14 +48,14 @@ const signatureVerification = (req: any, res: Response, next: NextFunction) => {
 app.use(
   bodyParser.urlencoded({
     extended: true,
-    verify: function(req: any, _res, buf) {
+    verify: function(req: RequestWithRawBody, _res, buf) {
       req.rawBody = buf;
     },
   }),
 );
 app.use(
   bodyParser.json({
-    verify: function(req: any, _res, buf) {
+    verify: function(req: RequestWithRawBody, _res, buf) {
       req.rawBody = buf;
     },
   }),

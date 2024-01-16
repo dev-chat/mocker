@@ -63,7 +63,7 @@ export class MuzzleService extends SuppressorService {
               .catch(e => console.error(e));
             resolve(`:boom: Backfired! Better luck next time... :boom:`);
           })
-          .catch((e: any) => {
+          .catch((e: unknown) => {
             console.error(e);
             reject(`Muzzle failed!`);
           });
@@ -98,7 +98,7 @@ export class MuzzleService extends SuppressorService {
           .then(() => {
             resolve(`Successfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`);
           })
-          .catch((e: any) => {
+          .catch((e: unknown) => {
             console.error(e);
             reject(`Muzzle failed!`);
           });

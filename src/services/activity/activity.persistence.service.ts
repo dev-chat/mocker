@@ -25,9 +25,11 @@ export class ActivityPersistenceService {
       return;
     }
 
-    const user: SlackUser | undefined = await getRepository(SlackUser).findOne({
-      slackId: request?.event?.user,
-      teamId: request?.team_id,
+    const user: SlackUser | null = await getRepository(SlackUser).findOne({
+      where: {
+        slackId: request?.event?.user,
+        teamId: request?.team_id,
+      },
     });
     const activity = new Activity();
     activity.channel = request.event.channel || request.event.item.channel;

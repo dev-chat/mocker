@@ -7,7 +7,7 @@ export class Message {
   public id!: number;
 
   @ManyToOne(
-    _type => SlackUser,
+    () => SlackUser,
     user => user.messages,
   )
   public userId!: SlackUser;

@@ -24,7 +24,6 @@ walkieController.post('/walkie', async (req, res) => {
           text: walkied,
         },
       ],
-      // eslint-disable-next-line @typescript-eslint/camelcase
       response_type: 'in_channel',
       text: `<@${request.user_id}>`,
     };

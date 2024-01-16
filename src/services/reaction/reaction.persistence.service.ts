@@ -44,7 +44,7 @@ export class ReactionPersistenceService {
 
   public async getTotalRep(userId: string, teamId: string): Promise<TotalRep> {
     await getRepository(Rep).increment({ user: userId, teamId }, 'timesChecked', 1);
-    const user = await getRepository(SlackUser).findOne({ slackId: userId, teamId });
+    const user = await getRepository(SlackUser).findOne({ where: { slackId: userId, teamId } });
     if (!user) {
       throw new Error(`Unable to find user: ${userId} on team ${teamId}`);
     }

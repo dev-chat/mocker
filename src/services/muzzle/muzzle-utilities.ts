@@ -1,8 +1,13 @@
 /**
  * Gets the amount of time remaining on a NodeJS Timeout.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getRemainingTime(timeout: any): number {
+
+export interface Timeout extends NodeJS.Timeout {
+  _idleStart: number;
+  _idleTimeout: number;
+}
+
+export function getRemainingTime(timeout: Timeout): number {
   return Math.ceil(timeout._idleStart + timeout._idleTimeout - process.uptime() * 1000);
 }
 

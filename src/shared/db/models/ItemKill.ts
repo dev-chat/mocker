@@ -9,14 +9,14 @@ export class ItemKill {
 
   @Column()
   @OneToMany(
-    _type => Muzzle,
+    () => Muzzle,
     muzzle => muzzle.id,
   )
   muzzleId!: number;
 
   @Column()
   @OneToMany(
-    _type => Item,
+    () => Item,
     item => item.id,
   )
   itemId!: number;

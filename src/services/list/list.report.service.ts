@@ -11,7 +11,7 @@ export class ListReportService extends ReportService {
     return this.formatListReport(listReport, channelName);
   }
 
-  private formatListReport(report: any, channelName: string): string {
+  private formatListReport(report: ListUser[], channelName: string): string {
     const reportWithoutDate = report.map((listItem: ListUser) => {
       return { Item: `${listItem.text} - ${listItem.name}` };
     });

@@ -29,7 +29,7 @@ export class AIPersistenceService {
     return this.redis.setValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Inflight), 'yes');
   }
 
-  public async setDailyRequests(userId: string, teamId: string): Promise<string | null> {
+  public async setDailyRequests(userId: string, teamId: string): Promise<unknown | null> {
     const numberOfRequests: number | undefined = await this.redis
       .getValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily))
       .then(x => (x ? Number(x) : undefined));

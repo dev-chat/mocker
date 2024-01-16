@@ -9,14 +9,14 @@ export class Purchase {
 
   @Column()
   @OneToMany(
-    _type => SlackUser,
+    () => SlackUser,
     slackUser => slackUser.slackId,
   )
   public user!: string;
 
   @Column()
   @OneToMany(
-    _type => Item,
+    () => Item,
     item => item.id,
   )
   public item!: number;

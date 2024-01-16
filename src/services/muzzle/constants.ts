@@ -10,3 +10,56 @@ export enum MuzzleRedisTypeEnum {
   'Muzzled' = 'muzzled',
   'Requestor' = 'requestor',
 }
+
+export interface FormattedMuzzleReportByInstances {
+  User?: string;
+  'Muzzles Issued'?: number;
+  Muzzles?: number;
+
+}
+
+export interface FormattedMuzzleReportAccuracy {
+  User?: string;
+  accuracy?: string;
+  kills?: string;
+  deaths?: string;
+}
+
+export interface FormattedMuzzleReportKDR {
+  User?: string;
+  KDR?: number;
+  kills?: string;
+  deaths?: string;
+}
+
+export interface FormattedMuzzleReportRawNemesis {
+  Killer?: string;
+  Victim?: string;
+  Attempts?: number;
+}
+
+export interface FormattedMuzzleReportSuccessNemesis {
+  Killer?: string;
+  Victim?: string;
+  Kills?: number;
+}
+
+export interface FormattedMuzzleReportBackfires {
+  User?: string;
+  Backfires?: number;
+  Muzzles?: number;
+  Percentage?: number;
+}
+
+export interface FormattedMuzzleReportMuzzled {
+  byInstances: FormattedMuzzleReportByInstances[];
+}
+export interface FormattedMuzzleReport {
+  muzzled: FormattedMuzzleReportMuzzled;
+  muzzlers: FormattedMuzzleReportMuzzled;
+  accuracy: FormattedMuzzleReportAccuracy[];
+  KDR: FormattedMuzzleReportKDR[];
+  rawNemesis: FormattedMuzzleReportRawNemesis[];
+  successNemesis: FormattedMuzzleReportSuccessNemesis[];
+  backfires: FormattedMuzzleReportBackfires[];
+}

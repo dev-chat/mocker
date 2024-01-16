@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/camelcase */
 import { UpdateResult } from 'typeorm';
 import { SuppressorService } from './suppressor.service';
 import { EventRequest } from '../models/slack/slack-models';

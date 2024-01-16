@@ -19,16 +19,6 @@ export class StoreService {
     return view;
   }
 
-  public formatItems(items: any[]): any {
-    return items.map(item => {
-      return {
-        name: item.name,
-        description: item.description,
-        price: item.price,
-      };
-    });
-  }
-
   async isValidItem(itemId: string, teamId: string): Promise<boolean> {
     const id = +itemId;
     if (isNaN(id) || !Number.isFinite(id)) {
