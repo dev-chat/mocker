@@ -1,8 +1,10 @@
 import 'reflect-metadata'; // Necessary for TypeORM entities.
+import 'dotenv/config';
 import bodyParser from 'body-parser';
 import crypto from 'crypto';
 import express, { Application, Response, NextFunction } from 'express';
 import { createConnection, getConnectionOptions } from 'typeorm';
+
 import { SlackService } from './services/slack/slack.service';
 import { controllers } from './controllers/index.controller';
 
