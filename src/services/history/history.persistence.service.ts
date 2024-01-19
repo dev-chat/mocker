@@ -55,6 +55,6 @@ export class HistoryPersistenceService {
     ORDER BY createdAt DESC
   ) ORDER BY createdAt ASC;`
 
-    return getRepository(Message).query(query, [teamId, channel]);
+    return getRepository(Message).query(query, [teamId, channel, teamId, channel]);
   }
 }
