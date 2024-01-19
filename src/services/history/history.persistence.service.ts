@@ -37,7 +37,28 @@ export class HistoryPersistenceService {
   async getHistory(request: SlashCommandRequest): Promise<MessageWithName[]> {
     const teamId = request.team_id;
     const channel = request.channel_id;
-    const query = `SELECT * FROM (select message.*, slack_user.name from message INNER JOIN slack_user ON slack_user.id=message.userIdId WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != '' ORDER BY message.createdAt DESC LIMIT 100) as messages ORDER BY messages.createdAt ASC;`;
+    const query = `
+    SELECT *
+    FROM (
+      CASE WHEN (
+        SELECT count(*) FROM messages WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        ) > 100 
+        THEN (
+          SELECT message.*, slack_user.name
+          FROM message 
+          INNER JOIN slack_user ON slack_user.id=message.userIdId 
+          WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != '' AND createdAt >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        )
+      ELSE (
+        SELECT message.*, slack_user.name
+        FROM message 
+        INNER JOIN slack_user ON slack_user.id=message.userIdId 
+        WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != ''
+        LIMIT 100
+      )
+      END
+    ) as messages
+    ORDER BY messages.createdAt ASC;`
 
     return getRepository(Message).query(query, [teamId, channel]);
   }
