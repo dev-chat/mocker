@@ -108,7 +108,7 @@ export class AIService {
           {
             role: 'system',
             content:
-              'please give 5 bullet summary of the conversation that occurred in the following messages. in addition to the bullet points, please also share any humourous or interesting messages from the conversation. Be sure to include the direct quote and authors name.',
+              'please give 5 sentence summary of the conversation that occurred in the following messages. in addition to the summary, please also share any humourous or interesting messages from the conversation. Be sure to include the direct quote and authors name.',
           },
           { role: 'system', content: history },
         ],
