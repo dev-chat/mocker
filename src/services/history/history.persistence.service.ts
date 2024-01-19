@@ -41,20 +41,22 @@ export class HistoryPersistenceService {
     SELECT *
     FROM (
       CASE WHEN (
-        SELECT count(*) FROM messages WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        SELECT count(*) FROM message WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
         ) > 100 
         THEN (
-          SELECT message.*, slack_user.name
+          SELECT message.*, slack_user.name 
           FROM message 
-          INNER JOIN slack_user ON slack_user.id=message.userIdId 
-          WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != '' AND createdAt >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+          INNER JOIN slack_user ON slack_user.id=message.userIdId
+          WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != '' AND createdAt >= DATE_SUB(NOW(), INTERVAL 1 HOUR) 
+          ORDER BY message.createdAt DESC;
         )
       ELSE (
         SELECT message.*, slack_user.name
         FROM message 
         INNER JOIN slack_user ON slack_user.id=message.userIdId 
         WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != ''
-        LIMIT 100
+        ORDER BY message.createdAt DESC
+        LIMIT 100;
       )
       END
     ) as messages
