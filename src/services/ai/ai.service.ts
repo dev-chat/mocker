@@ -108,7 +108,7 @@ export class AIService {
           {
             role: 'system',
             content:
-              'please give 3 bullet points summarizing the conversation that occurred in the following messages. in addition to the summary, please share any humourous or interesting messages from the conversation. Be sure to include the direct quote and authors name.',
+              'please succinctly summarize the following conversation, including verbatims from the participants that are particularly funny or interesting.',
           },
           { role: 'system', content: history },
         ],
