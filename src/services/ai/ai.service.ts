@@ -108,7 +108,7 @@ export class AIService {
           {
             role: 'system',
             content:
-              'please succinctly summarize the following conversation, including verbatims from the participants that are particularly funny or interesting.',
+              'please give a one sentence summary of the following conversation, followed by a few verbatims from the participants that are particularly funny or interesting.',
           },
           { role: 'system', content: history },
         ],
