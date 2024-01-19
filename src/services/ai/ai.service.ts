@@ -18,11 +18,11 @@ export class AIService {
   }
 
   public isAlreadyInflight(userId: string, teamId: string): Promise<boolean> {
-    return this.redis.getInflight(userId, teamId).then(x => !!x);
+    return this.redis.getInflight(userId, teamId).then((x) => !!x);
   }
 
   public isAlreadyAtMaxRequests(userId: string, teamId: string): Promise<boolean> {
-    return this.redis.getDailyRequests(userId, teamId).then(x => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
+    return this.redis.getDailyRequests(userId, teamId).then((x) => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
   }
 
   public async generateText(userId: string, teamId: string, text: string): Promise<string | undefined> {
@@ -36,11 +36,11 @@ export class AIService {
         max_tokens: 1000,
         user: `${userId}-DaBros2016`,
       })
-      .then(async x => {
+      .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
         return x.choices[0].message?.content?.trim();
       })
-      .catch(async e => {
+      .catch(async (e) => {
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
@@ -54,7 +54,7 @@ export class AIService {
     const base64Data = base64Image.replace(/^data:image\/png;base64,/, '');
 
     return new Promise((resolve, reject) =>
-      fs.writeFile(filePath, base64Data, 'base64', err => {
+      fs.writeFile(filePath, base64Data, 'base64', (err) => {
         if (err) reject(err);
         resolve(`http://muzzle.lol:8080/${filename}`);
       }),
@@ -73,7 +73,7 @@ export class AIService {
         response_format: 'b64_json',
         user: `${userId}-DaBros2016`,
       })
-      .then(async x => {
+      .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
 
         const { b64_json } = x.data[0];
@@ -83,7 +83,7 @@ export class AIService {
           throw new Error(`No b64_json was returned by OpenAI for prompt: ${text}`);
         }
       })
-      .catch(async e => {
+      .catch(async (e) => {
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
@@ -92,7 +92,7 @@ export class AIService {
 
   public formatHistory(history: MessageWithName[]): string {
     return history
-      .map(x => {
+      .map((x) => {
         return `${x.name}: ${x.message}`;
       })
       .join('\n');
@@ -107,17 +107,18 @@ export class AIService {
         messages: [
           {
             role: 'system',
-            content: 'please give 5 bullet summary of the conversation that occurred in the following messages:',
+            content:
+              'please give 5 bullet summary of the conversation that occurred in the following messages. please also share any specifically humourous or interesting messages',
           },
           { role: 'system', content: history },
         ],
         user: `${userId}-DaBros2016`,
       })
-      .then(async x => {
+      .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
         return x.choices[0].message?.content?.trim();
       })
-      .catch(async e => {
+      .catch(async (e) => {
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
