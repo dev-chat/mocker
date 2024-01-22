@@ -4,6 +4,7 @@ import { SINGLE_DAY_MS } from '../counter/constants';
 enum AITypeEnum {
   Inflight = 'inflight',
   Daily = 'daily',
+  DailySummary = 'daily-summary',
 }
 
 export class AIPersistenceService {
@@ -29,10 +30,14 @@ export class AIPersistenceService {
     return this.redis.setValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Inflight), 'yes');
   }
 
+  public setHasUsedSummary(userId: string, teamId: string): Promise<string | null> {
+    return this.redis.setValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily), 'yes');
+  }
+
   public async setDailyRequests(userId: string, teamId: string): Promise<unknown | null> {
     const numberOfRequests: number | undefined = await this.redis
       .getValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily))
-      .then(x => (x ? Number(x) : undefined));
+      .then((x) => (x ? Number(x) : undefined));
 
     if (!numberOfRequests) {
       return this.redis.setValueWithExpire(
@@ -49,7 +54,7 @@ export class AIPersistenceService {
   public async decrementDailyRequests(userId: string, teamId: string): Promise<string | null> {
     const numberOfRequests: number | undefined = await this.redis
       .getValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily))
-      .then(x => (x ? Number(x) : undefined));
+      .then((x) => (x ? Number(x) : undefined));
 
     if (numberOfRequests) {
       return this.redis.setValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily), numberOfRequests - 1);
@@ -58,8 +63,12 @@ export class AIPersistenceService {
     }
   }
 
-  public async getDailyRequests(userId: string, teamId: string): Promise<string | null> {
-    return await this.redis.getValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily));
+  public getDailyRequests(userId: string, teamId: string): Promise<string | null> {
+    return this.redis.getValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily));
+  }
+
+  public getHasUsedSummary(userId: string, teamId: string): Promise<string | null> {
+    return this.redis.getValue(this.getRedisKeyName(userId, teamId, AITypeEnum.DailySummary));
   }
 
   private getRedisKeyName(userId: string, teamId: string, type: AITypeEnum): string {

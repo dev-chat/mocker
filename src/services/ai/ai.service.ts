@@ -25,6 +25,10 @@ export class AIService {
     return this.redis.getDailyRequests(userId, teamId).then((x) => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
   }
 
+  public isAtMaxDailySummaries(userId: string, teamId: string): Promise<boolean> {
+    return this.redis.getHasUsedSummary(userId, teamId).then((x) => !!x);
+  }
+
   public async generateText(userId: string, teamId: string, text: string): Promise<string | undefined> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
@@ -98,17 +102,22 @@ export class AIService {
       .join('\n');
   }
 
-  public async getSummary(userId: string, teamId: string, history: string): Promise<string | undefined> {
+  public async getSummary(
+    userId: string,
+    teamId: string,
+    history: string,
+    isDaily: boolean,
+  ): Promise<string | undefined> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
+    const prompt = `please give ${isDaily ? 'a summary' : 'a one sentence summary'} of the following conversation, followed by a few verbatims from the participants that are particularly funny or interesting.`;
     return this.openai.chat.completions
       .create({
         model: 'gpt-4',
         messages: [
           {
             role: 'system',
-            content:
-              'please give a one sentence summary of the following conversation, followed by a few verbatims from the participants that are particularly funny or interesting.',
+            content: prompt,
           },
           { role: 'system', content: history },
         ],

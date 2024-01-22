@@ -34,9 +34,10 @@ export class HistoryPersistenceService {
     return getRepository(Message).insert(message);
   }
 
-  async getHistory(request: SlashCommandRequest): Promise<MessageWithName[]> {
+  async getHistory(request: SlashCommandRequest, isDaily: boolean): Promise<MessageWithName[]> {
     const teamId = request.team_id;
     const channel = request.channel_id;
+    const interval = isDaily ? 'INTERVAL 1 DAY' : 'INTERVAL 1 HOUR';
     const query = `
     (
     SELECT message.*, slack_user.name
@@ -51,9 +52,9 @@ export class HistoryPersistenceService {
     SELECT message.*, slack_user.name 
     FROM message 
     INNER JOIN slack_user ON slack_user.id=message.userIdId
-    WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != '' AND createdAt >= DATE_SUB(NOW(), INTERVAL 1 HOUR) 
+    WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != '' AND createdAt >= DATE_SUB(NOW(), ${interval}) 
     ORDER BY createdAt DESC
-  ) ORDER BY createdAt ASC;`
+  ) ORDER BY createdAt ASC;`;
 
     return getRepository(Message).query(query, [teamId, channel, teamId, channel]);
   }
