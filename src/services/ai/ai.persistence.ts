@@ -30,8 +30,16 @@ export class AIPersistenceService {
     return this.redis.setValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Inflight), 'yes');
   }
 
-  public setHasUsedSummary(userId: string, teamId: string): Promise<string | null> {
-    return this.redis.setValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily), 'yes');
+  public setHasUsedSummary(userId: string, teamId: string): Promise<unknown | null> {
+    const endOfDay = new Date().setHours(23, 59, 59, 999);
+    const timeUntilEndOfDay = endOfDay - new Date().getTime();
+    console.log(timeUntilEndOfDay);
+    return this.redis.setValueWithExpire(
+      this.getRedisKeyName(userId, teamId, AITypeEnum.Daily),
+      'yes',
+      'PX',
+      timeUntilEndOfDay,
+    );
   }
 
   public async setDailyRequests(userId: string, teamId: string): Promise<unknown | null> {
