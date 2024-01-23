@@ -35,7 +35,7 @@ export class AIPersistenceService {
     const timeUntilEndOfDay = endOfDay - new Date().getTime();
     console.log(timeUntilEndOfDay);
     return this.redis.setValueWithExpire(
-      this.getRedisKeyName(userId, teamId, AITypeEnum.Daily),
+      this.getRedisKeyName(userId, teamId, AITypeEnum.DailySummary),
       'yes',
       'PX',
       timeUntilEndOfDay,
