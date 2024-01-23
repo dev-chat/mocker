@@ -70,7 +70,7 @@ summaryController.post('/summary/daily', async (req, res) => {
       elements: [
         {
           type: 'mrkdwn',
-          text: `:calendar: _Summary as requested by <@${request.user_id}>_ :calendar:`,
+          text: `:calendar: _Daily Summary as requested by <@${request.user_id}>_ :calendar:`,
         },
       ],
     });
@@ -142,7 +142,7 @@ summaryController.post('/summary', async (req, res) => {
       elements: [
         {
           type: 'mrkdwn',
-          text: `:book: _Daily Summary as requested by <@${request.user_id}>_ :book:`,
+          text: `:book: _Summary as requested by <@${request.user_id}>_ :book:`,
         },
       ],
     });
