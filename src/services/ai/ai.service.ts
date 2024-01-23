@@ -26,7 +26,10 @@ export class AIService {
   }
 
   public isAtMaxDailySummaries(userId: string, teamId: string): Promise<boolean> {
-    return this.redis.getHasUsedSummary(userId, teamId).then((x) => !!x);
+    return this.redis.getHasUsedSummary(userId, teamId).then((x) => {
+      console.log('x', x);
+      return !!x;
+    });
   }
 
   public async generateText(userId: string, teamId: string, text: string): Promise<string | undefined> {

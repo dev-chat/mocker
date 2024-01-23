@@ -24,7 +24,7 @@ summaryController.post('/summary/daily', async (req, res) => {
   const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
   const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
   const isAtMaxDailySummaries = await aiService.isAtMaxDailySummaries(request.user_id, request.team_id);
-
+  console.log('isAtMaxdailySummaries: ', isAtMaxDailySummaries);
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (isAlreadyAtMaxRequests && isAtMaxDailySummaries && !hasAvailableMoonToken) {
