@@ -8,7 +8,11 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 session = requests.session()
 
-adapter = requests.adapters.HTTPAdapter()
+retries = requests.Retry(total=5,
+                backoff_factor=0.1,
+                status_forcelist=[ 500, 502, 503, 504 ])
+
+adapter = requests.adapters.HTTPAdapter(max_retries=retries)
 session.mount('http://', adapter)
 session.mount('https://', adapter)
 
