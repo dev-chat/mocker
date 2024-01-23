@@ -125,9 +125,15 @@ export class AIService {
       })
       .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
+        if (isDaily) {
+          this.redis.setHasUsedSummary(userId, teamId);
+        }
         return x.choices[0].message?.content?.trim();
       })
       .catch(async (e) => {
+        if (isDaily) {
+          this.redis.removeHasUsedSummary(userId, teamId);
+        }
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;

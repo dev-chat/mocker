@@ -42,6 +42,10 @@ export class AIPersistenceService {
     );
   }
 
+  public removeHasUsedSummary(userId: string, teamId: string): Promise<unknown | null> {
+    return this.redis.removeKey(this.getRedisKeyName(userId, teamId, AITypeEnum.DailySummary));
+  }
+
   public async setDailyRequests(userId: string, teamId: string): Promise<unknown | null> {
     const numberOfRequests: number | undefined = await this.redis
       .getValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily))
