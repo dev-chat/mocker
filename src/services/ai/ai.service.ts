@@ -110,7 +110,7 @@ export class AIService {
   ): Promise<string | undefined> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
-    const prompt = `please give ${isDaily ? 'a summary' : 'a one sentence summary'} of the following conversation, followed by a three verbatims from the participants that are particularly funny or interesting. Ensure that the verbatims are from different people.`;
+    const prompt = `please give ${isDaily ? 'a summary' : 'a one sentence summary'} of the following conversation, followed by a three verbatims from the participants that are particularly funny or interesting ensuring that the verbatims are from different people.`;
     return this.openai.chat.completions
       .create({
         model: 'gpt-4-1106-preview',
