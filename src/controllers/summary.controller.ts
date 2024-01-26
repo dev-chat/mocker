@@ -105,6 +105,7 @@ summaryController.post('/summary', async (req, res) => {
   } else {
     res.status(200).send('Processing your request. Please be patient...');
     const history: MessageWithName[] = await historyPersistenceService.getHistory(request, false);
+    console.log(history);
     const formattedHistory: string = aiService.formatHistory(history);
     const summary = await aiService.getSummary(request.user_id, request.team_id, formattedHistory, false).catch((e) => {
       console.error(e);
