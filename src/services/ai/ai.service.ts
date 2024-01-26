@@ -35,9 +35,8 @@ export class AIService {
 
     return this.openai.chat.completions
       .create({
-        model: 'gpt-4-1106-preview',
+        model: 'gpt-4',
         messages: [{ role: 'system', content: text }],
-        max_tokens: 1000,
         user: `${userId}-DaBros2016`,
       })
       .then(async (x) => {
@@ -113,7 +112,7 @@ export class AIService {
     const prompt = `please give ${isDaily ? 'a summary' : 'a one sentence summary'} of the following conversation, followed by a three verbatims from the participants that are particularly funny or interesting ensuring that the verbatims are from different people.`;
     return this.openai.chat.completions
       .create({
-        model: 'gpt-4-1106-preview',
+        model: 'gpt-4',
         messages: [
           {
             role: 'system',
