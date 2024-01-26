@@ -18,16 +18,22 @@ const webService = new WebService();
 const storeService = new StoreService();
 
 const isAdmin = (userId: string): boolean => {
-  return userId === 'U2ZDJ2ZGV' || userId === 'U2YJQN2KB' || userId === 'U31CJM1LP';
+  return userId !== 'U300D7UDD';
 };
 
 summaryController.post('/summary/prompt-with-history', async (req, res) => {
   const request: SlashCommandRequest = req.body;
+  const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
+  const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
   if (!isAdmin(request.user_id)) {
     res.send('Sorry, this feature is only available to admins.');
   } else {
     if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
       res.send(`Sorry, can't do that while muzzled.`);
+    } else if (isAlreadyAtMaxRequests && !hasAvailableMoonToken) {
+      res.send(
+        'Sorry, you have reached your maximum number of requests per day. Try again tomorrow or consider purchasing a Moon Token in the store.',
+      );
     } else if (!request.text) {
       res.send('Sorry, you must send a message to generate text.');
     } else if (request.text.length >= 800) {
@@ -92,6 +98,9 @@ summaryController.post('/summary/prompt-with-history', async (req, res) => {
           'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
         );
       });
+      if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
+        storeService.removeEffect(request.user_id, request.team_id, 4);
+      }
     }
   }
 });
