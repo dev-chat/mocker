@@ -21,7 +21,7 @@ const isAdmin = (userId: string): boolean => {
   return userId === 'U2ZDJ2ZGV' || userId === 'U2YJQN2KB' || userId === 'U31CJM1LP';
 };
 
-summaryController.post('/ai/prompt-with-history', async (req, res) => {
+summaryController.post('/summary/prompt-with-history', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   if (!isAdmin(request.user_id)) {
     res.send('Sorry, this feature is only available to admins.');
