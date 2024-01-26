@@ -28,7 +28,7 @@ summaryController.post('/summary/prompt-with-history', async (req, res) => {
   } else {
     // Hardcoded 4 for Moon Token Item Id.
     const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
-    const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
+    // const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
 
     if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
       res.send(`Sorry, can't do that while muzzled.`);
@@ -39,10 +39,6 @@ summaryController.post('/summary/prompt-with-history', async (req, res) => {
     } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
       res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
       // Check here if they also have available moon tokens.
-    } else if (isAlreadyAtMaxRequests && !hasAvailableMoonToken) {
-      res.send(
-        'Sorry, you have reached your maximum number of requests per day. Try again tomorrow or consider purchasing a Moon Token in the store.',
-      );
     } else {
       // Need to do this to avoid timeout issues.
       res.status(200).send('Processing your request. Please be patient...');
