@@ -26,10 +26,6 @@ summaryController.post('/summary/prompt-with-history', async (req, res) => {
   if (!isAdmin(request.user_id)) {
     res.send('Sorry, this feature is only available to admins.');
   } else {
-    // Hardcoded 4 for Moon Token Item Id.
-    const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
-    // const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
-
     if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
       res.send(`Sorry, can't do that while muzzled.`);
     } else if (!request.text) {
@@ -96,10 +92,6 @@ summaryController.post('/summary/prompt-with-history', async (req, res) => {
           'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
         );
       });
-
-      if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
-        storeService.removeEffect(request.user_id, request.team_id, 4);
-      }
     }
   }
 });
