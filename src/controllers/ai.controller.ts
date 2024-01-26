@@ -38,7 +38,7 @@ aiController.post('/ai/text', async (req, res) => {
     res.status(200).send('Processing your request. Please be patient...');
     const generatedText: string | undefined = await aiService
       .generateText(request.user_id, request.team_id, request.text)
-      .catch(e => {
+      .catch((e) => {
         console.error(e);
         const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
         webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
@@ -54,7 +54,7 @@ aiController.post('/ai/text', async (req, res) => {
     const chunks = getChunks(generatedText);
 
     if (chunks) {
-      chunks.forEach(chunk => {
+      chunks.forEach((chunk) => {
         blocks.push({
           type: 'section',
           text: {
@@ -79,7 +79,7 @@ aiController.post('/ai/text', async (req, res) => {
       ],
     });
 
-    webService.sendMessage(request.channel_id, request.text, blocks).catch(e => {
+    webService.sendMessage(request.channel_id, request.text, blocks).catch((e) => {
       console.error(e);
       aiService.decrementDaiyRequests(request.user_id, request.team_id);
       webService.sendMessage(
@@ -115,7 +115,7 @@ aiController.post('/ai/image', async (req, res) => {
   } else {
     // Need to do this to avoid timeout issues.
     res.status(200).send('Processing your request. Please be patient...');
-    const generatedImage = await aiService.generateImage(request.user_id, request.team_id, request.text).catch(e => {
+    const generatedImage = await aiService.generateImage(request.user_id, request.team_id, request.text).catch((e) => {
       console.error(e);
       const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
       webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
@@ -142,7 +142,7 @@ aiController.post('/ai/image', async (req, res) => {
         ],
       },
     ];
-    webService.sendMessage(request.channel_id, request.text, blocks).catch(e => {
+    webService.sendMessage(request.channel_id, request.text, blocks).catch((e) => {
       console.error(e);
       aiService.decrementDaiyRequests(request.user_id, request.team_id);
       webService.sendMessage(

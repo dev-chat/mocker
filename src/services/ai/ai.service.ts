@@ -138,4 +138,35 @@ export class AIService {
         throw e;
       });
   }
+
+  public async promptWithHistory(
+    userId: string,
+    teamId: string,
+    history: string,
+    prompt: string,
+  ): Promise<string | undefined> {
+    await this.redis.setInflight(userId, teamId);
+    await this.redis.setDailyRequests(userId, teamId);
+    return this.openai.chat.completions
+      .create({
+        model: 'gpt-4-turbo-preview',
+        messages: [
+          {
+            role: 'system',
+            content: `Using the conversation contained in the following message, ${prompt}`,
+          },
+          { role: 'system', content: history },
+        ],
+        user: `${userId}-DaBros2016`,
+      })
+      .then(async (x) => {
+        await this.redis.removeInflight(userId, teamId);
+        return x.choices[0].message?.content?.trim();
+      })
+      .catch(async (e) => {
+        await this.redis.removeInflight(userId, teamId);
+        await this.redis.decrementDailyRequests(userId, teamId);
+        throw e;
+      });
+  }
 }
