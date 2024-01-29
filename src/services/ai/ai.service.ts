@@ -13,6 +13,15 @@ export class AIService {
     apiKey: process.env.OPENAI_API_KEY,
   });
 
+  public convertMarkdownToSlackMarkdown(text: string): string {
+    return text
+      .replace(/(\*\*|__)(.*?)\1/g, '*$2*')
+      .replace(/(\*|_)(.*?)\1/g, '_$2_')
+      .replace(/~~(.*?)~~/g, '~$1~')
+      .replace(/`(.*?)`/g, '`$1`')
+      .replace(/\n/g, '\n\n');
+  }
+
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
     return this.redis.decrementDailyRequests(userId, teamId);
   }
@@ -41,7 +50,8 @@ export class AIService {
       })
       .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
-        return x.choices[0].message?.content?.trim();
+        const text = x.choices[0].message?.content?.trim();
+        return text ? this.convertMarkdownToSlackMarkdown(text) : text;
       })
       .catch(async (e) => {
         await this.redis.removeInflight(userId, teamId);
