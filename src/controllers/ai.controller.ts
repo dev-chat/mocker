@@ -24,8 +24,8 @@ aiController.post('/ai/text', async (req, res) => {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('Sorry, you must send a message to generate text.');
-  } else if (request.text.length >= 800) {
-    res.send('Sorry, your request cannot be more than 800 characters. Please refine your query.');
+  } else if (request.text.length >= 2000) {
+    res.send('Sorry, your request cannot be more than 2000 characters. Please refine your query.');
   } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
     res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
     // Check here if they also have available moon tokens.
@@ -104,6 +104,8 @@ aiController.post('/ai/image', async (req, res) => {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('Sorry, you must send a message to generate text.');
+  } else if (request.text.length >= 2000) {
+    res.send('Sorry, your request cannot be more than 2000 characters. Please refine your query.');
   } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
     res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
   } else if (isAlreadyAtMaxRequests && !hasAvailableMoonToken) {
