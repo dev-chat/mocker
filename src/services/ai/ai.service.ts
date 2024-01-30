@@ -137,7 +137,8 @@ export class AIService {
         if (isDaily) {
           await this.redis.setHasUsedSummary(userId, teamId);
         }
-        return x.choices[0].message?.content?.trim();
+        const text = x.choices[0].message?.content?.trim();
+        return text ? this.convertMarkdownToSlackMarkdown(text) : text;
       })
       .catch(async (e) => {
         if (isDaily) {
@@ -171,7 +172,8 @@ export class AIService {
       })
       .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
-        return x.choices[0].message?.content?.trim();
+        const text = x.choices[0].message?.content?.trim();
+        return text ? this.convertMarkdownToSlackMarkdown(text) : text;
       })
       .catch(async (e) => {
         await this.redis.removeInflight(userId, teamId);
