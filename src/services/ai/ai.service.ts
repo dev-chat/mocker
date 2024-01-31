@@ -18,8 +18,7 @@ export class AIService {
       .replace(/(\*\*|__)(.*?)\1/g, '*$2*')
       .replace(/(\*|_)(.*?)\1/g, '_$2_')
       .replace(/~~(.*?)~~/g, '~$1~')
-      .replace(/`(.*?)`/g, '`$1`')
-      .replace(/\n/g, '\n\n');
+      .replace(/`(.*?)`/g, '`$1`');
   }
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
