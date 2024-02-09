@@ -57,7 +57,15 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
         },
         {
           type: 'mrkdwn',
+          text: `*Price Change*: ${getPlusOrMinus(quote.dayChange)}$${quote.dayChange} (${getPlusOrMinusPercent(quote.dayChange) + quote.dayChangePercent})`,
+        },
+        {
+          type: 'mrkdwn',
           text: `*Delta*: ${getPlusOrMinus(quote.delta)}$${quote.delta} (${getPlusOrMinusPercent(quote.delta) + quote.deltaPercent})`,
+        },
+        {
+          type: 'mrkdwn',
+          text: `*Previous Close*: $${quote.prevClose}`,
         },
       ],
     },
