@@ -12,16 +12,16 @@ export class QuoteService {
 
   formatData(quote: QuoteResponse, company: CompanyOverviewResponse, ticker: string): QuoteData {
     return {
-      open: quote.o.toFixed(2),
-      high: quote.h.toFixed(2),
-      low: quote.l.toFixed(2),
-      close: quote.c.toFixed(2),
-      deltaPercent: quote.dp.toFixed(2) + '%',
-      delta: quote.d.toFixed(2),
-      marketCap: company['MarketCapitalization'],
+      open: quote?.o?.toFixed(2),
+      high: quote?.h?.toFixed(2),
+      low: quote?.l?.toFixed(2),
+      close: quote?.c?.toFixed(2),
+      deltaPercent: quote?.dp?.toFixed(2) + '%',
+      delta: quote?.d?.toFixed(2),
+      marketCap: company?.['MarketCapitalization'],
       lastRefreshed: new Date(),
-      '52WeekHigh': quote.h > parseFloat(company['52WeekHigh']) ? quote.h.toFixed(2) : company['52WeekHigh'],
-      '52WeekLow': quote.l < parseFloat(company['52WeekLow']) ? quote.l.toFixed(2) : company['52WeekLow'],
+      '52WeekHigh': quote?.h > parseFloat(company['52WeekHigh']) ? quote?.h?.toFixed(2) : company['52WeekHigh'],
+      '52WeekLow': quote?.l < parseFloat(company['52WeekLow']) ? quote?.l?.toFixed(2) : company['52WeekLow'],
       ticker,
     };
   }
