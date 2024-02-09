@@ -18,7 +18,7 @@ export class QuoteService {
       deltaPercent: quote?.dp?.toFixed(2) + '%',
       delta: quote?.d?.toFixed(2),
       prevClose: quote?.pc?.toFixed(2),
-      marketCap: (companyProfile?.shareOutstanding * quote?.c) / 1000000,
+      marketCap: (companyProfile?.shareOutstanding * 1000000 * quote?.c) / 1000000,
       lastRefreshed: new Date(),
       '52WeekHigh':
         quote?.h > metrics?.metric?.['52WeekHigh'] ? quote?.h?.toFixed(2) : metrics?.metric?.['52WeekHigh']?.toFixed(2),
