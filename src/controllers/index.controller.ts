@@ -9,6 +9,7 @@ import { healthController } from './health.controller';
 import { listController } from './list.controller';
 import { mockController } from './mock.controller';
 import { muzzleController } from './muzzle.controller';
+import { quoteController } from './quote.controller';
 import { reactionController } from './reaction.controller';
 import { storeController } from './store.controller';
 import { summaryController } from './summary.controller';
@@ -26,6 +27,7 @@ export const controllers = [
   listController,
   mockController,
   muzzleController,
+  quoteController,
   reactionController,
   storeController,
   summaryController,
