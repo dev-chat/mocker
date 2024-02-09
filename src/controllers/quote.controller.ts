@@ -30,6 +30,14 @@ const getPlusOrMinus = (delta: number): string => {
   return '';
 };
 
+const getPlusOrMinusPercent = (delta: number): string => {
+  if (delta > 0) {
+    return '+';
+  } else {
+    return '';
+  }
+};
+
 const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlock[] | undefined => {
   return [
     {
@@ -49,7 +57,7 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
         },
         {
           type: 'mrkdwn',
-          text: `Delta*: ${getPlusOrMinus(quote.delta)}$25.75 (${getPlusOrMinus(quote.delta) + quote.deltaPercent})`,
+          text: `*Delta*: ${getPlusOrMinus(quote.delta)}$${quote.delta} (${getPlusOrMinusPercent(quote.delta) + quote.deltaPercent})`,
         },
       ],
     },
@@ -61,11 +69,11 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
       fields: [
         {
           type: 'mrkdwn',
-          text: `Open*: $${quote.open}`,
+          text: `*Open*: $${quote.open}`,
         },
         {
           type: 'mrkdwn',
-          text: `Market Cap*: $${quote.marketCap}`,
+          text: `*Market Cap*: $${quote.marketCap}`,
         },
         {
           type: 'mrkdwn',
@@ -77,7 +85,7 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
         },
         {
           type: 'mrkdwn',
-          text: `Daily Low*: $${quote.low}`,
+          text: `*Daily Low*: $${quote.low}`,
         },
         {
           type: 'mrkdwn',
