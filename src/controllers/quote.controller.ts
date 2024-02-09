@@ -104,6 +104,7 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
         {
           type: 'mrkdwn',
           text: `Latest Data as of <!date^${timestamp}^Posted {date_num} {time_secs}>\nQuote requested by <@${userId}>`,
+          verbatim: false,
         },
       ],
     },
