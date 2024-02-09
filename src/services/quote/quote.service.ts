@@ -10,29 +10,29 @@ export class QuoteService {
   }
   private static instance: QuoteService;
 
-  formatData(quote: QuoteResponse, company: CompanyOverviewResponse): QuoteData {
+  formatData(quote: QuoteResponse, company: CompanyOverviewResponse, ticker: string): QuoteData {
     const latestQuote: TimeSeries5MinData = quote['Time Series (5min)'][0];
+    const delta =
+      (parseFloat(latestQuote['4. close']) - parseFloat(latestQuote['1. open'])) / parseFloat(latestQuote['1. open']);
 
     return {
-      open: latestQuote['1. open'],
-      high: latestQuote['2. high'],
-      low: latestQuote['3. low'],
-      close: latestQuote['4. close'],
-      '52WeekHigh': company['52WeekHigh'],
-      '52WeekLow': company['52WeekLow'],
-      delta:
-        (
-          ((parseInt(latestQuote['4. close']) - parseInt(latestQuote['1. open'])) / parseInt(latestQuote['1. open'])) *
-          100
-        ).toFixed(2) + '%',
+      open: parseFloat(latestQuote['1. open']).toFixed(2),
+      high: parseFloat(latestQuote['2. high']).toFixed(2),
+      low: parseFloat(latestQuote['3. low']).toFixed(2),
+      close: parseFloat(latestQuote['4. close']).toFixed(2),
+      '52WeekHigh': parseFloat(company['52WeekHigh']).toFixed(2),
+      '52WeekLow': parseFloat(company['52WeekLow']).toFixed(2),
+      deltaPercent: (delta * 100).toFixed(2) + '%',
+      delta,
       marketCap: company['MarketCapitalization'],
       lastRefreshed: quote['Meta Data']['3. Last Refreshed'],
+      ticker,
     };
   }
 
   public quote(ticker: string): Promise<QuoteData> {
     return Promise.all([this.getQuote(ticker), this.getCompanyData(ticker)]).then(([quote, companyData]) => {
-      return this.formatData(quote, companyData);
+      return this.formatData(quote, companyData, ticker);
     });
   }
 
