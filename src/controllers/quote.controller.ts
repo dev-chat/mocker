@@ -12,26 +12,26 @@ const suppressorService = new SuppressorService();
 const quoteService = QuoteService.getInstance();
 const webService = WebService.getInstance();
 
-const getEmoji = (delta: number): string => {
-  if (delta > 0) {
+const getEmoji = (delta: string): string => {
+  if (parseFloat(delta) > 0) {
     return ':chart_with_upwards_trend:';
-  } else if (delta < 0) {
+  } else if (parseFloat(delta) < 0) {
     return ':chart_with_downwards_trend:';
   }
   return ':chart:';
 };
 
-const getPlusOrMinus = (delta: number): string => {
-  if (delta > 0) {
+const getPlusOrMinus = (delta: string): string => {
+  if (parseFloat(delta) > 0) {
     return '+';
-  } else if (delta < 0) {
+  } else if (parseFloat(delta) < 0) {
     return '-';
   }
   return '';
 };
 
-const getPlusOrMinusPercent = (delta: number): string => {
-  if (delta > 0) {
+const getPlusOrMinusPercent = (delta: string): string => {
+  if (parseFloat(delta) > 0) {
     return '+';
   } else {
     return '';
@@ -81,15 +81,7 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
         },
         {
           type: 'mrkdwn',
-          text: `*52 Week High*: $${quote['52WeekHigh']}`,
-        },
-        {
-          type: 'mrkdwn',
           text: `*Daily Low*: $${quote.low}`,
-        },
-        {
-          type: 'mrkdwn',
-          text: `52 Week Low*: $${quote['52WeekLow']}`,
         },
       ],
     },
@@ -101,7 +93,7 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
       elements: [
         {
           type: 'mrkdwn',
-          text: `Latest Data as of ${quote.lastRefreshed}\nQuote requested by <@${userId}>`,
+          text: `Latest Data as of ${quote.lastRefreshed.toString()}\nQuote requested by <@${userId}>`,
         },
       ],
     },

@@ -1,5 +1,5 @@
 import Axios from 'axios';
-import { CompanyOverviewResponse, QuoteData, QuoteResponse, TimeSeries5MinData } from './quote.models';
+import { CompanyOverviewResponse, QuoteData, QuoteResponse } from './quote.models';
 
 export class QuoteService {
   public static getInstance(): QuoteService {
@@ -11,21 +11,15 @@ export class QuoteService {
   private static instance: QuoteService;
 
   formatData(quote: QuoteResponse, company: CompanyOverviewResponse, ticker: string): QuoteData {
-    const latestQuote: TimeSeries5MinData = quote['Time Series (5min)'][Object.keys(quote['Time Series (5min)'])[0]];
-    const delta =
-      (parseFloat(latestQuote['4. close']) - parseFloat(latestQuote['1. open'])) / parseFloat(latestQuote['1. open']);
-
     return {
-      open: parseFloat(latestQuote['1. open']).toFixed(2),
-      high: parseFloat(latestQuote['2. high']).toFixed(2),
-      low: parseFloat(latestQuote['3. low']).toFixed(2),
-      close: parseFloat(latestQuote['4. close']).toFixed(2),
-      '52WeekHigh': parseFloat(company['52WeekHigh']).toFixed(2),
-      '52WeekLow': parseFloat(company['52WeekLow']).toFixed(2),
-      deltaPercent: (delta * 100).toFixed(2) + '%',
-      delta,
+      open: quote.o.toFixed(2),
+      high: quote.h.toFixed(2),
+      low: quote.l.toFixed(2),
+      close: quote.c.toFixed(2),
+      deltaPercent: quote.dp.toFixed(2) + '%',
+      delta: quote.d.toFixed(2),
       marketCap: company['MarketCapitalization'],
-      lastRefreshed: quote['Meta Data']['3. Last Refreshed'],
+      lastRefreshed: new Date(),
       ticker,
     };
   }
@@ -37,12 +31,9 @@ export class QuoteService {
   }
 
   getQuote(ticker: string): Promise<QuoteResponse> {
-    return Axios.get(
-      'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=' +
-        ticker +
-        '&interval=5min&apikey=' +
-        process.env.ALPHA_VANTAGE_API_KEY,
-    ).then((response) => response.data);
+    return Axios.get(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${process.env.FINNHUB_API_KEY}`).then(
+      (response) => response.data,
+    );
   }
 
   getCompanyData(ticker: string): Promise<CompanyOverviewResponse> {

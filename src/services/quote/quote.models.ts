@@ -1,23 +1,12 @@
 export interface QuoteResponse {
-  'Meta Data': MetaData;
-  'Time Series (5min)': Record<string, TimeSeries5MinData>;
-}
-
-export interface MetaData {
-  '1. Information': string;
-  '2. Symbol': string;
-  '3. Last Refreshed': string;
-  '4. Interval': string;
-  '5. Output Size': string;
-  '6. Time Zone': string;
-}
-
-export interface TimeSeries5MinData {
-  '1. open': string;
-  '2. high': string;
-  '3. low': string;
-  '4. close': string;
-  '5. volume': string;
+  c: number;
+  d: number;
+  dp: number;
+  h: number;
+  l: number;
+  o: number;
+  pc: number;
+  t: number;
 }
 
 export interface CompanyOverviewResponse {
@@ -74,11 +63,9 @@ export interface QuoteData {
   high: string;
   low: string;
   close: string;
-  '52WeekHigh': string;
-  '52WeekLow': string;
-  delta: number;
+  delta: string;
   deltaPercent: string;
   marketCap: string;
-  lastRefreshed: string;
+  lastRefreshed: Date;
   ticker: string;
 }
