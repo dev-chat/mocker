@@ -31,12 +31,12 @@ export class QuoteService {
   }
 
   getQuote(ticker: string): Promise<QuoteResponse> {
-    return Axios.get(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${process.env.FINNHUB_API_KEY}`).then(
-      (response) => {
-        console.log(response.data);
-        return response.data;
-      },
-    );
+    return Axios.get(
+      `https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${process.env.FINNHUB_API_KEY}`,
+    ).then((response) => {
+      console.log(response.data);
+      return response.data;
+    });
   }
 
   getCompanyData(ticker: string): Promise<CompanyOverviewResponse> {
