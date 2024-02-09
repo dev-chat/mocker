@@ -18,7 +18,7 @@ export class SlackService {
 
   public sendResponse(responseUrl: string, response: ChannelResponse): void {
     axios
-      .post(responseUrl, response)
+      .post(encodeURI(responseUrl), response)
       .catch((e: Error) => console.error(`Error responding: ${e.message} at ${responseUrl}`));
   }
 
@@ -35,14 +35,14 @@ export class SlackService {
   }
 
   public getUserIdByName(userName: string, teamId: string): Promise<string | undefined> {
-    return this.persistenceService.getUserByUserName(userName, teamId).then(user => user?.slackId);
+    return this.persistenceService.getUserByUserName(userName, teamId).then((user) => user?.slackId);
   }
 
   /**
    * Returns the user name by id
    */
   public getUserNameById(userId: string, teamId: string): Promise<string | undefined> {
-    return this.persistenceService.getUserById(userId, teamId).then(user => user?.name);
+    return this.persistenceService.getUserById(userId, teamId).then((user) => user?.name);
   }
 
   /**
@@ -80,7 +80,7 @@ export class SlackService {
   }
 
   public getAndSaveAllChannels(): void {
-    this.web.getAllChannels().then(result => this.persistenceService.saveChannels(result.channels));
+    this.web.getAllChannels().then((result) => this.persistenceService.saveChannels(result.channels));
   }
 
   public async getChannelName(channelId: string, teamId: string): Promise<string> {
@@ -89,7 +89,7 @@ export class SlackService {
   }
 
   public getImpersonatedUser(userId: string): Promise<SlackUser | undefined> {
-    return this.web.getAllUsers().then(resp => {
+    return this.web.getAllUsers().then((resp) => {
       const potentialImpersonator = (resp.members as SlackUser[]).find((user: SlackUser) => user.id === userId);
       return (resp.members as SlackUser[]).find((victim: SlackUser) => {
         const hasSameDisplayName =
@@ -115,11 +115,11 @@ export class SlackService {
     }
     return this.web
       .getAllUsers()
-      .then(resp => {
+      .then((resp) => {
         console.log('New user list has been retrieved!');
-        return this.persistenceService.saveUsers(resp.members as SlackUser[]).catch(e => e);
+        return this.persistenceService.saveUsers(resp.members as SlackUser[]).catch((e) => e);
       })
-      .catch(e => {
+      .catch((e) => {
         console.error('Failed to retrieve users', e);
         console.timeEnd('retrieved user list in: ');
         console.error('Retrying in 60 seconds...');

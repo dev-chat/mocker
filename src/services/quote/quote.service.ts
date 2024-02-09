@@ -34,7 +34,7 @@ export class QuoteService {
 
   getQuote(ticker: string): Promise<QuoteResponse> {
     return Axios.get(
-      `https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${process.env.FINNHUB_API_KEY}`,
+      encodeURI(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${process.env.FINNHUB_API_KEY}`),
     ).then((response) => {
       console.log(response.data);
       return response.data;
@@ -43,10 +43,12 @@ export class QuoteService {
 
   getCompanyData(ticker: string): Promise<CompanyOverviewResponse> {
     return Axios.get(
-      'https://www.alphavantage.co/query?function=OVERVIEW&symbol=' +
-        ticker +
-        '&apikey=' +
-        process.env.ALPHA_VANTAGE_API_KEY,
+      encodeURI(
+        'https://www.alphavantage.co/query?function=OVERVIEW&symbol=' +
+          ticker +
+          '&apikey=' +
+          process.env.ALPHA_VANTAGE_API_KEY,
+      ),
     ).then((response) => response.data);
   }
 }

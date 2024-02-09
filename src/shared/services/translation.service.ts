@@ -4,7 +4,7 @@ export class TranslationService {
   public translate(text: string): Promise<string> {
     const lang = this.getRandomLanguage();
     return Axios.post(
-      `https://translation.googleapis.com/language/translate/v2?key=${process.env.GOOGLE_TRANSLATE_API_KEY}`,
+      encodeURI(`https://translation.googleapis.com/language/translate/v2?key=${process.env.GOOGLE_TRANSLATE_API_KEY}`),
       {
         q: text,
         source: 'en',

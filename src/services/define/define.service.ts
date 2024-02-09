@@ -18,14 +18,7 @@ export class DefineService {
   public capitalizeFirstLetter(sentence: string, all = true): string {
     if (all) {
       const words = sentence.split(' ');
-      return words
-        .map(word =>
-          word
-            .charAt(0)
-            .toUpperCase()
-            .concat(word.slice(1)),
-        )
-        .join(' ');
+      return words.map((word) => word.charAt(0).toUpperCase().concat(word.slice(1))).join(' ');
     }
     return sentence.charAt(0).toUpperCase() + sentence.slice(1, sentence.length);
   }
@@ -35,7 +28,7 @@ export class DefineService {
    */
   public define(word: string): Promise<UrbanDictionaryResponse> {
     const formattedWord = word.split(' ').join('+');
-    return Axios.get(`http://api.urbandictionary.com/v0/define?term=${formattedWord}`).then(
+    return Axios.get(encodeURI(`http://api.urbandictionary.com/v0/define?term=${formattedWord}`)).then(
       (res: AxiosResponse<UrbanDictionaryResponse>) => {
         return res.data;
       },
