@@ -1,5 +1,5 @@
 import Axios from 'axios';
-import { CompanyOverviewResponse, QuoteData, QuoteResponse } from './quote.models';
+import { CompanyProfile, MetricResponse, QuoteData, QuoteResponse } from './quote.models';
 
 export class QuoteService {
   public static getInstance(): QuoteService {
@@ -10,7 +10,7 @@ export class QuoteService {
   }
   private static instance: QuoteService;
 
-  formatData(quote: QuoteResponse, company: CompanyOverviewResponse, ticker: string): QuoteData {
+  formatData(quote: QuoteResponse, metrics: MetricResponse, companyProfile: CompanyProfile, ticker: string): QuoteData {
     return {
       open: quote?.o?.toFixed(2),
       high: quote?.h?.toFixed(2),
@@ -18,19 +18,23 @@ export class QuoteService {
       close: quote?.c?.toFixed(2),
       deltaPercent: quote?.dp?.toFixed(2) + '%',
       delta: quote?.d?.toFixed(2),
-      marketCap: company?.['MarketCapitalization'],
+      marketCap: companyProfile?.marketCapitalization?.toFixed(2),
       lastRefreshed: new Date(),
-      '52WeekHigh': quote?.h > parseFloat(company['52WeekHigh']) ? quote?.h?.toFixed(2) : company['52WeekHigh'],
-      '52WeekLow': quote?.l < parseFloat(company['52WeekLow']) ? quote?.l?.toFixed(2) : company['52WeekLow'],
+      '52WeekHigh':
+        quote?.h > metrics?.metric?.['52WeekHigh'] ? quote?.h?.toFixed(2) : metrics?.metric?.['52WeekHigh']?.toFixed(2),
+      '52WeekLow':
+        quote?.l < metrics?.metric?.['52WeekLow'] ? quote?.l?.toFixed(2) : metrics?.metric?.['52WeekLow']?.toFixed(2),
       ticker,
-      name: company?.Name || '',
+      name: companyProfile?.name || '',
     };
   }
 
   public quote(ticker: string): Promise<QuoteData> {
-    return Promise.all([this.getQuote(ticker), this.getCompanyData(ticker)]).then(([quote, companyData]) => {
-      return this.formatData(quote, companyData, ticker);
-    });
+    return Promise.all([this.getQuote(ticker), this.getMetrics(ticker), this.getCompanyProfile(ticker)]).then(
+      ([quote, metrics, search]) => {
+        return this.formatData(quote, metrics, search, ticker);
+      },
+    );
   }
 
   getQuote(ticker: string): Promise<QuoteResponse> {
@@ -42,14 +46,20 @@ export class QuoteService {
     });
   }
 
-  getCompanyData(ticker: string): Promise<CompanyOverviewResponse> {
+  getMetrics(ticker: string): Promise<MetricResponse> {
     return Axios.get(
       encodeURI(
-        'https://www.alphavantage.co/query?function=OVERVIEW&symbol=' +
-          ticker +
-          '&apikey=' +
-          process.env.ALPHA_VANTAGE_API_KEY,
+        `https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=${process.env.FINNHUB_API_KEY}`,
       ),
+    ).then((response) => {
+      console.log(response.data);
+      return response.data;
+    });
+  }
+
+  getCompanyProfile(ticker: string): Promise<CompanyProfile> {
+    return Axios.get(
+      encodeURI(`https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${process.env.FINNHUB_API_KEY}`),
     ).then((response) => {
       console.log(response.data);
       return response.data;

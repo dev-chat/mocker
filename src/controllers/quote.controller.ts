@@ -116,7 +116,7 @@ quoteController.post('/quote', async (req, res) => {
     res.send('Sorry, you must provide a stock ticker in order to use /quote.');
   } else {
     res.status(200).send();
-    const quote: QuoteData = await quoteService.quote(request.text);
+    const quote: QuoteData = await quoteService.quote(request.text.toUpperCase());
     webService.sendMessage(request.channel_id, '', createQuoteBlocks(quote, request.user_id)).catch((e) => {
       console.error(e);
       webService.sendMessage(

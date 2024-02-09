@@ -9,53 +9,60 @@ export interface QuoteResponse {
   t: number;
 }
 
-export interface CompanyOverviewResponse {
-  Symbol: string;
-  AssetType: string;
-  Name: string;
-  Description: string;
-  CIK: string;
-  Exchange: string;
-  Currency: string;
-  Country: string;
-  Sector: string;
-  Industry: string;
-  Address: string;
-  FiscalYearEnd: string;
-  LatestQuarter: string;
-  MarketCapitalization: string;
-  EBITDA: string;
-  PERatio: string;
-  PEGRatio: string;
-  BookValue: string;
-  DividendPerShare: string;
-  DividendYield: string;
-  EPS: string;
-  RevenuePerShareTTM: string;
-  ProfitMargin: string;
-  OperatingMarginTTM: string;
-  ReturnOnAssetsTTM: string;
-  ReturnOnEquityTTM: string;
-  RevenueTTM: string;
-  GrossProfitTTM: string;
-  DilutedEPSTTM: string;
-  QuarterlyEarningsGrowthYOY: string;
-  QuarterlyRevenueGrowthYOY: string;
-  AnalystTargetPrice: string;
-  TrailingPE: string;
-  ForwardPE: string;
-  PriceToSalesRatioTTM: string;
-  PriceToBookRatio: string;
-  EVToRevenue: string;
-  EVToEBITDA: string;
-  Beta: string;
-  '52WeekHigh': string;
-  '52WeekLow': string;
-  '50DayMovingAverage': string;
-  '200DayMovingAverage': string;
-  SharesOutstanding: string;
-  DividendDate: string;
-  ExDividendDate: string;
+export interface MetricResponse {
+  series: MetricResponseSeries;
+  metric: Metric;
+  metricType: string;
+  symbol: string;
+}
+
+export interface MetricResponseSeries {
+  annual: MetricResponseSeriesAnnual;
+}
+
+export interface MetricResponseSeriesAnnual {
+  currentRatio: MetricResponseSeriesAnnualCurrentRatio[];
+  salesPerShare: MetricResponseSeriesAnnualSalesPerShare[];
+  netMargin: MetricResponseSeriesAnnualNetMargin[];
+}
+
+export interface MetricResponseSeriesAnnualCurrentRatio {
+  period: string;
+  v: number;
+}
+
+export interface MetricResponseSeriesAnnualSalesPerShare {
+  period: string;
+  v: number;
+}
+
+export interface MetricResponseSeriesAnnualNetMargin {
+  period: string;
+  v: number;
+}
+
+export interface Metric {
+  '10DayAverageTradingVolume': number;
+  '52WeekHigh': number;
+  '52WeekLow': number;
+  '52WeekLowDate': string;
+  '52WeekPriceReturnDaily': number;
+  beta: number;
+}
+
+export interface CompanyProfile {
+  country: string;
+  currency: string;
+  exchange: string;
+  ipo: string;
+  marketCapitalization: number;
+  name: string;
+  phone: string;
+  shareOutstanding: number;
+  ticker: string;
+  weburl: string;
+  logo: string;
+  finnhubIndustry: string;
 }
 
 export interface QuoteData {
