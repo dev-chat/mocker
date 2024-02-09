@@ -44,7 +44,7 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
       type: 'header',
       text: {
         type: 'plain_text',
-        text: `${quote.ticker.toUpperCase()} ${getEmoji(quote.delta)}`,
+        text: `${quote.ticker.toUpperCase()} - ${quote.name} ${getEmoji(quote.delta)}`,
         emoji: true,
       },
     },

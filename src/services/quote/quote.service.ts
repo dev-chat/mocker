@@ -23,6 +23,7 @@ export class QuoteService {
       '52WeekHigh': quote?.h > parseFloat(company['52WeekHigh']) ? quote?.h?.toFixed(2) : company['52WeekHigh'],
       '52WeekLow': quote?.l < parseFloat(company['52WeekLow']) ? quote?.l?.toFixed(2) : company['52WeekLow'],
       ticker,
+      name: company?.Name,
     };
   }
 

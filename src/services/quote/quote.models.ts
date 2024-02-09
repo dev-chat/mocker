@@ -70,4 +70,5 @@ export interface QuoteData {
   '52WeekHigh': string;
   '52WeekLow': string;
   ticker: string;
+  name: string;
 }
