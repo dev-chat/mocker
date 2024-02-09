@@ -103,7 +103,7 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
       elements: [
         {
           type: 'mrkdwn',
-          text: `Latest Data as of <!date^${timestamp}^Posted {date_num} {time_secs}|Posted at some point today>\nQuote requested by <@${userId}>`,
+          text: `<!date^${timestamp}^Latest Data as of {date_num} {time_secs}|Posted at some point today>\nQuote requested by <@${userId}>`,
           verbatim: false,
         },
       ],
@@ -114,7 +114,7 @@ quoteController.post('/quote', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
-  } else if (!request.text) {
+  } else if (!request.text || request.text.length > 4) {
     res.send('Sorry, you must provide a stock ticker in order to use /quote.');
   } else {
     res.status(200).send();
