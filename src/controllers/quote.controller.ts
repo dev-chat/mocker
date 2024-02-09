@@ -106,6 +106,7 @@ quoteController.post('/quote', async (req, res) => {
   } else if (!request.text) {
     res.send('Sorry, you must provide a stock ticker in order to use /quote.');
   } else {
+    res.status(200).send();
     const quote: QuoteData = await quoteService.quote(request.text);
     webService.sendMessage(request.channel_id, '', createQuoteBlocks(quote, request.user_id)).catch((e) => {
       console.error(e);
@@ -114,6 +115,5 @@ quoteController.post('/quote', async (req, res) => {
         'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
       );
     });
-    res.status(200).send();
   }
 });
