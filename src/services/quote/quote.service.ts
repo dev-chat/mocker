@@ -50,6 +50,9 @@ export class QuoteService {
           '&apikey=' +
           process.env.ALPHA_VANTAGE_API_KEY,
       ),
-    ).then((response) => response.data);
+    ).then((response) => {
+      console.log(response.data);
+      return response.data;
+    });
   }
 }
