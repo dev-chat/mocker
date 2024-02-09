@@ -24,8 +24,6 @@ const getEmoji = (delta: string): string => {
 const getPlusOrMinus = (delta: string): string => {
   if (parseFloat(delta) > 0) {
     return '+';
-  } else if (parseFloat(delta) < 0) {
-    return '-';
   }
   return '';
 };
