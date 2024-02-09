@@ -73,7 +73,7 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
         },
         {
           type: 'mrkdwn',
-          text: `*Market Cap*: $${quote.marketCap}`,
+          text: `*Market Cap*: $${(parseInt(quote.marketCap) / 1000000000).toFixed(2)}B`,
         },
         {
           type: 'mrkdwn',
