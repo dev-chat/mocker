@@ -10,6 +10,15 @@ export class QuoteService {
   }
   private static instance: QuoteService;
 
+  getMarketCap(price: number, sharesOutstanding: number): string {
+    const marketCap = (sharesOutstanding * 1000000 * price) / 1000000;
+    if (marketCap / 1000000 > 1) {
+      return `${(marketCap / 1000000).toFixed(2)}T`;
+    } else {
+      return `${(marketCap / 1000).toFixed(2)}B`;
+    }
+  }
+
   formatData(quote: QuoteResponse, metrics: MetricResponse, companyProfile: CompanyProfile, ticker: string): QuoteData {
     return {
       high: quote?.h?.toFixed(2),
@@ -18,7 +27,7 @@ export class QuoteService {
       deltaPercent: quote?.dp?.toFixed(2) + '%',
       delta: quote?.d?.toFixed(2),
       prevClose: quote?.pc?.toFixed(2),
-      marketCap: (companyProfile?.shareOutstanding * 1000000 * quote?.c) / 1000000,
+      marketCap: this.getMarketCap(quote?.c, companyProfile?.shareOutstanding),
       lastRefreshed: new Date(),
       '52WeekHigh':
         quote?.h > metrics?.metric?.['52WeekHigh'] ? quote?.h?.toFixed(2) : metrics?.metric?.['52WeekHigh']?.toFixed(2),

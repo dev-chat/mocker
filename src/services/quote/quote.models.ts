@@ -72,7 +72,7 @@ export interface QuoteData {
   delta: string;
   deltaPercent: string;
   prevClose: string;
-  marketCap: number;
+  marketCap: string;
   lastRefreshed: Date;
   '52WeekHigh': string;
   '52WeekLow': string;
