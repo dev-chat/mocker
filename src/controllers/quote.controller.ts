@@ -81,7 +81,15 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
         },
         {
           type: 'mrkdwn',
+          text: `*52 Week High*: $${quote['52WeekHigh']}`,
+        },
+        {
+          type: 'mrkdwn',
           text: `*Daily Low*: $${quote.low}`,
+        },
+        {
+          type: 'mrkdwn',
+          text: `*52 Week Low*: $${quote['52WeekLow']}`,
         },
       ],
     },

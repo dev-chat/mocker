@@ -67,5 +67,7 @@ export interface QuoteData {
   deltaPercent: string;
   marketCap: string;
   lastRefreshed: Date;
+  '52WeekHigh': string;
+  '52WeekLow': string;
   ticker: string;
 }
