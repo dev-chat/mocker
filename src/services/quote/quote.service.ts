@@ -11,7 +11,7 @@ export class QuoteService {
   private static instance: QuoteService;
 
   formatData(quote: QuoteResponse, company: CompanyOverviewResponse, ticker: string): QuoteData {
-    const latestQuote: TimeSeries5MinData = quote['Time Series (5min)'][0];
+    const latestQuote: TimeSeries5MinData = quote['Time Series (5min)'][Object.keys(quote['Time Series (5min)'])[0]];
     const delta =
       (parseFloat(latestQuote['4. close']) - parseFloat(latestQuote['1. open'])) / parseFloat(latestQuote['1. open']);
 
