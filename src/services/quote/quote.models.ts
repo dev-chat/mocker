@@ -66,14 +66,11 @@ export interface CompanyProfile {
 }
 
 export interface QuoteData {
-  open: string;
   high: string;
   low: string;
   close: string;
   delta: string;
   deltaPercent: string;
-  dayChange: string;
-  dayChangePercent: string;
   prevClose: string;
   marketCap: number;
   lastRefreshed: Date;

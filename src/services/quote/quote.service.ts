@@ -12,14 +12,11 @@ export class QuoteService {
 
   formatData(quote: QuoteResponse, metrics: MetricResponse, companyProfile: CompanyProfile, ticker: string): QuoteData {
     return {
-      open: quote?.o?.toFixed(2),
       high: quote?.h?.toFixed(2),
       low: quote?.l?.toFixed(2),
       close: quote?.c?.toFixed(2),
       deltaPercent: quote?.dp?.toFixed(2) + '%',
       delta: quote?.d?.toFixed(2),
-      dayChange: (quote?.c - quote?.pc).toFixed(2),
-      dayChangePercent: (((quote?.c - quote?.pc) / quote?.pc) * 100).toFixed(2) + '%',
       prevClose: quote?.pc?.toFixed(2),
       marketCap: (companyProfile?.shareOutstanding * quote?.c) / 1000000,
       lastRefreshed: new Date(),
