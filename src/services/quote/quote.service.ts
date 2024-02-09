@@ -1,4 +1,5 @@
 import Axios from 'axios';
+import https from 'https';
 import { CompanyOverviewResponse, QuoteData, QuoteResponse, TimeSeries5MinData } from './quote.models';
 
 export class QuoteService {
@@ -37,20 +38,28 @@ export class QuoteService {
   }
 
   getQuote(ticker: string): Promise<QuoteResponse> {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
     return Axios.get(
       'https://www.alphavantage.com/query?function=TIME_SERIES_INTRADAY&symbol=' +
         ticker +
         '&interval=5min&apikey=' +
         process.env.ALPHA_VANTAGE_API_KEY,
+      { httpsAgent: agent },
     ).then((response) => response.data);
   }
 
   getCompanyData(ticker: string): Promise<CompanyOverviewResponse> {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
     return Axios.get(
       'https://www.alphavantage.com/query?function=OVERVIEW&symbol=' +
         ticker +
         '&apikey=' +
         process.env.ALPHA_VANTAGE_API_KEY,
+      { httpsAgent: agent },
     ).then((response) => response.data);
   }
 }
