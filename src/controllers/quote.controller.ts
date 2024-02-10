@@ -37,7 +37,6 @@ const getPlusOrMinusPercent = (delta: string): string => {
 };
 
 const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlock[] | undefined => {
-  const timestamp = Math.floor(new Date().getTime() / 1000);
   console.log(quote);
   return [
     {
@@ -101,7 +100,7 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
       elements: [
         {
           type: 'mrkdwn',
-          text: `<!date^${timestamp}^Latest Data as of {date_num} {time_secs}|Posted at some point today> | Quote requested by <@${userId}>`,
+          text: `:moneybag: Quote requested by <@${userId}> :moneybag:`,
           verbatim: false,
         },
       ],
