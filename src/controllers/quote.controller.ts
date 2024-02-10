@@ -101,7 +101,7 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
       elements: [
         {
           type: 'mrkdwn',
-          text: `<!date^${timestamp}^Latest Data as of {date_num} {time_secs}|Posted at some point today>\nQuote requested by <@${userId}>`,
+          text: `<!date^${timestamp}^Latest Data as of {date_num} {time_secs}|Posted at some point today> | Quote requested by <@${userId}>`,
           verbatim: false,
         },
       ],
