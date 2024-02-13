@@ -13,6 +13,11 @@ export class AIService {
     apiKey: process.env.OPENAI_API_KEY,
   });
 
+  convertAsterisks(text: string): string {
+    // Replace ** with *
+    return text.replace(/\*\*/g, '*');
+  }
+
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
     return this.redis.decrementDailyRequests(userId, teamId);
   }
