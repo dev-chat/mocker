@@ -6,12 +6,14 @@ import { AIService } from '../services/ai/ai.service';
 import { WebService } from '../services/web/web.service';
 import { StoreService } from '../services/store/store.service';
 import { getChunks } from '../shared/util/getChunks';
+import { AIPersistenceService } from '../services/ai/ai.persistence';
+import OpenAI from 'openai';
 
 export const aiController: Router = express.Router();
 
 const webService = WebService.getInstance();
 const suppressorService = new SuppressorService();
-const aiService = new AIService();
+const aiService = new AIService(new AIPersistenceService(), new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
 const storeService = new StoreService();
 
 aiController.post('/ai/text', async (req, res) => {

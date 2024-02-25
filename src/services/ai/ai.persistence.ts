@@ -1,22 +1,9 @@
 import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 import { SINGLE_DAY_MS } from '../counter/constants';
-
-enum AITypeEnum {
-  Inflight = 'inflight',
-  Daily = 'daily',
-  DailySummary = 'daily-summary',
-}
+import { AITypeEnum } from './ai.enum';
 
 export class AIPersistenceService {
-  public static getInstance(): AIPersistenceService {
-    if (!AIPersistenceService.instance) {
-      AIPersistenceService.instance = new AIPersistenceService();
-    }
-    return AIPersistenceService.instance;
-  }
-
-  private static instance: AIPersistenceService;
-  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
+  redis: RedisPersistenceService = RedisPersistenceService.getInstance();
 
   public async removeInflight(userId: string, teamId: string): Promise<number> {
     return this.redis.removeKey(this.getRedisKeyName(userId, teamId, AITypeEnum.Inflight));
@@ -33,7 +20,6 @@ export class AIPersistenceService {
   public setHasUsedSummary(userId: string, teamId: string): Promise<unknown | null> {
     const endOfDay = new Date().setHours(23, 59, 59, 999);
     const timeUntilEndOfDay = endOfDay - new Date().getTime();
-    console.log(timeUntilEndOfDay);
     return this.redis.setValueWithExpire(
       this.getRedisKeyName(userId, teamId, AITypeEnum.DailySummary),
       'yes',

@@ -4,14 +4,19 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageWithName } from '../../shared/models/message/message-with-name';
-
-const MAX_AI_REQUESTS_PER_DAY = 10;
+import { MAX_AI_REQUESTS_PER_DAY } from './ai.constants';
 
 export class AIService {
-  private redis = AIPersistenceService.getInstance();
-  private openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+  persistence: AIPersistenceService;
+  openai: OpenAI;
+
+  textCompletionModel = 'gpt-4-turbo-preview';
+  imageGenerationModel = 'dall-e-3';
+
+  constructor(persistence: AIPersistenceService, aiService: OpenAI) {
+    this.persistence = persistence;
+    this.openai = aiService;
+  }
 
   convertAsterisks(text: string | undefined): string | undefined {
     if (!text) {
@@ -22,38 +27,38 @@ export class AIService {
   }
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
-    return this.redis.decrementDailyRequests(userId, teamId);
+    return this.persistence.decrementDailyRequests(userId, teamId);
   }
 
   public isAlreadyInflight(userId: string, teamId: string): Promise<boolean> {
-    return this.redis.getInflight(userId, teamId).then((x) => !!x);
+    return this.persistence.getInflight(userId, teamId).then((x) => !!x);
   }
 
   public isAlreadyAtMaxRequests(userId: string, teamId: string): Promise<boolean> {
-    return this.redis.getDailyRequests(userId, teamId).then((x) => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
+    return this.persistence.getDailyRequests(userId, teamId).then((x) => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
   }
 
   public isAtMaxDailySummaries(userId: string, teamId: string): Promise<boolean> {
-    return this.redis.getHasUsedSummary(userId, teamId).then((x) => !!x);
+    return this.persistence.getHasUsedSummary(userId, teamId).then((x) => !!x);
   }
 
   public async generateText(userId: string, teamId: string, text: string): Promise<string | undefined> {
-    await this.redis.setInflight(userId, teamId);
-    await this.redis.setDailyRequests(userId, teamId);
+    await this.persistence.setInflight(userId, teamId);
+    await this.persistence.setDailyRequests(userId, teamId);
 
     return this.openai.chat.completions
       .create({
-        model: 'gpt-4-turbo-preview',
+        model: this.textCompletionModel,
         messages: [{ role: 'system', content: text }],
         user: `${userId}-DaBros2016`,
       })
       .then(async (x) => {
-        await this.redis.removeInflight(userId, teamId);
+        await this.persistence.removeInflight(userId, teamId);
         return this.convertAsterisks(x.choices[0].message?.content?.trim());
       })
       .catch(async (e) => {
-        await this.redis.removeInflight(userId, teamId);
-        await this.redis.decrementDailyRequests(userId, teamId);
+        await this.persistence.removeInflight(userId, teamId);
+        await this.persistence.decrementDailyRequests(userId, teamId);
         throw e;
       });
   }
@@ -73,11 +78,11 @@ export class AIService {
   }
 
   public async generateImage(userId: string, teamId: string, text: string): Promise<string> {
-    await this.redis.setInflight(userId, teamId);
-    await this.redis.setDailyRequests(userId, teamId);
+    await this.persistence.setInflight(userId, teamId);
+    await this.persistence.setDailyRequests(userId, teamId);
     return this.openai.images
       .generate({
-        model: 'dall-e-3',
+        model: this.imageGenerationModel,
         prompt: text,
         n: 1,
         size: '1024x1024',
@@ -85,7 +90,7 @@ export class AIService {
         user: `${userId}-DaBros2016`,
       })
       .then(async (x) => {
-        await this.redis.removeInflight(userId, teamId);
+        await this.persistence.removeInflight(userId, teamId);
 
         const { b64_json } = x.data[0];
         if (b64_json) {
@@ -95,8 +100,8 @@ export class AIService {
         }
       })
       .catch(async (e) => {
-        await this.redis.removeInflight(userId, teamId);
-        await this.redis.decrementDailyRequests(userId, teamId);
+        await this.persistence.removeInflight(userId, teamId);
+        await this.persistence.decrementDailyRequests(userId, teamId);
         throw e;
       });
   }
@@ -115,12 +120,12 @@ export class AIService {
     history: string,
     isDaily: boolean,
   ): Promise<string | undefined> {
-    await this.redis.setInflight(userId, teamId);
-    await this.redis.setDailyRequests(userId, teamId);
+    await this.persistence.setInflight(userId, teamId);
+    await this.persistence.setDailyRequests(userId, teamId);
     const prompt = `please give ${isDaily ? 'a summary' : 'a one sentence summary'} of the following conversation, followed by a three verbatims from the participants that are particularly funny or interesting ensuring that the verbatims are from different people.`;
     return this.openai.chat.completions
       .create({
-        model: 'gpt-4-turbo-preview',
+        model: this.textCompletionModel,
         messages: [
           {
             role: 'system',
@@ -131,18 +136,18 @@ export class AIService {
         user: `${userId}-DaBros2016`,
       })
       .then(async (x) => {
-        await this.redis.removeInflight(userId, teamId);
+        await this.persistence.removeInflight(userId, teamId);
         if (isDaily) {
-          await this.redis.setHasUsedSummary(userId, teamId);
+          await this.persistence.setHasUsedSummary(userId, teamId);
         }
         return this.convertAsterisks(x.choices[0].message?.content?.trim());
       })
       .catch(async (e) => {
         if (isDaily) {
-          await this.redis.removeHasUsedSummary(userId, teamId);
+          await this.persistence.removeHasUsedSummary(userId, teamId);
         }
-        await this.redis.removeInflight(userId, teamId);
-        await this.redis.decrementDailyRequests(userId, teamId);
+        await this.persistence.removeInflight(userId, teamId);
+        await this.persistence.decrementDailyRequests(userId, teamId);
         throw e;
       });
   }
@@ -153,11 +158,11 @@ export class AIService {
     history: string,
     prompt: string,
   ): Promise<string | undefined> {
-    await this.redis.setInflight(userId, teamId);
-    await this.redis.setDailyRequests(userId, teamId);
+    await this.persistence.setInflight(userId, teamId);
+    await this.persistence.setDailyRequests(userId, teamId);
     return this.openai.chat.completions
       .create({
-        model: 'gpt-4-turbo-preview',
+        model: this.textCompletionModel,
         messages: [
           {
             role: 'system',
@@ -168,12 +173,12 @@ export class AIService {
         user: `${userId}-DaBros2016`,
       })
       .then(async (x) => {
-        await this.redis.removeInflight(userId, teamId);
+        await this.persistence.removeInflight(userId, teamId);
         return this.convertAsterisks(x.choices[0].message?.content?.trim());
       })
       .catch(async (e) => {
-        await this.redis.removeInflight(userId, teamId);
-        await this.redis.decrementDailyRequests(userId, teamId);
+        await this.persistence.removeInflight(userId, teamId);
+        await this.persistence.decrementDailyRequests(userId, teamId);
         throw e;
       });
   }

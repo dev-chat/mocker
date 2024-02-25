@@ -1,5 +1,5 @@
 import express, { Request, Response, Router } from 'express';
-import { ActivityPersistenceService } from '../services/activity/activity.persistence.service';
+import { ActivityPersistenceService } from '../services/activity/activity.persistence';
 import { BackFirePersistenceService } from '../services/backfire/backfire.persistence.service';
 import { BackfireService } from '../services/backfire/backfire.service';
 import { CounterPersistenceService } from '../services/counter/counter.persistence.service';

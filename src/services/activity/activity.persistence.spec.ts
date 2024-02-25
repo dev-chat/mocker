@@ -5,7 +5,7 @@ import {
   mockEventRequestWithNoUser,
   mockEventRequestWithNumberUser,
 } from './activity.persistence.mock';
-import { ActivityPersistenceService } from './activity.persistence.service';
+import { ActivityPersistenceService } from './activity.persistence';
 
 describe('ActivityPersistenceService', () => {
   let service: ActivityPersistenceService;
