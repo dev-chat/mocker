@@ -6,8 +6,14 @@ import { StorePersistenceService } from '../store/store.persistence.service';
 import { Muzzle } from '../../shared/db/models/Muzzle';
 
 export class MuzzleService extends SuppressorService {
-  private counterService = new CounterService();
-  private storePersistenceService = StorePersistenceService.getInstance();
+  counterService: CounterService;
+  storePersistenceService: StorePersistenceService;
+
+  constructor(counterService: CounterService, storePersistenceService: StorePersistenceService) {
+    super();
+    this.counterService = counterService;
+    this.storePersistenceService = storePersistenceService;
+  }
 
   public permaMuzzle(impersonatingUserId: string, teamId: string): Promise<Muzzle> {
     console.log(`perma-muzzling ${impersonatingUserId}`);
@@ -60,7 +66,7 @@ export class MuzzleService extends SuppressorService {
                 channel,
                 `:boom: <@${requestorId}> attempted to muzzle <@${userId}> but it backfired! :boom:`,
               )
-              .catch(e => console.error(e));
+              .catch((e) => console.error(e));
             resolve(`:boom: Backfired! Better luck next time... :boom:`);
           })
           .catch((e: unknown) => {
@@ -74,11 +80,11 @@ export class MuzzleService extends SuppressorService {
             channel,
             `:innocent: <@${requestorId}> attempted to muzzle <@${userId}> but he was protected by a \`Guardian Angel\`. <@${requestorId}> is now muzzled. :innocent:`,
           )
-          .catch(e => console.error(e));
+          .catch((e) => console.error(e));
 
         const userToCredit = await this.storePersistenceService
           .getUserOfUsedItem(protectedUser)
-          .then(user => user!.split('-')[0]);
+          .then((user) => user!.split('-')[0]);
         const timeToMuzzle =
           getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(userToCredit, teamId));
         const protectedUserArr = protectedUser.split('.');
@@ -114,7 +120,7 @@ export class MuzzleService extends SuppressorService {
     timestamp: string,
   ): Promise<void> {
     console.time('send-muzzled-message');
-    const muzzle = await this.muzzlePersistenceService.getMuzzle(userId, teamId).catch(e => {
+    const muzzle = await this.muzzlePersistenceService.getMuzzle(userId, teamId).catch((e) => {
       console.error('error retrieving muzzle', e);
       return null;
     });

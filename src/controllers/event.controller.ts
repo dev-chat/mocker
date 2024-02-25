@@ -15,6 +15,7 @@ import { WebService } from '../services/web/web.service';
 import { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { HistoryPersistenceService } from '../services/history/history.persistence.service';
+import { SlackPersistenceService } from '../services/slack/slack.persistence.service';
 
 export const eventController: Router = express.Router();
 
@@ -22,15 +23,16 @@ const muzzleService = new MuzzleService();
 const backfireService = new BackfireService();
 const counterService = new CounterService();
 const reactionService = new ReactionService();
-const webService = WebService.getInstance();
-const slackService = SlackService.getInstance();
+const webService = new WebService();
+const slackPersistenceService = new SlackPersistenceService();
+const slackService = new SlackService(webService, slackPersistenceService);
 const suppressorService = new SuppressorService();
 const sentimentService = new SentimentService();
-const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
-const backfirePersistenceService = BackFirePersistenceService.getInstance();
-const counterPersistenceService = CounterPersistenceService.getInstance();
+const muzzlePersistenceService = new MuzzlePersistenceService();
+const backfirePersistenceService = new BackFirePersistenceService();
+const counterPersistenceService = new CounterPersistenceService(); // Maybe not right
 const activityPersistenceService = new ActivityPersistenceService();
-const historyPersistenceService = HistoryPersistenceService.getInstance();
+const historyPersistenceService = new HistoryPersistenceService();
 
 async function handleMuzzledMessage(request: EventRequest): Promise<void> {
   const containsTag = slackService.containsTag(request.event.text);

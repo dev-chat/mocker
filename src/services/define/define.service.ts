@@ -3,18 +3,6 @@ import Axios, { AxiosResponse } from 'axios';
 import { Definition, UrbanDictionaryResponse } from '../../shared/models/define/define-models';
 
 export class DefineService {
-  public static getInstance(): DefineService {
-    if (!DefineService.instance) {
-      DefineService.instance = new DefineService();
-    }
-    return DefineService.instance;
-  }
-
-  private static instance: DefineService;
-
-  /**
-   * Capitalizes the first letter of a given sentence.
-   */
   public capitalizeFirstLetter(sentence: string, all = true): string {
     if (all) {
       const words = sentence.split(' ');
@@ -23,9 +11,6 @@ export class DefineService {
     return sentence.charAt(0).toUpperCase() + sentence.slice(1, sentence.length);
   }
 
-  /**
-   * Returns a promise to look up a definition on urban dictionary.
-   */
   public define(word: string): Promise<UrbanDictionaryResponse> {
     const formattedWord = word.split(' ').join('+');
     return Axios.get(encodeURI(`http://api.urbandictionary.com/v0/define?term=${formattedWord}`)).then(
@@ -35,9 +20,6 @@ export class DefineService {
     );
   }
 
-  /**
-   * Takes in an array of definitions and breaks them down into a shortened list depending on maxDefs
-   */
   public formatDefs(defArr: Definition[], definedWord: string, maxDefs = 3): KnownBlock[] {
     const noDefFound: KnownBlock[] = [
       {

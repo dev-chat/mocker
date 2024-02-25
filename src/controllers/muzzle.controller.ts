@@ -6,12 +6,15 @@ import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ReportType } from '../shared/models/report/report.model';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { MuzzleReportService } from '../services/muzzle/muzzle.report.service';
+import { SlackPersistenceService } from '../services/slack/slack.persistence.service';
 
 export const muzzleController: Router = express.Router();
 
 const muzzleService = new MuzzleService();
-const slackService = SlackService.getInstance();
-const webService = WebService.getInstance();
+const webService = new WebService();
+const slackPersistenceService = new SlackPersistenceService();
+const slackService = new SlackService(webService, slackPersistenceService);
+
 const suppressorService = new SuppressorService();
 const reportService = new MuzzleReportService();
 
@@ -24,7 +27,7 @@ muzzleController.post('/muzzle', async (req: Request, res: Response) => {
   } else if (userId) {
     const results = await muzzleService
       .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
-      .catch(e => {
+      .catch((e) => {
         console.error(e);
         res.send(e);
       });

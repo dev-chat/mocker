@@ -9,8 +9,8 @@ import { Block, KnownBlock } from '@slack/web-api';
 export const quoteController: Router = express.Router();
 
 const suppressorService = new SuppressorService();
-const quoteService = QuoteService.getInstance();
-const webService = WebService.getInstance();
+const quoteService = new QuoteService();
+const webService = new WebService();
 
 const getEmoji = (delta: string): string => {
   if (parseFloat(delta) > 0) {

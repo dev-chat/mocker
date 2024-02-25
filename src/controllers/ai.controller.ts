@@ -11,7 +11,7 @@ import OpenAI from 'openai';
 
 export const aiController: Router = express.Router();
 
-const webService = WebService.getInstance();
+const webService = new WebService();
 const suppressorService = new SuppressorService();
 const aiService = new AIService(new AIPersistenceService(), new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
 const storeService = new StoreService();

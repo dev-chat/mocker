@@ -12,12 +12,28 @@ import moment from 'moment';
 import { SlackUser } from '../db/models/SlackUser';
 
 export class SuppressorService {
-  public webService = WebService.getInstance();
-  public slackService = SlackService.getInstance();
-  public translationService = new TranslationService();
-  public backfirePersistenceService = BackFirePersistenceService.getInstance();
-  public muzzlePersistenceService = MuzzlePersistenceService.getInstance();
-  public counterPersistenceService = CounterPersistenceService.getInstance();
+  public webService: WebService;
+  public slackService: SlackService;
+  public translationService: TranslationService;
+  public backfirePersistenceService: BackFirePersistenceService;
+  public muzzlePersistenceService: MuzzlePersistenceService;
+  public counterPersistenceService: CounterPersistenceService;
+
+  constructor(
+    webService: WebService,
+    slackService: SlackService,
+    translationService: TranslationService,
+    backfirePersistenceService: BackFirePersistenceService,
+    muzzlePersistenceService: MuzzlePersistenceService,
+    counterPersistenceService: CounterPersistenceService,
+  ) {
+    this.webService = webService;
+    this.slackService = slackService;
+    this.translationService = translationService;
+    this.backfirePersistenceService = backfirePersistenceService;
+    this.muzzlePersistenceService = muzzlePersistenceService;
+    this.counterPersistenceService = counterPersistenceService;
+  }
 
   public isBot(userId: string, teamId: string): Promise<boolean | undefined> {
     return this.slackService.getUserById(userId, teamId).then((user) => !!user?.isBot);

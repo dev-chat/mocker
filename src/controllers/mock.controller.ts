@@ -3,12 +3,16 @@ import { MockService } from '../services/mock/mock.service';
 import { SlackService } from '../services/slack/slack.service';
 import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
+import { WebService } from '../services/web/web.service';
+import { SlackPersistenceService } from '../services/slack/slack.persistence.service';
 
 export const mockController: Router = express.Router();
 
 const suppressorService = new SuppressorService();
-const slackService = SlackService.getInstance();
-const mockService = MockService.getInstance();
+const webService = new WebService();
+const slackPersistenceService = new SlackPersistenceService();
+const slackService = new SlackService(webService, slackPersistenceService);
+const mockService = new MockService();
 
 mockController.post('/mock', async (req, res) => {
   const request: SlashCommandRequest = req.body;

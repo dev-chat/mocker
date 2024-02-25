@@ -5,13 +5,15 @@ import { WebService } from '../services/web/web.service';
 import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { ListReportService } from '../services/list/list.report.service';
+import { SlackPersistenceService } from '../services/slack/slack.persistence.service';
 
 export const listController: Router = express.Router();
 
 const suppressorService = new SuppressorService();
-const slackService = SlackService.getInstance();
-const webService = WebService.getInstance();
-const listPersistenceService = ListPersistenceService.getInstance();
+const webService = new WebService();
+const slackPersistenceService = new SlackPersistenceService();
+const slackService = new SlackService(webService, slackPersistenceService);
+const listPersistenceService = new ListPersistenceService();
 const reportService = new ListReportService();
 
 listController.post('/list/retrieve', async (req, res) => {
@@ -61,6 +63,6 @@ listController.post('/list/remove', async (req, res) => {
         slackService.sendResponse(request.response_url, response);
         res.status(200).send();
       })
-      .catch(e => res.send(e));
+      .catch((e) => res.send(e));
   }
 });

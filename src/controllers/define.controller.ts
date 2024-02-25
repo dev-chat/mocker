@@ -8,8 +8,8 @@ import { SuppressorService } from '../shared/services/suppressor.service';
 
 export const defineController: Router = express.Router();
 const suppressorService = new SuppressorService();
-const webService = WebService.getInstance();
-const defineService = DefineService.getInstance();
+const webService = new WebService();
+const defineService = new DefineService();
 
 defineController.post('/define', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
@@ -17,7 +17,9 @@ defineController.post('/define', async (req: Request, res: Response) => {
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
-    const defined: UrbanDictionaryResponse | Error = await defineService.define(request.text).catch(e => new Error(e));
+    const defined: UrbanDictionaryResponse | Error = await defineService
+      .define(request.text)
+      .catch((e) => new Error(e));
     if (defined instanceof Error) {
       res.send('Something went wrong while retrieving your definition');
     } else {
@@ -34,7 +36,7 @@ defineController.post('/define', async (req: Request, res: Response) => {
         },
       ];
 
-      definitions.map(def => blocks.push(def));
+      definitions.map((def) => blocks.push(def));
 
       blocks.push({
         type: 'divider',
@@ -50,7 +52,7 @@ defineController.post('/define', async (req: Request, res: Response) => {
         ],
       });
 
-      webService.sendMessage(request.channel_id, text, blocks).catch(e => console.error(e));
+      webService.sendMessage(request.channel_id, text, blocks).catch((e) => console.error(e));
     }
   }
 });

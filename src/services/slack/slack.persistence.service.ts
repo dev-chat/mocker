@@ -6,22 +6,18 @@ import { RedisPersistenceService } from '../../shared/services/redis.persistence
 import { ConversationsListResponse } from '@slack/web-api';
 
 export class SlackPersistenceService {
-  public static getInstance(): SlackPersistenceService {
-    if (!SlackPersistenceService.instance) {
-      SlackPersistenceService.instance = new SlackPersistenceService();
-    }
-    return SlackPersistenceService.instance;
-  }
+  private redis: RedisPersistenceService;
 
-  private static instance: SlackPersistenceService;
-  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
+  constructor(redis: RedisPersistenceService) {
+    this.redis = redis;
+  }
 
   // This sucks because TypeORM sucks. Time to consider removing this ORM.
   async saveChannels(channels?: ConversationsListResponse['channels']): Promise<void> {
     if (!channels) {
       return;
     } else {
-      const dbChannels = channels.map(channel => {
+      const dbChannels = channels.map((channel) => {
         return {
           channelId: channel.id,
           name: channel.name,
@@ -53,12 +49,12 @@ export class SlackPersistenceService {
   getCachedUsers(): Promise<SlackUserFromDB[] | null> {
     return this.redis
       .getValue(this.getRedisKeyName())
-      .then(users => (users ? (JSON.parse(users) as SlackUserFromDB[]) : null));
+      .then((users) => (users ? (JSON.parse(users) as SlackUserFromDB[]) : null));
   }
 
   // This sucks because TypeORM sucks. Time to consider removing this ORM.
   async saveUsers(users: SlackUserModel[]): Promise<SlackUserFromDB[]> {
-    const dbUsers: SlackUserFromDB[] = users.map(user => {
+    const dbUsers: SlackUserFromDB[] = users.map((user) => {
       return {
         slackId: user.id,
         name: user.profile.display_name || user.name,

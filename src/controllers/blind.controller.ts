@@ -11,7 +11,7 @@ interface BlindRequest {
 
 export const blindController: Router = express.Router();
 
-const webService = WebService.getInstance();
+const webService = new WebService();
 
 blindController.post('/blind/message', async (req, res) => {
   const request: BlindRequest = req.body;
@@ -72,10 +72,10 @@ blindController.post('/blind/message', async (req, res) => {
 
   webService
     .sendMessage(request.channel_id, request.text, blocks)
-    .then(x => {
+    .then((x) => {
       res.status(200).send({ message: x });
     })
-    .catch(e => {
+    .catch((e) => {
       console.error(e);
       res.status(500).send({ message: e });
     });

@@ -11,16 +11,8 @@ import { COUNTER_TIME, SINGLE_DAY_MS } from './constants';
 // the stateful data here is already in the relational DB and because
 // i need to figure out how to call a callback when a key expires in the db.
 export class CounterPersistenceService {
-  public static getInstance(): CounterPersistenceService {
-    if (!CounterPersistenceService.instance) {
-      CounterPersistenceService.instance = new CounterPersistenceService();
-    }
-    return CounterPersistenceService.instance;
-  }
-
-  private static instance: CounterPersistenceService;
-  private muzzlePersistenceService: MuzzlePersistenceService = MuzzlePersistenceService.getInstance();
-  private webService: WebService = WebService.getInstance();
+  private muzzlePersistenceService: MuzzlePersistenceService = new MuzzlePersistenceService();
+  private webService: WebService = new WebService();
   private counters: Map<number, CounterItem> = new Map();
   private counterMuzzles: Map<string, CounterMuzzle> = new Map();
   private onProbation: string[] = [];
@@ -34,11 +26,11 @@ export class CounterPersistenceService {
 
       await getRepository(Counter)
         .save(counter)
-        .then(counterFromDb => {
+        .then((counterFromDb) => {
           this.setCounterState(requestorId, counterFromDb.id, teamId);
           resolve();
         })
-        .catch(e => reject(`Error on saving counter to DB: ${e}`));
+        .catch((e) => reject(`Error on saving counter to DB: ${e}`));
     });
   }
 
@@ -88,7 +80,7 @@ export class CounterPersistenceService {
 
   public hasCounter(userId: string): boolean {
     let hasCounter = false;
-    this.counters.forEach(counter => {
+    this.counters.forEach((counter) => {
       if (counter.requestorId === userId) {
         hasCounter = true;
       }
@@ -134,7 +126,7 @@ export class CounterPersistenceService {
     clearTimeout(counter!.removalFn);
     if (isUsed && channel) {
       this.counters.delete(id);
-      await this.setCounteredToTrue(id, requestorId).catch(e => console.error('Error during setCounteredToTrue', e));
+      await this.setCounteredToTrue(id, requestorId).catch((e) => console.error('Error during setCounteredToTrue', e));
     } else {
       // This whole section is an anti-pattern. Fix this.
       this.counters.delete(id);
@@ -148,7 +140,7 @@ export class CounterPersistenceService {
             counter!.requestorId
           }> lives in fear and is now muzzled, has lost muzzle privileges for 24 hours and cannot use counter again for 24 hours. :flesh:`,
         )
-        .catch(e => console.error(e));
+        .catch((e) => console.error(e));
     }
   }
 

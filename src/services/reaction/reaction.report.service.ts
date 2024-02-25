@@ -4,7 +4,12 @@ import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.mode
 import { ReactionPersistenceService } from './reaction.persistence.service';
 
 export class ReactionReportService extends ReportService {
-  reactionPersistenceService = ReactionPersistenceService.getInstance();
+  reactionPersistenceService: ReactionPersistenceService;
+
+  constructor(reactionPersistenceService: ReactionPersistenceService) {
+    super();
+    this.reactionPersistenceService = reactionPersistenceService;
+  }
 
   public async getRep(userId: string, teamId: string): Promise<string> {
     const { totalRepAvailable, totalRepEarned } = await this.reactionPersistenceService
@@ -22,7 +27,7 @@ export class ReactionReportService extends ReportService {
       .then(async (perUserRep: ReactionByUser[] | undefined) => {
         return await this.formatRepByUser(perUserRep, teamId, totalRepEarned);
       })
-      .catch(e => {
+      .catch((e) => {
         console.error(e);
         throw new Error(e);
       });
@@ -39,7 +44,7 @@ export class ReactionReportService extends ReportService {
       return 'You do not have any existing relationships.';
     } else {
       const formattedData = await Promise.all(
-        perUserRep.map(async userRep => {
+        perUserRep.map(async (userRep) => {
           return {
             user:
               userRep.reactingUser !== 'ADMIN'

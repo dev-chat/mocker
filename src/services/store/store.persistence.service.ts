@@ -11,15 +11,11 @@ interface ItemWithPrice extends Item {
   price: number;
 }
 export class StorePersistenceService {
-  public static getInstance(): StorePersistenceService {
-    if (!StorePersistenceService.instance) {
-      StorePersistenceService.instance = new StorePersistenceService();
-    }
-    return StorePersistenceService.instance;
-  }
+  redisService: RedisPersistenceService;
 
-  private static instance: StorePersistenceService;
-  private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
+  constructor(redisService: RedisPersistenceService) {
+    this.redisService = redisService;
+  }
 
   async getItems(teamId: string): Promise<ItemWithPrice[]> {
     const items = await getRepository(Item).find();

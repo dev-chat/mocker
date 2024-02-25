@@ -7,6 +7,8 @@ import { SlackService } from './services/slack/slack.service';
 import { controllers } from './controllers/index.controller';
 import { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
 import { DBClient } from './shared/db/DBClient';
+import { WebService } from './services/web/web.service';
+import { SlackPersistenceService } from './services/slack/slack.persistence.service';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -62,7 +64,9 @@ app.use(
 app.use(signatureVerification);
 app.use(controllers);
 
-const slackService = SlackService.getInstance();
+const webService = new WebService();
+const slackPersistenceService = new SlackPersistenceService();
+const slackService = new SlackService(webService, slackPersistenceService);
 
 const connectToDb = (): void => {
   DBClient.initialize().then(() => {

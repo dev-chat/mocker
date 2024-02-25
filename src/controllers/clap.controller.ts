@@ -3,10 +3,13 @@ import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/sla
 import { ClapService } from '../services/clap/clap.service';
 import { SlackService } from '../services/slack/slack.service';
 import { SuppressorService } from '../shared/services/suppressor.service';
+import { WebService } from '../services/web/web.service';
+import { SlackPersistenceService } from '../services/slack/slack.persistence.service';
 
 export const clapController: Router = express.Router();
-
-const slackService = SlackService.getInstance();
+const webService = new WebService();
+const slackPersistenceService = new SlackPersistenceService();
+const slackService = new SlackService(webService, slackPersistenceService);
 const clapService = new ClapService();
 const suppressorService = new SuppressorService();
 

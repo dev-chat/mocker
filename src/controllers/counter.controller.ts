@@ -7,7 +7,7 @@ import { SuppressorService } from '../shared/services/suppressor.service';
 export const counterController: Router = express.Router();
 
 const suppressorService = new SuppressorService();
-const counterPersistenceService = CounterPersistenceService.getInstance();
+const counterPersistenceService = new CounterPersistenceService();
 const counterService = new CounterService();
 
 counterController.post('/counter', async (req, res) => {
@@ -21,7 +21,7 @@ counterController.post('/counter', async (req, res) => {
   } else {
     await counterService
       .createCounter(request.user_id, request.team_id)
-      .then(value => res.send(value))
-      .catch(e => res.send(e));
+      .then((value) => res.send(value))
+      .catch((e) => res.send(e));
   }
 });

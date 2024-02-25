@@ -3,7 +3,11 @@ import { SINGLE_DAY_MS } from '../counter/constants';
 import { AITypeEnum } from './ai.enum';
 
 export class AIPersistenceService {
-  redis: RedisPersistenceService = RedisPersistenceService.getInstance();
+  redis: RedisPersistenceService;
+
+  constructor(redis: RedisPersistenceService) {
+    this.redis = redis;
+  }
 
   public async removeInflight(userId: string, teamId: string): Promise<number> {
     return this.redis.removeKey(this.getRedisKeyName(userId, teamId, AITypeEnum.Inflight));

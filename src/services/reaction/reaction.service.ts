@@ -3,7 +3,11 @@ import { reactionValues } from './constants';
 import { ReactionPersistenceService } from './reaction.persistence.service';
 
 export class ReactionService {
-  private reactionPersistenceService = ReactionPersistenceService.getInstance();
+  reactionPersistenceService: ReactionPersistenceService;
+
+  constructor(reactionPersistenceService: ReactionPersistenceService) {
+    this.reactionPersistenceService = reactionPersistenceService;
+  }
 
   public handleReaction(event: Event, isAdded: boolean, teamId: string): void {
     if (event.user && event.item_user && event.user !== event.item_user) {
@@ -23,7 +27,7 @@ export class ReactionService {
     const reactionValue = reactionValues[event.reaction];
     // Log event to DB.
     if (this.shouldReactionBeLogged(reactionValue)) {
-      this.reactionPersistenceService.saveReaction(event, reactionValue, teamId).catch(e => console.error(e));
+      this.reactionPersistenceService.saveReaction(event, reactionValue, teamId).catch((e) => console.error(e));
     }
   }
 

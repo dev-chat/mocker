@@ -3,7 +3,7 @@ import { MockService } from './mock.service';
 describe('MockService', () => {
   let mockService: MockService;
   beforeEach(() => {
-    mockService = MockService.getInstance();
+    mockService = new MockService();
   });
   describe('mock()', () => {
     it('should mock a users input (single word)', () => {
