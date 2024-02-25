@@ -3,12 +3,13 @@ import requests
 import ssl
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+from urllib3.util import Retry
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
 session = requests.session()
 
-retries = requests.Retry(total=5,
+retries = Retry(total=5,
                 backoff_factor=0.1,
                 status_forcelist=[ 500, 502, 503, 504 ])
 
