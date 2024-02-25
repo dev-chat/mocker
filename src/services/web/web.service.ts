@@ -1,6 +1,5 @@
 import {
   ChatDeleteArguments,
-  ChatPostMessageArguments,
   FilesUploadArguments,
   WebAPICallResult,
   WebClient,
@@ -9,6 +8,7 @@ import {
   KnownBlock,
   Block,
   ConversationsListResponse,
+  UsersListResponse,
 } from '@slack/web-api';
 
 const MAX_RETRIES = 5;
@@ -82,15 +82,13 @@ export class WebService {
    */
   public sendMessage(channel: string, text: string, blocks?: Block[] | KnownBlock[]): Promise<WebAPICallResult> {
     const token: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
-    const postRequest: ChatPostMessageArguments = {
+
+    const postRequest = {
       token,
       channel,
       text,
+      blocks: blocks ?? undefined,
     };
-
-    if (blocks) {
-      postRequest.blocks = blocks;
-    }
 
     return this.web.chat
       .postMessage(postRequest)
@@ -114,12 +112,12 @@ export class WebService {
     this.web.chat.update(update).catch((e) => console.error(e));
   }
 
-  public getAllUsers(): Promise<WebAPICallResult> {
-    return this.web.users.list();
+  public getAllUsers(): Promise<UsersListResponse> {
+    return this.web.users.list({});
   }
 
   public getAllChannels(): Promise<ConversationsListResponse> {
-    return this.web.conversations.list();
+    return this.web.conversations.list({});
   }
 
   public uploadFile(channel: string, content: string, title: string, userId: string): void {

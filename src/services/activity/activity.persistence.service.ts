@@ -1,11 +1,13 @@
-import { getRepository } from 'typeorm';
+import { DataSource, getRepository } from 'typeorm';
 import { Activity } from '../../shared/db/models/Activity';
 import { SlackUser } from '../../shared/db/models/SlackUser';
 import { EventRequest } from '../../shared/models/slack/slack-models';
 import { WebService } from '../web/web.service';
+import { DBClient } from '../../shared/db/DBClient';
 
 export class ActivityPersistenceService {
   web: WebService = WebService.getInstance();
+  ds: DataSource = DBClient;
 
   async logActivity(request: EventRequest) {
     // This is a bandaid to stop workflows from breaking the service.
@@ -25,6 +27,6 @@ export class ActivityPersistenceService {
     activity.teamId = request.team_id;
     activity.userId = user as SlackUser;
     activity.eventType = request.event.type;
-    getRepository(Activity).insert(activity);
+    return this.ds.createQueryBuilder().insert().into(Activity).values(activity).execute();
   }
 }

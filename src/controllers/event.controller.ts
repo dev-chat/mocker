@@ -29,7 +29,7 @@ const sentimentService = new SentimentService();
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const counterPersistenceService = CounterPersistenceService.getInstance();
-const activityPersistenceService = ActivityPersistenceService.getInstance();
+const activityPersistenceService = new ActivityPersistenceService();
 const historyPersistenceService = HistoryPersistenceService.getInstance();
 
 async function handleMuzzledMessage(request: EventRequest): Promise<void> {
@@ -174,7 +174,6 @@ function handleActivity(request: EventRequest): void {
     return;
   }
   activityPersistenceService.logActivity(request);
-  activityPersistenceService.updateLatestHotness();
 }
 
 function logSentiment(request: EventRequest): void {

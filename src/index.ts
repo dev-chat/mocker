@@ -3,11 +3,10 @@ import 'dotenv/config';
 import bodyParser from 'body-parser';
 import crypto from 'crypto';
 import express, { Application, Response, NextFunction, Request } from 'express';
-import { createConnection, getConnectionOptions } from 'typeorm';
-
 import { SlackService } from './services/slack/slack.service';
 import { controllers } from './controllers/index.controller';
 import { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
+import { DBClient } from './shared/db/DBClient';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -48,14 +47,14 @@ const signatureVerification = (req: Request, res: Response, next: NextFunction) 
 app.use(
   bodyParser.urlencoded({
     extended: true,
-    verify: function(req: RequestWithRawBody, _res, buf) {
+    verify: function (req: RequestWithRawBody, _res, buf) {
       req.rawBody = buf;
     },
   }),
 );
 app.use(
   bodyParser.json({
-    verify: function(req: RequestWithRawBody, _res, buf) {
+    verify: function (req: RequestWithRawBody, _res, buf) {
       req.rawBody = buf;
     },
   }),
@@ -65,23 +64,12 @@ app.use(controllers);
 
 const slackService = SlackService.getInstance();
 
-const connectToDb = async (): Promise<void> => {
-  try {
-    const options = await getConnectionOptions();
-    createConnection(options)
-      .then(connection => {
-        if (connection.isConnected) {
-          slackService.getAllUsers();
-          slackService.getAndSaveAllChannels();
-          console.log(`Connected to MySQL DB: ${options.database}`);
-        } else {
-          throw Error('Unable to connect to database');
-        }
-      })
-      .catch(e => console.error(e));
-  } catch (e) {
-    console.error(e);
-  }
+const connectToDb = (): void => {
+  DBClient.initialize().then(() => {
+    console.log(`Connected to MySQL DB: ${process.env.TYPEORM_DATABASE}`);
+    slackService.getAllUsers();
+    slackService.getAndSaveAllChannels();
+  });
 };
 
 const checkForEnvVariables = (): void => {
