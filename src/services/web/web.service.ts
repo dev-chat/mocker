@@ -14,14 +14,7 @@ import {
 const MAX_RETRIES = 5;
 
 export class WebService {
-  public static getInstance(): WebService {
-    if (!WebService.instance) {
-      WebService.instance = new WebService();
-    }
-    return WebService.instance;
-  }
-  private static instance: WebService;
-  private web: WebClient = new WebClient(process.env.MUZZLE_BOT_TOKEN);
+  web: WebClient = new WebClient(process.env.MUZZLE_BOT_TOKEN);
 
   /**
    * Handles deletion of messages.
