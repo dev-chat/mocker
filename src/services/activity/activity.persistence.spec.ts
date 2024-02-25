@@ -12,13 +12,12 @@ describe('ActivityPersistenceService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new ActivityPersistenceService();
-    service.ds = {
+    service = new ActivityPersistenceService({
       getRepository: jest.fn().mockReturnValue({
         findOne: jest.fn(),
         save: jest.fn().mockReturnValue({}),
       }),
-    } as unknown as DataSource;
+    } as unknown as DataSource);
   });
 
   describe('logActivity', () => {

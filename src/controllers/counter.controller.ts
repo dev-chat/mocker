@@ -1,16 +1,14 @@
 import express, { Router } from 'express';
-import { CounterPersistenceService } from '../services/counter/counter.persistence.service';
-import { CounterService } from '../services/counter/counter.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { SuppressorService } from '../shared/services/suppressor.service';
+import { getService } from '../shared/services/service.injector';
 
 export const counterController: Router = express.Router();
 
-const suppressorService = new SuppressorService();
-const counterPersistenceService = new CounterPersistenceService();
-const counterService = new CounterService();
-
 counterController.post('/counter', async (req, res) => {
+  const suppressorService = getService('SuppressorService');
+  const counterService = getService('CounterService');
+  const counterPersistenceService = getService('CounterPersistenceService');
+
   const request: SlashCommandRequest = req.body;
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(

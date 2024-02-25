@@ -2,10 +2,13 @@ import { DataSource } from 'typeorm';
 import { Activity } from '../../shared/db/models/Activity';
 import { SlackUser } from '../../shared/db/models/SlackUser';
 import { EventRequest } from '../../shared/models/slack/slack-models';
-import { DBClient } from '../../shared/db/DBClient';
 
 export class ActivityPersistenceService {
-  ds: DataSource = DBClient;
+  ds: DataSource;
+
+  constructor(ds: DataSource) {
+    this.ds = ds;
+  }
 
   isValidRequest(request: EventRequest) {
     return (

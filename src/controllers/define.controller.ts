@@ -1,17 +1,16 @@
 import { KnownBlock } from '@slack/web-api';
 import express, { Request, Response, Router } from 'express';
-import { DefineService } from '../services/define/define.service';
-import { WebService } from '../services/web/web.service';
 import { UrbanDictionaryResponse } from '../shared/models/define/define-models';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { SuppressorService } from '../shared/services/suppressor.service';
+import { getService } from '../shared/services/service.injector';
 
 export const defineController: Router = express.Router();
-const suppressorService = new SuppressorService();
-const webService = new WebService();
-const defineService = new DefineService();
 
 defineController.post('/define', async (req: Request, res: Response) => {
+  const suppressorService = getService('SuppressorService');
+  const defineService = getService('DefineService');
+  const webService = getService('WebService');
+
   const request: SlashCommandRequest = req.body;
 
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {

@@ -1,12 +1,14 @@
-import { UpdateResult, getRepository } from 'typeorm';
+import { DataSource, UpdateResult, getRepository } from 'typeorm';
 import { Backfire } from '../../shared/db/models/Backfire';
 import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
 
-export class BackFirePersistenceService {
+export class BackfirePersistenceService {
   private redis: RedisPersistenceService;
+  ds: DataSource;
 
-  constructor(redis: RedisPersistenceService) {
+  constructor(redis: RedisPersistenceService, ds: DataSource) {
     this.redis = redis;
+    this.ds = ds;
   }
 
   public addBackfire(userId: string, time: number, teamId: string): Promise<void> {

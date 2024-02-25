@@ -2,12 +2,13 @@ import Table from 'easy-table';
 import { ReportService } from '../../shared/services/report.service';
 import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.model';
 import { ReactionPersistenceService } from './reaction.persistence.service';
+import { SlackService } from '../slack/slack.service';
 
 export class ReactionReportService extends ReportService {
   reactionPersistenceService: ReactionPersistenceService;
 
-  constructor(reactionPersistenceService: ReactionPersistenceService) {
-    super();
+  constructor(reactionPersistenceService: ReactionPersistenceService, slackService: SlackService) {
+    super(slackService);
     this.reactionPersistenceService = reactionPersistenceService;
   }
 

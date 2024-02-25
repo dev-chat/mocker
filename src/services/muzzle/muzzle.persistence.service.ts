@@ -1,4 +1,4 @@
-import { UpdateResult, getRepository } from 'typeorm';
+import { DataSource, UpdateResult } from 'typeorm';
 import { Muzzle } from '../../shared/db/models/Muzzle';
 import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_TIME_BETWEEN_MUZZLES, MuzzleRedisTypeEnum } from './constants';
 import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
@@ -6,12 +6,14 @@ import { StorePersistenceService } from '../store/store.persistence.service';
 import { SINGLE_DAY_MS } from '../counter/constants';
 
 export class MuzzlePersistenceService {
-  private redis: RedisPersistenceService;
-  private storePersistenceService;
+  redis: RedisPersistenceService;
+  storePersistenceService: StorePersistenceService;
+  ds: DataSource;
 
-  constructor(redis: RedisPersistenceService, storePersistenceService: StorePersistenceService) {
+  constructor(redis: RedisPersistenceService, storePersistenceService: StorePersistenceService, ds: DataSource) {
     this.redis = redis;
     this.storePersistenceService = storePersistenceService;
+    this.ds = ds;
   }
 
   public addPermaMuzzle(userId: string, teamId: string): Promise<Muzzle> {
@@ -23,7 +25,8 @@ export class MuzzlePersistenceService {
     muzzle.wordsSuppressed = 0;
     muzzle.charactersSuppressed = 0;
     muzzle.milliseconds = 0;
-    return getRepository(Muzzle)
+    return this.ds
+      .getRepository(Muzzle)
       .save(muzzle)
       .then(async (muzzleFromDb) => {
         console.log(muzzleFromDb);
@@ -65,7 +68,8 @@ export class MuzzlePersistenceService {
       muzzle.wordsSuppressed = 0;
       muzzle.charactersSuppressed = 0;
       muzzle.milliseconds = time;
-      await getRepository(Muzzle)
+      await this.ds
+        .getRepository(Muzzle)
         .save(muzzle)
         .then((muzzleFromDb) => {
           const expireTime = Math.floor(time / 1000);
@@ -187,19 +191,19 @@ export class MuzzlePersistenceService {
   }
 
   public incrementMuzzleTime(id: number, ms: number): Promise<UpdateResult> {
-    return getRepository(Muzzle).increment({ id }, 'milliseconds', ms);
+    return this.ds.getRepository(Muzzle).increment({ id }, 'milliseconds', ms);
   }
 
   public incrementMessageSuppressions(id: number): Promise<UpdateResult> {
-    return getRepository(Muzzle).increment({ id }, 'messagesSuppressed', 1);
+    return this.ds.getRepository(Muzzle).increment({ id }, 'messagesSuppressed', 1);
   }
 
   public incrementWordSuppressions(id: number, suppressions: number): Promise<UpdateResult> {
-    return getRepository(Muzzle).increment({ id }, 'wordsSuppressed', suppressions);
+    return this.ds.getRepository(Muzzle).increment({ id }, 'wordsSuppressed', suppressions);
   }
 
   public incrementCharacterSuppressions(id: number, charactersSuppressed: number): Promise<UpdateResult> {
-    return getRepository(Muzzle).increment({ id }, 'charactersSuppressed', charactersSuppressed);
+    return this.ds.getRepository(Muzzle).increment({ id }, 'charactersSuppressed', charactersSuppressed);
   }
   /**
    * Determines suppression counts for messages that are ONLY deleted and not muzzled.
@@ -219,7 +223,8 @@ export class MuzzlePersistenceService {
 
   public getMuzzlesByTimePeriod(userId: string, teamId: string, start: string, end: string) {
     const query = `SELECT COUNT(*) as count FROM muzzle WHERE createdAt >= '${start}' AND createdAt < '${end}' AND teamId='${teamId}' AND requestorId='${userId}';`;
-    return getRepository(Muzzle)
+    return this.ds
+      .getRepository(Muzzle)
       .query(query)
       .then((res) => (res[0].count ? parseInt(res[0].count) : 0));
   }

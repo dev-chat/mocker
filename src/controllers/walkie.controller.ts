@@ -1,26 +1,19 @@
 import express, { Router } from 'express';
-import { SlackService } from '../services/slack/slack.service';
-import { WalkieService } from '../services/walkie/walkie.service';
 import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { SuppressorService } from '../shared/services/suppressor.service';
-import { SlackPersistenceService } from '../services/slack/slack.persistence.service';
-import { WebService } from '../services/web/web.service';
+import { getService } from '../shared/services/service.injector';
 
 export const walkieController: Router = express.Router();
 
-const suppressorService = new SuppressorService();
-const webService = new WebService();
-const slackPersistenceService = new SlackPersistenceService();
-const slackService = new SlackService(webService, slackPersistenceService);
-const walkieService = new WalkieService();
-
 walkieController.post('/walkie', async (req, res) => {
+  const suppressorService = getService('SuppressorService');
   const request: SlashCommandRequest = req.body;
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text) {
     res.send('Sorry, you must send a message to walkie talk.');
   } else {
+    const walkieService = getService('WalkieService');
+    const slackService = getService('SlackService');
     const walkied: string = walkieService.walkieTalkie(request.text);
     const response: ChannelResponse = {
       attachments: [

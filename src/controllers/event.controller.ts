@@ -1,40 +1,17 @@
 import express, { Request, Response, Router } from 'express';
-import { ActivityPersistenceService } from '../services/activity/activity.persistence';
-import { BackFirePersistenceService } from '../services/backfire/backfire.persistence.service';
-import { BackfireService } from '../services/backfire/backfire.service';
-import { CounterPersistenceService } from '../services/counter/counter.persistence.service';
-import { CounterService } from '../services/counter/counter.service';
 import { ABUSE_PENALTY_TIME } from '../services/muzzle/constants';
 import { getTimeString } from '../services/muzzle/muzzle-utilities';
-import { MuzzlePersistenceService } from '../services/muzzle/muzzle.persistence.service';
-import { MuzzleService } from '../services/muzzle/muzzle.service';
-import { ReactionService } from '../services/reaction/reaction.service';
-import { SentimentService } from '../services/sentiment/sentiment.service';
-import { SlackService } from '../services/slack/slack.service';
-import { WebService } from '../services/web/web.service';
 import { EventRequest } from '../shared/models/slack/slack-models';
-import { SuppressorService } from '../shared/services/suppressor.service';
-import { HistoryPersistenceService } from '../services/history/history.persistence.service';
-import { SlackPersistenceService } from '../services/slack/slack.persistence.service';
+import { getService } from '../shared/services/service.injector';
 
 export const eventController: Router = express.Router();
 
-const muzzleService = new MuzzleService();
-const backfireService = new BackfireService();
-const counterService = new CounterService();
-const reactionService = new ReactionService();
-const webService = new WebService();
-const slackPersistenceService = new SlackPersistenceService();
-const slackService = new SlackService(webService, slackPersistenceService);
-const suppressorService = new SuppressorService();
-const sentimentService = new SentimentService();
-const muzzlePersistenceService = new MuzzlePersistenceService();
-const backfirePersistenceService = new BackFirePersistenceService();
-const counterPersistenceService = new CounterPersistenceService(); // Maybe not right
-const activityPersistenceService = new ActivityPersistenceService();
-const historyPersistenceService = new HistoryPersistenceService();
-
 async function handleMuzzledMessage(request: EventRequest): Promise<void> {
+  const slackService = getService('SlackService');
+  const webService = getService('WebService');
+  const muzzleService = getService('MuzzleService');
+  const muzzlePersistenceService = getService('MuzzlePersistenceService');
+
   const containsTag = slackService.containsTag(request.event.text);
   const userName = await slackService.getUserNameById(request.event.user, request.team_id);
 
@@ -72,6 +49,10 @@ async function handleMuzzledMessage(request: EventRequest): Promise<void> {
 }
 
 async function handleBackfire(request: EventRequest): Promise<void> {
+  const slackService = getService('SlackService');
+  const webService = getService('WebService');
+  const backfireService = getService('BackfireService');
+
   const containsTag = slackService.containsTag(request.event.text);
   const userName = await slackService.getUserNameById(request.event.user, request.team_id);
   if (!containsTag) {
@@ -106,6 +87,11 @@ async function handleBackfire(request: EventRequest): Promise<void> {
 }
 
 async function handleCounterMuzzle(request: EventRequest): Promise<void> {
+  const slackService = getService('SlackService');
+  const webService = getService('WebService');
+  const counterService = getService('CounterService');
+  const counterPersistenceService = getService('CounterPersistenceService');
+
   const containsTag = slackService.containsTag(request.event.text);
   const userName = await slackService.getUserNameById(request.event.user, request.team_id);
   if (!containsTag) {
@@ -132,6 +118,11 @@ async function handleCounterMuzzle(request: EventRequest): Promise<void> {
 }
 
 async function handleBotMessage(request: EventRequest, botUserToMuzzle: string): Promise<void> {
+  const webService = getService('WebService');
+  const muzzlePersistenceService = getService('MuzzlePersistenceService');
+  const backfirePersistenceService = getService('BackfirePersistenceService');
+  const counterPersistenceService = getService('CounterPersistenceService');
+
   console.log(`A user is muzzled and tried to send a bot message! Suppressing...`);
   webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
   const muzzleId = await muzzlePersistenceService.getMuzzle(botUserToMuzzle, request.team_id);
@@ -155,23 +146,28 @@ async function handleBotMessage(request: EventRequest, botUserToMuzzle: string):
 }
 
 function deleteMessage(request: EventRequest): void {
+  const webService = getService('WebService');
   console.log('Someone talked in #hot who was not a bot. Suppressing...');
   webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
 }
 
 function handleReaction(request: EventRequest): void {
+  const reactionService = getService('ReactionService');
   reactionService.handleReaction(request.event, request.event.type === 'reaction_added', request.team_id);
 }
 
 function handleNewUserAdd(): void {
+  const slackService = getService('SlackService');
   slackService.getAllUsers();
 }
 
 function handleNewChannelCreated(): void {
+  const slackService = getService('SlackService');
   slackService.getAndSaveAllChannels();
 }
 
 function handleActivity(request: EventRequest): void {
+  const activityPersistenceService = getService('ActivityPersistenceService');
   if (request.event.type !== 'user_profile_changed') {
     return;
   }
@@ -179,6 +175,7 @@ function handleActivity(request: EventRequest): void {
 }
 
 function logSentiment(request: EventRequest): void {
+  const sentimentService = getService('SentimentService');
   sentimentService.performSentimentAnalysis(
     request.event.user,
     request.team_id,
@@ -188,6 +185,7 @@ function logSentiment(request: EventRequest): void {
 }
 
 function logHistory(request: EventRequest): void {
+  const historyPersistenceService = getService('HistoryPersistenceService');
   historyPersistenceService.logHistory(request);
 }
 
@@ -196,6 +194,12 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
   if (req.body.challenge) {
     res.send({ challenge: req.body.challenge });
   } else {
+    const muzzlePersistenceService = getService('MuzzlePersistenceService');
+    const backfirePersistenceService = getService('BackfirePersistenceService');
+    const counterPersistenceService = getService('CounterPersistenceService');
+    const suppressorService = getService('SuppressorService');
+    const webService = getService('WebService');
+    const muzzleService = getService('MuzzleService');
     console.time('respond-to-event');
     res.status(200).send();
     const request: EventRequest = req.body;
@@ -229,6 +233,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       logSentiment(request);
       logHistory(request);
     } else if (isUserProfileChanged) {
+      const slackService = getService('SlackService');
       const userWhoIsBeingImpersonated = await slackService.getImpersonatedUser(
         (request.event.user as unknown as Record<string, string>).id,
       );

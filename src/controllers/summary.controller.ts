@@ -1,27 +1,23 @@
 import express, { Router } from 'express';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { SuppressorService } from '../shared/services/suppressor.service';
-import { HistoryPersistenceService } from '../services/history/history.persistence.service';
 import { MessageWithName } from '../shared/models/message/message-with-name';
-import { AIService } from '../services/ai/ai.service';
-import { WebService } from '../services/web/web.service';
 import { KnownBlock } from '@slack/web-api';
 import { getChunks } from '../shared/util/getChunks';
-import { StoreService } from '../services/store/store.service';
+import { getService } from '../shared/services/service.injector';
 
 export const summaryController: Router = express.Router();
-
-const historyPersistenceService = new HistoryPersistenceService();
-const aiService = new AIService();
-const suppressorService = new SuppressorService();
-const webService = new WebService();
-const storeService = new StoreService();
 
 const isAdmin = (userId: string): boolean => {
   return userId !== 'U300D7UDD';
 };
 
 summaryController.post('/summary/prompt-with-history', async (req, res) => {
+  const suppressorService = getService('SuppressorService');
+  const aiService = getService('AIService');
+  const storeService = getService('StoreService');
+  const webService = getService('WebService');
+  const historyPersistenceService = getService('HistoryPersistenceService');
+
   const request: SlashCommandRequest = req.body;
   const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
   const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
@@ -107,6 +103,9 @@ summaryController.post('/summary/prompt-with-history', async (req, res) => {
 
 summaryController.post('/summary/daily', async (req, res) => {
   const request: SlashCommandRequest = req.body;
+  const suppressorService = getService('SuppressorService');
+  const aiService = getService('AIService');
+  const storeService = getService('StoreService');
 
   // Hardcoded 4 for Moon Token Item Id.
   const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
@@ -119,6 +118,9 @@ summaryController.post('/summary/daily', async (req, res) => {
       'Sorry, you have reached your maximum number of requests per day. Try again tomorrow or consider purchasing a Moon Token in the store.',
     );
   } else {
+    const historyPersistenceService = getService('HistoryPersistenceService');
+    const webService = getService('WebService');
+
     res.status(200).send('Processing your request. Please be patient...');
     const history: MessageWithName[] = await historyPersistenceService.getHistory(request, true);
     const formattedHistory: string = aiService.formatHistory(history);
@@ -179,6 +181,9 @@ summaryController.post('/summary/daily', async (req, res) => {
 
 summaryController.post('/summary', async (req, res) => {
   const request: SlashCommandRequest = req.body;
+  const suppressorService = getService('SuppressorService');
+  const aiService = getService('AIService');
+  const storeService = getService('StoreService');
 
   // Hardcoded 4 for Moon Token Item Id.
   const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
@@ -192,6 +197,8 @@ summaryController.post('/summary', async (req, res) => {
     );
   } else {
     res.status(200).send('Processing your request. Please be patient...');
+    const historyPersistenceService = getService('HistoryPersistenceService');
+    const webService = getService('WebService');
     const history: MessageWithName[] = await historyPersistenceService.getHistory(request, false);
     console.log(history);
     const formattedHistory: string = aiService.formatHistory(history);

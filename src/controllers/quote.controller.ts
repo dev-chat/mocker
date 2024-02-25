@@ -1,16 +1,10 @@
 import express, { Router } from 'express';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { SuppressorService } from '../shared/services/suppressor.service';
-import { QuoteService } from '../services/quote/quote.service';
 import { QuoteData } from '../services/quote/quote.models';
-import { WebService } from '../services/web/web.service';
 import { Block, KnownBlock } from '@slack/web-api';
+import { getService } from '../shared/services/service.injector';
 
 export const quoteController: Router = express.Router();
-
-const suppressorService = new SuppressorService();
-const quoteService = new QuoteService();
-const webService = new WebService();
 
 const getEmoji = (delta: string): string => {
   if (parseFloat(delta) > 0) {
@@ -108,12 +102,16 @@ const createQuoteBlocks = (quote: QuoteData, userId: string): Block[] | KnownBlo
   ];
 };
 quoteController.post('/quote', async (req, res) => {
+  const suppressorService = getService('SuppressorService');
+
   const request: SlashCommandRequest = req.body;
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry, can't do that while muzzled.`);
   } else if (!request.text || request.text.length > 4) {
     res.send('Sorry, you must provide a stock ticker in order to use /quote.');
   } else {
+    const quoteService = getService('QuoteService');
+    const webService = getService('WebService');
     res.status(200).send();
     const quote: QuoteData = await quoteService.quote(request.text.toUpperCase());
     webService.sendMessage(request.channel_id, '', createQuoteBlocks(quote, request.user_id)).catch((e) => {

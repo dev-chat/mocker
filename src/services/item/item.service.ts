@@ -8,9 +8,15 @@ interface ItemDefinition {
 }
 
 export class ItemService {
-  webService = new WebService();
-  suppressorService = new SuppressorService();
-  storeService = new StoreService();
+  webService: WebService;
+  suppressorService: SuppressorService;
+  storeService: StoreService;
+
+  constructor(webService: WebService, suppressorService: SuppressorService, storeService: StoreService) {
+    this.webService = webService;
+    this.suppressorService = suppressorService;
+    this.storeService = storeService;
+  }
 
   items: ItemDefinition[] = [
     {

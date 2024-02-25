@@ -1,22 +1,17 @@
 import express, { Router } from 'express';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { SuppressorService } from '../shared/services/suppressor.service';
 import { KnownBlock } from '@slack/web-api';
-import { AIService } from '../services/ai/ai.service';
-import { WebService } from '../services/web/web.service';
-import { StoreService } from '../services/store/store.service';
 import { getChunks } from '../shared/util/getChunks';
-import { AIPersistenceService } from '../services/ai/ai.persistence';
-import OpenAI from 'openai';
+import { getService } from '../shared/services/service.injector';
 
 export const aiController: Router = express.Router();
 
-const webService = new WebService();
-const suppressorService = new SuppressorService();
-const aiService = new AIService(new AIPersistenceService(), new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
-const storeService = new StoreService();
-
 aiController.post('/ai/text', async (req, res) => {
+  const storeService = getService('StoreService');
+  const aiService = getService('AIService');
+  const suppressorService = getService('SuppressorService');
+  const webService = getService('WebService');
+
   const request: SlashCommandRequest = req.body;
   // Hardcoded 4 for Moon Token Item Id.
   const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
@@ -97,6 +92,11 @@ aiController.post('/ai/text', async (req, res) => {
 });
 
 aiController.post('/ai/image', async (req, res) => {
+  const storeService = getService('StoreService');
+  const aiService = getService('AIService');
+  const suppressorService = getService('SuppressorService');
+  const webService = getService('WebService');
+
   const request: SlashCommandRequest = req.body;
   // Hardcoded 4 for Moon Token Item Id.
   const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);

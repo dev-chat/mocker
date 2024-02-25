@@ -1,4 +1,4 @@
-import { getRepository, UpdateResult } from 'typeorm';
+import { DataSource, getRepository, UpdateResult } from 'typeorm';
 import { Counter } from '../../shared/db/models/Counter';
 import { CounterItem, CounterMuzzle } from '../../shared/models/counter/counter-models';
 import { getRemainingTime, Timeout } from '../muzzle/muzzle-utilities';
@@ -6,16 +6,26 @@ import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { WebService } from '../web/web.service';
 import { COUNTER_TIME, SINGLE_DAY_MS } from './constants';
 
+// TODO: this is stateful and (probably) broken - use redis instead of the stateful stuff here.
+
 // This service does not yet use redis since i need to get a better understanding
 // Of the pub/sub model there. The reason I did not convert to redis is because
 // the stateful data here is already in the relational DB and because
 // i need to figure out how to call a callback when a key expires in the db.
 export class CounterPersistenceService {
-  private muzzlePersistenceService: MuzzlePersistenceService = new MuzzlePersistenceService();
-  private webService: WebService = new WebService();
+  webService: WebService;
+  muzzlePersistenceService: MuzzlePersistenceService;
+  ds: DataSource;
+
   private counters: Map<number, CounterItem> = new Map();
   private counterMuzzles: Map<string, CounterMuzzle> = new Map();
   private onProbation: string[] = [];
+
+  constructor(webService: WebService, muzzlePersistenceService: MuzzlePersistenceService, ds: DataSource) {
+    this.webService = webService;
+    this.muzzlePersistenceService = muzzlePersistenceService;
+    this.ds = ds;
+  }
 
   public addCounter(requestorId: string, teamId: string): Promise<void> {
     return new Promise(async (resolve, reject) => {
@@ -24,7 +34,8 @@ export class CounterPersistenceService {
       counter.teamId = teamId;
       counter.countered = false;
 
-      await getRepository(Counter)
+      await this.ds
+        .getRepository(Counter)
         .save(counter)
         .then((counterFromDb) => {
           this.setCounterState(requestorId, counterFromDb.id, teamId);

@@ -3,8 +3,31 @@ import { MAX_SUPPRESSIONS } from '../muzzle/constants';
 import { getTimeString } from '../muzzle/muzzle-utilities';
 import { COUNTER_TIME } from './constants';
 import { SuppressorService } from '../../shared/services/suppressor.service';
+import { WebService } from '../web/web.service';
+import { TranslationService } from '../../shared/services/translation.service';
+import { BackfirePersistenceService } from '../backfire/backfire.persistence.service';
+import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
+import { SlackService } from '../slack/slack.service';
+import { CounterPersistenceService } from './counter.persistence.service';
 
 export class CounterService extends SuppressorService {
+  constructor(
+    webService: WebService,
+    slackService: SlackService,
+    translationService: TranslationService,
+    backfirePersistenceService: BackfirePersistenceService,
+    muzzlePersistenceService: MuzzlePersistenceService,
+    counterPersistenceService: CounterPersistenceService,
+  ) {
+    super(
+      webService,
+      slackService,
+      translationService,
+      backfirePersistenceService,
+      muzzlePersistenceService,
+      counterPersistenceService,
+    );
+  }
   /**
    * Creates a counter in DB and stores it in memory.
    */
@@ -20,7 +43,7 @@ export class CounterService extends SuppressorService {
           .then(() => {
             resolve(`Counter set for the next ${getTimeString(COUNTER_TIME)}`);
           })
-          .catch(e => reject(e));
+          .catch((e) => reject(e));
       }
     });
   }
@@ -72,7 +95,7 @@ export class CounterService extends SuppressorService {
           channel,
           `:crossed_swords: <@${userId}> successfully countered <@${requestorId}>! <@${requestorId}> has lost muzzle privileges for 24 hours and is muzzled for the next 5 minutes! :crossed_swords:`,
         )
-        .catch(e => console.error(e));
+        .catch((e) => console.error(e));
     }
   }
 }

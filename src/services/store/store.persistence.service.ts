@@ -1,4 +1,4 @@
-import { getRepository, getManager } from 'typeorm';
+import { getManager, DataSource } from 'typeorm';
 import { Item } from '../../shared/db/models/Item';
 import { SlackUser } from '../../shared/db/models/SlackUser';
 import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
@@ -12,13 +12,15 @@ interface ItemWithPrice extends Item {
 }
 export class StorePersistenceService {
   redisService: RedisPersistenceService;
+  ds: DataSource;
 
-  constructor(redisService: RedisPersistenceService) {
+  constructor(redisService: RedisPersistenceService, ds: DataSource) {
     this.redisService = redisService;
+    this.ds = ds;
   }
 
   async getItems(teamId: string): Promise<ItemWithPrice[]> {
-    const items = await getRepository(Item).find();
+    const items = await this.ds.getRepository(Item).find();
     const itemsWithPrices = await Promise.all(
       items.map(async (item: Item) => {
         const price = await getManager().query(
@@ -34,7 +36,7 @@ export class StorePersistenceService {
     if (isNaN(itemId)) {
       return undefined;
     } else {
-      const item = await getRepository(Item).findOne({ where: { id: itemId } });
+      const item = await this.ds.getRepository(Item).findOne({ where: { id: itemId } });
       const price = await getManager().query(
         `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
       );
@@ -50,7 +52,7 @@ export class StorePersistenceService {
 
   // Returns active OFFENSIVE items.
   async getActiveItems(userId: string, teamId: string): Promise<string[]> {
-    const defensiveItems = await getRepository(Item).find({ where: { isDefensive: true } });
+    const defensiveItems = await this.ds.getRepository(Item).find({ where: { isDefensive: true } });
     return this.redisService.getPattern(this.getRedisKeyName(userId, teamId)).then((result) => {
       const items: string[] = result.map((item: string): string => {
         const itemArr = item.split('.');
@@ -74,13 +76,13 @@ export class StorePersistenceService {
         const itemKill = new ItemKill();
         itemKill.itemId = +itemId;
         itemKill.muzzleId = muzzleId;
-        return await getRepository(ItemKill).insert(itemKill);
+        return await this.ds.getRepository(ItemKill).insert(itemKill);
       }),
     );
   }
 
   async getTimeModifiers(userId: string, teamId: string) {
-    const modifiers = await getRepository(Item).find({ where: { isTimeModifier: true } });
+    const modifiers = await this.ds.getRepository(Item).find({ where: { isTimeModifier: true } });
     const time: number[] = await Promise.all(
       modifiers.map(async (modifier): Promise<number> => {
         return this.redisService
@@ -97,7 +99,7 @@ export class StorePersistenceService {
   }
 
   async isProtected(userId: string, teamId: string): Promise<string | false> {
-    const protectorItems = await getRepository(Item).find({ where: { isDefensive: true } });
+    const protectorItems = await this.ds.getRepository(Item).find({ where: { isDefensive: true } });
 
     const activeProtection: string[][] = await Promise.all(
       protectorItems.map(async (item) => {
@@ -116,8 +118,8 @@ export class StorePersistenceService {
 
   // TODO: Fix this query. This is so nasty.
   async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
-    const itemById = await getRepository(Item).findOne({ where: { id: itemId } });
-    const userById = await getRepository(SlackUser).findOne({ where: { slackId: userId, teamId } });
+    const itemById = await this.ds.getRepository(Item).findOne({ where: { id: itemId } });
+    const userById = await this.ds.getRepository(SlackUser).findOne({ where: { slackId: userId, teamId } });
     const priceByTeam = await getManager().query(
       `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
     );
@@ -129,7 +131,8 @@ export class StorePersistenceService {
       purchase.item = itemById.id;
       purchase.price = priceByTeam[0].price;
       purchase.user = userById.slackId;
-      return getRepository(Purchase)
+      return this.ds
+        .getRepository(Purchase)
         .insert(purchase)
         .then(() => `Congratulations! You have purchased *_${itemById.name}!_*`)
         .catch((e) => {
@@ -143,16 +146,16 @@ export class StorePersistenceService {
 
   // TODO: Fix this query.
   async useItem(itemId: number, userId: string, teamId: string, userIdForItem?: string): Promise<string> {
-    const usingUser: SlackUser | null = await getRepository(SlackUser).findOne({
+    const usingUser: SlackUser | null = await this.ds.getRepository(SlackUser).findOne({
       where: { slackId: userId, teamId },
     });
-    const receivingUser: SlackUser | null = await getRepository(SlackUser).findOne({
+    const receivingUser: SlackUser | null = await this.ds.getRepository(SlackUser).findOne({
       where: {
         slackId: userIdForItem,
         teamId,
       },
     });
-    const itemById: Item | null = await getRepository(Item).findOne({ where: { id: itemId } });
+    const itemById: Item | null = await this.ds.getRepository(Item).findOne({ where: { id: itemId } });
     if (itemById?.isEffect) {
       const keyName = this.getRedisKeyName(receivingUser ? receivingUser.slackId : userId, teamId, itemId);
       const existingKey = await this.redisService.getPattern(keyName);
@@ -185,7 +188,7 @@ export class StorePersistenceService {
     usedItem.item = itemById!.id;
     usedItem.usedOnUser = receivingUser ? receivingUser.id : usingUser!.id;
     usedItem.usingUser = usingUser!.id;
-    await getRepository(UsedItem).insert(usedItem);
+    await this.ds.getRepository(UsedItem).insert(usedItem);
 
     return `${itemById?.name} used!`;
   }
@@ -195,7 +198,8 @@ export class StorePersistenceService {
   }
 
   isUserRequired(itemId: number): Promise<boolean> {
-    return getRepository(Item)
+    return this.ds
+      .getRepository(Item)
       .findOne({ where: { id: itemId } })
       .then((item) => {
         if (item) {

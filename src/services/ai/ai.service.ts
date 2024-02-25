@@ -13,9 +13,9 @@ export class AIService {
   textCompletionModel = 'gpt-4-turbo-preview';
   imageGenerationModel = 'dall-e-3';
 
-  constructor(persistence: AIPersistenceService, aiService: OpenAI) {
+  constructor(persistence: AIPersistenceService, openAiService: OpenAI) {
     this.persistence = persistence;
-    this.openai = aiService;
+    this.openai = openAiService;
   }
 
   convertAsterisks(text: string | undefined): string | undefined {

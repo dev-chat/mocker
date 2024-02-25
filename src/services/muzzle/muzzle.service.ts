@@ -4,13 +4,35 @@ import { SuppressorService } from '../../shared/services/suppressor.service';
 import { CounterService } from '../counter/counter.service';
 import { StorePersistenceService } from '../store/store.persistence.service';
 import { Muzzle } from '../../shared/db/models/Muzzle';
+import { TranslationService } from '../../shared/services/translation.service';
+import { BackfirePersistenceService } from '../backfire/backfire.persistence.service';
+import { CounterPersistenceService } from '../counter/counter.persistence.service';
+import { SlackService } from '../slack/slack.service';
+import { WebService } from '../web/web.service';
+import { MuzzlePersistenceService } from './muzzle.persistence.service';
 
 export class MuzzleService extends SuppressorService {
   counterService: CounterService;
   storePersistenceService: StorePersistenceService;
 
-  constructor(counterService: CounterService, storePersistenceService: StorePersistenceService) {
-    super();
+  constructor(
+    webService: WebService,
+    slackService: SlackService,
+    translationService: TranslationService,
+    backfirePersistenceService: BackfirePersistenceService,
+    muzzlePersistenceService: MuzzlePersistenceService,
+    counterPersistenceService: CounterPersistenceService,
+    counterService: CounterService,
+    storePersistenceService: StorePersistenceService,
+  ) {
+    super(
+      webService,
+      slackService,
+      translationService,
+      backfirePersistenceService,
+      muzzlePersistenceService,
+      counterPersistenceService,
+    );
     this.counterService = counterService;
     this.storePersistenceService = storePersistenceService;
   }

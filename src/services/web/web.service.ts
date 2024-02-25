@@ -16,9 +16,6 @@ const MAX_RETRIES = 5;
 export class WebService {
   web: WebClient = new WebClient(process.env.MUZZLE_BOT_TOKEN);
 
-  /**
-   * Handles deletion of messages.
-   */
   public deleteMessage(channel: string, ts: string, user: string, times = 0): void {
     if (times > MAX_RETRIES) {
       return;

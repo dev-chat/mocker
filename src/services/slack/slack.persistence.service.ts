@@ -1,4 +1,4 @@
-import { getRepository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { SlackChannel } from '../../shared/db/models/SlackChannel';
 import { SlackUser as SlackUserModel } from '../../shared/models/slack/slack-models';
 import { SlackUser as SlackUserFromDB } from '../../shared/db/models/SlackUser';
@@ -6,10 +6,12 @@ import { RedisPersistenceService } from '../../shared/services/redis.persistence
 import { ConversationsListResponse } from '@slack/web-api';
 
 export class SlackPersistenceService {
-  private redis: RedisPersistenceService;
+  redis: RedisPersistenceService;
+  ds: DataSource;
 
-  constructor(redis: RedisPersistenceService) {
+  constructor(redis: RedisPersistenceService, ds: DataSource) {
     this.redis = redis;
+    this.ds = ds;
   }
 
   // This sucks because TypeORM sucks. Time to consider removing this ORM.
@@ -27,16 +29,16 @@ export class SlackPersistenceService {
 
       try {
         for (const channel of dbChannels) {
-          const existingChannel = await getRepository(SlackChannel).findOne({
+          const existingChannel = await this.ds.getRepository(SlackChannel).findOne({
             where: {
               channelId: channel.channelId,
               teamId: channel.teamId,
             },
           });
           if (existingChannel) {
-            getRepository(SlackChannel).update(existingChannel, channel);
+            this.ds.getRepository(SlackChannel).update(existingChannel, channel);
           } else {
-            getRepository(SlackChannel).save(channel);
+            this.ds.getRepository(SlackChannel).save(channel);
           }
         }
         console.log('Updated channel list');
@@ -67,16 +69,16 @@ export class SlackPersistenceService {
     try {
       await this.redis.setValueWithExpire(this.getRedisKeyName(), JSON.stringify(dbUsers), 'PX', 60000);
       for (const user of dbUsers) {
-        const existingUser = await getRepository(SlackUserFromDB).findOne({
+        const existingUser = await this.ds.getRepository(SlackUserFromDB).findOne({
           where: {
             slackId: user.slackId,
             teamId: user.teamId,
           },
         });
         if (existingUser) {
-          getRepository(SlackUserFromDB).update(existingUser, user);
+          this.ds.getRepository(SlackUserFromDB).update(existingUser, user);
         } else {
-          getRepository(SlackUserFromDB).save(user);
+          this.ds.getRepository(SlackUserFromDB).save(user);
         }
       }
       console.log('Updated latest users in DB.');
@@ -88,19 +90,19 @@ export class SlackPersistenceService {
   }
 
   async getUserById(userId: string, teamId: string): Promise<SlackUserFromDB | null> {
-    return getRepository(SlackUserFromDB).findOne({ where: { slackId: userId, teamId } });
+    return this.ds.getRepository(SlackUserFromDB).findOne({ where: { slackId: userId, teamId } });
   }
 
   async getUserByUserName(username: string, teamId: string): Promise<SlackUserFromDB | null> {
-    return getRepository(SlackUserFromDB).findOne({ where: { name: username, teamId } });
+    return this.ds.getRepository(SlackUserFromDB).findOne({ where: { name: username, teamId } });
   }
 
   async getBotByBotId(botId: string, teamId: string): Promise<SlackUserFromDB | null> {
-    return getRepository(SlackUserFromDB).findOne({ where: { botId, teamId } });
+    return this.ds.getRepository(SlackUserFromDB).findOne({ where: { botId, teamId } });
   }
 
   async getChannelById(channelId: string, teamId: string): Promise<SlackChannel | null> {
-    return getRepository(SlackChannel).findOne({ where: { channelId, teamId } });
+    return this.ds.getRepository(SlackChannel).findOne({ where: { channelId, teamId } });
   }
 
   // This should really require a teamId to be more generic but idc.

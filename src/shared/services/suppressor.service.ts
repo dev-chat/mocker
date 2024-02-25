@@ -1,7 +1,7 @@
 import { EventRequest } from '../models/slack/slack-models';
 import { USER_ID_REGEX } from '../../services/counter/constants';
 import { SlackService } from '../../services/slack/slack.service';
-import { BackFirePersistenceService } from '../../services/backfire/backfire.persistence.service';
+import { BackfirePersistenceService } from '../../services/backfire/backfire.persistence.service';
 import { MuzzlePersistenceService } from '../../services/muzzle/muzzle.persistence.service';
 import { CounterPersistenceService } from '../../services/counter/counter.persistence.service';
 import { WebService } from '../../services/web/web.service';
@@ -15,7 +15,7 @@ export class SuppressorService {
   public webService: WebService;
   public slackService: SlackService;
   public translationService: TranslationService;
-  public backfirePersistenceService: BackFirePersistenceService;
+  public backfirePersistenceService: BackfirePersistenceService;
   public muzzlePersistenceService: MuzzlePersistenceService;
   public counterPersistenceService: CounterPersistenceService;
 
@@ -23,7 +23,7 @@ export class SuppressorService {
     webService: WebService,
     slackService: SlackService,
     translationService: TranslationService,
-    backfirePersistenceService: BackFirePersistenceService,
+    backfirePersistenceService: BackfirePersistenceService,
     muzzlePersistenceService: MuzzlePersistenceService,
     counterPersistenceService: CounterPersistenceService,
   ) {
@@ -196,7 +196,7 @@ export class SuppressorService {
   public logTranslateSuppression(
     text: string,
     id: number,
-    persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
+    persistenceService?: BackfirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): void {
     const sentence = text.trim();
     const words = sentence.split(' ');
@@ -225,7 +225,7 @@ export class SuppressorService {
     text: string,
     timestamp: string,
     dbId: number,
-    persistenceService: MuzzlePersistenceService | BackFirePersistenceService | CounterPersistenceService,
+    persistenceService: MuzzlePersistenceService | BackfirePersistenceService | CounterPersistenceService,
   ): Promise<void> {
     await this.webService.deleteMessage(channel, timestamp, userId);
 
@@ -267,7 +267,7 @@ export class SuppressorService {
   public sendFallbackSuppressedMessage(
     text: string,
     id: number,
-    persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
+    persistenceService?: BackfirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): string {
     const sentence = text.trim();
     const words = sentence.split(' ');
