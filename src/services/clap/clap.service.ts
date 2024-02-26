@@ -1,6 +1,6 @@
 export class ClapService {
   public clap(text: string): string {
-    if (!text || text.length === 0) {
+    if (!text.length) {
       return text;
     }
     let output = '';
