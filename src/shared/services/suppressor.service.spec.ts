@@ -101,7 +101,7 @@ describe('SuppressorService', () => {
       beforeEach(() => {
         jest
           .spyOn(MuzzlePersistenceService.getInstance(), 'isUserMuzzled')
-          .mockImplementation(() => new Promise(resolve => resolve(true)));
+          .mockImplementation(() => new Promise((resolve) => resolve(true)));
       });
 
       it('should return true if an id is present in the event.text ', async () => {
@@ -139,7 +139,7 @@ describe('SuppressorService', () => {
       beforeEach(() => {
         jest
           .spyOn(MuzzlePersistenceService.getInstance(), 'isUserMuzzled')
-          .mockImplementation(() => new Promise(resolve => resolve(false)));
+          .mockImplementation(() => new Promise((resolve) => resolve(false)));
       });
 
       it('should return false if there is no id present in any fields', async () => {

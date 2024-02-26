@@ -7,10 +7,7 @@ export class Price {
   public id!: number;
 
   @Column()
-  @ManyToOne(
-    () => Item,
-    item => item.id,
-  )
+  @ManyToOne(() => Item, (item) => item.id)
   public itemId!: number;
 
   @Column()
