@@ -9,7 +9,6 @@ import { isRandomEven } from '../../services/muzzle/muzzle-utilities';
 import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../services/muzzle/constants';
 import { TranslationService } from './translation.service';
 import moment from 'moment';
-import { SlackUser } from '../db/models/SlackUser';
 
 export class SuppressorService {
   public webService: WebService;
@@ -33,49 +32,6 @@ export class SuppressorService {
     this.backfirePersistenceService = backfirePersistenceService;
     this.muzzlePersistenceService = muzzlePersistenceService;
     this.counterPersistenceService = counterPersistenceService;
-  }
-
-  public isBot(userId: string, teamId: string): Promise<boolean | undefined> {
-    return this.slackService.getUserById(userId, teamId).then((user) => !!user?.isBot);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public findUserIdInBlocks(obj: Record<any, any>, regEx: RegExp): string | undefined {
-    let id;
-    Object.keys(obj).forEach((key) => {
-      if (typeof obj[key] === 'string') {
-        const found = obj[key].match(regEx);
-        if (found) {
-          id = obj[key];
-        }
-      }
-      if (typeof obj[key] === 'object') {
-        id = this.findUserIdInBlocks(obj[key], regEx);
-      }
-    });
-    return id;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async findUserInBlocks(blocks: Record<any, any>[], users?: SlackUser[]): Promise<string | undefined> {
-    const allUsers: SlackUser[] = users ? users : await this.slackService.getAllUsers();
-    let id;
-    const firstBlock = blocks[0]?.elements?.[0];
-    if (firstBlock) {
-      Object.keys(firstBlock).forEach((key) => {
-        if (typeof firstBlock[key] === 'string') {
-          allUsers.forEach((user) => {
-            if (firstBlock[key].includes(user.name)) {
-              id = user.id;
-            }
-          });
-        }
-        if (typeof firstBlock[key] === 'object') {
-          id = this.findUserInBlocks(firstBlock[key], allUsers);
-        }
-      });
-    }
-    return id;
   }
 
   public async isSuppressed(userId: string, teamId: string): Promise<boolean> {
@@ -130,8 +86,8 @@ export class SuppressorService {
     let userIdByBlocksSpoiler;
 
     if (request?.event?.blocks?.length) {
-      const userId = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
-      const userName = await this.findUserInBlocks(request.event.blocks);
+      const userId = this.slackService.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
+      const userName = await this.slackService.findUserInBlocks(request.event.blocks);
 
       if (userId) {
         userIdByBlocks = this.slackService.getUserId(userId);

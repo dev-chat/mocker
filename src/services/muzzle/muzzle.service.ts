@@ -54,7 +54,7 @@ export class MuzzleService extends SuppressorService {
     const requestorName = await this.slackService.getUserNameById(requestorId, teamId);
     const counter = this.counterPersistenceService.getCounterByRequestorId(userId);
     const protectedUser = await this.storePersistenceService.isProtected(userId, teamId);
-    const isBot = await this.isBot(userId, teamId);
+    const isBot = await this.slackService.isBot(userId, teamId);
 
     return new Promise(async (resolve, reject) => {
       if (isBot) {

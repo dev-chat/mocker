@@ -14,6 +14,49 @@ export class SlackService {
     this.persistence = persistenceService;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public findUserIdInBlocks(obj: Record<any, any>, regEx: RegExp): string | undefined {
+    let id;
+    Object.keys(obj).forEach((key) => {
+      if (typeof obj[key] === 'string') {
+        const found = obj[key].match(regEx);
+        if (found) {
+          id = obj[key];
+        }
+      }
+      if (typeof obj[key] === 'object') {
+        id = this.findUserIdInBlocks(obj[key], regEx);
+      }
+    });
+    return id;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async findUserInBlocks(blocks: Record<any, any>[], users?: SlackUserFromDB[]): Promise<string | undefined> {
+    const allUsers: SlackUserFromDB[] = users ? users : await this.getAllUsers();
+    let id;
+    const firstBlock = blocks[0]?.elements?.[0];
+    if (firstBlock) {
+      Object.keys(firstBlock).forEach((key) => {
+        if (typeof firstBlock[key] === 'string') {
+          allUsers.forEach((user) => {
+            if (firstBlock[key].includes(user.name)) {
+              id = user.id;
+            }
+          });
+        }
+        if (typeof firstBlock[key] === 'object') {
+          id = this.findUserInBlocks(firstBlock[key], allUsers);
+        }
+      });
+    }
+    return id;
+  }
+
+  public isBot(userId: string, teamId: string): Promise<boolean | undefined> {
+    return this.getUserById(userId, teamId).then((user) => !!user?.isBot);
+  }
+
   public sendResponse(responseUrl: string, response: ChannelResponse): void {
     axios
       .post(encodeURI(responseUrl), response)
