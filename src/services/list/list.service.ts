@@ -3,7 +3,7 @@ import { ReportService } from '../../shared/services/report.service';
 import { getManager } from 'typeorm';
 import { ListUser } from './ListUser.model';
 
-export class ListReportService extends ReportService {
+export class ListService extends ReportService {
   // TODO: Add Team ID to the query.
   public async getListReport(channelId: string, channelName: string): Promise<string> {
     const query = `SELECT u.name, l.text FROM list AS l INNER JOIN slack_user AS u ON u.slackId=l.requestorId WHERE l.channelId='${channelId}';`;

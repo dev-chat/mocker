@@ -1,7 +1,6 @@
 import express, { Router } from 'express';
 import { KnownBlock } from '@slack/web-api';
-import { WebService } from '../services/web/web.service';
-
+import { getService } from '../shared/services/service.injector';
 interface BlindRequest {
   title?: string;
   text: string;
@@ -11,9 +10,8 @@ interface BlindRequest {
 
 export const blindController: Router = express.Router();
 
-const webService = WebService.getInstance();
-
 blindController.post('/blind/message', async (req, res) => {
+  const webService = getService('WebService');
   const request: BlindRequest = req.body;
   const blocks: KnownBlock[] = request?.title
     ? [
@@ -72,10 +70,10 @@ blindController.post('/blind/message', async (req, res) => {
 
   webService
     .sendMessage(request.channel_id, request.text, blocks)
-    .then(x => {
+    .then((x) => {
       res.status(200).send({ message: x });
     })
-    .catch(e => {
+    .catch((e) => {
       console.error(e);
       res.status(500).send({ message: e });
     });

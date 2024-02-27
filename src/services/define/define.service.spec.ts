@@ -72,7 +72,7 @@ describe('define-utils', () => {
   let defineService: DefineService;
 
   beforeEach(() => {
-    defineService = DefineService.getInstance();
+    defineService = new DefineService();
   });
 
   describe('capitalizeFirstLetter()', () => {

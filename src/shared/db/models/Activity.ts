@@ -6,10 +6,7 @@ export class Activity {
   @PrimaryGeneratedColumn()
   public id!: number;
 
-  @ManyToOne(
-    () => SlackUser,
-    user => user.activity,
-  )
+  @ManyToOne(() => SlackUser, (user) => user.activity)
   public userId!: SlackUser;
 
   @Column({ default: 'NOT_AVAILABLE' })

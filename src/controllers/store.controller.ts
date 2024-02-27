@@ -1,22 +1,21 @@
 import express, { Router } from 'express';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { StoreService } from '../services/store/store.service';
-import { SuppressorService } from '../shared/services/suppressor.service';
-import { ItemService } from '../services/item/item.service';
+import { getService } from '../shared/services/service.injector';
 
 export const storeController: Router = express.Router();
 
-const suppressorService: SuppressorService = new SuppressorService();
-const storeService: StoreService = new StoreService();
-const itemService: ItemService = new ItemService();
-
 storeController.post('/store', async (req, res) => {
+  const storeService = getService('StoreService');
   const request: SlashCommandRequest = req.body;
   const storeItems: string = await storeService.listItems(request.user_id, request.team_id);
   res.status(200).send(storeItems);
 });
 
 storeController.post('/store/buy', async (req, res) => {
+  const suppressorService = getService('SuppressorService');
+  const storeService = getService('StoreService');
+  const itemService = getService('ItemService');
+
   const request: SlashCommandRequest = req.body;
   const textArgs = request.text.split(' ');
   let itemId: string | undefined;
@@ -54,7 +53,7 @@ storeController.post('/store/buy', async (req, res) => {
   } else {
     const useReceipt = await itemService
       .useItem(itemId, request.user_id, request.team_id, userIdForItem as string, request.channel_name)
-      .catch(e => {
+      .catch((e) => {
         console.error(e, {
           item: itemId,
           userId: request.user_id,
@@ -72,7 +71,7 @@ storeController.post('/store/buy', async (req, res) => {
 
     const purchaseReceipt: string | undefined = await storeService
       .buyItem(itemId, request.user_id, request.team_id)
-      .catch(e => {
+      .catch((e) => {
         console.error(e, {
           item: itemId,
           userId: request.user_id,

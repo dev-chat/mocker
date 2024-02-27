@@ -4,10 +4,38 @@ import { SuppressorService } from '../../shared/services/suppressor.service';
 import { CounterService } from '../counter/counter.service';
 import { StorePersistenceService } from '../store/store.persistence.service';
 import { Muzzle } from '../../shared/db/models/Muzzle';
+import { TranslationService } from '../../shared/services/translation.service';
+import { BackfirePersistenceService } from '../backfire/backfire.persistence.service';
+import { CounterPersistenceService } from '../counter/counter.persistence.service';
+import { SlackService } from '../slack/slack.service';
+import { WebService } from '../web/web.service';
+import { MuzzlePersistenceService } from './muzzle.persistence.service';
 
 export class MuzzleService extends SuppressorService {
-  private counterService = new CounterService();
-  private storePersistenceService = StorePersistenceService.getInstance();
+  counterService: CounterService;
+  storePersistenceService: StorePersistenceService;
+
+  constructor(
+    webService: WebService,
+    slackService: SlackService,
+    translationService: TranslationService,
+    backfirePersistenceService: BackfirePersistenceService,
+    muzzlePersistenceService: MuzzlePersistenceService,
+    counterPersistenceService: CounterPersistenceService,
+    counterService: CounterService,
+    storePersistenceService: StorePersistenceService,
+  ) {
+    super(
+      webService,
+      slackService,
+      translationService,
+      backfirePersistenceService,
+      muzzlePersistenceService,
+      counterPersistenceService,
+    );
+    this.counterService = counterService;
+    this.storePersistenceService = storePersistenceService;
+  }
 
   public permaMuzzle(impersonatingUserId: string, teamId: string): Promise<Muzzle> {
     console.log(`perma-muzzling ${impersonatingUserId}`);
@@ -26,7 +54,7 @@ export class MuzzleService extends SuppressorService {
     const requestorName = await this.slackService.getUserNameById(requestorId, teamId);
     const counter = this.counterPersistenceService.getCounterByRequestorId(userId);
     const protectedUser = await this.storePersistenceService.isProtected(userId, teamId);
-    const isBot = await this.isBot(userId, teamId);
+    const isBot = await this.slackService.isBot(userId, teamId);
 
     return new Promise(async (resolve, reject) => {
       if (isBot) {
@@ -60,7 +88,7 @@ export class MuzzleService extends SuppressorService {
                 channel,
                 `:boom: <@${requestorId}> attempted to muzzle <@${userId}> but it backfired! :boom:`,
               )
-              .catch(e => console.error(e));
+              .catch((e) => console.error(e));
             resolve(`:boom: Backfired! Better luck next time... :boom:`);
           })
           .catch((e: unknown) => {
@@ -74,11 +102,11 @@ export class MuzzleService extends SuppressorService {
             channel,
             `:innocent: <@${requestorId}> attempted to muzzle <@${userId}> but he was protected by a \`Guardian Angel\`. <@${requestorId}> is now muzzled. :innocent:`,
           )
-          .catch(e => console.error(e));
+          .catch((e) => console.error(e));
 
         const userToCredit = await this.storePersistenceService
           .getUserOfUsedItem(protectedUser)
-          .then(user => user!.split('-')[0]);
+          .then((user) => user!.split('-')[0]);
         const timeToMuzzle =
           getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(userToCredit, teamId));
         const protectedUserArr = protectedUser.split('.');
@@ -114,7 +142,7 @@ export class MuzzleService extends SuppressorService {
     timestamp: string,
   ): Promise<void> {
     console.time('send-muzzled-message');
-    const muzzle = await this.muzzlePersistenceService.getMuzzle(userId, teamId).catch(e => {
+    const muzzle = await this.muzzlePersistenceService.getMuzzle(userId, teamId).catch((e) => {
       console.error('error retrieving muzzle', e);
       return null;
     });

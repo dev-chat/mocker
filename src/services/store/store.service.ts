@@ -2,14 +2,22 @@ import { ReactionPersistenceService } from '../reaction/reaction.persistence.ser
 import { StorePersistenceService } from './store.persistence.service';
 
 export class StoreService {
-  storePersistenceService = StorePersistenceService.getInstance();
-  reactionPersistenceService = ReactionPersistenceService.getInstance();
+  storePersistenceService: StorePersistenceService;
+  reactionPersistenceService: ReactionPersistenceService;
+
+  constructor(
+    storePersistenceService: StorePersistenceService,
+    reactionPersistenceService: ReactionPersistenceService,
+  ) {
+    this.storePersistenceService = storePersistenceService;
+    this.reactionPersistenceService = reactionPersistenceService;
+  }
 
   async listItems(slackId: string, teamId: string): Promise<string> {
     const items = await this.storePersistenceService.getItems(teamId);
     const { totalRepAvailable } = await this.reactionPersistenceService.getTotalRep(slackId, teamId);
     let view = `Welcome to the Muzzle Store! \n \n Purchase items by typing \`/buy item_id\` where item_id is the number shown below! \n \n Once purchased, the item will be immediately used. \n \n`;
-    items.map(item => {
+    items.map((item) => {
       view += `*${item.id}. ${item.name}* \n *Cost:* ${item.price} rep \n *Description:* ${
         item.description
       } \n *How to Use:* ${item.requiresUser ? `\`/buy ${item.id} @user\`` : `\`/buy ${item.id}\``} \n \n`;

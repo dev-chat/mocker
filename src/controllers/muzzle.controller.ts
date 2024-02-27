@@ -1,22 +1,14 @@
 import express, { Request, Response, Router } from 'express';
-import { MuzzleService } from '../services/muzzle/muzzle.service';
-import { SlackService } from '../services/slack/slack.service';
-import { WebService } from '../services/web/web.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ReportType } from '../shared/models/report/report.model';
-import { SuppressorService } from '../shared/services/suppressor.service';
-import { MuzzleReportService } from '../services/muzzle/muzzle.report.service';
+import { getService } from '../shared/services/service.injector';
 
 export const muzzleController: Router = express.Router();
 
-const muzzleService = new MuzzleService();
-const slackService = SlackService.getInstance();
-const webService = WebService.getInstance();
-const suppressorService = new SuppressorService();
-const reportService = new MuzzleReportService();
-
 // TODO: This should have the logic from the addUserToMuzzled function in muzzleService.
 muzzleController.post('/muzzle', async (req: Request, res: Response) => {
+  const muzzleService = getService('MuzzleService');
+  const slackService = getService('SlackService');
   const request: SlashCommandRequest = req.body;
   const userId = slackService.getUserId(request.text);
   if (userId && request.user_id === userId) {
@@ -24,7 +16,7 @@ muzzleController.post('/muzzle', async (req: Request, res: Response) => {
   } else if (userId) {
     const results = await muzzleService
       .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
-      .catch(e => {
+      .catch((e) => {
         console.error(e);
         res.send(e);
       });
@@ -37,6 +29,10 @@ muzzleController.post('/muzzle', async (req: Request, res: Response) => {
 });
 
 muzzleController.post('/muzzle/stats', async (req: Request, res: Response) => {
+  const suppressorService = getService('SuppressorService');
+  const reportService = getService('MuzzleReportService');
+  const webService = getService('WebService');
+
   const request: SlashCommandRequest = req.body;
   if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
     res.send(`Sorry! Can't do that while muzzled.`);

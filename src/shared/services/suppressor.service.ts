@@ -1,7 +1,7 @@
 import { EventRequest } from '../models/slack/slack-models';
 import { USER_ID_REGEX } from '../../services/counter/constants';
 import { SlackService } from '../../services/slack/slack.service';
-import { BackFirePersistenceService } from '../../services/backfire/backfire.persistence.service';
+import { BackfirePersistenceService } from '../../services/backfire/backfire.persistence.service';
 import { MuzzlePersistenceService } from '../../services/muzzle/muzzle.persistence.service';
 import { CounterPersistenceService } from '../../services/counter/counter.persistence.service';
 import { WebService } from '../../services/web/web.service';
@@ -9,57 +9,29 @@ import { isRandomEven } from '../../services/muzzle/muzzle-utilities';
 import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../services/muzzle/constants';
 import { TranslationService } from './translation.service';
 import moment from 'moment';
-import { SlackUser } from '../db/models/SlackUser';
 
 export class SuppressorService {
-  public webService = WebService.getInstance();
-  public slackService = SlackService.getInstance();
-  public translationService = new TranslationService();
-  public backfirePersistenceService = BackFirePersistenceService.getInstance();
-  public muzzlePersistenceService = MuzzlePersistenceService.getInstance();
-  public counterPersistenceService = CounterPersistenceService.getInstance();
+  public webService: WebService;
+  public slackService: SlackService;
+  public translationService: TranslationService;
+  public backfirePersistenceService: BackfirePersistenceService;
+  public muzzlePersistenceService: MuzzlePersistenceService;
+  public counterPersistenceService: CounterPersistenceService;
 
-  public isBot(userId: string, teamId: string): Promise<boolean | undefined> {
-    return this.slackService.getUserById(userId, teamId).then((user) => !!user?.isBot);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public findUserIdInBlocks(obj: Record<any, any>, regEx: RegExp): string | undefined {
-    let id;
-    Object.keys(obj).forEach((key) => {
-      if (typeof obj[key] === 'string') {
-        const found = obj[key].match(regEx);
-        if (found) {
-          id = obj[key];
-        }
-      }
-      if (typeof obj[key] === 'object') {
-        id = this.findUserIdInBlocks(obj[key], regEx);
-      }
-    });
-    return id;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async findUserInBlocks(blocks: Record<any, any>[], users?: SlackUser[]): Promise<string | undefined> {
-    const allUsers: SlackUser[] = users ? users : await this.slackService.getAllUsers();
-    let id;
-    const firstBlock = blocks[0]?.elements?.[0];
-    if (firstBlock) {
-      Object.keys(firstBlock).forEach((key) => {
-        if (typeof firstBlock[key] === 'string') {
-          allUsers.forEach((user) => {
-            if (firstBlock[key].includes(user.name)) {
-              id = user.id;
-            }
-          });
-        }
-        if (typeof firstBlock[key] === 'object') {
-          id = this.findUserInBlocks(firstBlock[key], allUsers);
-        }
-      });
-    }
-    return id;
+  constructor(
+    webService: WebService,
+    slackService: SlackService,
+    translationService: TranslationService,
+    backfirePersistenceService: BackfirePersistenceService,
+    muzzlePersistenceService: MuzzlePersistenceService,
+    counterPersistenceService: CounterPersistenceService,
+  ) {
+    this.webService = webService;
+    this.slackService = slackService;
+    this.translationService = translationService;
+    this.backfirePersistenceService = backfirePersistenceService;
+    this.muzzlePersistenceService = muzzlePersistenceService;
+    this.counterPersistenceService = counterPersistenceService;
   }
 
   public async isSuppressed(userId: string, teamId: string): Promise<boolean> {
@@ -114,8 +86,8 @@ export class SuppressorService {
     let userIdByBlocksSpoiler;
 
     if (request?.event?.blocks?.length) {
-      const userId = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
-      const userName = await this.findUserInBlocks(request.event.blocks);
+      const userId = this.slackService.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
+      const userName = await this.slackService.findUserInBlocks(request.event.blocks);
 
       if (userId) {
         userIdByBlocks = this.slackService.getUserId(userId);
@@ -180,7 +152,7 @@ export class SuppressorService {
   public logTranslateSuppression(
     text: string,
     id: number,
-    persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
+    persistenceService?: BackfirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): void {
     const sentence = text.trim();
     const words = sentence.split(' ');
@@ -209,7 +181,7 @@ export class SuppressorService {
     text: string,
     timestamp: string,
     dbId: number,
-    persistenceService: MuzzlePersistenceService | BackFirePersistenceService | CounterPersistenceService,
+    persistenceService: MuzzlePersistenceService | BackfirePersistenceService | CounterPersistenceService,
   ): Promise<void> {
     await this.webService.deleteMessage(channel, timestamp, userId);
 
@@ -251,7 +223,7 @@ export class SuppressorService {
   public sendFallbackSuppressedMessage(
     text: string,
     id: number,
-    persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
+    persistenceService?: BackfirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): string {
     const sentence = text.trim();
     const words = sentence.split(' ');

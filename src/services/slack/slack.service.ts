@@ -6,15 +6,56 @@ import { USER_ID_REGEX } from './constants';
 import { SlackPersistenceService } from './slack.persistence.service';
 
 export class SlackService {
-  public static getInstance(): SlackService {
-    if (!SlackService.instance) {
-      SlackService.instance = new SlackService();
-    }
-    return SlackService.instance;
+  web: WebService;
+  persistence: SlackPersistenceService;
+
+  constructor(webService: WebService, persistenceService: SlackPersistenceService) {
+    this.web = webService;
+    this.persistence = persistenceService;
   }
-  private static instance: SlackService;
-  private web: WebService = WebService.getInstance();
-  private persistenceService: SlackPersistenceService = SlackPersistenceService.getInstance();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public findUserIdInBlocks(obj: Record<any, any>, regEx: RegExp): string | undefined {
+    let id;
+    Object.keys(obj).forEach((key) => {
+      if (typeof obj[key] === 'string') {
+        const found = obj[key].match(regEx);
+        if (found) {
+          id = obj[key];
+        }
+      }
+      if (typeof obj[key] === 'object') {
+        id = this.findUserIdInBlocks(obj[key], regEx);
+      }
+    });
+    return id;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async findUserInBlocks(blocks: Record<any, any>[], users?: SlackUserFromDB[]): Promise<string | undefined> {
+    const allUsers: SlackUserFromDB[] = users ? users : await this.getAllUsers();
+    let id;
+    const firstBlock = blocks[0]?.elements?.[0];
+    if (firstBlock) {
+      Object.keys(firstBlock).forEach((key) => {
+        if (typeof firstBlock[key] === 'string') {
+          allUsers.forEach((user) => {
+            if (firstBlock[key].includes(user.name)) {
+              id = user.id;
+            }
+          });
+        }
+        if (typeof firstBlock[key] === 'object') {
+          id = this.findUserInBlocks(firstBlock[key], allUsers);
+        }
+      });
+    }
+    return id;
+  }
+
+  public isBot(userId: string, teamId: string): Promise<boolean | undefined> {
+    return this.getUserById(userId, teamId).then((user) => !!user?.isBot);
+  }
 
   public sendResponse(responseUrl: string, response: ChannelResponse): void {
     axios
@@ -35,14 +76,11 @@ export class SlackService {
   }
 
   public getUserIdByName(userName: string, teamId: string): Promise<string | undefined> {
-    return this.persistenceService.getUserByUserName(userName, teamId).then((user) => user?.slackId);
+    return this.persistence.getUserByUserName(userName, teamId).then((user) => user?.slackId);
   }
 
-  /**
-   * Returns the user name by id
-   */
   public getUserNameById(userId: string, teamId: string): Promise<string | undefined> {
-    return this.persistenceService.getUserById(userId, teamId).then((user) => user?.name);
+    return this.persistence.getUserById(userId, teamId).then((user) => user?.name);
   }
 
   /**
@@ -55,6 +93,7 @@ export class SlackService {
       return '';
     }
   }
+
   /**
    * Retrieves a Slack user id from the various fields in which a userId can exist inside of a bot response.
    */
@@ -80,11 +119,11 @@ export class SlackService {
   }
 
   public getAndSaveAllChannels(): void {
-    this.web.getAllChannels().then((result) => this.persistenceService.saveChannels(result.channels));
+    this.web.getAllChannels().then((result) => this.persistence.saveChannels(result.channels));
   }
 
   public async getChannelName(channelId: string, teamId: string): Promise<string> {
-    const channel = await this.persistenceService.getChannelById(channelId, teamId);
+    const channel = await this.persistence.getChannelById(channelId, teamId);
     return channel?.name || '';
   }
 
@@ -109,7 +148,7 @@ export class SlackService {
    */
   public async getAllUsers(): Promise<SlackUserFromDB[]> {
     console.log('Retrieving new user list...');
-    const cached = await this.persistenceService.getCachedUsers();
+    const cached = await this.persistence.getCachedUsers();
     if (!!cached) {
       return cached as SlackUserFromDB[];
     }
@@ -117,7 +156,7 @@ export class SlackService {
       .getAllUsers()
       .then((resp) => {
         console.log('New user list has been retrieved!');
-        return this.persistenceService.saveUsers(resp.members as SlackUser[]).catch((e) => e);
+        return this.persistence.saveUsers(resp.members as SlackUser[]).catch((e) => e);
       })
       .catch((e) => {
         console.error('Failed to retrieve users', e);
@@ -129,10 +168,10 @@ export class SlackService {
   }
 
   public getBotByBotId(botId: string, teamId: string): Promise<SlackUserFromDB | null> {
-    return this.persistenceService.getBotByBotId(botId, teamId);
+    return this.persistence.getBotByBotId(botId, teamId);
   }
 
   public getUserById(userId: string, teamId: string): Promise<SlackUserFromDB | null> {
-    return this.persistenceService.getUserById(userId, teamId);
+    return this.persistence.getUserById(userId, teamId);
   }
 }

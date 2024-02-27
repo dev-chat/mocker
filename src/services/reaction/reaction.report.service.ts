@@ -2,9 +2,15 @@ import Table from 'easy-table';
 import { ReportService } from '../../shared/services/report.service';
 import { ReactionByUser } from '../../shared/models/reaction/ReactionByUser.model';
 import { ReactionPersistenceService } from './reaction.persistence.service';
+import { SlackService } from '../slack/slack.service';
 
 export class ReactionReportService extends ReportService {
-  reactionPersistenceService = ReactionPersistenceService.getInstance();
+  reactionPersistenceService: ReactionPersistenceService;
+
+  constructor(reactionPersistenceService: ReactionPersistenceService, slackService: SlackService) {
+    super(slackService);
+    this.reactionPersistenceService = reactionPersistenceService;
+  }
 
   public async getRep(userId: string, teamId: string): Promise<string> {
     const { totalRepAvailable, totalRepEarned } = await this.reactionPersistenceService
@@ -22,7 +28,7 @@ export class ReactionReportService extends ReportService {
       .then(async (perUserRep: ReactionByUser[] | undefined) => {
         return await this.formatRepByUser(perUserRep, teamId, totalRepEarned);
       })
-      .catch(e => {
+      .catch((e) => {
         console.error(e);
         throw new Error(e);
       });
@@ -39,7 +45,7 @@ export class ReactionReportService extends ReportService {
       return 'You do not have any existing relationships.';
     } else {
       const formattedData = await Promise.all(
-        perUserRep.map(async userRep => {
+        perUserRep.map(async (userRep) => {
           return {
             user:
               userRep.reactingUser !== 'ADMIN'

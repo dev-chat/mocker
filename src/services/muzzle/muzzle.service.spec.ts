@@ -36,7 +36,7 @@ describe('MuzzleService', () => {
           mockMaxMuzzles = jest.spyOn(persistenceService, 'isMaxMuzzlesReached').mockResolvedValue(false);
           jest
             .spyOn(persistenceService, 'isUserMuzzled')
-            .mockImplementation(() => new Promise(resolve => resolve(false)));
+            .mockImplementation(() => new Promise((resolve) => resolve(false)));
         });
 
         it('should call MuzzlePersistenceService.addMuzzle()', async () => {
@@ -57,21 +57,21 @@ describe('MuzzleService', () => {
 
           jest.spyOn(persistenceService, 'isUserMuzzled').mockImplementation(
             () =>
-              new Promise(resolve => {
+              new Promise((resolve) => {
                 resolve(true);
               }),
           );
         });
 
         it('should reject if a user tries to muzzle an already muzzled user', async () => {
-          await muzzleService.addUserToMuzzled(testData.user123, testData.requestor, 'test').catch(e => {
+          await muzzleService.addUserToMuzzled(testData.user123, testData.requestor, 'test').catch((e) => {
             expect(e).toBe('test123 is already muzzled!');
             expect(addMuzzleMock).not.toHaveBeenCalled();
           });
         });
 
         it('should reject if a user tries to muzzle a user that does not exist', async () => {
-          await muzzleService.addUserToMuzzled('', testData.requestor, 'test').catch(e => {
+          await muzzleService.addUserToMuzzled('', testData.requestor, 'test').catch((e) => {
             expect(e).toBe(`Invalid username passed in. You can only muzzle existing slack users.`);
           });
         });
@@ -89,11 +89,11 @@ describe('MuzzleService', () => {
 
           when(mockIsUserMuzzled)
             .calledWith(testData.requestor)
-            .mockImplementation(() => new Promise(resolve => resolve(true)));
+            .mockImplementation(() => new Promise((resolve) => resolve(true)));
         });
 
         it('should reject if a requestor tries to muzzle someone while the requestor is muzzled', async () => {
-          await muzzleService.addUserToMuzzled(testData.user123, testData.requestor, 'test').catch(e => {
+          await muzzleService.addUserToMuzzled(testData.user123, testData.requestor, 'test').catch((e) => {
             expect(e).toBe(`You can't muzzle someone if you are already muzzled!`);
             expect(addMuzzleMock).not.toHaveBeenCalled();
           });
@@ -108,17 +108,17 @@ describe('MuzzleService', () => {
         jest.spyOn(persistenceService, 'addMuzzle').mockResolvedValue(mockMuzzle as Muzzle);
         jest
           .spyOn(persistenceService, 'isMaxMuzzlesReached')
-          .mockImplementation(() => new Promise(resolve => resolve(true)));
+          .mockImplementation(() => new Promise((resolve) => resolve(true)));
 
         jest
           .spyOn(persistenceService, 'isUserMuzzled')
-          .mockImplementation(() => new Promise(resolve => resolve(false)));
+          .mockImplementation(() => new Promise((resolve) => resolve(false)));
       });
 
       it('should prevent a requestor from muzzling when isMaxMuzzlesReached is true', async () => {
         await muzzleService
           .addUserToMuzzled(testData.user3, testData.requestor, 'test')
-          .catch(e => expect(e).toBe(`You're doing that too much. Only 2 muzzles are allowed per hour.`));
+          .catch((e) => expect(e).toBe(`You're doing that too much. Only 2 muzzles are allowed per hour.`));
       });
     });
   });
@@ -170,7 +170,7 @@ describe('MuzzleService', () => {
       });
 
       it('should call getMuzzle, and deleteMessage not call sendMessage, but call trackDeletedMessage if suppressionCount >= MAX_SUPPRESSIONS', async () => {
-        mockGetSuppressions.mockImplementation(() => new Promise(resolve => resolve(MAX_SUPPRESSIONS)));
+        mockGetSuppressions.mockImplementation(() => new Promise((resolve) => resolve(MAX_SUPPRESSIONS)));
         await muzzleService.sendMuzzledMessage('test', '1234', 'test', 'test');
         expect(mockDeleteMessage).toHaveBeenCalled();
         expect(mockGetMuzzle).toHaveBeenCalled();
@@ -190,7 +190,7 @@ describe('MuzzleService', () => {
 
         mockGetMuzzle = jest
           .spyOn(persistenceService, 'getMuzzle')
-          .mockReturnValue(new Promise(resolve => resolve(null)));
+          .mockReturnValue(new Promise((resolve) => resolve(null)));
 
         mockTrackDeleted = jest.spyOn(persistenceService, 'trackDeletedMessage').mockImplementation(() => jest.fn());
       });

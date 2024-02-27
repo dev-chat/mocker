@@ -15,7 +15,6 @@ export interface FormattedMuzzleReportByInstances {
   User?: string;
   'Muzzles Issued'?: number;
   Muzzles?: number;
-
 }
 
 export interface FormattedMuzzleReportAccuracy {

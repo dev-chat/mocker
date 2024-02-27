@@ -1,15 +1,12 @@
-import { getRepository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { List } from '../../shared/db/models/List';
 
 export class ListPersistenceService {
-  public static getInstance(): ListPersistenceService {
-    if (!ListPersistenceService.instance) {
-      ListPersistenceService.instance = new ListPersistenceService();
-    }
-    return ListPersistenceService.instance;
-  }
+  ds: DataSource;
 
-  private static instance: ListPersistenceService;
+  constructor(ds: DataSource) {
+    this.ds = ds;
+  }
 
   public store(requestorId: string, text: string, teamId: string, channelId: string): Promise<List> {
     const listItem = new List();
@@ -17,16 +14,14 @@ export class ListPersistenceService {
     listItem.text = text;
     listItem.teamId = teamId;
     listItem.channelId = channelId;
-    return getRepository(List).save(listItem);
+    return this.ds.getRepository(List).save(listItem);
   }
 
-  public remove(text: string): Promise<List> {
-    return new Promise(async (resolve, reject) => {
-      const item = await getRepository(List).findOne({ where: { text } });
-      if (item) {
-        return resolve(getRepository(List).remove(item));
-      }
-      reject(`Unable to find \`${text}\``);
-    });
+  public async remove(text: string): Promise<List> {
+    const item = await this.ds.getRepository(List).findOne({ where: { text } });
+    if (item) {
+      return this.ds.getRepository(List).remove(item);
+    }
+    return Promise.reject(`Unable to find \`${text}\``);
   }
 }

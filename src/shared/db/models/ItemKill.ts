@@ -8,16 +8,10 @@ export class ItemKill {
   public id!: number;
 
   @Column()
-  @OneToMany(
-    () => Muzzle,
-    muzzle => muzzle.id,
-  )
+  @OneToMany(() => Muzzle, (muzzle) => muzzle.id)
   muzzleId!: number;
 
   @Column()
-  @OneToMany(
-    () => Item,
-    item => item.id,
-  )
+  @OneToMany(() => Item, (item) => item.id)
   itemId!: number;
 }
