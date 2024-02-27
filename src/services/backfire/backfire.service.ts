@@ -39,6 +39,7 @@ export class BackfireService extends SuppressorService {
     const backfireId: number | undefined = await this.backfirePersistenceService
       .getBackfireByUserId(userId, teamId)
       .then((id) => (id ? +id : undefined));
+
     if (backfireId) {
       const suppressions = await this.backfirePersistenceService.getSuppressions(userId, teamId);
       if (suppressions && +suppressions < MAX_SUPPRESSIONS) {

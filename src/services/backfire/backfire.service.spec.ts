@@ -45,7 +45,7 @@ describe('BackfireService', () => {
   });
 
   describe('addBackfireTime', () => {
-    it('should call addBackfireTime', () => {
+    it('should call backfirePersistenceService.addBackfireTime', () => {
       backfireService.addBackfireTime('userId', 'teamId', 1000);
       expect(backfireService.backfirePersistenceService.addBackfireTime).toHaveBeenCalledWith('userId', 'teamId', 1000);
     });

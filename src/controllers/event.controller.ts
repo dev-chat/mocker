@@ -189,7 +189,7 @@ function logHistory(request: EventRequest): void {
   historyPersistenceService.logHistory(request);
 }
 
-// Change route to /event/handle instead.
+// TODO: Change route to /event/handle instead.
 eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
   if (req.body.challenge) {
     res.send({ challenge: req.body.challenge });
