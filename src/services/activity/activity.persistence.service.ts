@@ -1,13 +1,23 @@
-import { WebAPICallResult } from '@slack/web-api';
+import { KnownBlock } from '@slack/web-api';
 import { getRepository } from 'typeorm';
 import { Activity } from '../../shared/db/models/Activity';
 import { SlackUser } from '../../shared/db/models/SlackUser';
-import { EventRequest } from '../../shared/models/slack/slack-models';
+import { EventRequest, SlashCommandRequest } from '../../shared/models/slack/slack-models';
 import { WebService } from '../web/web.service';
 import { Temperature, TimeBlock } from './activity.model';
+import { AIService } from '../ai/ai.service';
+import { MessageWithName } from '../../shared/models/message/message-with-name';
+import { HistoryPersistenceService } from '../history/history.persistence.service';
+
+interface ChannelImage {
+  channel: string;
+  imageUrl?: string;
+}
 
 export class ActivityPersistenceService {
   private web: WebService = WebService.getInstance();
+  private aiService: AIService = new AIService();
+  private historyPersistenceService = new HistoryPersistenceService();
   private refreshTime = true;
 
   public static getInstance(): ActivityPersistenceService {
@@ -44,41 +54,77 @@ export class ActivityPersistenceService {
     // This should be in redis not here.
     if (this.refreshTime) {
       this.refreshTime = false;
-      setTimeout(() => (this.refreshTime = true), 120000);
+      // Every ffteen minutes.
+      setTimeout(() => (this.refreshTime = true), 300000);
       const hottest: Temperature[] = await this.getHottestChannels();
+      console.log(hottest);
+      const images: Promise<ChannelImage>[] = [];
       if (hottest.length > 0) {
-        let text = ``;
         for (let i = 0; i < hottest.length; i++) {
-          text += `\n<#${hottest[i].channel}> : ${this.getEmoji(hottest.length - i)}`;
-        }
-        const timestamp = Math.floor(new Date().getTime() / 1000);
-        const blocks = [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text,
-            },
-          },
-          {
-            type: 'context',
-            elements: [
-              {
-                type: 'mrkdwn',
-                text: `<!date^${timestamp}^Posted {date_num} {time_secs}|Posted at some point today>`,
-                verbatim: false,
-              },
-            ],
-          },
-        ];
+          // Hardcoded team id BOO.
+          const request = { team_id: `T2ZV0GCNS`, channel_id: hottest[i].channel };
+          const history: MessageWithName[] = await this.historyPersistenceService.getHistory(
+            request as SlashCommandRequest,
+            false,
+          );
+          const formattedHistory: string = this.aiService.formatHistory(history);
+          images.push(
+            (async () => {
+              const prompt = await this.aiService
+                .promptWithHistory(
+                  'hottest',
+                  '',
+                  formattedHistory,
+                  'generate a prompt that can be used to generate an image that would be an ad for products related to the conversation',
+                )
+                .catch((e) => {
+                  console.error(e);
+                  throw e;
+                });
 
-        await this.web
-          .sendMessage('#hot', text, blocks)
-          .then((result: WebAPICallResult) => result.ts as string)
-          .catch(e => {
-            console.error(e);
-            return '';
+              if (prompt) {
+                const imageUrl = await this.aiService
+                  .generateImage('hotness', 'T2ZV0GCNS', prompt as string)
+                  .catch((e) => {
+                    console.error(e);
+                    throw e;
+                  });
+                return { channel: hottest[i].channel, imageUrl } as ChannelImage;
+              } else {
+                return { channel: hottest[i].channel } as ChannelImage;
+              }
+            })(),
+          );
+        }
+
+        Promise.all(images).then((channelImages) => {
+          console.log(channelImages);
+          channelImages.forEach((channelImage) => {
+            if (channelImage.imageUrl) {
+              const blocks: KnownBlock[] = [
+                {
+                  type: 'image',
+                  image_url: channelImage.imageUrl,
+                  alt_text: '',
+                },
+                {
+                  type: 'context',
+                  elements: [
+                    {
+                      type: 'mrkdwn',
+                      text: `:robot_face: _A hyper-targeted advertisement, just for you._ :robot_face:`,
+                    },
+                  ],
+                },
+              ];
+
+              this.web.sendMessage(channelImage.channel, '', blocks).catch((e) => {
+                console.error(e);
+                return '';
+              });
+            }
           });
+        });
       }
     }
   }
