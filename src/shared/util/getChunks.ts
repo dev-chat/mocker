@@ -3,7 +3,9 @@ export const getChunks = (text: string): string[] => {
   let currentChunk = 0;
   const chunks: string[] = [];
 
-  text.split(' ').forEach(word => {
+  console.log(text);
+
+  text.split(' ').forEach((word) => {
     characterCount += word.length + 1;
     if (characterCount >= 2920) {
       characterCount = word.length + 1;
