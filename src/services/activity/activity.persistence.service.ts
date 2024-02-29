@@ -86,7 +86,7 @@ export class ActivityPersistenceService {
 
               if (prompt) {
                 const imageUrl = await this.aiService
-                  .generateImage('hotness', 'T2ZV0GCNS', prompt as string)
+                  .generateImage('hotness', 'T2ZV0GCNS', `\`${prompt}\`` as string)
                   .catch((e) => {
                     console.error(e);
                   });
@@ -113,7 +113,7 @@ export class ActivityPersistenceService {
                   elements: [
                     {
                       type: 'mrkdwn',
-                      text: `:robot_face: _A hyper-targeted advertisement, just for you._ | ${channelImage.prompt} :robot_face:`,
+                      text: `:robot_face: _A hyper-targeted advertisement, just for you._ :robot_face:`,
                     },
                   ],
                 },
