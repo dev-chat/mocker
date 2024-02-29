@@ -12,6 +12,7 @@ import { HistoryPersistenceService } from '../history/history.persistence.servic
 interface ChannelImage {
   channel: string;
   imageUrl?: string;
+  prompt?: string;
 }
 
 export class ActivityPersistenceService {
@@ -89,7 +90,7 @@ export class ActivityPersistenceService {
                   .catch((e) => {
                     console.error(e);
                   });
-                return { channel: hottest[i].channel, imageUrl } as ChannelImage;
+                return { channel: hottest[i].channel, imageUrl, prompt } as ChannelImage;
               } else {
                 return { channel: hottest[i].channel } as ChannelImage;
               }
@@ -112,7 +113,7 @@ export class ActivityPersistenceService {
                   elements: [
                     {
                       type: 'mrkdwn',
-                      text: `:robot_face: _A hyper-targeted advertisement, just for you._ :robot_face:`,
+                      text: `:robot_face: _A hyper-targeted advertisement, just for you._ | ${channelImage.prompt} :robot_face:`,
                     },
                   ],
                 },
