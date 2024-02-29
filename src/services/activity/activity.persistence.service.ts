@@ -51,8 +51,10 @@ export class ActivityPersistenceService {
   }
 
   async updateLatestHotness() {
+    console.log('updating latest hotness');
     // This should be in redis not here.
     if (this.refreshTime) {
+      console.log('refreshing latest hotness');
       this.refreshTime = false;
       // Every ffteen minutes.
       setTimeout(() => (this.refreshTime = true), 300000);

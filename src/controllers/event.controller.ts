@@ -173,6 +173,7 @@ function handleActivity(request: EventRequest): void {
   if (request.event.type !== 'user_profile_changed') {
     return;
   }
+  console.log('handling activity');
   activityPersistenceService.logActivity(request);
   activityPersistenceService.updateLatestHotness();
 }
