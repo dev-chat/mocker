@@ -57,7 +57,7 @@ export class ActivityPersistenceService {
       console.log('refreshing latest hotness');
       this.refreshTime = false;
       // Every ffteen minutes.
-      setTimeout(() => (this.refreshTime = true), 300000);
+      setTimeout(() => (this.refreshTime = true), 900000);
       const hottest: Temperature[] = await this.getHottestChannels();
       console.log(hottest);
       const images: Promise<ChannelImage>[] = [];
