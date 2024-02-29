@@ -81,7 +81,6 @@ export class ActivityPersistenceService {
                 )
                 .catch((e) => {
                   console.error(e);
-                  throw e;
                 });
 
               if (prompt) {
@@ -89,7 +88,6 @@ export class ActivityPersistenceService {
                   .generateImage('hotness', 'T2ZV0GCNS', prompt as string)
                   .catch((e) => {
                     console.error(e);
-                    throw e;
                   });
                 return { channel: hottest[i].channel, imageUrl } as ChannelImage;
               } else {
