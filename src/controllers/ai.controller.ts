@@ -55,13 +55,16 @@ aiController.post('/ai/text', async (req, res) => {
 
     if (chunks) {
       chunks.forEach((chunk) => {
-        blocks.push({
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `${chunk}`,
-          },
-        });
+        console.log(chunk);
+        if (chunk.length) {
+          blocks.push({
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `${chunk}`,
+            },
+          });
+        }
       });
     }
 
