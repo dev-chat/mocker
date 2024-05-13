@@ -13,6 +13,8 @@ export class AIService {
     apiKey: process.env.OPENAI_API_KEY,
   });
 
+  gptModel = 'gpt-4o';
+
   convertAsterisks(text: string | undefined): string | undefined {
     if (!text) {
       return text;
@@ -43,7 +45,7 @@ export class AIService {
 
     return this.openai.chat.completions
       .create({
-        model: 'gpt-4-turbo-preview',
+        model: this.gptModel,
         messages: [{ role: 'system', content: text }],
         user: `${userId}-DaBros2016`,
       })
@@ -120,7 +122,7 @@ export class AIService {
     const prompt = `please give ${isDaily ? 'a summary' : 'a one sentence summary'} of the following conversation, followed by a three verbatims from the participants that are particularly funny or interesting ensuring that the verbatims are from different people.`;
     return this.openai.chat.completions
       .create({
-        model: 'gpt-4-turbo-preview',
+        model: this.gptModel,
         messages: [
           {
             role: 'system',
@@ -157,7 +159,7 @@ export class AIService {
     await this.redis.setDailyRequests(userId, teamId);
     return this.openai.chat.completions
       .create({
-        model: 'gpt-4-turbo-preview',
+        model: this.gptModel,
         messages: [
           {
             role: 'system',
