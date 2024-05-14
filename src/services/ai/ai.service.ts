@@ -181,4 +181,21 @@ export class AIService {
         throw e;
       });
   }
+
+  public async generateGeminiText(userId: string, teamId: string, text: string): Promise<string | undefined> {
+    await this.redis.setInflight(userId, teamId);
+    await this.redis.setDailyRequests(userId, teamId);
+    const model = await this.gemini.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    return model
+      .generateContent(text)
+      .then(async (x) => {
+        await this.redis.removeInflight(userId, teamId);
+        return this.convertAsterisks(x.response.text());
+      })
+      .catch(async (e) => {
+        await this.redis.removeInflight(userId, teamId);
+        await this.redis.decrementDailyRequests(userId, teamId);
+        throw e;
+      });
+  }
 }
