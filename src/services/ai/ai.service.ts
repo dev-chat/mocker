@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageWithName } from '../../shared/models/message/message-with-name';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const MAX_AI_REQUESTS_PER_DAY = 10;
 
@@ -13,6 +14,7 @@ export class AIService {
     apiKey: process.env.OPENAI_API_KEY,
   });
 
+  private gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY as string);
   gptModel = 'gpt-4o';
 
   convertAsterisks(text: string | undefined): string | undefined {
