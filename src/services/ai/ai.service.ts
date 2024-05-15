@@ -185,7 +185,7 @@ export class AIService {
   public async generateGeminiText(userId: string, teamId: string, text: string): Promise<string | undefined> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
-    const model = await this.gemini.getGenerativeModel({ model: 'models/gemini-1.5-pro' });
+    const model = await this.gemini.getGenerativeModel({ model: 'gemini-1.5-pro-latest' });
     return model
       .generateContent(text)
       .then(async (x) => {
