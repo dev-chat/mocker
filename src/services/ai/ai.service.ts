@@ -67,10 +67,13 @@ export class AIService {
     const filename = `${uuidv4()}.png`;
     const filePath = path.join(dir, filename);
     const base64Data = base64Image.replace(/^data:image\/png;base64,/, '');
-
+    console.log('attempting to write image to disk at ', filePath);
     return new Promise((resolve, reject) =>
       fs.writeFile(filePath, base64Data, 'base64', (err) => {
-        if (err) reject(err);
+        if (err) {
+          console.error(err);
+          reject(err);
+        }
         resolve(`http://muzzle.lol:8080/${filename}`);
       }),
     );
