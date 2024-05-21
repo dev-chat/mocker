@@ -208,6 +208,16 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const isMuzzleBot = request.event.user === 'ULG8SJRFF';
     const isInHotAndNotBot = !isMuzzleBot && request.event.channel === 'C027YMYC5CJ';
     const botUserToMuzzle = await suppressorService.shouldBotMessageBeMuzzled(request);
+    const isJR = request.event.user === 'U2YJQN2KB';
+
+    if (isJR) {
+      deleteMessage(request);
+      webService.sendMessage(
+        request.event.channel,
+        `:siren-steves-a-moron: <@${request.event.user}> tried to send a message but should be studying for his Meta interview on May 31, 2024. Ban will be lifted at that time. :siren-steves-a-moron:`,
+      );
+    }
+
     if (isNewUserAdded) {
       handleNewUserAdd();
     } else if (isNewChannelCreated) {
