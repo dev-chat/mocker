@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageWithName } from '../../shared/models/message/message-with-name';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const MAX_AI_REQUESTS_PER_DAY = 10;
 
@@ -13,6 +14,7 @@ export class AIService {
     apiKey: process.env.OPENAI_API_KEY,
   });
 
+  private gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY as string);
   gptModel = 'gpt-4o';
 
   convertAsterisks(text: string | undefined): string | undefined {
@@ -65,10 +67,13 @@ export class AIService {
     const filename = `${uuidv4()}.png`;
     const filePath = path.join(dir, filename);
     const base64Data = base64Image.replace(/^data:image\/png;base64,/, '');
-
+    console.log('attempting to write image to disk at ', filePath);
     return new Promise((resolve, reject) =>
       fs.writeFile(filePath, base64Data, 'base64', (err) => {
-        if (err) reject(err);
+        if (err) {
+          console.error(err);
+          reject(err);
+        }
         resolve(`http://muzzle.lol:8080/${filename}`);
       }),
     );
@@ -172,6 +177,23 @@ export class AIService {
       .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
         return this.convertAsterisks(x.choices[0].message?.content?.trim());
+      })
+      .catch(async (e) => {
+        await this.redis.removeInflight(userId, teamId);
+        await this.redis.decrementDailyRequests(userId, teamId);
+        throw e;
+      });
+  }
+
+  public async generateGeminiText(userId: string, teamId: string, text: string): Promise<string | undefined> {
+    await this.redis.setInflight(userId, teamId);
+    await this.redis.setDailyRequests(userId, teamId);
+    const model = await this.gemini.getGenerativeModel({ model: 'gemini-1.5-pro-latest' });
+    return model
+      .generateContent(text)
+      .then(async (x) => {
+        await this.redis.removeInflight(userId, teamId);
+        return this.convertAsterisks(x.response.text());
       })
       .catch(async (e) => {
         await this.redis.removeInflight(userId, teamId);
