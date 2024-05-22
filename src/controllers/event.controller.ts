@@ -209,7 +209,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const botUserToMuzzle = await suppressorService.shouldBotMessageBeMuzzled(request);
     const isJR = request.event.user === 'U2YJQN2KB';
 
-    if (isJR) {
+    if (isJR && !isReaction) {
       deleteMessage(request);
       webService.sendMessage(
         request.event.channel || request.event.item.channel || '#general',
