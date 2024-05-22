@@ -153,7 +153,6 @@ async function handleBotMessage(request: EventRequest, botUserToMuzzle: string):
 }
 
 function deleteMessage(request: EventRequest): void {
-  console.log('Someone talked in #hot who was not a bot. Suppressing...');
   webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
 }
 
@@ -213,7 +212,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     if (isJR) {
       deleteMessage(request);
       webService.sendMessage(
-        request.event.channel,
+        request.event.channel || request.event.item.channel || '#general',
         `:siren-steves-a-moron: <@${request.event.user}> tried to send a message but should be studying for his Meta interview on May 31, 2024. Ban will be lifted at that time. :siren-steves-a-moron:`,
       );
     }
