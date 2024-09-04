@@ -48,14 +48,14 @@ const signatureVerification = (req: Request, res: Response, next: NextFunction) 
 app.use(
   bodyParser.urlencoded({
     extended: true,
-    verify: function(req: RequestWithRawBody, _res, buf) {
+    verify: function (req: RequestWithRawBody, _res, buf) {
       req.rawBody = buf;
     },
   }),
 );
 app.use(
   bodyParser.json({
-    verify: function(req: RequestWithRawBody, _res, buf) {
+    verify: function (req: RequestWithRawBody, _res, buf) {
       req.rawBody = buf;
     },
   }),
@@ -68,8 +68,9 @@ const slackService = SlackService.getInstance();
 const connectToDb = async (): Promise<void> => {
   try {
     const options = await getConnectionOptions();
-    createConnection(options)
-      .then(connection => {
+    const overrideOptions = { ...options, charset: 'utf8mb4' };
+    createConnection(overrideOptions)
+      .then((connection) => {
         if (connection.isConnected) {
           slackService.getAllUsers();
           slackService.getAndSaveAllChannels();
@@ -78,7 +79,7 @@ const connectToDb = async (): Promise<void> => {
           throw Error('Unable to connect to database');
         }
       })
-      .catch(e => console.error(e));
+      .catch((e) => console.error(e));
   } catch (e) {
     console.error(e);
   }
