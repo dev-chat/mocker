@@ -17,12 +17,14 @@ export class TranslationService {
   }
 
   private getRandomLanguage(): string {
-    const roll = Math.random();
-    if (roll >= 0.25) {
-      return 'es';
-    } else if (roll >= 0.23 && roll < 0.25) {
-      return 'ru';
-    }
-    return 'de';
+    // temporary cuz ricks japan
+    return 'ja';
+    // const roll = Math.random();
+    // if (roll >= 0.25) {
+    //   return 'es';
+    // } else if (roll >= 0.23 && roll < 0.25) {
+    //   return 'ru';
+    // }
+    // return 'de';
   }
 }
