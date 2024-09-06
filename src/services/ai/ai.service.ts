@@ -48,7 +48,7 @@ export class AIService {
     return this.openai.chat.completions
       .create({
         model: this.gptModel,
-        messages: [{ role: 'system', content: text }],
+        messages: [{ role: 'system', content: `${text} be succinct` }],
         user: `${userId}-DaBros2016`,
       })
       .then(async (x) => {

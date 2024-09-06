@@ -11,7 +11,7 @@ export class SlackUser {
   @Column()
   public slackId!: string;
 
-  @Column()
+  @Column({ charset: 'utf8mb4' })
   public name!: string;
 
   @Column()
@@ -23,15 +23,9 @@ export class SlackUser {
   @Column()
   public botId!: string;
 
-  @OneToMany(
-    () => Activity,
-    activity => activity.userId,
-  )
+  @OneToMany(() => Activity, (activity) => activity.userId)
   public activity!: Activity[];
 
-  @OneToMany(
-    () => Message,
-    message => message.userId,
-  )
+  @OneToMany(() => Message, (message) => message.userId)
   public messages!: Message[];
 }
