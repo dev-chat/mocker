@@ -15,7 +15,7 @@ export class AIService {
   });
 
   private gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY as string);
-  gptModel = 'gpt-4o';
+  gptModel = 'gpt-4o-2024-08-06';
 
   convertAsterisks(text: string | undefined): string | undefined {
     if (!text) {
