@@ -108,6 +108,30 @@ export class AIService {
       });
   }
 
+  public generateCorpoSpeak(text: string): Promise<string | undefined> {
+    return this.openai.chat.completions
+      .create({
+        model: this.gptModel,
+        messages: [
+          {
+            role: 'system',
+            content: `Translate the following text into a corporate jargon filled, unintellgible sentence, that still maintains the essence of the text. Be sure to respond with only the translated text. If the text is too short, simply replace it with something entirely unintelligible.`,
+          },
+          {
+            role: 'system',
+            content: text,
+          },
+        ],
+        user: `Muzzle-DaBros2016`,
+      })
+      .then(async (x) => {
+        return this.convertAsterisks(x.choices[0].message?.content?.trim());
+      })
+      .catch(async (e) => {
+        throw e;
+      });
+  }
+
   public formatHistory(history: MessageWithName[]): string {
     return history
       .map((x) => {
