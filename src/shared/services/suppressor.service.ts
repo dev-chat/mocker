@@ -225,17 +225,23 @@ export class SuppressorService {
           word.length >= MAX_WORD_LENGTH ? REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)] : word,
         )
         .join(' ');
-      const shouldCorpo = Math.random() < 0.1;
+
+      const shouldCorpo = channel === '#libworkchat' || channel === 'C023B688SLT';
 
       if (shouldCorpo) {
-        const corpoText = await this.logTranslateSuppression(text, dbId, persistenceService);
-        await this.webService.sendMessage(channel, `<@${userId}> says "${corpoText}"`).catch(async (e) => {
-          console.error('error on sending message');
-          console.error(e);
-          const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
-          await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => console.error(e));
-          return null;
-        });
+        await this.aiService
+          .generateCorpoSpeak(textWithFallbackReplacments)
+          .then(async (corpoText) => {
+            await this.logTranslateSuppression(text, dbId, persistenceService);
+            await this.webService.sendMessage(channel, `<@${userId}> says "${corpoText}"`);
+          })
+          .catch(async (e) => {
+            console.error('error on corpo');
+            console.error(e);
+            const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
+            await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => console.error(e));
+            return null;
+          });
       } else {
         await this.translationService
           .translate(textWithFallbackReplacments)
