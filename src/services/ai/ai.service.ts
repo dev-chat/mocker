@@ -115,7 +115,7 @@ export class AIService {
         messages: [
           {
             role: 'system',
-            content: `Translate the following text into a corporate jargon filled, unintellgible sentence, that still maintains the essence of the text. Be sure to respond with only the translated text. If the text is too short, simply replace it with something entirely unintelligible.`,
+            content: `Translate the following text into a corporate jargon filled sentence, that still maintains the essence of the text. Be sure to respond with only the translated text.`,
           },
           {
             role: 'system',
