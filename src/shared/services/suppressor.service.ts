@@ -226,7 +226,7 @@ export class SuppressorService {
         )
         .join(' ');
 
-      const shouldCorpo = channel === '#libworkchat' || channel === 'C023B688SLT';
+      const shouldCorpo = channel === '#libworkchat' || (channel === 'C023B688SLT' && words.length > 10);
 
       if (shouldCorpo) {
         await this.aiService
