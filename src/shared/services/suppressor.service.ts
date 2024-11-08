@@ -10,6 +10,7 @@ import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../services/muzzle/constan
 import { TranslationService } from './translation.service';
 import moment from 'moment';
 import { SlackUser } from '../db/models/SlackUser';
+import { AIService } from '../../services/ai/ai.service';
 
 export class SuppressorService {
   public webService = WebService.getInstance();
@@ -18,6 +19,7 @@ export class SuppressorService {
   public backfirePersistenceService = BackFirePersistenceService.getInstance();
   public muzzlePersistenceService = MuzzlePersistenceService.getInstance();
   public counterPersistenceService = CounterPersistenceService.getInstance();
+  public aiService = new AIService();
 
   public isBot(userId: string, teamId: string): Promise<boolean | undefined> {
     return this.slackService.getUserById(userId, teamId).then((user) => !!user?.isBot);
@@ -215,32 +217,45 @@ export class SuppressorService {
 
     const words = text.split(' ');
 
-    const textWithFallbackReplacments = words
-      .map((word) =>
-        word.length >= MAX_WORD_LENGTH ? REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)] : word,
-      )
-      .join(' ');
+    const shouldMuzzle = words.length <= 250;
 
-    let suppressedMessage;
-    const shouldFallBack =
-      (await this.translationService
-        .translate(textWithFallbackReplacments)
-        .then((message) => (suppressedMessage = message))
-        .catch((e) => {
-          console.error('error on translation');
-          console.error(e);
-          return null;
-        })) == null;
+    if (shouldMuzzle) {
+      const textWithFallbackReplacments = words
+        .map((word) =>
+          word.length >= MAX_WORD_LENGTH ? REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)] : word,
+        )
+        .join(' ');
 
-    if (words.length <= 250) {
-      if (shouldFallBack) {
-        const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
-        await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => console.error(e));
+      const shouldCorpo = channel === '#libworkchat' || (channel === 'C023B688SLT' && words.length > 10);
+
+      if (shouldCorpo) {
+        await this.aiService
+          .generateCorpoSpeak(textWithFallbackReplacments)
+          .then(async (corpoText) => {
+            await this.logTranslateSuppression(text, dbId, persistenceService);
+            await this.webService.sendMessage(channel, `<@${userId}> says "${corpoText}"`);
+          })
+          .catch(async (e) => {
+            console.error('error on corpo');
+            console.error(e);
+            const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
+            await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => console.error(e));
+            return null;
+          });
       } else {
-        await this.logTranslateSuppression(text, dbId, persistenceService);
-        await this.webService
-          .sendMessage(channel, `<@${userId}> says "${suppressedMessage}"`)
-          .catch((e) => console.error(e));
+        await this.translationService
+          .translate(textWithFallbackReplacments)
+          .then(async (message) => {
+            await this.logTranslateSuppression(text, dbId, persistenceService);
+            await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => console.error(e));
+          })
+          .catch(async (e) => {
+            console.error('error on translation');
+            console.error(e);
+            const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
+            await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => console.error(e));
+            return null;
+          });
       }
     }
   }
