@@ -2,7 +2,7 @@ FROM node:18-alpine AS build
 COPY . /usr/src/app
 WORKDIR /usr/src/app
 RUN rm -rf /usr/src/app/dist
-RUN npm ci && npm run lint && npm run build:prod
+RUN npm ci && npm run lint && npm run build:prod && npm run minify
 
 FROM node:18-alpine AS release
 ENV NODE_ENV=production PORT=80
