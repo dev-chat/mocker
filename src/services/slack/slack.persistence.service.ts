@@ -90,7 +90,7 @@ export class SlackPersistenceService {
           if (!updatedUser.messages) {
             updatedUser.messages = [];
           }
-
+          console.log('trying to updated user', updatedUser);
           await getRepository(SlackUserFromDB)
             .update(existingUser, updatedUser)
             .catch((e) => {
