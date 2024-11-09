@@ -11,7 +11,6 @@ export class RedisPersistenceService {
   constructor() {
     RedisPersistenceService.redis.on('connect', () => console.log('Successfully connected to Redis'));
   }
-
   private static instance: RedisPersistenceService;
   private static redis: Redis = !!process.env.REDIS_CONTAINER_NAME
     ? new Redis(process.env.REDIS_CONTAINER_NAME as string)
