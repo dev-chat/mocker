@@ -84,7 +84,7 @@ export class SlackPersistenceService {
         if (existingUser) {
           console.log('existing user', existingUser);
           await getRepository(SlackUserFromDB)
-            .update(existingUser, user)
+            .save({ ...existingUser, user })
             .catch((e) => {
               console.error('Error updating user: ', e);
             });
