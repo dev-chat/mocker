@@ -68,8 +68,6 @@ export class SlackPersistenceService {
       } as SlackUserFromDB;
     });
 
-    console.log(dbUsers);
-
     try {
       await this.redis.setValueWithExpire(this.getRedisKeyName(), JSON.stringify(dbUsers), 'PX', 60000);
       for (const user of dbUsers) {
