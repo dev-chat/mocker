@@ -85,7 +85,7 @@ export class SlackPersistenceService {
             });
         } else {
           await getRepository(SlackUserFromDB)
-            .save(user)
+            .save({ ...user, activity: [], messages: [] })
             .catch((e) => {
               console.error('Error saving user: ', e);
             });
