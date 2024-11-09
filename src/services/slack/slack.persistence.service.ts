@@ -68,6 +68,8 @@ export class SlackPersistenceService {
       } as SlackUserFromDB;
     });
 
+    console.log(dbUsers);
+
     try {
       await this.redis.setValueWithExpire(this.getRedisKeyName(), JSON.stringify(dbUsers), 'PX', 60000);
       for (const user of dbUsers) {
@@ -78,12 +80,14 @@ export class SlackPersistenceService {
           },
         });
         if (existingUser) {
+          console.log('existing user', existingUser);
           await getRepository(SlackUserFromDB)
             .update(existingUser, user)
             .catch((e) => {
               console.error('Error updating user: ', e);
             });
         } else {
+          console.log('new user', user);
           await getRepository(SlackUserFromDB)
             .save({ ...user, activity: [], messages: [] })
             .catch((e) => {
