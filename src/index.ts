@@ -68,7 +68,12 @@ const slackService = SlackService.getInstance();
 const connectToDb = async (): Promise<void> => {
   try {
     const options = await getConnectionOptions();
-    const overrideOptions = { ...options, charset: 'utf8mb4', synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true' };
+    const overrideOptions = {
+      ...options,
+      charset: 'utf8mb4',
+      synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
+      insecureAuth: true,
+    };
     createConnection(overrideOptions)
       .then((connection) => {
         if (connection.isConnected) {
