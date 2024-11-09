@@ -13,7 +13,7 @@ export class RedisPersistenceService {
   }
 
   private static instance: RedisPersistenceService;
-  private static redis: Redis = process.env.REDIS_CONTAINER_NAME
+  private static redis: Redis = !!process.env.REDIS_CONTAINER_NAME
     ? new Redis(process.env.REDIS_CONTAINER_NAME as string)
     : new Redis();
 
