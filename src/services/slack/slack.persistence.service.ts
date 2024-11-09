@@ -81,8 +81,18 @@ export class SlackPersistenceService {
         });
         if (existingUser) {
           console.log('existing user', existingUser);
+          const updatedUser = { ...existingUser, ...user };
+          // No idea why i have to do this.
+          if (!updatedUser.activity) {
+            updatedUser.activity = [];
+          }
+
+          if (!updatedUser.messages) {
+            updatedUser.messages = [];
+          }
+
           await getRepository(SlackUserFromDB)
-            .update(existingUser, user)
+            .update(existingUser, updatedUser)
             .catch((e) => {
               console.error('Error updating user: ', e);
             });
