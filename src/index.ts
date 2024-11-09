@@ -73,6 +73,12 @@ const connectToDb = async (): Promise<void> => {
       charset: 'utf8mb4',
       synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
       insecureAuth: true,
+      extras: {
+        authPlugins: {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          mysql_native_password: () => require('mysql2/lib/auth_plugins').mysql_native_password,
+        },
+      },
     };
     createConnection(overrideOptions)
       .then((connection) => {
