@@ -76,6 +76,10 @@ export class SlackPersistenceService {
             slackId: user.slackId,
             teamId: user.teamId,
           },
+          relations: {
+            activity: true,
+            messages: true,
+          },
         });
         if (existingUser) {
           console.log('existing user', existingUser);
