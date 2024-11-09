@@ -63,7 +63,7 @@ export class AIService {
   }
 
   public async writeToDiskAndReturnUrl(base64Image: string): Promise<string> {
-    const dir = path.join(__dirname, '../../../images');
+    const dir = process.env.IMAGE_DIR ? process.env.IMAGE_DIR : path.join(__dirname, '../../../images');
     const filename = `${uuidv4()}.png`;
     const filePath = path.join(dir, filename);
     const base64Data = base64Image.replace(/^data:image\/png;base64,/, '');

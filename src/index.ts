@@ -68,7 +68,11 @@ const slackService = SlackService.getInstance();
 const connectToDb = async (): Promise<void> => {
   try {
     const options = await getConnectionOptions();
-    const overrideOptions = { ...options, charset: 'utf8mb4' };
+    const overrideOptions = {
+      ...options,
+      charset: 'utf8mb4',
+      synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
+    };
     createConnection(overrideOptions)
       .then((connection) => {
         if (connection.isConnected) {
@@ -117,7 +121,7 @@ const checkForEnvVariables = (): void => {
 };
 
 app.listen(PORT, (e?: Error) => {
-  e ? console.error(e) : console.log('Listening on port 3000');
+  e ? console.error(e) : console.log(`Listening on port ${PORT || 3000}`);
   checkForEnvVariables();
   connectToDb();
 });

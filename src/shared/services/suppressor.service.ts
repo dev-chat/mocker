@@ -50,7 +50,7 @@ export class SuppressorService {
     if (firstBlock) {
       Object.keys(firstBlock).forEach((key) => {
         if (typeof firstBlock[key] === 'string') {
-          allUsers.forEach((user) => {
+          allUsers?.forEach((user) => {
             if (firstBlock[key].includes(user.name)) {
               id = user.id;
             }

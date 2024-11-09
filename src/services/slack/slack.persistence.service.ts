@@ -21,7 +21,7 @@ export class SlackPersistenceService {
     if (!channels) {
       return;
     } else {
-      const dbChannels = channels.map(channel => {
+      const dbChannels = channels.map((channel) => {
         return {
           channelId: channel.id,
           name: channel.name,
@@ -53,12 +53,12 @@ export class SlackPersistenceService {
   getCachedUsers(): Promise<SlackUserFromDB[] | null> {
     return this.redis
       .getValue(this.getRedisKeyName())
-      .then(users => (users ? (JSON.parse(users) as SlackUserFromDB[]) : null));
+      .then((users) => (users ? (JSON.parse(users) as SlackUserFromDB[]) : null));
   }
 
   // This sucks because TypeORM sucks. Time to consider removing this ORM.
   async saveUsers(users: SlackUserModel[]): Promise<SlackUserFromDB[]> {
-    const dbUsers: SlackUserFromDB[] = users.map(user => {
+    const dbUsers: SlackUserFromDB[] = users.map((user) => {
       return {
         slackId: user.id,
         name: user.profile.display_name || user.name,
@@ -78,9 +78,17 @@ export class SlackPersistenceService {
           },
         });
         if (existingUser) {
-          getRepository(SlackUserFromDB).update(existingUser, user);
+          await getRepository(SlackUserFromDB)
+            .save({ ...existingUser, user })
+            .catch((e) => {
+              console.error('Error updating user: ', e);
+            });
         } else {
-          getRepository(SlackUserFromDB).save(user);
+          await getRepository(SlackUserFromDB)
+            .save({ ...user, activity: [], messages: [] })
+            .catch((e) => {
+              console.error('Error saving user: ', e);
+            });
         }
       }
       console.log('Updated latest users in DB.');
