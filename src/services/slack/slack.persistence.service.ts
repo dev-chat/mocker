@@ -76,10 +76,6 @@ export class SlackPersistenceService {
             slackId: user.slackId,
             teamId: user.teamId,
           },
-          relations: {
-            activity: true,
-            messages: true,
-          },
         });
         if (existingUser) {
           await getRepository(SlackUserFromDB)
