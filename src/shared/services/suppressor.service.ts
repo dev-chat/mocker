@@ -181,7 +181,7 @@ export class SuppressorService {
 
   public logTranslateSuppression(
     text: string,
-    id: number,
+    id?: number,
     persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): void {
     const sentence = text.trim();
@@ -195,10 +195,12 @@ export class SuppressorService {
     }
 
     try {
-      if (persistenceService) {
+      if (persistenceService && id) {
         persistenceService.incrementMessageSuppressions(id);
         persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
         persistenceService.incrementWordSuppressions(id, wordsSuppressed);
+      } else {
+        console.log('Persistence service not provided, not storing suppression');
       }
     } catch (e) {
       console.error(e);
@@ -210,8 +212,8 @@ export class SuppressorService {
     userId: string,
     text: string,
     timestamp: string,
-    dbId: number,
-    persistenceService: MuzzlePersistenceService | BackFirePersistenceService | CounterPersistenceService,
+    dbId?: number,
+    persistenceService?: MuzzlePersistenceService | BackFirePersistenceService | CounterPersistenceService,
   ): Promise<void> {
     await this.webService.deleteMessage(channel, timestamp, userId);
 
@@ -265,7 +267,7 @@ export class SuppressorService {
    */
   public sendFallbackSuppressedMessage(
     text: string,
-    id: number,
+    id?: number,
     persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): string {
     const sentence = text.trim();
@@ -290,7 +292,7 @@ export class SuppressorService {
       returnText += replacementWord;
     }
 
-    if (persistenceService) {
+    if (persistenceService && id) {
       persistenceService.incrementMessageSuppressions(id);
       persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
       persistenceService.incrementWordSuppressions(id, wordsSuppressed);

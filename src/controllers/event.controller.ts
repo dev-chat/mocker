@@ -15,6 +15,7 @@ import { WebService } from '../services/web/web.service';
 import { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { HistoryPersistenceService } from '../services/history/history.persistence.service';
+import { RuinService } from '../services/ruin/ruin.service';
 
 export const eventController: Router = express.Router();
 
@@ -26,6 +27,7 @@ const webService = WebService.getInstance();
 const slackService = SlackService.getInstance();
 const suppressorService = new SuppressorService();
 const sentimentService = new SentimentService();
+const ruinService = new RuinService();
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const counterPersistenceService = CounterPersistenceService.getInstance();
@@ -199,6 +201,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     res.status(200).send();
     const request: EventRequest = req.body;
     const isNewUserAdded = request.event.type === 'team_join';
+    const shouldRuin = !!process.env.RUIN;
     const isNewChannelCreated = request.event.type === 'channel_created';
     const isUserProfileChanged = request.event.type === 'user_profile_changed';
     const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
@@ -214,6 +217,8 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       handleNewChannelCreated();
     } else if (isMuzzled && !isReaction) {
       handleMuzzledMessage(request);
+    } else if (!isReaction && shouldRuin) {
+      ruinService.ruin(request.event.channel, request.event.user, request.event.text, request.event.ts);
     } else if (isUserBackfired && !isReaction) {
       handleBackfire(request);
     } else if (isUserCounterMuzzled && !isReaction) {
