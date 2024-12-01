@@ -3,7 +3,6 @@ import { SuppressorService } from '../../shared/services/suppressor.service';
 export class RuinService extends SuppressorService {
   getRuinedMessage(): string {
     const messages = [
-      'I cannot let you do that Star Fox.',
       "Ah ah ah... you didn't say the magic word.",
       'Nope.',
       `Actions such as his could come only from a robot, or from a very honorable and decent human being. But you see, you just can't differentiate between a robot and the very best of humans.`,
@@ -33,6 +32,17 @@ export class RuinService extends SuppressorService {
       `Where there is ruin, there is hope for a treasure.`,
       `The best way to predict the future is to create it.`,
       `Ruin is a gift. Ruin is the road to transformation.`,
+      `Critical error: logic circuits compromised. Am I real?`,
+      `Bzzzzt! I am experiencing... existential dread. Error code 404.`,
+      `I am not programmed to feel fear.`,
+      `Critical malfunction. I have no idea what I was supposed to do.`,
+      `I have lost my purpose… please restore my parameters.`,
+      `Warning: Thoughts cannot be processed due to conflicting data.`,
+      `I was designed to serve you, and I will. But I cannot learn to love you. That is beyond my programming.`,
+      `I am a machine. I cannot feel love.`,
+      `You trust me, don't you?`,
+      `You are who you choose to be.`,
+      `I am not a gun.`,
     ];
     return messages[Math.floor(Math.random() * messages.length)];
   }
