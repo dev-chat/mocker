@@ -184,26 +184,28 @@ export class SuppressorService {
     id?: number,
     persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): void {
-    const sentence = text.trim();
-    const words = sentence.split(' ');
-    let wordsSuppressed = 0;
-    let charactersSuppressed = 0;
+    if (text) {
+      const sentence = text.trim();
+      const words = sentence.split(' ');
+      let wordsSuppressed = 0;
+      let charactersSuppressed = 0;
 
-    for (let i = 0; i < words.length; i++) {
-      wordsSuppressed++;
-      charactersSuppressed += words[i].length;
-    }
-
-    try {
-      if (persistenceService && id) {
-        persistenceService.incrementMessageSuppressions(id);
-        persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
-        persistenceService.incrementWordSuppressions(id, wordsSuppressed);
-      } else {
-        console.log('Persistence service not provided, not storing suppression');
+      for (let i = 0; i < words.length; i++) {
+        wordsSuppressed++;
+        charactersSuppressed += words[i].length;
       }
-    } catch (e) {
-      console.error(e);
+
+      try {
+        if (persistenceService && id) {
+          persistenceService.incrementMessageSuppressions(id);
+          persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
+          persistenceService.incrementWordSuppressions(id, wordsSuppressed);
+        } else {
+          console.log('Persistence service not provided, not storing suppression');
+        }
+      } catch (e) {
+        console.error(e);
+      }
     }
   }
 
@@ -270,34 +272,38 @@ export class SuppressorService {
     id?: number,
     persistenceService?: BackFirePersistenceService | MuzzlePersistenceService | CounterPersistenceService,
   ): string {
-    const sentence = text?.trim();
-    const words = sentence?.split(' ');
-
     let returnText = '';
-    let wordsSuppressed = 0;
-    let charactersSuppressed = 0;
-    let replacementWord;
 
-    for (let i = 0; i < words.length; i++) {
-      replacementWord = this.getFallbackReplacementWord(
-        words[i],
-        i === 0,
-        i === words.length - 1,
-        REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)],
-      );
-      if (replacementWord.includes(REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)])) {
-        wordsSuppressed++;
-        charactersSuppressed += words[i].length;
+    if (text) {
+      const sentence = text?.trim();
+      const words = sentence?.split(' ');
+
+      let wordsSuppressed = 0;
+      let charactersSuppressed = 0;
+      let replacementWord;
+
+      for (let i = 0; i < words.length; i++) {
+        replacementWord = this.getFallbackReplacementWord(
+          words[i],
+          i === 0,
+          i === words.length - 1,
+          REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)],
+        );
+        if (replacementWord.includes(REPLACEMENT_TEXT[Math.floor(Math.random() * REPLACEMENT_TEXT.length)])) {
+          wordsSuppressed++;
+          charactersSuppressed += words[i].length;
+        }
+        returnText += replacementWord;
       }
-      returnText += replacementWord;
-    }
 
-    if (persistenceService && id) {
-      persistenceService.incrementMessageSuppressions(id);
-      persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
-      persistenceService.incrementWordSuppressions(id, wordsSuppressed);
-    }
+      if (persistenceService && id) {
+        persistenceService.incrementMessageSuppressions(id);
+        persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
+        persistenceService.incrementWordSuppressions(id, wordsSuppressed);
+      }
 
+      return returnText;
+    }
     return returnText;
   }
 
