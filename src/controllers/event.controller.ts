@@ -217,7 +217,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       handleNewChannelCreated();
     } else if (isMuzzled && !isReaction) {
       handleMuzzledMessage(request);
-    } else if (!isReaction && shouldRuin) {
+    } else if (!isReaction && shouldRuin && !isMuzzleBot) {
       ruinService.ruin(request.event.channel, request.event.user, request.event.text, request.event.ts);
     } else if (isUserBackfired && !isReaction) {
       handleBackfire(request);
