@@ -35,7 +35,7 @@ const historyPersistenceService = HistoryPersistenceService.getInstance();
 async function handleMuzzledMessage(request: EventRequest): Promise<void> {
   const containsTag = slackService.containsTag(request.event.text);
   const userName = await slackService.getUserNameById(request.event.user, request.team_id);
-
+  console.log(userName);
   if (!containsTag) {
     console.log(`${userName} | ${request.event.user} is muzzled! Suppressing his voice...`);
     webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
