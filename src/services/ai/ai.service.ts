@@ -74,7 +74,7 @@ export class AIService {
           console.error(err);
           reject(err);
         }
-        resolve(`http://muzzle.lol:8080/${filename}`);
+        resolve(`https://muzzle.lol/${filename}`);
       }),
     );
   }
