@@ -240,13 +240,14 @@ export class AIService {
     const messages = await this.historyService
       .getHistory({ team_id: teamId, channel_id: channelId } as SlashCommandRequest, false)
       .then((x) => this.formatHistory(x));
+    console.log(messages);
     return this.openai.chat.completions
       .create({
         model: this.gptModel,
         messages: [
           {
             role: 'system',
-            content: `Using the conversation contained in the following message, please participate in the conversation with a message of your own. Be sure to respond in a way that fits the tone of the conversation. Ensure that your response is only 1-3 sentences long at maximum`,
+            content: `Using the conversation contained in the following message, please participate in the conversation with a message of your own. Be sure to respond in a way that fits the tone of the conversation. Ensure that your response is only 1-3 sentences long at maximum. Keep in mind that messages are ordered chronologically, so your response should be relevant to the most recent message in the conversation.`,
           },
           { role: 'system', content: messages },
         ],
