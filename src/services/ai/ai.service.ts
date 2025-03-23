@@ -246,7 +246,7 @@ export class AIService {
         messages: [
           {
             role: 'system',
-            content: `Using the conversation contained in the following message, please participate in the conversation with a message of your own. Be sure to respond with a humorous, witty, or edgy comment that fits the tone of the conversation. Ensure that your response is only 1-3 sentences long at maximum`,
+            content: `Using the conversation contained in the following message, please participate in the conversation with a message of your own. Be sure to respond in a way that fits the tone of the conversation. Ensure that your response is only 1-3 sentences long at maximum`,
           },
           { role: 'system', content: messages },
         ],
