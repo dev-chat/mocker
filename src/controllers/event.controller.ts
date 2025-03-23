@@ -230,13 +230,23 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       deleteMessage(request);
     } else if (!isReaction && !isNewChannelCreated && !isNewUserAdded && !isUserProfileChanged) {
       logSentiment(request);
-      logHistory(request).then(() => {
-        const shouldParticipate = Math.random() < 0.2;
+      logHistory(request)
+        .then(() => {
+          const shouldParticipate = Math.random() < 0.2;
 
-        if (shouldParticipate) {
-          aiService.participate(request.team_id, request.event.channel);
-        }
-      });
+          if (shouldParticipate) {
+            return aiService.participate(request.team_id, request.event.channel);
+          }
+          return;
+        })
+        .then((message) => {
+          console.log(message);
+          if (!!message) {
+            webService
+              .sendMessage(request.event.channel, message)
+              .catch((e) => console.error('Error sending AI Participation message:', e));
+          }
+        });
     } else if (isUserProfileChanged) {
       const userWhoIsBeingImpersonated = await slackService.getImpersonatedUser(
         (request.event.user as unknown as Record<string, string>).id,
