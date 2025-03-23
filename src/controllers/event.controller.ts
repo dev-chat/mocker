@@ -232,7 +232,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       logSentiment(request);
       logHistory(request)
         .then(() => {
-          const shouldParticipate = Math.random() < 0.4;
+          const shouldParticipate = Math.random() < 0.25;
 
           if (shouldParticipate) {
             return aiService.participate(request.team_id, request.event.channel);
