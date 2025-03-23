@@ -34,6 +34,16 @@ export class HistoryPersistenceService {
     return getRepository(Message).insert(message);
   }
 
+  async getLastFiveMinutesCount(teamId: string, channelId: string): Promise<number> {
+    const query = `
+      SELECT COUNT(*) as count
+      FROM message 
+      WHERE teamId=? AND channel=? AND createdAt >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+    `;
+    const result = await getRepository(Message).query(query, [teamId, channelId]);
+    return result[0].count;
+  }
+
   async getHistory(request: SlashCommandRequest, isDaily: boolean): Promise<MessageWithName[]> {
     const teamId = request.team_id;
     const channel = request.channel_id;

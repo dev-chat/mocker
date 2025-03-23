@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { MessageWithName } from '../../shared/models/message/message-with-name';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { HistoryPersistenceService } from '../history/history.persistence.service';
+import { SlashCommandRequest } from '../../shared/models/slack/slack-models';
 
 const MAX_AI_REQUESTS_PER_DAY = 10;
 
@@ -229,10 +230,32 @@ export class AIService {
       });
   }
 
-  public async participate(teamId: string, channelId: string): void {
-    const shouldParticipate = Math.random() < 0.2;
-    if (shouldParticipate) {
-      await this.historyService.getHistory(teamId, channelId);
+  public async participate(teamId: string, channelId: string): Promise<string | undefined> {
+    const count = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
+
+    if (count < 5) {
+      return; // Not enough messages to participate
     }
+
+    const messages = await this.historyService
+      .getHistory({ team_id: teamId, channel_id: channelId } as SlashCommandRequest, false)
+      .then((x) => this.formatHistory(x));
+    return this.openai.chat.completions
+      .create({
+        model: this.gptModel,
+        messages: [
+          {
+            role: 'system',
+            content: `Using the conversation contained in the following message, respond as if you were a participant in the conversation. Be sure to respond with a humorous, witty, or edgy comment that fits the tone of the conversation. Ensure that your response is only 1-3 sentences long at maximum`,
+          },
+          { role: 'system', content: messages },
+        ],
+        user: `Participation-DaBros2016`,
+      })
+      .then((x) => this.convertAsterisks(x.choices[0].message?.content?.trim()))
+      .catch(async (e) => {
+        console.error(e);
+        throw e;
+      });
   }
 }
