@@ -15,6 +15,8 @@ import { WebService } from '../services/web/web.service';
 import { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { HistoryPersistenceService } from '../services/history/history.persistence.service';
+import { InsertResult } from 'typeorm';
+import { AIService } from '../services/ai/ai.service';
 
 export const eventController: Router = express.Router();
 
@@ -26,6 +28,7 @@ const webService = WebService.getInstance();
 const slackService = SlackService.getInstance();
 const suppressorService = new SuppressorService();
 const sentimentService = new SentimentService();
+const aiService = new AIService();
 const muzzlePersistenceService = MuzzlePersistenceService.getInstance();
 const backfirePersistenceService = BackFirePersistenceService.getInstance();
 const counterPersistenceService = CounterPersistenceService.getInstance();
@@ -186,8 +189,8 @@ function logSentiment(request: EventRequest): void {
   );
 }
 
-function logHistory(request: EventRequest): void {
-  historyPersistenceService.logHistory(request);
+function logHistory(request: EventRequest): Promise<InsertResult | undefined> {
+  return historyPersistenceService.logHistory(request);
 }
 
 // Change route to /event/handle instead.
@@ -208,6 +211,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     const isMuzzleBot = request.event.user === 'ULG8SJRFF';
     const isInHotAndNotBot = !isMuzzleBot && request.event.channel === 'C027YMYC5CJ';
     const botUserToMuzzle = await suppressorService.shouldBotMessageBeMuzzled(request);
+
     if (isNewUserAdded) {
       handleNewUserAdd();
     } else if (isNewChannelCreated) {
@@ -226,7 +230,13 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
       deleteMessage(request);
     } else if (!isReaction && !isNewChannelCreated && !isNewUserAdded && !isUserProfileChanged) {
       logSentiment(request);
-      logHistory(request);
+      logHistory(request).then(() => {
+        const shouldParticipate = Math.random() < 0.2;
+
+        if (shouldParticipate) {
+          aiService.participate(request.team_id, request.event.channel);
+        }
+      });
     } else if (isUserProfileChanged) {
       const userWhoIsBeingImpersonated = await slackService.getImpersonatedUser(
         (request.event.user as unknown as Record<string, string>).id,

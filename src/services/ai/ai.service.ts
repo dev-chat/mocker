@@ -5,6 +5,7 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageWithName } from '../../shared/models/message/message-with-name';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { HistoryPersistenceService } from '../history/history.persistence.service';
 
 const MAX_AI_REQUESTS_PER_DAY = 10;
 
@@ -16,6 +17,8 @@ export class AIService {
 
   private gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY as string);
   gptModel = 'gpt-4o-2024-08-06';
+
+  historyService = HistoryPersistenceService.getInstance();
 
   convertAsterisks(text: string | undefined): string | undefined {
     if (!text) {
@@ -224,5 +227,12 @@ export class AIService {
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
       });
+  }
+
+  public async participate(teamId: string, channelId: string): void {
+    const shouldParticipate = Math.random() < 0.2;
+    if (shouldParticipate) {
+      await this.historyService.getHistory(teamId, channelId);
+    }
   }
 }
