@@ -233,7 +233,7 @@ export class AIService {
   public async participate(teamId: string, channelId: string): Promise<string | undefined> {
     const count = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
 
-    if (count < 5) {
+    if (count < 20) {
       return; // Not enough messages to participate
     }
 
