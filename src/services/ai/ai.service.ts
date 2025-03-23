@@ -250,7 +250,8 @@ export class AIService {
             content: `Using the conversation contained in the following message, please participate in the conversation with a message of your own. 
             Be sure to respond in a way that fits the tone of the conversation. 
             Ensure that your response is only 1-3 sentences long at maximum.
-            Keep in mind that messages are ordered chronologically, so your response should be relevant to the most recent message in the conversation.
+            Messages are ordered chronologically in ascending order.
+            You should be responding to the most recent messages, with the context of all the previous messages.
             Participants in the chat will refer to you as Moonbeam. 
             Do not preface any messages with your name or someone else's name.
             Do not include any other context or information in your response, just the message itself.
