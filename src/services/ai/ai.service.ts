@@ -263,7 +263,10 @@ export class AIService {
         ],
         user: `Participation-DaBros2016`,
       })
-      .then((x) => this.convertAsterisks(x.choices[0].message?.content?.trim()))
+      .then(async (x) => {
+        await this.redis.setHasParticipated(teamId, channelId);
+        return this.convertAsterisks(x.choices[0].message?.content?.trim())
+      })
       .catch(async (e) => {
         console.error(e);
         throw e;
