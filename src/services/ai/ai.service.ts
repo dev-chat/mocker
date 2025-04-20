@@ -231,16 +231,18 @@ export class AIService {
   }
 
   public async participate(teamId: string, channelId: string): Promise<string | undefined> {
-    const count = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
+    const isAbleToParticipate = !(await this.redis.getHasParticipated(teamId, channelId));
+    const isEnoughMessages = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
 
-    if (count < 20) {
-      return; // Not enough messages to participate
+    const shouldParticipate = Math.random() < 0.25 && isAbleToParticipate && isEnoughMessages
+
+    if (!shouldParticipate) {
+      return;
     }
 
     const messages = await this.historyService
       .getHistory({ team_id: teamId, channel_id: channelId } as SlashCommandRequest, false)
       .then((x) => this.formatHistory(x));
-    console.log(messages);
     return this.openai.chat.completions
       .create({
         model: this.gptModel,
@@ -248,7 +250,7 @@ export class AIService {
           {
             role: 'system',
             content: `Using the conversation contained in the following message, please participate in the conversation with a message of your own. 
-            Be sure to respond in a way that fits the tone of the conversation. 
+            Be sure to respond in a way that fits the tone of the conversation, leaning into edgy/dark humor when necessary. 
             Ensure that your response is only 1-3 sentences long at maximum.
             Messages are ordered chronologically in ascending order.
             You should be responding to the most recent messages, with the context of all the previous messages.

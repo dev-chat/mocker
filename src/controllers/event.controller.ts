@@ -231,14 +231,7 @@ eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
     } else if (!isReaction && !isNewChannelCreated && !isNewUserAdded && !isUserProfileChanged) {
       logSentiment(request);
       logHistory(request)
-        .then(() => {
-          const shouldParticipate = Math.random() < 0.25;
-
-          if (shouldParticipate) {
-            return aiService.participate(request.team_id, request.event.channel);
-          }
-          return;
-        })
+        .then(() => aiService.participate(request.team_id, request.event.channel))
         .then((message) => {
           console.log(message);
           if (!!message) {
