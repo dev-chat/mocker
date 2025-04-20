@@ -232,8 +232,8 @@ export class AIService {
 
   public async participate(teamId: string, channelId: string): Promise<string | undefined> {
     const isAbleToParticipate = !(await this.redis.getHasParticipated(teamId, channelId));
-    const isEnoughMessages = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
-
+    const messageCount = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
+    const isEnoughMessages = messageCount >= 20;
     const shouldParticipate = Math.random() < 0.25 && isAbleToParticipate && isEnoughMessages
 
     if (!shouldParticipate) {
