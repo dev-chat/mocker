@@ -243,6 +243,7 @@ export class AIService {
     const messages = await this.historyService
       .getHistory({ team_id: teamId, channel_id: channelId } as SlashCommandRequest, false)
       .then((x) => this.formatHistory(x));
+      console.log('messages', messages);
     return this.openai.chat.completions
       .create({
         model: this.gptModel,
