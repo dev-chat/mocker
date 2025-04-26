@@ -6,8 +6,10 @@ import { AIService } from '../services/ai/ai.service';
 import { WebService } from '../services/web/web.service';
 import { StoreService } from '../services/store/store.service';
 import { getChunks } from '../shared/util/getChunks';
+import { suppressedMiddleware } from '../shared/middleware/suppression';
 
 export const aiController: Router = express.Router();
+aiController.use(suppressedMiddleware);
 
 const webService = WebService.getInstance();
 const suppressorService = new SuppressorService();
@@ -20,9 +22,7 @@ aiController.post('/ai/text', async (req, res) => {
   const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
   const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
   
-  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
-    res.send(`Sorry, can't do that while muzzled.`);
-  } else if (!request.text) {
+  if (!request.text) {
     res.send('Sorry, you must send a message to generate text.');
   } else if (request.text.length >= 800) {
     res.send('Sorry, your request cannot be more than 800 characters. Please refine your query.');
