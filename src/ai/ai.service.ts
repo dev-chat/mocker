@@ -1,5 +1,4 @@
 import { OpenAI } from 'openai';
-import { AIPersistenceService } from '../services/ai/ai.persistence';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,6 +6,7 @@ import { MessageWithName } from '../shared/models/message/message-with-name';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { HistoryPersistenceService } from '../shared/services/history.persistence.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import { AIPersistenceService } from './ai.persistence';
 
 const MAX_AI_REQUESTS_PER_DAY = 10;
 

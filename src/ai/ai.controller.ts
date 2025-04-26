@@ -7,12 +7,12 @@ import { WebService } from '../shared/services/web/web.service';
 import { StoreService } from '../store/store.service';
 import { getChunks } from '../shared/util/getChunks';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
-import { textLimiterMiddleware } from './middleware/text-limiter';
+import { textMiddleware } from './middleware/textMiddleware';
 import { aiMiddleware } from './middleware/aiMiddleware';
 
 export const aiController: Router = express.Router();
 aiController.use(suppressedMiddleware);
-aiController.use(textLimiterMiddleware);
+aiController.use(textMiddleware);
 aiController.use(aiMiddleware);
 
 const webService = WebService.getInstance();

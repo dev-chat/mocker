@@ -14,7 +14,7 @@ export class RedisPersistenceService {
   private static instance: RedisPersistenceService;
   private static redis: Redis = !!process.env.REDIS_CONTAINER_NAME
     ? new Redis(process.env.REDIS_CONTAINER_NAME as string)
-    : new Redis();
+    : new Redis({ host: 'host.docker.internal' });
 
   getValue(key: string): Promise<string | null> {
     return RedisPersistenceService.redis.get(key);
