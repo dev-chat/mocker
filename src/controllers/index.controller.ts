@@ -1,5 +1,4 @@
 import { aiController } from './ai.controller';
-import { blindController } from './blind.controller';
 import { clapController } from './clap.controller';
 import { confessionController } from './confession.controller';
 import { counterController } from './counter.controller';
@@ -17,7 +16,6 @@ import { walkieController } from './walkie.controller';
 
 export const controllers = [
   aiController,
-  blindController,
   clapController,
   confessionController,
   counterController,
