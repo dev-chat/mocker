@@ -1,16 +1,16 @@
 import { EventRequest } from '../models/slack/slack-models';
-import { USER_ID_REGEX } from '../../services/counter/constants';
-import { SlackService } from '../../services/slack/slack.service';
-import { BackFirePersistenceService } from '../../services/backfire/backfire.persistence.service';
-import { MuzzlePersistenceService } from '../../services/muzzle/muzzle.persistence.service';
-import { CounterPersistenceService } from '../../services/counter/counter.persistence.service';
-import { WebService } from '../../services/web/web.service';
-import { isRandomEven } from '../../services/muzzle/muzzle-utilities';
-import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../services/muzzle/constants';
+import { USER_ID_REGEX } from '../../counter/constants';
+import { CounterPersistenceService } from '../../counter/counter.persistence.service';
+import { WebService } from './web/web.service';
 import { TranslationService } from './translation.service';
 import moment from 'moment';
 import { SlackUser } from '../db/models/SlackUser';
-import { AIService } from '../../services/ai/ai.service';
+import { AIService } from '../../ai/ai.service';
+import { BackFirePersistenceService } from '../../backfire/backfire.persistence.service';
+import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../muzzle/constants';
+import { isRandomEven } from '../../muzzle/muzzle-utilities';
+import { MuzzlePersistenceService } from '../../muzzle/muzzle.persistence.service';
+import { SlackService } from './slack/slack.service';
 
 export class SuppressorService {
   public webService = WebService.getInstance();

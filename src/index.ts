@@ -4,10 +4,42 @@ import bodyParser from 'body-parser';
 import crypto from 'crypto';
 import express, { Application, Response, NextFunction, Request } from 'express';
 import { createConnection, getConnectionOptions } from 'typeorm';
-
-import { SlackService } from './services/slack/slack.service';
-import { controllers } from './controllers/index.controller';
 import { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
+import { aiController } from './ai/ai.controller';
+import { clapController } from './clap/clap.controller';
+import { confessionController } from './confession/confession.controller';
+import { counterController } from './counter/counter.controller';
+import { defineController } from './define/define.controller';
+import { eventController } from './event/event.controller';
+import { healthController } from './health/health.controller';
+import { listController } from './list/list.controller';
+import { mockController } from './mock/mock.controller';
+import { muzzleController } from './muzzle/muzzle.controller';
+import { quoteController } from './quote/quote.controller';
+import { reactionController } from './reaction/reaction.controller';
+import { storeController } from './store/store.controller';
+import { summaryController } from './summary/summary.controller';
+import { walkieController } from './walkie/walkie.controller';
+import { SlackService } from './shared/services/slack/slack.service';
+
+const controllers = [
+  aiController,
+  clapController,
+  confessionController,
+  counterController,
+  defineController,
+  eventController,
+  healthController,
+  listController,
+  mockController,
+  muzzleController,
+  quoteController,
+  reactionController,
+  storeController,
+  summaryController,
+  walkieController,
+];
+
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
