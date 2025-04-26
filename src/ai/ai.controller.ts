@@ -15,11 +15,10 @@ const webService = WebService.getInstance();
 const suppressorService = new SuppressorService();
 const aiService = new AIService();
 const storeService = new StoreService();
-
+const MOON_TOKEN_ITEM_ID = 4;
 aiController.post('/ai/text', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  // Hardcoded 4 for Moon Token Item Id.
-  const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
+  const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, MOON_TOKEN_ITEM_ID);
   const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
   const isAlreadyInFlight = await aiService.isAlreadyInflight(request.user_id, request.team_id);
   const isTextDefinedAndLessThan800Chars = request.text && request.text.length < 800;
