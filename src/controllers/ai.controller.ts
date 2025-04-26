@@ -27,7 +27,6 @@ aiController.post('/ai/text', async (req, res) => {
     res.send('Sorry, your request must be defined and cannot be more than 800 characters. Please refine your query.');
   } else if (isAlreadyInFlight) {
     res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
-    // Check here if they also have available moon tokens.
   } else if (isAlreadyAtMaxRequests && !hasAvailableMoonToken) {
     res.send(
       'Sorry, you have reached your maximum number of requests per day. Try again tomorrow or consider purchasing a Moon Token in the store.',
