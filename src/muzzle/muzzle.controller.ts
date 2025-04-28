@@ -3,20 +3,21 @@ import express, { Request, Response, Router } from 'express';
 import { WebService } from '../shared/services/web/web.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ReportType } from '../shared/models/report/report.model';
-import { SuppressorService } from '../shared/services/suppressor.service';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzleReportService } from './muzzle.report.service';
 import { MuzzleService } from './muzzle.service';
+import { suppressedMiddleware } from '../shared/middleware/suppression';
+import { textMiddleware } from '../shared/middleware/textMiddleware';
 
 export const muzzleController: Router = express.Router();
+muzzleController.use(suppressedMiddleware);
+muzzleController.use(textMiddleware);
 
 const muzzleService = new MuzzleService();
 const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
-const suppressorService = new SuppressorService();
 const reportService = new MuzzleReportService();
 
-// TODO: This should have the logic from the addUserToMuzzled function in muzzleService.
 muzzleController.post('/muzzle', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
   const userId = slackService.getUserId(request.text);
@@ -39,9 +40,7 @@ muzzleController.post('/muzzle', async (req: Request, res: Response) => {
 
 muzzleController.post('/muzzle/stats', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
-  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
-    res.send(`Sorry! Can't do that while muzzled.`);
-  } else if (request.text.split(' ').length > 1) {
+  if (request.text.split(' ').length > 1) {
     res.send(
       `Sorry! No support for multiple parameters at this time. Please choose one of: \`trailing7\`, \`week\`, \`month\`, \`trailing30\`, \`year\`, \`all\``,
     );
