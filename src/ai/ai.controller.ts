@@ -1,10 +1,8 @@
 import express, { Router } from 'express';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { SuppressorService } from '../shared/services/suppressor.service';
 import { KnownBlock } from '@slack/web-api';
 import { AIService } from './ai.service';
 import { WebService } from '../shared/services/web/web.service';
-import { StoreService } from '../store/store.service';
 import { getChunks } from '../shared/util/getChunks';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 import { textMiddleware } from './middleware/textMiddleware';
@@ -16,9 +14,7 @@ aiController.use(textMiddleware);
 aiController.use(aiMiddleware);
 
 const webService = WebService.getInstance();
-const suppressorService = new SuppressorService();
 const aiService = new AIService();
-const storeService = new StoreService();
 
 
 aiController.post('/ai/text', async (req, res) => {
@@ -79,36 +75,22 @@ aiController.post('/ai/text', async (req, res) => {
 
 aiController.post('/ai/gemini/text', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  // Hardcoded 4 for Moon Token Item Id.
-  const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
-  const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
-  const isTextDefinedAndLessThan800Chars = request.text && request.text.length < 800;
- if (!isTextDefinedAndLessThan800Chars) {
-    res.send('Sorry, your request must be defined cannot be more than 800 characters. Please refine your query.');
-  } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
-    res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
-    // Check here if they also have available moon tokens.
-  } else if (isAlreadyAtMaxRequests && !hasAvailableMoonToken) {
-    res.send(
-      'Sorry, you have reached your maximum number of requests per day. Try again tomorrow or consider purchasing a Moon Token in the store.',
-    );
-  } else {
-    // Need to do this to avoid timeout issues.
-    res.status(200).send('Processing your request. Please be patient...');
-    const generatedText: string | undefined = await aiService
-      .generateGeminiText(request.user_id, request.team_id, request.text)
-      .catch((e) => {
-        console.error(e);
-        const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
-        webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
-        return undefined;
-      });
+  // Need to do this to avoid timeout issues.
+  res.status(200).send('Processing your request. Please be patient...');
+  const generatedText: string | undefined = await aiService
+    .generateGeminiText(request.user_id, request.team_id, request.text)
+    .catch((e) => {
+      console.error(e);
+      const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
+      webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
+      return undefined;
+    });
 
-    if (!generatedText) {
-      return;
-    }
+  if (!generatedText) {
+    return;
+  }
 
-    const blocks: KnownBlock[] = [];
+  const blocks: KnownBlock[] = [];
 
     const chunks = getChunks(generatedText);
 
@@ -146,32 +128,11 @@ aiController.post('/ai/gemini/text', async (req, res) => {
         'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
       );
     });
-
-    if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
-      storeService.removeEffect(request.user_id, request.team_id, 4);
-    }
   }
 });
 
 aiController.post('/ai/image', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  // Hardcoded 4 for Moon Token Item Id.
-  const hasAvailableMoonToken = await storeService.isItemActive(request.user_id, request.team_id, 4);
-  const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(request.user_id, request.team_id);
-
-  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
-    res.send(`Sorry, can't do that while muzzled.`);
-  } else if (!request.text) {
-    res.send('Sorry, you must send a message to generate text.');
-  } else if (request.text.length >= 800) {
-    res.send('Sorry, your request cannot be more than 800 characters. Please refine your query.');
-  } else if (await aiService.isAlreadyInflight(request.user_id, request.team_id)) {
-    res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
-  } else if (isAlreadyAtMaxRequests && !hasAvailableMoonToken) {
-    res.send(
-      'Sorry, you have reached your maximum number of requests per day. Try again tomorrow, or consider purchasing a Moon Token in the store.',
-    );
-  } else {
     // Need to do this to avoid timeout issues.
     res.status(200).send('Processing your request. Please be patient...');
     const generatedImage = await aiService.generateImage(request.user_id, request.team_id, request.text).catch((e) => {
@@ -209,8 +170,5 @@ aiController.post('/ai/image', async (req, res) => {
         'Sorry, unable to send the requested image to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
       );
     });
-    if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
-      storeService.removeEffect(request.user_id, request.team_id, 4);
-    }
   }
 });

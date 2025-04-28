@@ -17,7 +17,7 @@ export const aiMiddleware = async (req: Request, res: Response, next: NextFuncti
     );
   } else if (isAlreadyInFlight) {
     res.send('Sorry, you already have a request in flight. Please wait for that request to complete.');
-  } if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
+  } else if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
     storeService.removeEffect(user_id, team_id, 4);
   } else {
     next();
