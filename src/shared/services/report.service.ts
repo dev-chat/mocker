@@ -1,6 +1,6 @@
 import moment from 'moment';
-import { SlackService } from '../../services/slack/slack.service';
 import { ReportType, ReportRange } from '../models/report/report.model';
+import { SlackService } from './slack/slack.service';
 
 export class ReportService {
   public slackService = SlackService.getInstance();
