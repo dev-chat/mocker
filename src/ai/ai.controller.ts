@@ -4,6 +4,8 @@ import { WebService } from '../shared/services/web/web.service';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 import { textMiddleware } from '../shared/middleware/textMiddleware';
 import { aiMiddleware } from './middleware/aiMiddleware';
+import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import { MessageWithName } from '../shared/models/message/message-with-name';
 
 export const aiController: Router = express.Router();
 aiController.use(suppressedMiddleware);
@@ -44,4 +46,11 @@ aiController.post('/ai/image', (req, res) => {
     webService.sendEphemeral(channel_id, errorMessage, user_id);
     return undefined;
   });
+});
+
+aiController.post('/summary/prompt-with-history', async (req, res) => {
+  const request: SlashCommandRequest = req.body;
+    // Need to do this to avoid timeout issues.
+    res.status(200).send('Processing your request. Please be patient...');
+    aiService.promptWithHistory(request)
 });
