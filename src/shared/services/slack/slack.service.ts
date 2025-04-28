@@ -2,7 +2,7 @@ import axios from 'axios';
 import { WebService } from '../web/web.service';
 import { USER_ID_REGEX } from './constants';
 import { SlackPersistenceService } from './slack.persistence.service';
-import { ChannelResponse, SlackUser } from '../../models/slack/slack-models';
+import { ChannelResponse, EventRequest, SlackUser } from '../../models/slack/slack-models';
 import { SlackUser as SlackUserFromDB } from '../../db/models/SlackUser';
 
 export class SlackService {
@@ -134,5 +134,13 @@ export class SlackService {
 
   public getUserById(userId: string, teamId: string): Promise<SlackUserFromDB | null> {
     return this.persistenceService.getUserById(userId, teamId);
+  }
+
+  public handle(request: EventRequest): void {
+    if (request.event.type === 'team_join') {
+      this.getAllUsers().catch((e) => console.error('Error handling team join event:', e));
+    } else if (request.event.type === 'channel_created') {
+      this.getAndSaveAllChannels();
+    }
   }
 }

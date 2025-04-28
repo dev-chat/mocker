@@ -1,8 +1,9 @@
 import { CounterService } from '../counter/counter.service';
 import { Muzzle } from '../shared/db/models/Muzzle';
+import { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { StorePersistenceService } from '../store/store.persistence.service';
-import { MAX_MUZZLES, MAX_SUPPRESSIONS } from './constants';
+import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_SUPPRESSIONS } from './constants';
 import { getTimeString, getTimeToMuzzle } from './muzzle-utilities';
 
 
@@ -114,7 +115,6 @@ export class MuzzleService extends SuppressorService {
     text: string,
     timestamp: string,
   ): Promise<void> {
-    console.time('send-muzzled-message');
     const muzzle = await this.muzzlePersistenceService.getMuzzle(userId, teamId).catch(e => {
       console.error('error retrieving muzzle', e);
       return null;
@@ -128,6 +128,48 @@ export class MuzzleService extends SuppressorService {
         this.muzzlePersistenceService.trackDeletedMessage(muzzle, text);
       }
     }
-    console.timeEnd('send-muzzled-message');
+  }
+
+  public async handle(request: EventRequest) {
+    const isMessage = request.event.type === 'message' || request.event.type === 'message.channels' || request.event.type === 'message.app_home';
+    const isTopicChange = !request.event.subtype || request.event.subtype === 'channel_topic';
+    if (isMessage || isTopicChange) {
+      const isMuzzled = await this.muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id);
+      if (isMuzzled) {
+        const containsTag = this.slackService.containsTag(request.event.text);
+        const userName = await this.slackService.getUserNameById(request.event.user, request.team_id);
+        console.log(`${userName} | ${request.event.user} is muzzled! Suppressing his voice...`);
+        this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
+        
+        if (!containsTag) {
+          this.sendMuzzledMessage(
+            request.event.channel,
+            request.event.user,
+            request.team_id,
+            request.event.text,
+            request.event.ts,
+          );
+        } else if (containsTag && isTopicChange) {
+            const muzzleId = await this.muzzlePersistenceService.getMuzzle(request.event.user, request.team_id);
+            console.log(
+                `${userName} attempted to tag someone or change the channel topic. Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
+              );
+            if (muzzleId) {
+              this.muzzlePersistenceService.addMuzzleTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
+              this.muzzlePersistenceService.trackDeletedMessage(muzzleId, request.event.text);
+              this.webService
+                .sendMessage(
+                  request.event.channel,
+                  `:rotating_light: <@${
+                    request.event.user
+                  }> attempted to @ while muzzled or change the channel topic! Muzzle increased by ${getTimeString(
+                    ABUSE_PENALTY_TIME,
+                  )} :rotating_light:`,
+                )
+                .catch((e) => console.error(e));
+            }
+          }
+      }
+    }
   }
 }
