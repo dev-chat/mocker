@@ -1,4 +1,4 @@
-import { Event } from '../shared/models/slack/slack-models';
+import { Event, EventRequest } from '../shared/models/slack/slack-models';
 import { reactionValues } from './constants';
 import { ReactionPersistenceService } from './reaction.persistence.service';
 
@@ -31,6 +31,12 @@ export class ReactionService {
     const reactionValue = reactionValues[event.reaction];
     if (this.shouldReactionBeLogged(reactionValue)) {
       this.reactionPersistenceService.removeReaction(event, teamId);
+    }
+  }
+
+  handle(request: EventRequest): void {
+    if (request.event.type === 'reaction_added' || request.event.type === 'reaction_removed') {
+      this.handleReaction(request.event, request.event.type === 'reaction_added', request.team_id);
     }
   }
 }

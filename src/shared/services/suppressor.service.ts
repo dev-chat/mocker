@@ -309,4 +309,31 @@ export class SuppressorService {
     console.log(`Chance of Backfire for ${requestorId}: ${chanceOfBackfire}`);
     return Math.random() <= chanceOfBackfire;
   }
+
+  public async handleBotMessage(request: EventRequest): Promise<void> {
+    const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
+    const botUser = await this.shouldBotMessageBeMuzzled(request);
+    if (botUser && !isReaction) {
+      console.log(`A user is muzzled and tried to send a bot message! Suppressing...`);
+      this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
+      const muzzleId = await this.muzzlePersistenceService.getMuzzle(botUser, request.team_id);
+      if (muzzleId) {
+        this.muzzlePersistenceService.trackDeletedMessage(muzzleId, 'A bot message');
+        return;
+      }
+
+      const backfireId = await this.backfirePersistenceService.getBackfireByUserId(botUser, request.team_id);
+      if (backfireId) {
+        this.backfirePersistenceService.trackDeletedMessage(backfireId, 'A bot user message');
+        return;
+      }
+
+      const counter = await this.counterPersistenceService.getCounterMuzzle(botUser);
+
+      if (counter?.counterId) {
+        this.counterPersistenceService.incrementMessageSuppressions(counter.counterId);
+        return;
+      }
+    }
+  }
 }

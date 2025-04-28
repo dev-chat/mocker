@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { MessageWithName } from '../shared/models/message/message-with-name';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { HistoryPersistenceService } from '../shared/services/history.persistence.service';
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import { EventRequest, SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { AIPersistenceService } from './ai.persistence';
 import { KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
@@ -243,7 +243,7 @@ export class AIService {
       });
   }
 
-  public async participate(teamId: string, channelId: string): Promise<string | undefined> {
+  public async participate(teamId: string, channelId: string): Promise<void> {
     const isAbleToParticipate = !(await this.redis.getHasParticipated(teamId, channelId));
     const messageCount = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
     const isEnoughMessages = messageCount >= 20;
@@ -280,6 +280,13 @@ export class AIService {
       .then(async (x) => {
         await this.redis.setHasParticipated(teamId, channelId);
         return this.convertAsterisks(x.choices[0].message?.content?.trim())
+      })
+      .then((result) => {
+        if (result) {
+          this.webService
+              .sendMessage(channelId, result)
+              .catch((e) => console.error('Error sending AI Participation message:', e));
+        }
       })
       .catch(async (e) => {
         console.error(e);
@@ -400,5 +407,9 @@ export class AIService {
         );
       });
     }
+  }
+
+  handle(request: EventRequest): void {
+    this.participate(request.team_id, request.event.channel)
   }
 }

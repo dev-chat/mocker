@@ -130,9 +130,38 @@ export class MuzzleService extends SuppressorService {
     }
   }
 
+  async handleImpersonation(request: EventRequest) {
+    const isUserProfileChanged = request.event.type === 'user_profile_changed';
+    if (isUserProfileChanged) {
+      const userWhoIsBeingImpersonated = await this.slackService.getImpersonatedUser(
+        (request.event.user as unknown as Record<string, string>).id,
+        );
+      if (userWhoIsBeingImpersonated) {
+        this.permaMuzzle((request.event.user as unknown as Record<string, string>).id, request.team_id)
+            .then(() => {
+              return this.webService
+                .sendMessage(
+                  '#general',
+                  `:cop: <@${(request.event.user as unknown as Record<string, string>).id}> is impersonating <@${
+                    userWhoIsBeingImpersonated.id
+                  }>! They are now muzzled until they assume their normal identity. :cop:`,
+                )
+                .catch((e) => console.error(e));
+            });
+        } else {
+          this.removePermaMuzzle(
+            (request.event.user as unknown as Record<string, string>).id,
+            request.team_id,
+          );
+        }
+    }
+  }
+
   public async handle(request: EventRequest) {
     const isMessage = request.event.type === 'message' || request.event.type === 'message.channels' || request.event.type === 'message.app_home';
     const isTopicChange = !request.event.subtype || request.event.subtype === 'channel_topic';
+    this.handleImpersonation(request)
+    
     if (isMessage || isTopicChange) {
       const isMuzzled = await this.muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id);
       if (isMuzzled) {
