@@ -36,7 +36,6 @@ export class AIPersistenceService {
   public setHasUsedSummary(userId: string, teamId: string): Promise<unknown | null> {
     const endOfDay = new Date().setHours(23, 59, 59, 999);
     const timeUntilEndOfDay = endOfDay - new Date().getTime();
-    console.log(timeUntilEndOfDay);
     return this.redis.setValueWithExpire(
       this.getRedisKeyName(userId, teamId, AITypeEnum.DailySummary),
       'yes',
