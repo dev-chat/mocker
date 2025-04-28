@@ -1,19 +1,14 @@
 import express, { Router } from 'express';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { SuppressorService } from '../shared/services/suppressor.service';
 import { ReactionReportService } from './reaction.report.service';
+import { suppressedMiddleware } from '../shared/middleware/suppression';
 
 export const reactionController: Router = express.Router();
-
-const suppressorService = new SuppressorService();
+reactionController.use(suppressedMiddleware);
 const reportService = new ReactionReportService();
 
 reactionController.post('/rep/get', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
-    res.send(`Sorry, can't do that while muzzled.`);
-  } else {
-    const repValue = await reportService.getRep(request.user_id, request.team_id);
-    res.send(repValue);
-  }
+  const repValue = await reportService.getRep(request.user_id, request.team_id);
+  res.send(repValue);
 });
