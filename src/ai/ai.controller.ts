@@ -49,7 +49,6 @@ aiController.post('/ai/image', (req, res) => {
 
 aiController.post('/summary/prompt-with-history', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  // Need to do this to avoid timeout issues.
   res.status(200).send('Processing your request. Please be patient...');
   aiService.promptWithHistory(request);
 });
