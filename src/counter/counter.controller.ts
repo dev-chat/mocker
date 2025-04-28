@@ -2,21 +2,17 @@ import express, { Router } from 'express';
 import { CounterPersistenceService } from './counter.persistence.service';
 import { CounterService } from './counter.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { SuppressorService } from '../shared/services/suppressor.service';
+import { suppressedMiddleware } from '../shared/middleware/suppression';
 
 export const counterController: Router = express.Router();
+counterController.use(suppressedMiddleware);
 
-const suppressorService = new SuppressorService();
 const counterPersistenceService = CounterPersistenceService.getInstance();
 const counterService = new CounterService();
 
 counterController.post('/counter', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
-    res.send(
-      "You can't counter someone if you are already muzzled, currently have a counter, or have lost counter privileges!",
-    );
-  } else if (!counterPersistenceService.canCounter(request.user_id)) {
+  if (!counterPersistenceService.canCounter(request.user_id)) {
     res.send('You have lost counter privileges and cannot counter right now.');
   } else {
     await counterService

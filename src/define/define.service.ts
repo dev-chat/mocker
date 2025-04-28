@@ -1,6 +1,7 @@
 import { KnownBlock } from '@slack/web-api';
 import Axios, { AxiosResponse } from 'axios';
 import { Definition, UrbanDictionaryResponse } from '../shared/models/define/define-models';
+import { WebService } from '../shared/services/web/web.service';
 
 export class DefineService {
   public static getInstance(): DefineService {
@@ -12,9 +13,8 @@ export class DefineService {
 
   private static instance: DefineService;
 
-  /**
-   * Capitalizes the first letter of a given sentence.
-   */
+  webService = WebService.getInstance();
+
   public capitalizeFirstLetter(sentence: string, all = true): string {
     if (all) {
       const words = sentence.split(' ');
@@ -23,21 +23,47 @@ export class DefineService {
     return sentence.charAt(0).toUpperCase() + sentence.slice(1, sentence.length);
   }
 
-  /**
-   * Returns a promise to look up a definition on urban dictionary.
-   */
-  public define(word: string): Promise<UrbanDictionaryResponse> {
+
+  public define(word: string, userId: string, channelId: string): Promise<void> {
     const formattedWord = word.split(' ').join('+');
-    return Axios.get(encodeURI(`http://api.urbandictionary.com/v0/define?term=${formattedWord}`)).then(
-      (res: AxiosResponse<UrbanDictionaryResponse>) => {
-        return res.data;
-      },
-    );
+    return Axios.get(
+      encodeURI(`http://api.urbandictionary.com/v0/define?term=${formattedWord}`)
+    ).then(
+        (res: AxiosResponse<UrbanDictionaryResponse>) => {
+          return res.data;
+        },
+      ).then((data: UrbanDictionaryResponse) => {
+        const formattedTitle = this.capitalizeFirstLetter(word);
+        const definitions = this.formatDefs(data.list, formattedTitle);
+        const blocks: KnownBlock[] = [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: formattedTitle,
+            },
+          },
+        ];
+
+        definitions.map(def => blocks.push(def));
+
+        blocks.push({
+          type: 'divider',
+        });
+
+        blocks.push({
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `:sparkles: _Definition requested by <@${userId}>, and provided by users just like you._ :sparkles:`,
+            },
+          ],
+        });
+        this.webService.sendMessage(channelId, formattedTitle, blocks).catch(e => console.error(e));
+      });
   }
 
-  /**
-   * Takes in an array of definitions and breaks them down into a shortened list depending on maxDefs
-   */
   public formatDefs(defArr: Definition[], definedWord: string, maxDefs = 3): KnownBlock[] {
     const noDefFound: KnownBlock[] = [
       {

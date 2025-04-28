@@ -1,15 +1,10 @@
 import { getRepository, UpdateResult } from 'typeorm';
 import { Counter } from '../shared/db/models/Counter';
 import { CounterItem, CounterMuzzle } from '../shared/models/counter/counter-models';
-import { getRemainingTime, Timeout } from '../services/muzzle/muzzle-utilities';
-import { MuzzlePersistenceService } from '../services/muzzle/muzzle.persistence.service';
 import { WebService } from '../shared/services/web/web.service';
 import { COUNTER_TIME, SINGLE_DAY_MS } from './constants';
-
-// This service does not yet use redis since i need to get a better understanding
-// Of the pub/sub model there. The reason I did not convert to redis is because
-// the stateful data here is already in the relational DB and because
-// i need to figure out how to call a callback when a key expires in the db.
+import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
+import { getRemainingTime, Timeout } from '../muzzle/muzzle-utilities';
 export class CounterPersistenceService {
   public static getInstance(): CounterPersistenceService {
     if (!CounterPersistenceService.instance) {
