@@ -1,5 +1,5 @@
-import { ChannelResponse, SlashCommandRequest } from "../shared/models/slack/slack-models";
-import { SlackService } from "../shared/services/slack/slack.service";
+import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
+import { SlackService } from '../shared/services/slack/slack.service';
 
 export class MockService {
   slackService = SlackService.getInstance();
@@ -25,7 +25,7 @@ export class MockService {
       response_type: 'in_channel',
       text: `<@${request.user_id}>`,
     };
-    
+
     this.slackService.sendResponse(request.response_url, response);
   }
 }

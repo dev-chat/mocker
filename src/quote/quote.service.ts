@@ -4,9 +4,8 @@ import { Block, KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
 
 export class QuoteService {
-
   webService = WebService.getInstance();
-  
+
   public static getInstance(): QuoteService {
     if (!QuoteService.instance) {
       QuoteService.instance = new QuoteService();
@@ -44,19 +43,19 @@ export class QuoteService {
   }
 
   public quote(ticker: string, channelId: string, userId: string): Promise<void> {
-    return Promise.all([this.getQuote(ticker), this.getMetrics(ticker), this.getCompanyProfile(ticker)]).then(
-      ([quote, metrics, search]) => {
+    return Promise.all([this.getQuote(ticker), this.getMetrics(ticker), this.getCompanyProfile(ticker)])
+      .then(([quote, metrics, search]) => {
         return this.formatData(quote, metrics, search, ticker);
-      },
-    ).then((quoteData) => {
-      this.webService.sendMessage(channelId, '', this.createQuoteBlocks(quoteData, userId)).catch((e) => {
-    console.error(e);
-    this.webService.sendMessage(
-      userId,
-      'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
-    );
-  });
-    });
+      })
+      .then((quoteData) => {
+        this.webService.sendMessage(channelId, '', this.createQuoteBlocks(quoteData, userId)).catch((e) => {
+          console.error(e);
+          this.webService.sendMessage(
+            userId,
+            'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
+          );
+        });
+      });
   }
 
   getEmoji(delta: string): string {
@@ -66,14 +65,14 @@ export class QuoteService {
       return ':chart_with_downwards_trend:';
     }
     return ':chart:';
-  };
+  }
 
   getPlusOrMinus(delta: string): string {
     if (parseFloat(delta) > 0) {
       return '+';
     }
     return '';
-  };
+  }
 
   getPlusOrMinusPercent(delta: string): string {
     if (parseFloat(delta) > 0) {
@@ -81,7 +80,7 @@ export class QuoteService {
     } else {
       return '';
     }
-  };
+  }
 
   createQuoteBlocks(quote: QuoteData, userId: string): Block[] | KnownBlock[] | undefined {
     return [
@@ -152,9 +151,7 @@ export class QuoteService {
         ],
       },
     ];
-  };
-
-
+  }
 
   getQuote(ticker: string): Promise<QuoteResponse> {
     return Axios.get(

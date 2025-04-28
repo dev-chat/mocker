@@ -12,7 +12,7 @@ const listService = new ListService();
 
 listController.post('/list/retrieve', async (req, res) => {
   const request: SlashCommandRequest = req.body;
-  listService.getListReport(request)
+  listService.getListReport(request);
   res.status(200).send();
 });
 

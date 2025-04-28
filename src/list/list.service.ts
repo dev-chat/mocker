@@ -57,6 +57,4 @@ ${Table.print(reportWithoutDate)}
         this.slackService.sendResponse(request.response_url, errorResponse);
       });
   }
-
-
 }
