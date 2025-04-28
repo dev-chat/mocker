@@ -17,7 +17,7 @@ export class BackfireService extends SuppressorService {
   ): Promise<void> {
     const backfireId: number | undefined = await this.backfirePersistenceService
       .getBackfireByUserId(userId, teamId)
-      .then(id => (id ? +id : undefined));
+      .then((id) => (id ? +id : undefined));
     if (backfireId) {
       const suppressions = await this.backfirePersistenceService.getSuppressions(userId, teamId);
       if (suppressions && +suppressions < MAX_SUPPRESSIONS) {
@@ -39,9 +39,12 @@ export class BackfireService extends SuppressorService {
   }
 
   async handle(request: EventRequest): Promise<void> {
-    const isMessage = request.event.type === 'message' || request.event.type === 'message.channels' || request.event.type === 'message.app_home';
+    const isMessage =
+      request.event.type === 'message' ||
+      request.event.type === 'message.channels' ||
+      request.event.type === 'message.app_home';
     const isTopicChange = !request.event.subtype || request.event.subtype === 'channel_topic';
-     if (isMessage || isTopicChange) {
+    if (isMessage || isTopicChange) {
       const isBackfired = await this.backfirePersistenceService.isBackfire(request.event.user, request.team_id);
       if (isBackfired) {
         const containsTag = this.slackService.containsTag(request.event.text);

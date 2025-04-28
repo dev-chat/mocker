@@ -17,7 +17,7 @@ counterController.post('/counter', async (req, res) => {
   } else {
     await counterService
       .createCounter(request.user_id, request.team_id)
-      .then(value => res.send(value))
-      .catch(e => res.send(e));
+      .then((value) => res.send(value))
+      .catch((e) => res.send(e));
   }
 });

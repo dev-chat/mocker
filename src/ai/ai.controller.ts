@@ -13,38 +13,32 @@ aiController.use(aiMiddleware);
 const webService = WebService.getInstance();
 const aiService = new AIService();
 
-
 aiController.post('/ai/text', async (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
   res.status(200).send('Processing your request. Please be patient...');
-  aiService
-    .generateText(user_id, team_id, channel_id, text)
-    .catch((e) => {
-      console.error(e);
-      const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
-      webService.sendEphemeral(channel_id, errorMessage, user_id);
-      return undefined;
-    });
+  aiService.generateText(user_id, team_id, channel_id, text).catch((e) => {
+    console.error(e);
+    const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
+    webService.sendEphemeral(channel_id, errorMessage, user_id);
+    return undefined;
+  });
 });
 
 aiController.post('/ai/gemini/text', (req, res) => {
-  const { user_id, team_id, channel_id, text} = req.body;
+  const { user_id, team_id, channel_id, text } = req.body;
   res.status(200).send('Processing your request. Please be patient...');
-  aiService
-    .generateGeminiText(user_id, team_id, channel_id, text)
-    .catch((e) => {
-      console.error(e);
-      const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
-      webService.sendEphemeral(channel_id, errorMessage, user_id);
-      return undefined;
-    });
+  aiService.generateGeminiText(user_id, team_id, channel_id, text).catch((e) => {
+    console.error(e);
+    const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
+    webService.sendEphemeral(channel_id, errorMessage, user_id);
+    return undefined;
+  });
 });
 
 aiController.post('/ai/image', (req, res) => {
-  const { user_id, team_id, channel_id, text} = req.body;
+  const { user_id, team_id, channel_id, text } = req.body;
   res.status(200).send('Processing your request. Please be patient...');
-  aiService.generateImage(user_id, team_id, text)
-  .catch((e) => {
+  aiService.generateImage(user_id, team_id, text).catch((e) => {
     console.error(e);
     const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
     webService.sendEphemeral(channel_id, errorMessage, user_id);

@@ -54,7 +54,7 @@ storeController.post('/store/buy', async (req, res) => {
   } else {
     const useReceipt = await itemService
       .useItem(itemId, request.user_id, request.team_id, userIdForItem as string, request.channel_name)
-      .catch(e => {
+      .catch((e) => {
         console.error(e, {
           item: itemId,
           userId: request.user_id,
@@ -72,7 +72,7 @@ storeController.post('/store/buy', async (req, res) => {
 
     const purchaseReceipt: string | undefined = await storeService
       .buyItem(itemId, request.user_id, request.team_id)
-      .catch(e => {
+      .catch((e) => {
         console.error(e, {
           item: itemId,
           userId: request.user_id,

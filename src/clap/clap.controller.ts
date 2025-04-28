@@ -11,6 +11,6 @@ const clapService = new ClapService();
 
 clapController.post('/clap', async (req, res) => {
   res.status(200).send();
-  const { text, user_id, response_url} = req.body;
-  clapService.clap(text, user_id, response_url);  
+  const { text, user_id, response_url } = req.body;
+  clapService.clap(text, user_id, response_url);
 });

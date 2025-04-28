@@ -22,7 +22,7 @@ export class ReactionReportService extends ReportService {
       .then(async (perUserRep: ReactionByUser[] | undefined) => {
         return await this.formatRepByUser(perUserRep, teamId, totalRepEarned);
       })
-      .catch(e => {
+      .catch((e) => {
         console.error(e);
         throw new Error(e);
       });
@@ -39,7 +39,7 @@ export class ReactionReportService extends ReportService {
       return 'You do not have any existing relationships.';
     } else {
       const formattedData = await Promise.all(
-        perUserRep.map(async userRep => {
+        perUserRep.map(async (userRep) => {
           return {
             user:
               userRep.reactingUser !== 'ADMIN'

@@ -23,16 +23,13 @@ export class DefineService {
     return sentence.charAt(0).toUpperCase() + sentence.slice(1, sentence.length);
   }
 
-
   public define(word: string, userId: string, channelId: string): Promise<void> {
     const formattedWord = word.split(' ').join('+');
-    return Axios.get(
-      encodeURI(`http://api.urbandictionary.com/v0/define?term=${formattedWord}`)
-    ).then(
-        (res: AxiosResponse<UrbanDictionaryResponse>) => {
-          return res.data;
-        },
-      ).then((data: UrbanDictionaryResponse) => {
+    return Axios.get(encodeURI(`http://api.urbandictionary.com/v0/define?term=${formattedWord}`))
+      .then((res: AxiosResponse<UrbanDictionaryResponse>) => {
+        return res.data;
+      })
+      .then((data: UrbanDictionaryResponse) => {
         const formattedTitle = this.capitalizeFirstLetter(word);
         const definitions = this.formatDefs(data.list, formattedTitle);
         const blocks: KnownBlock[] = [
@@ -45,7 +42,7 @@ export class DefineService {
           },
         ];
 
-        definitions.map(def => blocks.push(def));
+        definitions.map((def) => blocks.push(def));
 
         blocks.push({
           type: 'divider',
@@ -60,7 +57,7 @@ export class DefineService {
             },
           ],
         });
-        this.webService.sendMessage(channelId, formattedTitle, blocks).catch(e => console.error(e));
+        this.webService.sendMessage(channelId, formattedTitle, blocks).catch((e) => console.error(e));
       });
   }
 

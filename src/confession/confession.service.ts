@@ -1,4 +1,3 @@
-
 import { SlackService } from '../shared/services/slack/slack.service';
 import { WebService } from '../shared/services/web/web.service';
 
@@ -10,6 +9,6 @@ export class ConfessionService {
     console.log(`${requestorId} - ${teamId} attempted to confess ${confession} in ${channelId}`);
     this.webService
       .sendMessage(channelId, `:chicken: <@${requestorId}> :chicken: says: \`${confession}\``)
-      .catch(e => console.error(e));
+      .catch((e) => console.error(e));
   }
 }

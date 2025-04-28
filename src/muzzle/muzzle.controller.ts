@@ -25,7 +25,7 @@ muzzleController.post('/muzzle', async (req: Request, res: Response) => {
   } else if (userId) {
     const results = await muzzleService
       .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
-      .catch(e => {
+      .catch((e) => {
         console.error(e);
         res.send(e);
       });

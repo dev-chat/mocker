@@ -1,10 +1,9 @@
-import { ChannelResponse } from "../shared/models/slack/slack-models";
-import { SlackService } from "../shared/services/slack/slack.service";
+import { ChannelResponse } from '../shared/models/slack/slack-models';
+import { SlackService } from '../shared/services/slack/slack.service';
 
 export class ClapService {
+  slackService = SlackService.getInstance();
 
-  slackService = SlackService.getInstance(); 
-  
   public clap(text: string, userId: string, responseUrl: string): void {
     if (text) {
       let output = '';
@@ -12,7 +11,7 @@ export class ClapService {
       for (let i = 0; i < words.length; i++) {
         output += i !== words.length - 1 ? `${words[i]} :clap: ` : `${words[i]} :clap:`;
       }
-      
+
       const response: ChannelResponse = {
         attachments: [
           {

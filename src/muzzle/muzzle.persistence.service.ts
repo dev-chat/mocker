@@ -28,7 +28,7 @@ export class MuzzlePersistenceService {
     muzzle.milliseconds = 0;
     return getRepository(Muzzle)
       .save(muzzle)
-      .then(async muzzleFromDb => {
+      .then(async (muzzleFromDb) => {
         console.log(muzzleFromDb);
         await this.redis.setValue(
           this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled),
@@ -70,7 +70,7 @@ export class MuzzlePersistenceService {
       muzzle.milliseconds = time;
       await getRepository(Muzzle)
         .save(muzzle)
-        .then(muzzleFromDb => {
+        .then((muzzleFromDb) => {
           const expireTime = Math.floor(time / 1000);
           this.redis.setValueWithExpire(
             this.getRedisKeyName(muzzledId, teamId, MuzzleRedisTypeEnum.Muzzled),
@@ -94,7 +94,7 @@ export class MuzzlePersistenceService {
           }
           resolve(muzzleFromDb);
         })
-        .catch(e => reject(e));
+        .catch((e) => reject(e));
     });
   }
 
@@ -160,7 +160,7 @@ export class MuzzlePersistenceService {
   public async getMuzzle(userId: string, teamId: string): Promise<number | undefined> {
     return await this.redis
       .getValue(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled))
-      .then(id => (id ? +id : undefined));
+      .then((id) => (id ? +id : undefined));
   }
 
   public async getSuppressions(userId: string, teamId: string): Promise<string | null> {
@@ -224,6 +224,6 @@ export class MuzzlePersistenceService {
     const query = `SELECT COUNT(*) as count FROM muzzle WHERE createdAt >= '${start}' AND createdAt < '${end}' AND teamId='${teamId}' AND requestorId='${userId}';`;
     return getRepository(Muzzle)
       .query(query)
-      .then(res => (res[0].count ? parseInt(res[0].count) : 0));
+      .then((res) => (res[0].count ? parseInt(res[0].count) : 0));
   }
 }

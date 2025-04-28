@@ -3,7 +3,17 @@ import moment from 'moment';
 import { getRepository, getManager } from 'typeorm';
 import { FormattedMuzzleReport } from './constants';
 import { Muzzle } from '../shared/db/models/Muzzle';
-import { ReportType, MuzzleReport, ReportRange, ReportCount, Accuracy, KDR, Backfires, RawNemesis, SuccessNemesis } from '../shared/models/report/report.model';
+import {
+  ReportType,
+  MuzzleReport,
+  ReportRange,
+  ReportCount,
+  Accuracy,
+  KDR,
+  Backfires,
+  RawNemesis,
+  SuccessNemesis,
+} from '../shared/models/report/report.model';
 import { ReportService } from '../shared/services/report.service';
 
 export class MuzzleReportService extends ReportService {

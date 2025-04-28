@@ -6,10 +6,7 @@ export class Message {
   @PrimaryGeneratedColumn()
   public id!: number;
 
-  @ManyToOne(
-    () => SlackUser,
-    user => user.messages,
-  )
+  @ManyToOne(() => SlackUser, (user) => user.messages)
   public userId!: SlackUser;
 
   @Column({ default: 'NOT_AVAILABLE' })

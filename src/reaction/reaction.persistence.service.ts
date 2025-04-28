@@ -40,7 +40,7 @@ export class ReactionPersistenceService {
         channel: event.item.channel,
         teamId: teamId,
       })
-      .catch(e => e);
+      .catch((e) => e);
   }
 
   public async getTotalRep(userId: string, teamId: string): Promise<TotalRep> {
@@ -53,12 +53,12 @@ export class ReactionPersistenceService {
     const totalRepEarnedQuery = 'SELECT SUM(VALUE) as sum FROM reaction WHERE affectedUser=? AND teamId=?;';
     const totalRepEarned = await getRepository(Reaction)
       .query(totalRepEarnedQuery, [user.slackId, user.teamId])
-      .then(x => (!x[0].sum ? 0 : x[0].sum));
+      .then((x) => (!x[0].sum ? 0 : x[0].sum));
 
     const totalRepSpentQuery = 'SELECT SUM(PRICE) as sum FROM purchase WHERE user=?;';
     const totalRepSpent = await getRepository(Purchase)
       .query(totalRepSpentQuery, [user.slackId])
-      .then(x => (!x[0].sum ? 0 : x[0].sum));
+      .then((x) => (!x[0].sum ? 0 : x[0].sum));
 
     console.log(totalRepEarned);
     console.log(totalRepSpent);
@@ -73,8 +73,8 @@ export class ReactionPersistenceService {
         `SELECT reactingUser, SUM(value) as rep FROM reaction WHERE affectedUser=? AND teamId=? GROUP BY reactingUser ORDER BY rep DESC;`,
         [userId, teamId],
       )
-      .then(value => value)
-      .catch(e => {
+      .then((value) => value)
+      .catch((e) => {
         throw new Error(e);
       });
   }

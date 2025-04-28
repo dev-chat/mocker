@@ -2,7 +2,6 @@ import express, { Request, Response, Router } from 'express';
 import { EventRequest } from '../shared/models/slack/slack-models';
 import { EventService } from './event.service';
 
-
 export const eventController: Router = express.Router();
 
 const eventService = new EventService();

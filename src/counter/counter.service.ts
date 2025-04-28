@@ -21,7 +21,7 @@ export class CounterService extends SuppressorService {
           .then(() => {
             resolve(`Counter set for the next ${getTimeString(COUNTER_TIME)}`);
           })
-          .catch(e => reject(e));
+          .catch((e) => reject(e));
       }
     });
   }
@@ -73,24 +73,22 @@ export class CounterService extends SuppressorService {
           channel,
           `:crossed_swords: <@${userId}> successfully countered <@${requestorId}>! <@${requestorId}> has lost muzzle privileges for 24 hours and is muzzled for the next 5 minutes! :crossed_swords:`,
         )
-        .catch(e => console.error(e));
+        .catch((e) => console.error(e));
     }
   }
 
   async handle(request: EventRequest): Promise<void> {
-    const isMessage = request.event.type === 'message' || request.event.type === 'message.channels' || request.event.type === 'message.app_home';
+    const isMessage =
+      request.event.type === 'message' ||
+      request.event.type === 'message.channels' ||
+      request.event.type === 'message.app_home';
     const isTopicChange = !request.event.subtype || request.event.subtype === 'channel_topic';
     if (isMessage || isTopicChange) {
-     const containsTag = this.slackService.containsTag(request.event.text);
+      const containsTag = this.slackService.containsTag(request.event.text);
       const userName = await this.slackService.getUserNameById(request.event.user, request.team_id);
       if (!containsTag) {
         console.log(`${userName} | ${request.event.user} is counter-muzzled! Suppressing his voice...`);
-        this.sendCounterMuzzledMessage(
-          request.event.channel,
-          request.event.user,
-          request.event.text,
-          request.event.ts,
-        );
+        this.sendCounterMuzzledMessage(request.event.channel, request.event.user, request.event.text, request.event.ts);
       } else if (containsTag && isTopicChange) {
         console.log(`${userName} attempted to tag someone. Counter Muzzle increased by ${ABUSE_PENALTY_TIME}!`);
         this.counterPersistenceService.addCounterMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);

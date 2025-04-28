@@ -5,7 +5,6 @@ import { EventRequest } from '../shared/models/slack/slack-models';
 import Sentiment, { AnalysisOptions, AnalysisResult } from 'sentiment';
 import { Sentiment as SentimentDB } from '../shared/db/models/Sentiment';
 
-
 export class EventPersistenceService {
   public static getInstance(): EventPersistenceService {
     if (!EventPersistenceService.instance) {
@@ -15,7 +14,7 @@ export class EventPersistenceService {
   }
 
   private static instance: EventPersistenceService;
-  
+
   sentiment = new Sentiment();
 
   async logActivity(request: EventRequest) {
@@ -39,30 +38,28 @@ export class EventPersistenceService {
     getRepository(Activity).insert(activity);
   }
 
-  
-    public performSentimentAnalysis(userId: string, teamId: string, channelId: string, text: string): void {
-      this.analyzeSentimentAndStore(userId, teamId, channelId, text);
-    }
-  
-    private async analyzeSentimentAndStore(
-      userId: string,
-      teamId: string,
-      channelId: string,
-      text: string,
-    ): Promise<InsertResult> {
-      const options: AnalysisOptions = {
-        extras: {
-          wtf: 0,
-          WTF: 0,
-        },
-      };
-      const emotionalScore: AnalysisResult = this.sentiment.analyze(text, options);
-      const sentimentModel = new SentimentDB();
-      sentimentModel.sentiment = emotionalScore.comparative;
-      sentimentModel.teamId = teamId;
-      sentimentModel.userId = userId;
-      sentimentModel.channelId = channelId;
-      return getRepository(SentimentDB).insert(sentimentModel);
-    }
+  public performSentimentAnalysis(userId: string, teamId: string, channelId: string, text: string): void {
+    this.analyzeSentimentAndStore(userId, teamId, channelId, text);
+  }
 
+  private async analyzeSentimentAndStore(
+    userId: string,
+    teamId: string,
+    channelId: string,
+    text: string,
+  ): Promise<InsertResult> {
+    const options: AnalysisOptions = {
+      extras: {
+        wtf: 0,
+        WTF: 0,
+      },
+    };
+    const emotionalScore: AnalysisResult = this.sentiment.analyze(text, options);
+    const sentimentModel = new SentimentDB();
+    sentimentModel.sentiment = emotionalScore.comparative;
+    sentimentModel.teamId = teamId;
+    sentimentModel.userId = userId;
+    sentimentModel.channelId = channelId;
+    return getRepository(SentimentDB).insert(sentimentModel);
+  }
 }

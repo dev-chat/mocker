@@ -247,7 +247,7 @@ export class AIService {
     const isAbleToParticipate = !(await this.redis.getHasParticipated(teamId, channelId));
     const messageCount = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
     const isEnoughMessages = messageCount >= 20;
-    const shouldParticipate = Math.random() < 0.25 && isAbleToParticipate && isEnoughMessages
+    const shouldParticipate = Math.random() < 0.25 && isAbleToParticipate && isEnoughMessages;
 
     if (!shouldParticipate) {
       return;
@@ -256,7 +256,7 @@ export class AIService {
     const messages = await this.historyService
       .getHistory({ team_id: teamId, channel_id: channelId } as SlashCommandRequest, false)
       .then((x) => this.formatHistory(x));
-      console.log('messages', messages);
+    console.log('messages', messages);
     return this.openai.chat.completions
       .create({
         model: this.gptModel,
@@ -279,13 +279,13 @@ export class AIService {
       })
       .then(async (x) => {
         await this.redis.setHasParticipated(teamId, channelId);
-        return this.convertAsterisks(x.choices[0].message?.content?.trim())
+        return this.convertAsterisks(x.choices[0].message?.content?.trim());
       })
       .then((result) => {
         if (result) {
           this.webService
-              .sendMessage(channelId, result)
-              .catch((e) => console.error('Error sending AI Participation message:', e));
+            .sendMessage(channelId, result)
+            .catch((e) => console.error('Error sending AI Participation message:', e));
         }
       })
       .catch(async (e) => {
@@ -323,7 +323,7 @@ export class AIService {
     }
   }
 
-  sendGeminiText(text: string | undefined, userId: string, teamId: string, channelId: string ): void {
+  sendGeminiText(text: string | undefined, userId: string, teamId: string, channelId: string): void {
     if (text) {
       const blocks: KnownBlock[] = [];
 
@@ -366,7 +366,7 @@ export class AIService {
     }
   }
 
-  sendGptText(text: string | undefined, userId: string, teamId: string, channelId: string ): void {
+  sendGptText(text: string | undefined, userId: string, teamId: string, channelId: string): void {
     if (text) {
       const blocks: KnownBlock[] = [];
 
@@ -410,6 +410,6 @@ export class AIService {
   }
 
   handle(request: EventRequest): void {
-    this.participate(request.team_id, request.event.channel)
+    this.participate(request.team_id, request.event.channel);
   }
 }

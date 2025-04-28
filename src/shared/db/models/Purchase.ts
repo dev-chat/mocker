@@ -8,17 +8,11 @@ export class Purchase {
   public id!: number;
 
   @Column()
-  @OneToMany(
-    () => SlackUser,
-    slackUser => slackUser.slackId,
-  )
+  @OneToMany(() => SlackUser, (slackUser) => slackUser.slackId)
   public user!: string;
 
   @Column()
-  @OneToMany(
-    () => Item,
-    item => item.id,
-  )
+  @OneToMany(() => Item, (item) => item.id)
   public item!: number;
 
   @Column()

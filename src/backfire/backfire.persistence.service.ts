@@ -24,7 +24,7 @@ export class BackFirePersistenceService {
 
     return getRepository(Backfire)
       .save(backfire)
-      .then(backfireFromDb => {
+      .then((backfireFromDb) => {
         this.redis.setValueWithExpire(
           this.getRedisKeyName(userId, teamId),
           backfireFromDb.id,
@@ -63,7 +63,7 @@ export class BackFirePersistenceService {
       await this.redis.expire(this.getRedisKeyName(userId, teamId, true), newTime);
       const backfireId = await this.redis
         .getValue(this.getRedisKeyName(userId, teamId))
-        .then(id => (id ? +id : undefined));
+        .then((id) => (id ? +id : undefined));
       if (backfireId) {
         this.incrementBackfireTime(backfireId, timeToAdd);
       }
@@ -72,7 +72,7 @@ export class BackFirePersistenceService {
   }
 
   public getBackfireByUserId(userId: string, teamId: string): Promise<number | undefined> {
-    return this.redis.getValue(this.getRedisKeyName(userId, teamId)).then(id => (id ? +id : undefined));
+    return this.redis.getValue(this.getRedisKeyName(userId, teamId)).then((id) => (id ? +id : undefined));
   }
 
   /**

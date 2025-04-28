@@ -29,11 +29,11 @@ export class CounterPersistenceService {
 
       await getRepository(Counter)
         .save(counter)
-        .then(counterFromDb => {
+        .then((counterFromDb) => {
           this.setCounterState(requestorId, counterFromDb.id, teamId);
           resolve();
         })
-        .catch(e => reject(`Error on saving counter to DB: ${e}`));
+        .catch((e) => reject(`Error on saving counter to DB: ${e}`));
     });
   }
 
@@ -83,7 +83,7 @@ export class CounterPersistenceService {
 
   public hasCounter(userId: string): boolean {
     let hasCounter = false;
-    this.counters.forEach(counter => {
+    this.counters.forEach((counter) => {
       if (counter.requestorId === userId) {
         hasCounter = true;
       }
@@ -129,7 +129,7 @@ export class CounterPersistenceService {
     clearTimeout(counter!.removalFn);
     if (isUsed && channel) {
       this.counters.delete(id);
-      await this.setCounteredToTrue(id, requestorId).catch(e => console.error('Error during setCounteredToTrue', e));
+      await this.setCounteredToTrue(id, requestorId).catch((e) => console.error('Error during setCounteredToTrue', e));
     } else {
       // This whole section is an anti-pattern. Fix this.
       this.counters.delete(id);
@@ -143,7 +143,7 @@ export class CounterPersistenceService {
             counter!.requestorId
           }> lives in fear and is now muzzled, has lost muzzle privileges for 24 hours and cannot use counter again for 24 hours. :flesh:`,
         )
-        .catch(e => console.error(e));
+        .catch((e) => console.error(e));
     }
   }
 
