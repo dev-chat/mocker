@@ -2,7 +2,7 @@ import express, { Router } from 'express';
 import { AIService } from './ai.service';
 import { WebService } from '../shared/services/web/web.service';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
-import { textMiddleware } from './middleware/textMiddleware';
+import { textMiddleware } from '../shared/middleware/textMiddleware';
 import { aiMiddleware } from './middleware/aiMiddleware';
 
 export const aiController: Router = express.Router();
