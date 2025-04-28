@@ -1,6 +1,11 @@
+import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
+import { SlackService } from '../shared/services/slack/slack.service';
 import { NATO_MAPPINGS, USER_ID_REGEX } from './constants';
 
 export class WalkieService {
+
+  slackService = SlackService.getInstance();
+
   public getUserId(user: string): string {
     if (!user) {
       return '';
@@ -14,9 +19,10 @@ export class WalkieService {
     return NATO_MAPPINGS[userId] || longUserId;
   }
 
-  public walkieTalkie(text: string): string {
+  public walkieTalkie(request: SlashCommandRequest): void {
+    const { text } = request;
     if (!text || text.length === 0) {
-      return text;
+      return;
     }
 
     const userIds = text.match(/[<]@\w+[ ]?\|[ ]?\w+[>]/gm);
@@ -28,6 +34,16 @@ export class WalkieService {
       }
     }
 
-    return `:walkietalkie: *chk* ${fullText} over. *chk* :walkietalkie:`;
+    const response: ChannelResponse = {
+      attachments: [
+        {
+          text: `:walkietalkie: *chk* ${fullText} over. *chk* :walkietalkie:`,
+        },
+      ],
+      response_type: 'in_channel',
+      text: `<@${request.user_id}>`,
+    };
+
+    this.slackService.sendResponse(request.response_url, response);
   }
 }
