@@ -1,27 +1,31 @@
-export class MockService {
-  public static getInstance(): MockService {
-    if (!MockService.instance) {
-      MockService.instance = new MockService();
-    }
-    return MockService.instance;
-  }
-  private static instance: MockService;
+import { ChannelResponse, SlashCommandRequest } from "../shared/models/slack/slack-models";
+import { SlackService } from "../shared/services/slack/slack.service";
 
-  public mock(input: string): string {
-    let output = '';
-    if (!input || input.length === 0) {
-      return input;
-    } else {
-      let shouldChangeCase = true;
-      for (const letter of input) {
-        if (letter === ' ') {
-          output += letter;
-        } else {
-          output += shouldChangeCase ? letter.toLowerCase() : letter.toUpperCase();
-          shouldChangeCase = !shouldChangeCase;
-        }
+export class MockService {
+  slackService = SlackService.getInstance();
+
+  public mock(request: SlashCommandRequest): void {
+    let mocked = '';
+    let shouldChangeCase = true;
+    for (const letter of request.text) {
+      if (letter === ' ') {
+        mocked += letter;
+      } else {
+        mocked += shouldChangeCase ? letter.toLowerCase() : letter.toUpperCase();
+        shouldChangeCase = !shouldChangeCase;
       }
-      return output;
     }
+
+    const response: ChannelResponse = {
+      attachments: [
+        {
+          text: mocked,
+        },
+      ],
+      response_type: 'in_channel',
+      text: `<@${request.user_id}>`,
+    };
+    
+    this.slackService.sendResponse(request.response_url, response);
   }
 }
