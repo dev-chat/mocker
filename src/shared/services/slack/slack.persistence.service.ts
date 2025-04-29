@@ -1,8 +1,8 @@
 import { getRepository } from 'typeorm';
-import { SlackChannel } from '../../shared/db/models/SlackChannel';
-import { SlackUser as SlackUserModel } from '../../shared/models/slack/slack-models';
-import { SlackUser as SlackUserFromDB } from '../../shared/db/models/SlackUser';
-import { RedisPersistenceService } from '../../shared/services/redis.persistence.service';
+import { SlackChannel } from '../../../shared/db/models/SlackChannel';
+import { SlackUser as SlackUserModel } from '../../../shared/models/slack/slack-models';
+import { SlackUser as SlackUserFromDB } from '../../../shared/db/models/SlackUser';
+import { RedisPersistenceService } from '../../../shared/services/redis.persistence.service';
 import { ConversationsListResponse } from '@slack/web-api';
 
 export class SlackPersistenceService {
@@ -53,7 +53,7 @@ export class SlackPersistenceService {
   getCachedUsers(): Promise<SlackUserFromDB[] | null> {
     return this.redis
       .getValue(this.getRedisKeyName())
-      .then((users) => (users ? (JSON.parse(users) as SlackUserFromDB[]) : null));
+      .then((users: string | null) => (users ? (JSON.parse(users) as SlackUserFromDB[]) : null));
   }
 
   // This sucks because TypeORM sucks. Time to consider removing this ORM.
