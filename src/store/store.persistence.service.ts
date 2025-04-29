@@ -2,7 +2,7 @@ import { getRepository, getManager } from 'typeorm';
 import { Item } from '../shared/db/models/Item';
 import { SlackUser } from '../shared/db/models/SlackUser';
 import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
-=import { Purchase } from '../shared/db/models/Purchase';
+import { Purchase } from '../shared/db/models/Purchase';
 import { UsedItem } from '../shared/db/models/UsedItem';
 import { ItemKill } from '../shared/db/models/ItemKill';
 import { getMsForSpecifiedRange } from '../muzzle/muzzle-utilities';
