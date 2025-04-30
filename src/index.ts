@@ -1,8 +1,8 @@
 import 'reflect-metadata'; // Necessary for TypeORM entities.
 import 'dotenv/config';
 import bodyParser from 'body-parser';
-import crypto from 'crypto';
-import express, { Application, Response, NextFunction, Request } from 'express';
+
+import express, { Application } from 'express';
 import { createConnection, getConnectionOptions } from 'typeorm';
 import { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
 import { aiController } from './ai/ai.controller';
@@ -21,6 +21,7 @@ import { storeController } from './store/store.controller';
 import { summaryController } from './summary/summary.controller';
 import { walkieController } from './walkie/walkie.controller';
 import { SlackService } from './shared/services/slack/slack.service';
+import { signatureVerificationMiddleware } from './shared/middleware/signatureVerification';
 
 const controllers = [
   aiController,
@@ -43,39 +44,6 @@ const controllers = [
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
-const signatureVerification = (req: Request, res: Response, next: NextFunction) => {
-  const body = (req as RequestWithRawBody).rawBody;
-  const timestamp = req.headers['x-slack-request-timestamp'];
-  const slackSignature = req.headers['x-slack-signature'];
-  const base = 'v0:' + timestamp + ':' + body;
-  const hashed: string =
-    'v0=' +
-    crypto
-      .createHmac('sha256', process.env.MUZZLE_BOT_SIGNING_SECRET as string)
-      .update(base)
-      .digest('hex');
-
-  if (
-    hashed === slackSignature ||
-    req.body.token === process.env.CLAPPER_TOKEN ||
-    req.body.token === process.env.MOCKER_TOKEN ||
-    req.body.token === process.env.DEFINE_TOKEN ||
-    req.body.token === process.env.BLIND_TOKEN ||
-    req.hostname === '127.0.0.1'
-  ) {
-    next();
-  } else {
-    console.error('Someone is hitting your service from outside of slack.');
-    console.error(req.ip);
-    console.error(req.ips);
-    console.error(req.headers);
-    console.error(req.body);
-    console.error(req);
-    res.send('Naughty, naughty...');
-    return;
-  }
-};
-
 app.use(
   bodyParser.urlencoded({
     extended: true,
@@ -91,7 +59,7 @@ app.use(
     },
   }),
 );
-app.use(signatureVerification);
+app.use(signatureVerificationMiddleware);
 app.use(controllers);
 
 const slackService = SlackService.getInstance();

@@ -45,7 +45,6 @@ export class EventService {
     this.muzzleService.handle(request);
     this.backfireService.handle(request);
     this.counterService.handle(request);
-    // placeholder for handleBotMEssage
     this.reactionService.handle(request);
     this.aiService.handle(request);
     this.suppressorService.handleBotMessage(request);
