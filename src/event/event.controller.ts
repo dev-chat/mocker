@@ -11,10 +11,8 @@ eventController.post('/handle', (req: Request, res: Response) => {
   if (req.body.challenge) {
     res.send({ challenge: req.body.challenge });
   } else {
-    console.time('respond-to-event');
     const request: EventRequest = req.body;
     eventService.handle(request);
-    console.timeEnd('respond-to-event');
     res.status(200).send();
   }
 });
