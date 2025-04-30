@@ -60,7 +60,7 @@ app.use(
   }),
 );
 app.use(signatureVerificationMiddleware);
-app.use(controllers);
+app.use('', controllers);
 
 const slackService = SlackService.getInstance();
 
