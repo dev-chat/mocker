@@ -86,10 +86,11 @@ export class CounterService extends SuppressorService {
     if (isMessage || isTopicChange) {
       const containsTag = this.slackService.containsTag(request.event.text);
       const userName = await this.slackService.getUserNameById(request.event.user, request.team_id);
-      if (!containsTag) {
+      const isCountered = await this.counterPersistenceService.isCounterMuzzled(request.event.user);
+      if (!containsTag && isCountered) {
         console.log(`${userName} | ${request.event.user} is counter-muzzled! Suppressing his voice...`);
         this.sendCounterMuzzledMessage(request.event.channel, request.event.user, request.event.text, request.event.ts);
-      } else if (containsTag && isTopicChange) {
+      } else if (containsTag && isTopicChange && isCountered) {
         console.log(`${userName} attempted to tag someone. Counter Muzzle increased by ${ABUSE_PENALTY_TIME}!`);
         this.counterPersistenceService.addCounterMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
         this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
