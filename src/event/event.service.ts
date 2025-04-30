@@ -40,6 +40,7 @@ export class EventService {
   }
 
   handle(request: EventRequest) {
+    console.log('Handling event:', request);
     this.handleEvent(request);
     this.slackService.handle(request);
     this.muzzleService.handle(request);
