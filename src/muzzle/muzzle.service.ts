@@ -158,6 +158,7 @@ export class MuzzleService extends SuppressorService {
       request.event.type === 'message.channels' ||
       request.event.type === 'message.app_home';
     const isTopicChange = !request.event.subtype || request.event.subtype === 'channel_topic';
+    
     this.handleImpersonation(request);
 
     if (isMessage || isTopicChange) {
