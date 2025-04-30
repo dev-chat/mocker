@@ -9,7 +9,7 @@ confessionController.use(textMiddleware);
 
 const confessionService = new ConfessionService();
 
-confessionController.post('/confess', async (req, res) => {
+confessionController.post('/', async (req, res) => {
   res.status(200).send();
   const { user_id, team_id, channel_id, text } = req.body;
   confessionService.confess(user_id, team_id, channel_id, text);

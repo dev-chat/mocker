@@ -14,7 +14,7 @@ aiController.use(aiMiddleware);
 const webService = WebService.getInstance();
 const aiService = new AIService();
 
-aiController.post('/ai/text', async (req, res) => {
+aiController.post('/text', async (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
   res.status(200).send('Processing your request. Please be patient...');
   aiService.generateText(user_id, team_id, channel_id, text).catch((e) => {
@@ -25,7 +25,7 @@ aiController.post('/ai/text', async (req, res) => {
   });
 });
 
-aiController.post('/ai/gemini/text', (req, res) => {
+aiController.post('/gemini/text', (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
   res.status(200).send('Processing your request. Please be patient...');
   aiService.generateGeminiText(user_id, team_id, channel_id, text).catch((e) => {
@@ -36,7 +36,7 @@ aiController.post('/ai/gemini/text', (req, res) => {
   });
 });
 
-aiController.post('/ai/image', (req, res) => {
+aiController.post('/image', (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
   res.status(200).send('Processing your request. Please be patient...');
   aiService.generateImage(user_id, team_id, text).catch((e) => {
@@ -47,7 +47,7 @@ aiController.post('/ai/image', (req, res) => {
   });
 });
 
-aiController.post('/summary/prompt-with-history', async (req, res) => {
+aiController.post('/prompt-with-history', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   res.status(200).send('Processing your request. Please be patient...');
   aiService.promptWithHistory(request);

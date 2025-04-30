@@ -6,7 +6,7 @@ export const eventController: Router = express.Router();
 
 const eventService = new EventService();
 
-eventController.post('/muzzle/handle', (req: Request, res: Response) => {
+eventController.post('/handle', (req: Request, res: Response) => {
   console.log('Event controller received request:', req.body);
   if (req.body.challenge) {
     res.send({ challenge: req.body.challenge });

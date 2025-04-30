@@ -10,13 +10,13 @@ const suppressorService: SuppressorService = new SuppressorService();
 const storeService: StoreService = new StoreService();
 const itemService: ItemService = new ItemService();
 
-storeController.post('/store', async (req, res) => {
+storeController.post('/', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   const storeItems: string = await storeService.listItems(request.user_id, request.team_id);
   res.status(200).send(storeItems);
 });
 
-storeController.post('/store/buy', async (req, res) => {
+storeController.post('/buy', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   const textArgs = request.text.split(' ');
   let itemId: string | undefined;

@@ -7,7 +7,7 @@ export const reactionController: Router = express.Router();
 reactionController.use(suppressedMiddleware);
 const reportService = new ReactionReportService();
 
-reactionController.post('/rep/get', async (req, res) => {
+reactionController.post('/get', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   const repValue = await reportService.getRep(request.user_id, request.team_id);
   res.send(repValue);

@@ -18,7 +18,7 @@ const slackService = SlackService.getInstance();
 const webService = WebService.getInstance();
 const reportService = new MuzzleReportService();
 
-muzzleController.post('/muzzle', async (req: Request, res: Response) => {
+muzzleController.post('/', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
   const userId = slackService.getUserId(request.text);
   if (userId && request.user_id === userId) {
@@ -38,7 +38,7 @@ muzzleController.post('/muzzle', async (req: Request, res: Response) => {
   }
 });
 
-muzzleController.post('/muzzle/stats', async (req: Request, res: Response) => {
+muzzleController.post('/stats', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
   if (request.text.split(' ').length > 1) {
     res.send(

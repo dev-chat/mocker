@@ -10,7 +10,7 @@ counterController.use(suppressedMiddleware);
 const counterPersistenceService = CounterPersistenceService.getInstance();
 const counterService = new CounterService();
 
-counterController.post('/counter', async (req, res) => {
+counterController.post('/', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   if (!counterPersistenceService.canCounter(request.user_id)) {
     res.send('You have lost counter privileges and cannot counter right now.');

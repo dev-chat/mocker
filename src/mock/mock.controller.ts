@@ -11,7 +11,7 @@ mockController.use(textMiddleware);
 
 const mockService = new MockService();
 
-mockController.post('/mock', async (req, res) => {
+mockController.post('/', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   mockService.mock(request);
   res.status(200).send();

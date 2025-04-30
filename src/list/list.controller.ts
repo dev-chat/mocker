@@ -10,19 +10,19 @@ listController.use(textMiddleware);
 
 const listService = new ListService();
 
-listController.post('/list/retrieve', async (req, res) => {
+listController.post('/retrieve', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   listService.getListReport(request);
   res.status(200).send();
 });
 
-listController.post('/list/add', async (req, res) => {
+listController.post('/add', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   listService.list(request);
   res.status(200).send();
 });
 
-listController.post('/list/remove', async (req, res) => {
+listController.post('/remove', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   listService.remove(request);
   res.status(200).send();

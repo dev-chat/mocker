@@ -23,23 +23,7 @@ import { walkieController } from './walkie/walkie.controller';
 import { SlackService } from './shared/services/slack/slack.service';
 import { signatureVerificationMiddleware } from './shared/middleware/signatureVerification';
 
-const controllers = [
-  aiController,
-  clapController,
-  confessionController,
-  counterController,
-  defineController,
-  eventController,
-  healthController,
-  listController,
-  mockController,
-  muzzleController,
-  quoteController,
-  reactionController,
-  storeController,
-  summaryController,
-  walkieController,
-];
+
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -60,8 +44,21 @@ app.use(
   }),
 );
 app.use(signatureVerificationMiddleware);
-app.use('', controllers);
-
+app.use('/ai', aiController);
+app.use('/clap', clapController)
+app.use('/confess', confessionController)
+app.use('/counter', counterController)
+app.use('/define', defineController)
+app.use('/event', eventController)
+app.use('/health', healthController)
+app.use('/list', listController)
+app.use('/mock', mockController)
+app.use('/muzzle', muzzleController)
+app.use('/quote', quoteController)
+app.use('/rep', reactionController)
+app.use('/store', storeController)
+app.use('/summary', summaryController)
+app.use('/walkie', walkieController)
 const slackService = SlackService.getInstance();
 
 const connectToDb = async (): Promise<void> => {
