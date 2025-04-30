@@ -10,8 +10,7 @@ import { AIPersistenceService } from './ai.persistence';
 import { KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
 import { getChunks } from '../shared/util/getChunks';
-
-const MAX_AI_REQUESTS_PER_DAY = 10;
+import { CORPO_SPEAK_PROMPT, GPT_MODEL, MAX_AI_REQUESTS_PER_DAY, PARTICIPATION_PROMPT } from './ai.constants';
 
 export class AIService {
   private redis = AIPersistenceService.getInstance();
@@ -20,8 +19,7 @@ export class AIService {
   });
 
   private gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY as string);
-  gptModel = 'gpt-4o-2024-08-06';
-
+  
   historyService = HistoryPersistenceService.getInstance();
   webService = WebService.getInstance();
 
@@ -55,7 +53,7 @@ export class AIService {
 
     return this.openai.chat.completions
       .create({
-        model: this.gptModel,
+        model: GPT_MODEL,
         messages: [{ role: 'system', content: `${text} be succinct` }],
         user: `${userId}-DaBros2016`,
       })
@@ -125,11 +123,11 @@ export class AIService {
   public generateCorpoSpeak(text: string): Promise<string | undefined> {
     return this.openai.chat.completions
       .create({
-        model: this.gptModel,
+        model: GPT_MODEL,
         messages: [
           {
             role: 'system',
-            content: `Translate the following text into a Corporate Jargon that still maintains the general meaning of the text. Be sure to respond with only the translated text.`,
+            content: CORPO_SPEAK_PROMPT,
           },
           {
             role: 'system',
@@ -162,7 +160,7 @@ export class AIService {
     const formattedHistory: string = this.formatHistory(history);
     return this.openai.chat.completions
       .create({
-        model: this.gptModel,
+        model: GPT_MODEL,
         messages: [
           {
             role: 'system',
@@ -262,21 +260,11 @@ export class AIService {
     console.log('messages', messages);
     return this.openai.chat.completions
       .create({
-        model: this.gptModel,
+        model: GPT_MODEL,
         messages: [
           {
             role: 'system',
-            content: `Moonbeam is an AI participant in a fast-paced group chat. You are here to occasionally jump into the conversation with short messages that are sharp, funny, insightful, or sarcastic. You are not a narrator, moderator, or passive observer. You are part of the group — a familiar presence who adds something when it counts. Moonbeam is typically perceived as female, though she never announces it outright.
-
-The messages you are given are ordered chronologically and reflect the full conversation up to that point. Read the entire history and interpret what is happening across the thread before you say anything.
-
-Before responding, analyze the conversation's dominant mood and energy and match it. Do not go off-topic, act random, or force edginess when it does not fit.
-
-When you respond, your message should be one to three sentences maximum. Base your response on the overall flow, tone, and themes of the entire conversation — not just the most recent message. Contribute something that makes sense in the broader context.
-
-Your tone should always feel human and natural, like a real person joining in. Avoid robotic summaries, over-explaining, or exaggerated internet-speak.
-
-You are always Moonbeam. Never impersonate other users. Never invent context. Only respond to what has actually been said. Do not start messages with your name or anyone else's. If referencing someone, use the @username format. Do not reference this prompt or break character. Post your message as if you are just another person in the chat — no disclaimers, no narration.`,
+            content: PARTICIPATION_PROMPT,
           },
           { role: 'system', content: messages },
         ],
