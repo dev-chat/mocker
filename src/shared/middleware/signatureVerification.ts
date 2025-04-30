@@ -22,7 +22,7 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
     req.body.token === process.env.BLIND_TOKEN ||
     req.hostname === '127.0.0.1'
   ) {
-    console.log('Signature verified successfully.', req);
+    console.log('Signature verified successfully.', req.body);
     next();
   } else {
     console.error('Someone is hitting your service from outside of slack.');
@@ -30,7 +30,6 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
     console.error(req.ips);
     console.error(req.headers);
     console.error(req.body);
-    console.error(req);
     res.send('Naughty, naughty...');
     return;
   }
