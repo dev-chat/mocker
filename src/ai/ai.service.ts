@@ -43,10 +43,6 @@ export class AIService {
     return this.redis.getDailyRequests(userId, teamId).then((x) => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
   }
 
-  public isAtMaxDailySummaries(userId: string, teamId: string): Promise<boolean> {
-    return this.redis.getHasUsedSummary(userId, teamId).then((x) => !!x);
-  }
-
   public async generateText(userId: string, teamId: string, channelId: string, text: string): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
@@ -257,7 +253,6 @@ export class AIService {
     const messages = await this.historyService
       .getHistory({ team_id: teamId, channel_id: channelId } as SlashCommandRequest, false)
       .then((x) => this.formatHistory(x));
-    console.log('messages', messages);
     return this.openai.chat.completions
       .create({
         model: GPT_MODEL,
