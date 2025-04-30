@@ -22,6 +22,7 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
     req.body.token === process.env.BLIND_TOKEN ||
     req.hostname === '127.0.0.1'
   ) {
+    console.log('Signature verified successfully.', req);
     next();
   } else {
     console.error('Someone is hitting your service from outside of slack.');
