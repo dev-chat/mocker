@@ -194,7 +194,7 @@ function logHistory(request: EventRequest): Promise<InsertResult | undefined> {
 }
 
 // Change route to /event/handle instead.
-eventController.post('/muzzle/handle', async (req: Request, res: Response) => {
+eventController.post('/event/handle', async (req: Request, res: Response) => {
   if (req.body.challenge) {
     res.send({ challenge: req.body.challenge });
   } else {
