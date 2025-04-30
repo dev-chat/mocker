@@ -22,6 +22,7 @@ import { summaryController } from './summary/summary.controller';
 import { walkieController } from './walkie/walkie.controller';
 import { SlackService } from './shared/services/slack/slack.service';
 import { signatureVerificationMiddleware } from './shared/middleware/signatureVerification';
+import { WebService } from './shared/services/web/web.service';
 
 
 
@@ -59,9 +60,11 @@ app.use('/rep', reactionController)
 app.use('/store', storeController)
 app.use('/summary', summaryController)
 app.use('/walkie', walkieController)
-const slackService = SlackService.getInstance();
 
-const connectToDb = async (): Promise<void> => {
+const slackService = SlackService.getInstance();
+const webService = WebService.getInstance();
+
+const connectToDb = async (): Promise<boolean> => {
   try {
     const options = await getConnectionOptions();
     const overrideOptions = {
@@ -69,23 +72,28 @@ const connectToDb = async (): Promise<void> => {
       charset: 'utf8mb4',
       synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
     };
-    createConnection(overrideOptions)
+    return createConnection(overrideOptions)
       .then((connection) => {
         if (connection.isConnected) {
           slackService.getAllUsers();
           slackService.getAndSaveAllChannels();
           console.log(`Connected to MySQL DB: ${options.database}`);
+          return true;
         } else {
           throw Error('Unable to connect to database');
         }
       })
-      .catch((e) => console.error(e));
+      .catch((e) => {
+        console.error(e)
+        return false;
+      });
   } catch (e) {
     console.error(e);
+    return false;
   }
 };
 
-const checkForEnvVariables = (): void => {
+const checkForEnvVariables = async (): void => {
   if (!(process.env.MUZZLE_BOT_TOKEN && process.env.MUZZLE_BOT_USER_TOKEN)) {
     throw new Error('Missing MUZZLE_BOT_TOKEN or MUZZLE_BOT_USER_TOKEN environment variables.');
   } else if (
@@ -119,5 +127,17 @@ const checkForEnvVariables = (): void => {
 app.listen(PORT, (e?: Error) => {
   e ? console.error(e) : console.log(`Listening on port ${PORT || 3000}`);
   checkForEnvVariables();
-  connectToDb();
+  connectToDb().then((connected) => {
+    if (!connected) {
+      console.error('Failed to connect to the database. Exiting application.');
+      webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Muzzle is not operational.');
+      process.exit(1);
+    } else {
+      webService.sendMessage('#muzzlefeedback', 'A new version of Muzzle has been deployed.');
+    }
+  }).catch((error) => {
+    console.error('Error during database connection:', error);
+    webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Muzzle is not operational.');
+    process.exit(1);
+  });
 });
