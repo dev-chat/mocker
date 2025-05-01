@@ -235,7 +235,9 @@ export class SuppressorService {
           .catch(async (e) => {
             this.logger.error(e);
             const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
-            await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => this.logger.error(e));
+            await this.webService
+              .sendMessage(channel, `<@${userId}> says "${message}"`)
+              .catch((e) => this.logger.error(e));
             return null;
           });
       } else {
@@ -243,12 +245,16 @@ export class SuppressorService {
           .translate(textWithFallbackReplacments)
           .then(async (message) => {
             await this.logTranslateSuppression(text, dbId, persistenceService);
-            await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => this.logger.error(e));
+            await this.webService
+              .sendMessage(channel, `<@${userId}> says "${message}"`)
+              .catch((e) => this.logger.error(e));
           })
           .catch(async (e) => {
             this.logger.error(e);
             const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
-            await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => this.logger.error(e));
+            await this.webService
+              .sendMessage(channel, `<@${userId}> says "${message}"`)
+              .catch((e) => this.logger.error(e));
             return null;
           });
       }

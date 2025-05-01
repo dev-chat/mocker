@@ -10,7 +10,7 @@ counterController.use(suppressedMiddleware);
 
 const counterPersistenceService = CounterPersistenceService.getInstance();
 const counterService = new CounterService();
-const counterLogger = logger.child({ module: 'CounterController' }); 
+const counterLogger = logger.child({ module: 'CounterController' });
 
 counterController.post('/', async (req, res) => {
   const request: SlashCommandRequest = req.body;
@@ -22,7 +22,7 @@ counterController.post('/', async (req, res) => {
       .then((value) => res.send(value))
       .catch((e) => {
         counterLogger.error(e);
-        res.send(e)
+        res.send(e);
       });
   }
 });

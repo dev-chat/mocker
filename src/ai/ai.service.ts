@@ -20,7 +20,7 @@ export class AIService {
   });
 
   private gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY as string);
-  
+
   historyService = new HistoryPersistenceService();
   webService = new WebService();
   aiServiceLogger = logger.child({ module: 'AIService' });
@@ -75,7 +75,6 @@ export class AIService {
     const filename = `${uuidv4()}.png`;
     const filePath = path.join(dir, filename);
     const base64Data = base64Image.replace(/^data:image\/png;base64,/, '');
-    console.log('attempting to write image to disk at ', filePath);
     return new Promise((resolve, reject) =>
       fs.writeFile(filePath, base64Data, 'base64', (err) => {
         if (err) {

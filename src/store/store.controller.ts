@@ -84,7 +84,6 @@ storeController.post('/buy', async (req, res) => {
         return undefined;
       });
 
-
     if (!purchaseReceipt) {
       return;
     }

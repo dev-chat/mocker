@@ -8,9 +8,7 @@ export const suppressedMiddleware = async (req: Request, res: Response, next: Ne
   const suppressorService = new SuppressorService();
   const isSuppressed = await suppressorService.isSuppressed(user_id, team_id);
   if (isSuppressed) {
-    suppressedMiddlewareLogger.info(
-      `User ${user_id} from team ${team_id} is currently suppressed. Rejecting request.`,
-    );
+    suppressedMiddlewareLogger.info(`User ${user_id} from team ${team_id} is currently suppressed. Rejecting request.`);
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
     next();

@@ -8,7 +8,6 @@ export class ConfessionService {
   logger = logger.child({ module: 'ConfessionService' });
 
   public async confess(requestorId: string, teamId: string, channelId: string, confession: string): Promise<void> {
-    console.log(`${requestorId} - ${teamId} attempted to confess ${confession} in ${channelId}`);
     this.webService
       .sendMessage(channelId, `:chicken: <@${requestorId}> :chicken: says: \`${confession}\``)
       .catch((e) => this.logger.error(e));

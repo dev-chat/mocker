@@ -14,7 +14,7 @@ interface ItemWithPrice extends Item {
 export class StorePersistenceService {
   private redisService: RedisPersistenceService = new RedisPersistenceService();
   logger = logger.child({ module: 'StorePersistenceService' });
-  
+
   async getItems(teamId: string): Promise<ItemWithPrice[]> {
     const items = await getRepository(Item).find();
     const itemsWithPrices = await Promise.all(

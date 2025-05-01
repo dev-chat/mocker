@@ -5,10 +5,12 @@ import { ListUser } from './ListUser.model';
 import { WebService } from '../shared/services/web/web.service';
 import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ListPersistenceService } from './list.persistence.service';
+import { logger } from '../shared/logger/logger';
 
 export class ListService extends ReportService {
   listPersistenceService = new ListPersistenceService();
   webService = new WebService();
+  logger = logger.child({ module: 'ListService' });
 
   public async getListReport(request: SlashCommandRequest): Promise<void> {
     const query = `SELECT u.name, l.text FROM list AS l INNER JOIN slack_user AS u ON u.slackId=l.requestorId WHERE l.channelId='${request.channel_id}';`;
@@ -49,7 +51,7 @@ ${Table.print(reportWithoutDate)}
         this.slackService.sendResponse(request.response_url, response);
       })
       .catch((e) => {
-        console.error(e);
+        this.logger.error(e);
         const errorResponse = {
           response_type: 'ephemeral',
           text: 'An error occurred while trying to remove the item from the list.',

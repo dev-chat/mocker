@@ -48,7 +48,9 @@ export class MuzzleService extends SuppressorService {
         this.counterService.removeCounter(counter, true, userId, requestorId, channel, teamId);
         reject(`You've been countered! Better luck next time...`);
       } else if (shouldBackFire) {
-        this.logger.info(`Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`);
+        this.logger.info(
+          `Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`,
+        );
         const timeToMuzzle =
           getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(requestorId, teamId));
         await this.backfirePersistenceService
@@ -157,7 +159,7 @@ export class MuzzleService extends SuppressorService {
       request.event.type === 'message.channels' ||
       request.event.type === 'message.app_home';
     const isTopicChange = !request.event.subtype || request.event.subtype === 'channel_topic';
-    
+
     this.handleImpersonation(request);
 
     if (isMessage || isTopicChange) {

@@ -25,8 +25,6 @@ import { signatureVerificationMiddleware } from './shared/middleware/signatureVe
 import { WebService } from './shared/services/web/web.service';
 import { logger } from './shared/logger/logger';
 
-
-
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
@@ -47,20 +45,20 @@ app.use(
 );
 app.use(signatureVerificationMiddleware);
 app.use('/ai', aiController);
-app.use('/clap', clapController)
-app.use('/confess', confessionController)
-app.use('/counter', counterController)
-app.use('/define', defineController)
-app.use('/event', eventController)
-app.use('/health', healthController)
-app.use('/list', listController)
-app.use('/mock', mockController)
-app.use('/muzzle', muzzleController)
-app.use('/quote', quoteController)
-app.use('/rep', reactionController)
-app.use('/store', storeController)
-app.use('/summary', summaryController)
-app.use('/walkie', walkieController)
+app.use('/clap', clapController);
+app.use('/confess', confessionController);
+app.use('/counter', counterController);
+app.use('/define', defineController);
+app.use('/event', eventController);
+app.use('/health', healthController);
+app.use('/list', listController);
+app.use('/mock', mockController);
+app.use('/muzzle', muzzleController);
+app.use('/quote', quoteController);
+app.use('/rep', reactionController);
+app.use('/store', storeController);
+app.use('/summary', summaryController);
+app.use('/walkie', walkieController);
 
 const slackService = new SlackService();
 const webService = new WebService();
@@ -86,7 +84,7 @@ const connectToDb = async (): Promise<boolean> => {
         }
       })
       .catch((e) => {
-        indexLogger.error(e)
+        indexLogger.error(e);
         return false;
       });
   } catch (e) {
@@ -129,17 +127,19 @@ const checkForEnvVariables = (): void => {
 app.listen(PORT, (e?: Error) => {
   e ? indexLogger.error(e) : indexLogger.info(`Listening on port ${PORT || 3000}`);
   checkForEnvVariables();
-  connectToDb().then((connected) => {
-    if (!connected) {
-      indexLogger.error('Failed to connect to the database. Exiting application.');
+  connectToDb()
+    .then((connected) => {
+      if (!connected) {
+        indexLogger.error('Failed to connect to the database. Exiting application.');
+        webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Muzzle is not operational.');
+        process.exit(1);
+      } else {
+        webService.sendMessage('#muzzlefeedback', 'A new version of Muzzle has been deployed.');
+      }
+    })
+    .catch((error) => {
+      indexLogger.error('Error during database connection:', error);
       webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Muzzle is not operational.');
       process.exit(1);
-    } else {
-      webService.sendMessage('#muzzlefeedback', 'A new version of Muzzle has been deployed.');
-    }
-  }).catch((error) => {
-    indexLogger.error('Error during database connection:', error);
-    webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Muzzle is not operational.');
-    process.exit(1);
-  });
+    });
 });

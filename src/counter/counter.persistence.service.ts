@@ -37,7 +37,7 @@ export class CounterPersistenceService {
         })
         .catch((e) => {
           this.logger.error(`Error on saving counter to DB: ${e}`);
-          reject(`Error on saving counter to DB: ${e}`)
+          reject(`Error on saving counter to DB: ${e}`);
         });
     });
   }
@@ -134,7 +134,9 @@ export class CounterPersistenceService {
     clearTimeout(counter!.removalFn);
     if (isUsed && channel) {
       this.counters.delete(id);
-      await this.setCounteredToTrue(id, requestorId).catch((e) => this.logger.error('Error during setCounteredToTrue', e));
+      await this.setCounteredToTrue(id, requestorId).catch((e) =>
+        this.logger.error('Error during setCounteredToTrue', e),
+      );
     } else {
       // This whole section is an anti-pattern. Fix this.
       this.counters.delete(id);

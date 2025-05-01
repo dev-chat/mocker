@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from "express";
-import { RequestWithRawBody } from "../models/express/RequestWithRawBody";
+import { Request, Response, NextFunction } from 'express';
+import { RequestWithRawBody } from '../models/express/RequestWithRawBody';
 import crypto from 'crypto';
-import { logger } from "../logger/logger";
+import { logger } from '../logger/logger';
 
 const midLogger = logger.child({ module: 'SignatureVerificationMiddleware' });
 export const signatureVerificationMiddleware = (req: Request, res: Response, next: NextFunction) => {

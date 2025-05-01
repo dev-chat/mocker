@@ -1,4 +1,4 @@
-import { Timeout } from "../../../muzzle/muzzle-utilities";
+import { Timeout } from '../../../muzzle/muzzle-utilities';
 
 export interface CounterItem {
   requestorId: string;

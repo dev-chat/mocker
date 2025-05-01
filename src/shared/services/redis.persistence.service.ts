@@ -1,9 +1,10 @@
 import { Redis } from 'ioredis';
+import { logger } from '../logger/logger';
 
 export class RedisPersistenceService {
-
+  logger = logger.child({ module: 'RedisPersistenceService' });
   constructor() {
-    RedisPersistenceService.redis.on('connect', () => console.log('Successfully connected to Redis'));
+    RedisPersistenceService.redis.on('connect', () => this.logger.info('Successfully connected to Redis'));
   }
   private static redis: Redis = !!process.env.REDIS_CONTAINER_NAME
     ? new Redis(process.env.REDIS_CONTAINER_NAME as string)
