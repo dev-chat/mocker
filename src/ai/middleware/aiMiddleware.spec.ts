@@ -25,7 +25,7 @@ describe('aiMiddleware', () => {
     next = jest.fn();
   });
 
-  it('should send a message if the user has reached max requests without a Moon Token', async () => {
+  it('should not call next() if the user has reached max requests without a Moon Token', async () => {
     const isItemActiveSpy = jest.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(false);
     const isAlreadyAtMaxRequestsSpy = jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(true);
     const isAlreadyInFlightSpy = jest.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(false);
@@ -41,7 +41,7 @@ describe('aiMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('should send a message if the user has an in-flight request', async () => {
+  it('should not call next() if the user has an in-flight request', async () => {
     jest.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(false);
     jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(false);
     const isAlreadyInFlightSpy = jest.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(true);
@@ -55,7 +55,7 @@ describe('aiMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('should remove the Moon Token effect if the user has reached max requests but has a Moon Token', async () => {
+  it('should remove the Moon Token effect if the user has reached max requests but has a Moon Token, and then call next()', async () => {
     const isItemActiveSpy = jest.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(true);
     const removeEffectSpy = jest.spyOn(StoreService.prototype, 'removeEffect').mockResolvedValue(1);
     jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(true);
