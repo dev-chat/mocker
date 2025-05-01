@@ -1,11 +1,13 @@
-import winston from 'winston';
+import { createLogger, format, transports } from 'winston';
+const { combine, timestamp, prettyPrint } = format;
 
-export const logger = winston.createLogger({
+export const logger = createLogger({
   level: 'info',
-  format: winston.format.json(),
+  format: combine(timestamp(), prettyPrint()),
   defaultMeta: {},
   transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
+    new transports.Console(),
+    new transports.File({ filename: 'error.log', level: 'error' }),
+    new transports.File({ filename: 'combined.log' }),
   ],
 });
