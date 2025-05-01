@@ -112,3 +112,93 @@
   level: 'info',
   timestamp: '2025-05-01T12:40:00.012Z'
 }
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has reached max requests without a Moon Token.',
+  level: 'info',
+  timestamp: '2025-05-01T12:40:15.567Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has an in-flight request.',
+  level: 'info',
+  timestamp: '2025-05-01T12:40:15.574Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has reached max requests but has a Moon Token.',
+  level: 'info',
+  timestamp: '2025-05-01T12:40:15.575Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has reached max requests without a Moon Token.',
+  level: 'info',
+  timestamp: '2025-05-01T12:41:34.290Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has an in-flight request.',
+  level: 'info',
+  timestamp: '2025-05-01T12:41:34.295Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has reached max requests but has a Moon Token.',
+  level: 'info',
+  timestamp: '2025-05-01T12:41:34.296Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has reached max requests without a Moon Token.',
+  level: 'info',
+  timestamp: '2025-05-01T12:47:21.780Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has an in-flight request.',
+  level: 'info',
+  timestamp: '2025-05-01T12:47:21.784Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has reached max requests but has a Moon Token.',
+  level: 'info',
+  timestamp: '2025-05-01T12:47:21.786Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has reached max requests without a Moon Token.',
+  level: 'info',
+  timestamp: '2025-05-01T12:48:48.192Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has an in-flight request.',
+  level: 'info',
+  timestamp: '2025-05-01T12:48:48.200Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has reached max requests but has a Moon Token.',
+  level: 'info',
+  timestamp: '2025-05-01T12:48:48.201Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has reached max requests without a Moon Token.',
+  level: 'info',
+  timestamp: '2025-05-01T12:48:59.201Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has an in-flight request.',
+  level: 'info',
+  timestamp: '2025-05-01T12:48:59.209Z'
+}
+{
+  module: 'AIMiddleware',
+  message: 'User user123 from team team123 has reached max requests but has a Moon Token.',
+  level: 'info',
+  timestamp: '2025-05-01T12:48:59.210Z'
+}

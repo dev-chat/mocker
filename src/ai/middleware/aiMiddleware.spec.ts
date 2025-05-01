@@ -4,6 +4,7 @@ import { StoreService } from '../../store/store.service';
 import { AIService } from '../ai.service';
 
 jest.mock('openai');
+jest.mock('../ai.persistence');
 
 describe('aiMiddleware', () => {
   let req: Partial<Request>;
