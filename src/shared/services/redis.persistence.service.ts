@@ -4,7 +4,7 @@ import { logger } from '../logger/logger';
 export class RedisPersistenceService {
   public static getInstance(): RedisPersistenceService {
     if (!RedisPersistenceService.instance) {
-      RedisPersistenceService.instance = RedisPersistenceService.getInstance();
+      RedisPersistenceService.instance = new RedisPersistenceService();
     }
     return RedisPersistenceService.instance;
   }
