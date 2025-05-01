@@ -8,7 +8,7 @@ const storeService = new StoreService();
 const MOON_TOKEN_ITEM_ID = 4;
 const aiMiddlewareLogger = logger.child({ module: 'AIMiddleware' });
 
-export const aiMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+export const aiMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { user_id, team_id } = req.body;
   const hasAvailableMoonToken = await storeService.isItemActive(user_id, team_id, MOON_TOKEN_ITEM_ID);
   const isAlreadyAtMaxRequests = await aiService.isAlreadyAtMaxRequests(user_id, team_id);
@@ -24,6 +24,7 @@ export const aiMiddleware = async (req: Request, res: Response, next: NextFuncti
   } else if (isAlreadyAtMaxRequests && hasAvailableMoonToken) {
     aiMiddlewareLogger.info(`User ${user_id} from team ${team_id} has reached max requests but has a Moon Token.`);
     storeService.removeEffect(user_id, team_id, 4);
+    next();
   } else {
     next();
   }
