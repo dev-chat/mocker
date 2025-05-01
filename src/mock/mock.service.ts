@@ -2,7 +2,7 @@ import { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/sla
 import { SlackService } from '../shared/services/slack/slack.service';
 
 export class MockService {
-  slackService = SlackService.getInstance();
+  slackService = new SlackService();
 
   public mock(request: SlashCommandRequest): void {
     let mocked = '';

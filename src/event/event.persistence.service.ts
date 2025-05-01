@@ -6,15 +6,6 @@ import Sentiment, { AnalysisOptions, AnalysisResult } from 'sentiment';
 import { Sentiment as SentimentDB } from '../shared/db/models/Sentiment';
 
 export class EventPersistenceService {
-  public static getInstance(): EventPersistenceService {
-    if (!EventPersistenceService.instance) {
-      EventPersistenceService.instance = new EventPersistenceService();
-    }
-    return EventPersistenceService.instance;
-  }
-
-  private static instance: EventPersistenceService;
-
   sentiment = new Sentiment();
 
   async logActivity(request: EventRequest) {

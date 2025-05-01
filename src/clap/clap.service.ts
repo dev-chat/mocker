@@ -2,7 +2,7 @@ import { ChannelResponse } from '../shared/models/slack/slack-models';
 import { SlackService } from '../shared/services/slack/slack.service';
 
 export class ClapService {
-  slackService = SlackService.getInstance();
+  slackService = new SlackService();
 
   public clap(text: string, userId: string, responseUrl: string): void {
     if (text) {

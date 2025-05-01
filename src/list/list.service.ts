@@ -7,8 +7,8 @@ import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ListPersistenceService } from './list.persistence.service';
 
 export class ListService extends ReportService {
-  listPersistenceService = ListPersistenceService.getInstance();
-  webService = WebService.getInstance();
+  listPersistenceService = new ListPersistenceService();
+  webService = new WebService();
 
   public async getListReport(request: SlashCommandRequest): Promise<void> {
     const query = `SELECT u.name, l.text FROM list AS l INNER JOIN slack_user AS u ON u.slackId=l.requestorId WHERE l.channelId='${request.channel_id}';`;

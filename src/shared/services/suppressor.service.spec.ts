@@ -11,7 +11,7 @@ describe('SuppressorService', () => {
 
   beforeEach(() => {
     suppressorService = new SuppressorService();
-    slackInstance = SlackService.getInstance();
+    slackInstance = new SlackService();
     jest.useFakeTimers();
   });
 

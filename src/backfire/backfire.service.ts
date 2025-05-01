@@ -1,9 +1,12 @@
 import { ABUSE_PENALTY_TIME, MAX_SUPPRESSIONS } from '../muzzle/constants';
 import { getTimeString } from '../muzzle/muzzle-utilities';
+import { logger } from '../shared/logger/logger';
 import { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 
 export class BackfireService extends SuppressorService {
+  logger = logger.child({ module: 'BackfireService' });
+
   public addBackfireTime(userId: string, teamId: string, time: number): void {
     this.backfirePersistenceService.addBackfireTime(userId, teamId, time);
   }
@@ -48,9 +51,7 @@ export class BackfireService extends SuppressorService {
       const isBackfired = await this.backfirePersistenceService.isBackfire(request.event.user, request.team_id);
       if (isBackfired) {
         const containsTag = this.slackService.containsTag(request.event.text);
-        const userName = await this.slackService.getUserNameById(request.event.user, request.team_id);
         if (!containsTag) {
-          console.log(`${userName} | ${request.event.user} is backfired! Suppressing his voice...`);
           this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
           this.sendBackfiredMessage(
             request.event.channel,
@@ -62,7 +63,6 @@ export class BackfireService extends SuppressorService {
         } else if (containsTag && isTopicChange) {
           const backfireId = await this.getBackfire(request.event.user, request.team_id);
           if (backfireId) {
-            console.log(`${userName} attempted to tag someone. Backfire increased by ${ABUSE_PENALTY_TIME}!`);
             this.addBackfireTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
             this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
             this.trackDeletedMessage(backfireId, request.event.text);
@@ -73,9 +73,9 @@ export class BackfireService extends SuppressorService {
                   ABUSE_PENALTY_TIME,
                 )} :rotating_light:`,
               )
-              .catch((e) => console.error(e));
+              .catch((e) => this.logger.error(e));
           } else {
-            console.log(`Unable to find backfireId for ${request.event.user}`);
+            this.logger.warn(`Unable to find backfireId for ${request.event.user}`);
           }
         }
       }

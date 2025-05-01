@@ -8,15 +8,6 @@ import { SlackUser } from '../shared/db/models/SlackUser';
 import { ReactionByUser } from '../shared/models/reaction/ReactionByUser.model';
 import { Event } from '../shared/models/slack/slack-models';
 export class ReactionPersistenceService {
-  public static getInstance(): ReactionPersistenceService {
-    if (!ReactionPersistenceService.instance) {
-      ReactionPersistenceService.instance = new ReactionPersistenceService();
-    }
-    return ReactionPersistenceService.instance;
-  }
-
-  private static instance: ReactionPersistenceService;
-
   public saveReaction(event: Event, value: number, teamId: string): Promise<Reaction> {
     const reaction = new Reaction();
     reaction.affectedUser = event.item_user;
@@ -59,10 +50,6 @@ export class ReactionPersistenceService {
     const totalRepSpent = await getRepository(Purchase)
       .query(totalRepSpentQuery, [user.slackId])
       .then((x) => (!x[0].sum ? 0 : x[0].sum));
-
-    console.log(totalRepEarned);
-    console.log(totalRepSpent);
-    console.log(totalRepEarned - totalRepSpent);
 
     return { totalRepEarned, totalRepSpent, totalRepAvailable: totalRepEarned - totalRepSpent };
   }

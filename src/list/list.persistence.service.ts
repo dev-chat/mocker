@@ -2,15 +2,6 @@ import { getRepository } from 'typeorm';
 import { List } from '../shared/db/models/List';
 
 export class ListPersistenceService {
-  public static getInstance(): ListPersistenceService {
-    if (!ListPersistenceService.instance) {
-      ListPersistenceService.instance = new ListPersistenceService();
-    }
-    return ListPersistenceService.instance;
-  }
-
-  private static instance: ListPersistenceService;
-
   public store(requestorId: string, text: string, teamId: string, channelId: string): Promise<List> {
     const listItem = new List();
     listItem.requestorId = requestorId;

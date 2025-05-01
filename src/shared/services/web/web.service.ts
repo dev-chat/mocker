@@ -10,18 +10,13 @@ import {
   Block,
   ConversationsListResponse,
 } from '@slack/web-api';
+import { logger } from '../../logger/logger';
 
 const MAX_RETRIES = 5;
 
 export class WebService {
-  public static getInstance(): WebService {
-    if (!WebService.instance) {
-      WebService.instance = new WebService();
-    }
-    return WebService.instance;
-  }
-  private static instance: WebService;
   private web: WebClient = new WebClient(process.env.MUZZLE_BOT_TOKEN);
+  logger = logger.child({ module: 'WebService' });
 
   /**
    * Handles deletion of messages.
@@ -42,18 +37,18 @@ export class WebService {
       .delete(deleteRequest)
       .then((r) => {
         if (r.error) {
-          console.error(r.error);
-          console.error(deleteRequest);
-          console.log(user);
+          this.logger.error(r.error);
+          this.logger.error(deleteRequest);
+          this.logger.error(user);
         }
       })
       .catch((e) => {
-        console.error(e);
+        this.logger.error(e);
         if (e.data.error !== 'message_not_found') {
-          console.error(e);
-          console.error('delete request was : ');
-          console.error(deleteRequest);
-          console.error('Unable to delete message. Retrying in 5 seconds...');
+          this.logger.error(e);
+          this.logger.error('delete request was : ');
+          this.logger.error(deleteRequest);
+          this.logger.error('Unable to delete message. Retrying in 5 seconds...');
           setTimeout(() => this.deleteMessage(channel, ts, user, times + 1), 5000);
         }
       });
@@ -71,8 +66,8 @@ export class WebService {
       .postEphemeral(postRequest)
       .then((result) => result)
       .catch((e) => {
-        console.error(e);
-        console.log(postRequest);
+        this.logger.error(e);
+        this.logger.error(postRequest);
         return e;
       });
   }
@@ -96,9 +91,9 @@ export class WebService {
       .postMessage(postRequest)
       .then((result) => result)
       .catch((e) => {
-        console.error(e);
-        console.error(e.data);
-        console.log(postRequest);
+        this.logger.error(e);
+        this.logger.error(e.data);
+        this.logger.error(postRequest);
         throw e;
       });
   }
@@ -111,7 +106,7 @@ export class WebService {
       ts,
       token,
     };
-    this.web.chat.update(update).catch((e) => console.error(e));
+    this.web.chat.update(update).catch((e) => this.logger.error(e));
   }
 
   public getAllUsers(): Promise<WebAPICallResult> {
@@ -134,7 +129,7 @@ export class WebService {
     };
 
     this.web.files.upload(uploadRequest).catch((e: unknown) => {
-      console.error(e);
+      this.logger.error(e);
       const options: ChatPostEphemeralArguments = {
         channel,
         text:
@@ -143,7 +138,7 @@ export class WebService {
             : `Oops! I tried to post the stats you requested but it looks like something went wrong. Please try again later.`,
         user: userId,
       };
-      this.web.chat.postEphemeral(options).catch((e) => console.error(e));
+      this.web.chat.postEphemeral(options).catch((e) => this.logger.error(e));
     });
   }
 }

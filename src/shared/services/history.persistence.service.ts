@@ -5,15 +5,6 @@ import { Message } from '../db/models/Message';
 import { MessageWithName } from '../models/message/message-with-name';
 
 export class HistoryPersistenceService {
-  public static getInstance(): HistoryPersistenceService {
-    if (!HistoryPersistenceService.instance) {
-      HistoryPersistenceService.instance = new HistoryPersistenceService();
-    }
-    return HistoryPersistenceService.instance;
-  }
-
-  private static instance: HistoryPersistenceService;
-
   async logHistory(request: EventRequest): Promise<InsertResult | undefined> {
     // This is a bandaid to stop workflows from breaking the service.
     if (typeof request.event.user !== 'string' || request.event.type === 'user_profile_changed') {

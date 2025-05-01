@@ -1,6 +1,7 @@
 import { WebService } from '../shared/services/web/web.service';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { StoreService } from './store.service';
+import { logger } from '../shared/logger/logger';
 
 interface ItemDefinition {
   id: number;
@@ -8,16 +9,17 @@ interface ItemDefinition {
 }
 
 export class ItemService {
-  webService = WebService.getInstance();
+  webService = new WebService();
   suppressorService = new SuppressorService();
   storeService = new StoreService();
+  logger = logger.child({ module: 'ItemService' });
 
   items: ItemDefinition[] = [
     {
       id: 1,
       interaction: (userId, teamId, usedOnUser): Promise<string> => {
         return this.storeService.useItem('1', userId, teamId, usedOnUser).catch((e) => {
-          console.error(e);
+          this.logger.error(e);
           throw new Error(`Sorry, unable to set 50 Cal at this time. Please try again later.`);
         });
       },
@@ -26,7 +28,7 @@ export class ItemService {
       id: 2,
       interaction: (userId, teamId, usedOnUser): Promise<string> => {
         return this.storeService.useItem('2', userId, teamId, usedOnUser).catch((e) => {
-          console.error(e);
+          this.logger.error(e);
           throw new Error(
             `Sorry, unable to set Guardian Angel on <@${usedOnUser}> at this time. Please try again later.`,
           );
@@ -42,7 +44,7 @@ export class ItemService {
           await this.webService
             .sendMessage(channel as string, `:zombie: <@${usedOnUser}> has been resurrected by <@${userId}>! :zombie:`)
             .catch((e) => {
-              console.error(e);
+              this.logger.error(e);
               throw new Error(`Unable to resurrect <@${usedOnUser}>. Please try again.`);
             });
           return this.storeService.useItem('3', userId, teamId, usedOnUser);
@@ -59,7 +61,7 @@ export class ItemService {
           throw new Error(`Sorry, unable to purchase Moon Token at this time. You already have one active.`);
         }
         return this.storeService.useItem('4', userId, teamId, usedOnUser).catch((e) => {
-          console.error(e);
+          this.logger.error(e);
           throw new Error(`Sorry, unable to purchase Moon Token at this time. Please try again later.`);
         });
       },

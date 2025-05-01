@@ -4,17 +4,11 @@ import { SlackUser as SlackUserModel } from '../../../shared/models/slack/slack-
 import { SlackUser as SlackUserFromDB } from '../../../shared/db/models/SlackUser';
 import { RedisPersistenceService } from '../../../shared/services/redis.persistence.service';
 import { ConversationsListResponse } from '@slack/web-api';
+import { logger } from '../../logger/logger';
 
 export class SlackPersistenceService {
-  public static getInstance(): SlackPersistenceService {
-    if (!SlackPersistenceService.instance) {
-      SlackPersistenceService.instance = new SlackPersistenceService();
-    }
-    return SlackPersistenceService.instance;
-  }
-
-  private static instance: SlackPersistenceService;
-  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
+  private redis: RedisPersistenceService = new RedisPersistenceService();
+  logger = logger.child({ module: 'SlackPersistenceService' });
 
   // This sucks because TypeORM sucks. Time to consider removing this ORM.
   async saveChannels(channels?: ConversationsListResponse['channels']): Promise<void> {
@@ -43,9 +37,9 @@ export class SlackPersistenceService {
             getRepository(SlackChannel).save(channel);
           }
         }
-        console.log('Updated channel list');
+        this.logger.info('Updated channel list');
       } catch (e) {
-        console.log('Error on updating channels: ', e);
+        this.logger.error('Error on updating channels: ', e);
       }
     }
   }
@@ -81,20 +75,20 @@ export class SlackPersistenceService {
           await getRepository(SlackUserFromDB)
             .save({ ...existingUser, user })
             .catch((e) => {
-              console.error('Error updating user: ', e);
+              this.logger.error('Error updating user: ', e);
             });
         } else {
           await getRepository(SlackUserFromDB)
             .save({ ...user, activity: [], messages: [] })
             .catch((e) => {
-              console.error('Error saving user: ', e);
+              this.logger.error('Error saving user: ', e);
             });
         }
       }
-      console.log('Updated latest users in DB.');
+      this.logger.info('Updated latest users in DB.');
       return dbUsers;
     } catch (e) {
-      console.log('Error on updating users: ', e);
+      this.logger.error('Error on updating users: ', e);
       throw e;
     }
   }

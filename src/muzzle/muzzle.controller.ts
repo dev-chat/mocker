@@ -8,15 +8,17 @@ import { MuzzleReportService } from './muzzle.report.service';
 import { MuzzleService } from './muzzle.service';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 import { textMiddleware } from '../shared/middleware/textMiddleware';
+import { logger } from '../shared/logger/logger';
 
 export const muzzleController: Router = express.Router();
 muzzleController.use(suppressedMiddleware);
 muzzleController.use(textMiddleware);
 
 const muzzleService = new MuzzleService();
-const slackService = SlackService.getInstance();
-const webService = WebService.getInstance();
+const slackService = new SlackService();
+const webService = new WebService();
 const reportService = new MuzzleReportService();
+const muzzleLogger = logger.child({ module: 'MuzzleController' });
 
 muzzleController.post('/', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
@@ -27,13 +29,14 @@ muzzleController.post('/', async (req: Request, res: Response) => {
     const results = await muzzleService
       .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
       .catch((e) => {
-        console.error(e);
+        muzzleLogger.error(e);
         res.send(e);
       });
     if (results) {
       res.send(results);
     }
   } else {
+    muzzleLogger.warn(`Invalid user specified: ${request.text}`);
     res.send('Sorry, you must specify a valid Slack user.');
   }
 });
@@ -41,10 +44,12 @@ muzzleController.post('/', async (req: Request, res: Response) => {
 muzzleController.post('/stats', async (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
   if (request.text.split(' ').length > 1) {
+    muzzleLogger.warn(`Multiple parameters passed: ${request.text}`);
     res.send(
       `Sorry! No support for multiple parameters at this time. Please choose one of: \`trailing7\`, \`week\`, \`month\`, \`trailing30\`, \`year\`, \`all\``,
     );
   } else if (request.text !== '' && !reportService.isValidReportType(request.text)) {
+    muzzleLogger.warn(`Invalid report type specified: ${request.text}`);
     res.send(
       `Sorry! You passed in \`${request.text}\` but we can only generate reports for the following values: \`trailing7\`, \`week\`, \`month\`, \`trailing30\`, \`year\`, \`all\``,
     );

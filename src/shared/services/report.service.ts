@@ -3,7 +3,7 @@ import { ReportType, ReportRange } from '../models/report/report.model';
 import { SlackService } from './slack/slack.service';
 
 export class ReportService {
-  public slackService = SlackService.getInstance();
+  public slackService = new SlackService();
 
   public isValidReportType(type: string): boolean {
     const lowerCaseType = type.toLowerCase();

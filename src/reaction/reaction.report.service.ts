@@ -4,7 +4,7 @@ import { ReactionByUser } from '../shared/models/reaction/ReactionByUser.model';
 import { ReportService } from '../shared/services/report.service';
 
 export class ReactionReportService extends ReportService {
-  reactionPersistenceService = ReactionPersistenceService.getInstance();
+  reactionPersistenceService = new ReactionPersistenceService();
 
   public async getRep(userId: string, teamId: string): Promise<string> {
     const { totalRepAvailable, totalRepEarned } = await this.reactionPersistenceService
@@ -23,7 +23,6 @@ export class ReactionReportService extends ReportService {
         return await this.formatRepByUser(perUserRep, teamId, totalRepEarned);
       })
       .catch((e) => {
-        console.error(e);
         throw new Error(e);
       });
 

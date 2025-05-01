@@ -3,6 +3,7 @@ import { BackfireService } from '../backfire/backfire.service';
 import { CounterService } from '../counter/counter.service';
 import { MuzzleService } from '../muzzle/muzzle.service';
 import { ReactionService } from '../reaction/reaction.service';
+import { logger } from '../shared/logger/logger';
 import { EventRequest } from '../shared/models/slack/slack-models';
 import { HistoryPersistenceService } from '../shared/services/history.persistence.service';
 import { SlackService } from '../shared/services/slack/slack.service';
@@ -10,15 +11,16 @@ import { SuppressorService } from '../shared/services/suppressor.service';
 import { EventPersistenceService } from './event.persistence.service';
 
 export class EventService {
-  eventPersistenceService = EventPersistenceService.getInstance();
-  historyPersistenceService = HistoryPersistenceService.getInstance();
-  slackService = SlackService.getInstance();
+  eventPersistenceService = new EventPersistenceService();
+  historyPersistenceService = new HistoryPersistenceService();
+  slackService = new SlackService();
   muzzleService = new MuzzleService();
   backfireService = new BackfireService();
   reactionService = new ReactionService();
   counterService = new CounterService();
   aiService = new AIService();
   suppressorService = new SuppressorService();
+  logger = logger.child({ module: 'EventService' });
 
   handleEvent(request: EventRequest) {
     const isMessage =
@@ -40,7 +42,7 @@ export class EventService {
   }
 
   handle(request: EventRequest) {
-    console.log('Handling event:', request);
+    this.logger.info('Handling event:', request);
     this.handleEvent(request);
     this.slackService.handle(request);
     this.muzzleService.handle(request);

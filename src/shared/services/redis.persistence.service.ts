@@ -1,17 +1,10 @@
 import { Redis } from 'ioredis';
 
 export class RedisPersistenceService {
-  public static getInstance(): RedisPersistenceService {
-    if (!RedisPersistenceService.instance) {
-      RedisPersistenceService.instance = new RedisPersistenceService();
-    }
-    return RedisPersistenceService.instance;
-  }
 
   constructor() {
     RedisPersistenceService.redis.on('connect', () => console.log('Successfully connected to Redis'));
   }
-  private static instance: RedisPersistenceService;
   private static redis: Redis = !!process.env.REDIS_CONTAINER_NAME
     ? new Redis(process.env.REDIS_CONTAINER_NAME as string)
     : new Redis({ host: 'host.docker.internal' });

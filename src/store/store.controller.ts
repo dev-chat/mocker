@@ -3,12 +3,14 @@ import { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { StoreService } from './store.service';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { ItemService } from './item.service';
+import { logger } from '../shared/logger/logger';
 
 export const storeController: Router = express.Router();
 
 const suppressorService: SuppressorService = new SuppressorService();
 const storeService: StoreService = new StoreService();
 const itemService: ItemService = new ItemService();
+const storeLogger = logger.child({ module: 'StoreController' });
 
 storeController.post('/', async (req, res) => {
   const request: SlashCommandRequest = req.body;
@@ -55,7 +57,7 @@ storeController.post('/buy', async (req, res) => {
     const useReceipt = await itemService
       .useItem(itemId, request.user_id, request.team_id, userIdForItem as string, request.channel_name)
       .catch((e) => {
-        console.error(e, {
+        storeLogger.error(e, {
           item: itemId,
           userId: request.user_id,
           teamId: request.team_id,
@@ -73,7 +75,7 @@ storeController.post('/buy', async (req, res) => {
     const purchaseReceipt: string | undefined = await storeService
       .buyItem(itemId, request.user_id, request.team_id)
       .catch((e) => {
-        console.error(e, {
+        storeLogger.error(e, {
           item: itemId,
           userId: request.user_id,
           teamId: request.team_id,
@@ -82,13 +84,11 @@ storeController.post('/buy', async (req, res) => {
         return undefined;
       });
 
-    console.log(purchaseReceipt);
 
     if (!purchaseReceipt) {
       return;
     }
 
-    console.log(useReceipt);
     res.status(200).send(useReceipt);
   }
 });

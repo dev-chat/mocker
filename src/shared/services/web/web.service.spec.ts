@@ -4,7 +4,7 @@ describe('WebService', () => {
   let webService: WebService;
 
   beforeEach(() => {
-    webService = WebService.getInstance();
+    webService = new WebService();
   });
 
   describe('sendMessage()', () => {

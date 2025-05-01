@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { RequestWithRawBody } from "../models/express/RequestWithRawBody";
 import crypto from 'crypto';
+import { logger } from "../logger/logger";
 
+const midLogger = logger.child({ module: 'SignatureVerificationMiddleware' });
 export const signatureVerificationMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const body = (req as RequestWithRawBody).rawBody;
   const timestamp = req.headers['x-slack-request-timestamp'];
@@ -24,11 +26,11 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
   ) {
     next();
   } else {
-    console.error('Someone is hitting your service from outside of slack.');
-    console.error('ip: ', req.ip);
-    console.error('ips: ', req.ips);
-    console.error('headers: ', req.headers);
-    console.error('body:', req.body);
+    midLogger.error('Someone is hitting your service from outside of slack.');
+    midLogger.error('ip: ', req.ip);
+    midLogger.error('ips: ', req.ips);
+    midLogger.error('headers: ', req.headers);
+    midLogger.error('body:', req.body);
     res.send('Naughty, naughty...');
     return;
   }

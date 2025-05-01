@@ -129,7 +129,7 @@ describe('MuzzleService', () => {
 
     beforeEach(() => {
       persistenceService = MuzzlePersistenceService.getInstance();
-      webService = WebService.getInstance();
+      webService = new WebService();
     });
 
     describe('if a user is already muzzled', () => {

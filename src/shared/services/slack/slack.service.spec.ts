@@ -4,7 +4,7 @@ describe('slack-utils', () => {
   let slackService: SlackService;
 
   beforeEach(() => {
-    slackService = SlackService.getInstance();
+    slackService = new SlackService();
   });
   // describe('getUserNameById()', () => {
   //   it('should return the user.name property of a known user by id', () => {

@@ -5,6 +5,7 @@ import { suppressedMiddleware } from '../shared/middleware/suppression';
 
 export const reactionController: Router = express.Router();
 reactionController.use(suppressedMiddleware);
+
 const reportService = new ReactionReportService();
 
 reactionController.post('/get', async (req, res) => {

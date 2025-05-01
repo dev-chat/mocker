@@ -11,17 +11,19 @@ import { KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
 import { getChunks } from '../shared/util/getChunks';
 import { CORPO_SPEAK_PROMPT, GPT_MODEL, MAX_AI_REQUESTS_PER_DAY, PARTICIPATION_PROMPT } from './ai.constants';
+import { logger } from '../shared/logger/logger';
 
 export class AIService {
-  private redis = AIPersistenceService.getInstance();
+  private redis = new AIPersistenceService();
   private openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
   private gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY as string);
   
-  historyService = HistoryPersistenceService.getInstance();
-  webService = WebService.getInstance();
+  historyService = new HistoryPersistenceService();
+  webService = new WebService();
+  aiServiceLogger = logger.child({ module: 'AIService' });
 
   convertAsterisks(text: string | undefined): string | undefined {
     if (!text) {
@@ -61,6 +63,7 @@ export class AIService {
         this.sendGptText(result, userId, teamId, channelId, text);
       })
       .catch(async (e) => {
+        this.aiServiceLogger.error(e);
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
@@ -76,7 +79,7 @@ export class AIService {
     return new Promise((resolve, reject) =>
       fs.writeFile(filePath, base64Data, 'base64', (err) => {
         if (err) {
-          console.error(err);
+          this.aiServiceLogger.error('Error writing image to disk:', err);
           reject(err);
         }
         resolve(`https://muzzle.lol/${filename}`);
@@ -103,6 +106,7 @@ export class AIService {
         if (b64_json) {
           return this.writeToDiskAndReturnUrl(b64_json);
         } else {
+          this.aiServiceLogger.error(`No b64_json was returned by OpenAI for prompt: ${text}`);
           throw new Error(`No b64_json was returned by OpenAI for prompt: ${text}`);
         }
       })
@@ -110,6 +114,7 @@ export class AIService {
         this.sendImage(imageUrl, userId, teamId, userId, text);
       })
       .catch(async (e) => {
+        this.aiServiceLogger.error(e);
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
@@ -136,6 +141,7 @@ export class AIService {
         return this.convertAsterisks(x.choices[0].message?.content?.trim());
       })
       .catch(async (e) => {
+        this.aiServiceLogger.error(e);
         throw e;
       });
   }
@@ -172,6 +178,7 @@ export class AIService {
       })
       .then((result) => {
         if (!result) {
+          this.aiServiceLogger.warn(`No result returned for prompt: ${prompt}`);
           return;
         }
 
@@ -206,7 +213,7 @@ export class AIService {
         });
 
         this.webService.sendMessage(request.channel_id, request.text, blocks).catch((e) => {
-          console.error(e);
+          this.aiServiceLogger.error(e);
           this.webService.sendMessage(
             request.user_id,
             'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
@@ -214,6 +221,7 @@ export class AIService {
         });
       })
       .catch(async (e) => {
+        this.aiServiceLogger.error(e);
         await this.redis.removeInflight(user_id, team_id);
         await this.redis.decrementDailyRequests(user_id, team_id);
         throw e;
@@ -234,6 +242,7 @@ export class AIService {
         this.sendGeminiText(result, userId, teamId, channelId);
       })
       .catch(async (e) => {
+        this.aiServiceLogger.error(e);
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
@@ -273,11 +282,11 @@ export class AIService {
           this.webService
             .sendMessage(channelId, result)
             .then(() => this.redis.setHasParticipated(teamId, channelId))
-            .catch((e) => console.error('Error sending AI Participation message:', e));
+            .catch((e) => this.aiServiceLogger.error('Error sending AI Participation message:', e));
         }
       })
       .catch(async (e) => {
-        console.error(e);
+        this.aiServiceLogger.error(e);
         throw e;
       });
   }
@@ -301,7 +310,7 @@ export class AIService {
         },
       ];
       this.webService.sendMessage(channel, text, blocks).catch((e) => {
-        console.error(e);
+        this.aiServiceLogger.error(e);
         this.decrementDaiyRequests(userId, teamId);
         this.webService.sendMessage(
           userId,
@@ -344,7 +353,7 @@ export class AIService {
       });
 
       this.webService.sendMessage(channelId, text, blocks).catch((e) => {
-        console.error(e);
+        this.aiServiceLogger.error(e);
         this.decrementDaiyRequests(userId, teamId);
         this.webService.sendMessage(
           userId,
@@ -387,7 +396,7 @@ export class AIService {
       });
 
       this.webService.sendMessage(channelId, text, blocks).catch((e) => {
-        console.error(e);
+        this.aiServiceLogger.error(e);
         this.decrementDaiyRequests(userId, teamId);
         this.webService.sendMessage(
           userId,

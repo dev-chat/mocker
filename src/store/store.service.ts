@@ -2,8 +2,8 @@ import { ReactionPersistenceService } from '../reaction/reaction.persistence.ser
 import { StorePersistenceService } from './store.persistence.service';
 
 export class StoreService {
-  storePersistenceService = StorePersistenceService.getInstance();
-  reactionPersistenceService = ReactionPersistenceService.getInstance();
+  storePersistenceService = new StorePersistenceService();
+  reactionPersistenceService = new ReactionPersistenceService();
 
   async listItems(slackId: string, teamId: string): Promise<string> {
     const items = await this.storePersistenceService.getItems(teamId);

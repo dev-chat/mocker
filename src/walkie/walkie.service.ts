@@ -3,7 +3,7 @@ import { SlackService } from '../shared/services/slack/slack.service';
 import { NATO_MAPPINGS, USER_ID_REGEX } from './constants';
 
 export class WalkieService {
-  slackService = SlackService.getInstance();
+  slackService = new SlackService();
 
   public getUserId(user: string): string {
     if (!user) {

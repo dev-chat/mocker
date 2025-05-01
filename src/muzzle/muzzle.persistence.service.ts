@@ -6,16 +6,8 @@ import { StorePersistenceService } from '../store/store.persistence.service';
 import { MuzzleRedisTypeEnum, MAX_TIME_BETWEEN_MUZZLES, MAX_MUZZLES, ABUSE_PENALTY_TIME } from './constants';
 
 export class MuzzlePersistenceService {
-  public static getInstance(): MuzzlePersistenceService {
-    if (!MuzzlePersistenceService.instance) {
-      MuzzlePersistenceService.instance = new MuzzlePersistenceService();
-    }
-    return MuzzlePersistenceService.instance;
-  }
-
-  private static instance: MuzzlePersistenceService;
-  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
-  private storePersistenceService = StorePersistenceService.getInstance();
+  private redis: RedisPersistenceService = new RedisPersistenceService();
+  private storePersistenceService = new StorePersistenceService();
 
   public addPermaMuzzle(userId: string, teamId: string): Promise<Muzzle> {
     const muzzle = new Muzzle();
@@ -29,7 +21,6 @@ export class MuzzlePersistenceService {
     return getRepository(Muzzle)
       .save(muzzle)
       .then(async (muzzleFromDb) => {
-        console.log(muzzleFromDb);
         await this.redis.setValue(
           this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled),
           muzzleFromDb.id.toString(),
@@ -152,7 +143,6 @@ export class MuzzlePersistenceService {
       );
       const newTime = Math.floor(remainingTime + timeToAdd / 1000);
       this.incrementMuzzleTime(+muzzledId, ABUSE_PENALTY_TIME);
-      console.log(`Setting ${userId}'s muzzle time to ${newTime}`);
       this.redis.expire(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled), newTime);
     }
   }

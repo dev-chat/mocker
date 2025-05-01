@@ -2,17 +2,11 @@ import Axios from 'axios';
 import { CompanyProfile, MetricResponse, QuoteData, QuoteResponse } from './quote.models';
 import { Block, KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
+import { logger } from '../shared/logger/logger';
 
 export class QuoteService {
-  webService = WebService.getInstance();
-
-  public static getInstance(): QuoteService {
-    if (!QuoteService.instance) {
-      QuoteService.instance = new QuoteService();
-    }
-    return QuoteService.instance;
-  }
-  private static instance: QuoteService;
+  webService = new WebService();
+  logger = logger.child({ module: 'QuoteService' });
 
   getMarketCap(price: number, sharesOutstanding: number): string {
     const marketCap = (sharesOutstanding * 1000000 * price) / 1000000;
@@ -49,7 +43,7 @@ export class QuoteService {
       })
       .then((quoteData) => {
         this.webService.sendMessage(channelId, '', this.createQuoteBlocks(quoteData, userId)).catch((e) => {
-          console.error(e);
+          this.logger.error(e);
           this.webService.sendMessage(
             userId,
             'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
@@ -156,10 +150,7 @@ export class QuoteService {
   getQuote(ticker: string): Promise<QuoteResponse> {
     return Axios.get(
       encodeURI(`https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${process.env.FINNHUB_API_KEY}`),
-    ).then((response) => {
-      console.log(response.data);
-      return response.data;
-    });
+    ).then((response) => response.data);
   }
 
   getMetrics(ticker: string): Promise<MetricResponse> {
@@ -167,18 +158,12 @@ export class QuoteService {
       encodeURI(
         `https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=${process.env.FINNHUB_API_KEY}`,
       ),
-    ).then((response) => {
-      console.log(response.data);
-      return response.data;
-    });
+    ).then((response) => response.data);
   }
 
   getCompanyProfile(ticker: string): Promise<CompanyProfile> {
     return Axios.get(
       encodeURI(`https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${process.env.FINNHUB_API_KEY}`),
-    ).then((response) => {
-      console.log(response.data);
-      return response.data;
-    });
+    ).then((response) => response.data);
   }
 }

@@ -6,21 +6,15 @@ import { Purchase } from '../shared/db/models/Purchase';
 import { UsedItem } from '../shared/db/models/UsedItem';
 import { ItemKill } from '../shared/db/models/ItemKill';
 import { getMsForSpecifiedRange } from '../muzzle/muzzle-utilities';
+import { logger } from '../shared/logger/logger';
 
 interface ItemWithPrice extends Item {
   price: number;
 }
 export class StorePersistenceService {
-  public static getInstance(): StorePersistenceService {
-    if (!StorePersistenceService.instance) {
-      StorePersistenceService.instance = new StorePersistenceService();
-    }
-    return StorePersistenceService.instance;
-  }
-
-  private static instance: StorePersistenceService;
-  private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
-
+  private redisService: RedisPersistenceService = new RedisPersistenceService();
+  logger = logger.child({ module: 'StorePersistenceService' });
+  
   async getItems(teamId: string): Promise<ItemWithPrice[]> {
     const items = await getRepository(Item).find();
     const itemsWithPrices = await Promise.all(
@@ -125,9 +119,6 @@ export class StorePersistenceService {
     const priceByTeam = await getManager().query(
       `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
     );
-    console.log(itemById);
-    console.log(userById);
-    console.log(itemById && userById);
     if (itemById && userById) {
       const purchase = new Purchase();
       purchase.item = itemById.id;
@@ -137,8 +128,8 @@ export class StorePersistenceService {
         .insert(purchase)
         .then(() => `Congratulations! You have purchased *_${itemById.name}!_*`)
         .catch((e) => {
-          console.error('Error on updating purchase table');
-          console.error(e);
+          this.logger.error('Error on updating purchase table');
+          this.logger.error(e);
           return `Sorry, unable to buy ${itemById.name}. Please try again later.`;
         });
     }

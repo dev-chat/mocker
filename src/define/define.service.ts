@@ -2,18 +2,12 @@ import { KnownBlock } from '@slack/web-api';
 import Axios, { AxiosResponse } from 'axios';
 import { Definition, UrbanDictionaryResponse } from '../shared/models/define/define-models';
 import { WebService } from '../shared/services/web/web.service';
+import { logger } from '../shared/logger/logger';
 
 export class DefineService {
-  public static getInstance(): DefineService {
-    if (!DefineService.instance) {
-      DefineService.instance = new DefineService();
-    }
-    return DefineService.instance;
-  }
+  private logger = logger.child({ module: 'DefineService' });
 
-  private static instance: DefineService;
-
-  webService = WebService.getInstance();
+  webService = new WebService();
 
   public capitalizeFirstLetter(sentence: string, all = true): string {
     if (all) {
@@ -57,7 +51,7 @@ export class DefineService {
             },
           ],
         });
-        this.webService.sendMessage(channelId, formattedTitle, blocks).catch((e) => console.error(e));
+        this.webService.sendMessage(channelId, formattedTitle, blocks).catch((e) => this.logger.error(e));
       });
   }
 

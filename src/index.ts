@@ -23,6 +23,7 @@ import { walkieController } from './walkie/walkie.controller';
 import { SlackService } from './shared/services/slack/slack.service';
 import { signatureVerificationMiddleware } from './shared/middleware/signatureVerification';
 import { WebService } from './shared/services/web/web.service';
+import { logger } from './shared/logger/logger';
 
 
 
@@ -61,8 +62,9 @@ app.use('/store', storeController)
 app.use('/summary', summaryController)
 app.use('/walkie', walkieController)
 
-const slackService = SlackService.getInstance();
-const webService = WebService.getInstance();
+const slackService = new SlackService();
+const webService = new WebService();
+const indexLogger = logger.child({ module: 'Index' });
 
 const connectToDb = async (): Promise<boolean> => {
   try {
@@ -77,18 +79,18 @@ const connectToDb = async (): Promise<boolean> => {
         if (connection.isConnected) {
           slackService.getAllUsers();
           slackService.getAndSaveAllChannels();
-          console.log(`Connected to MySQL DB: ${options.database}`);
+          indexLogger.info(`Connected to MySQL DB: ${options.database}`);
           return true;
         } else {
           throw Error('Unable to connect to database');
         }
       })
       .catch((e) => {
-        console.error(e)
+        indexLogger.error(e)
         return false;
       });
   } catch (e) {
-    console.error(e);
+    indexLogger.error(e);
     return false;
   }
 };
@@ -125,18 +127,18 @@ const checkForEnvVariables = (): void => {
 };
 
 app.listen(PORT, (e?: Error) => {
-  e ? console.error(e) : console.log(`Listening on port ${PORT || 3000}`);
+  e ? indexLogger.error(e) : indexLogger.info(`Listening on port ${PORT || 3000}`);
   checkForEnvVariables();
   connectToDb().then((connected) => {
     if (!connected) {
-      console.error('Failed to connect to the database. Exiting application.');
+      indexLogger.error('Failed to connect to the database. Exiting application.');
       webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Muzzle is not operational.');
       process.exit(1);
     } else {
       webService.sendMessage('#muzzlefeedback', 'A new version of Muzzle has been deployed.');
     }
   }).catch((error) => {
-    console.error('Error during database connection:', error);
+    indexLogger.error('Error during database connection:', error);
     webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Muzzle is not operational.');
     process.exit(1);
   });

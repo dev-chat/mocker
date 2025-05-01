@@ -1,5 +1,6 @@
 import { CounterService } from '../counter/counter.service';
 import { Muzzle } from '../shared/db/models/Muzzle';
+import { logger } from '../shared/logger/logger';
 import { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { StorePersistenceService } from '../store/store.persistence.service';
@@ -8,16 +9,14 @@ import { getTimeString, getTimeToMuzzle } from './muzzle-utilities';
 
 export class MuzzleService extends SuppressorService {
   private counterService = new CounterService();
-  private storePersistenceService = StorePersistenceService.getInstance();
+  private storePersistenceService = new StorePersistenceService();
+  logger = logger.child({ module: 'MuzzleService' });
 
   public permaMuzzle(impersonatingUserId: string, teamId: string): Promise<Muzzle> {
-    console.log(`perma-muzzling ${impersonatingUserId}`);
-
     return this.muzzlePersistenceService.addPermaMuzzle(impersonatingUserId, teamId);
   }
 
   public removePermaMuzzle(impersonatingUserId: string, teamId: string): Promise<boolean> {
-    console.log('removing perma-muzzle for', impersonatingUserId);
     return this.muzzlePersistenceService.removePermaMuzzle(impersonatingUserId, teamId);
   }
 
@@ -35,21 +34,21 @@ export class MuzzleService extends SuppressorService {
       } else if (!userId) {
         reject(`Invalid username passed in. You can only muzzle existing slack users.`);
       } else if (await this.isSuppressed(userId, teamId)) {
-        console.error(
+        this.logger.error(
           `${requestorName} | ${requestorId} attempted to muzzle ${userName} | ${userId} but ${userName} | ${userId} is already muzzled.`,
         );
         reject(`${userName} is already muzzled!`);
       } else if (await this.isSuppressed(requestorId, teamId)) {
-        console.error(
+        this.logger.error(
           `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId}  is currently muzzled`,
         );
         reject(`You can't muzzle someone if you are already muzzled!`);
       } else if (counter) {
-        console.log(`${requestorId} attempted to muzzle ${userId} but was countered!`);
+        this.logger.info(`${requestorId} attempted to muzzle ${userId} but was countered!`);
         this.counterService.removeCounter(counter, true, userId, requestorId, channel, teamId);
         reject(`You've been countered! Better luck next time...`);
       } else if (shouldBackFire) {
-        console.log(`Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`);
+        this.logger.info(`Backfiring on ${requestorName} | ${requestorId} for attempting to muzzle ${userName} | ${userId}`);
         const timeToMuzzle =
           getTimeToMuzzle() + (await this.storePersistenceService.getTimeModifiers(requestorId, teamId));
         await this.backfirePersistenceService
@@ -61,11 +60,11 @@ export class MuzzleService extends SuppressorService {
                 channel,
                 `:boom: <@${requestorId}> attempted to muzzle <@${userId}> but it backfired! :boom:`,
               )
-              .catch((e) => console.error(e));
+              .catch((e) => this.logger.error(e));
             resolve(`:boom: Backfired! Better luck next time... :boom:`);
           })
           .catch((e: unknown) => {
-            console.error(e);
+            this.logger.error(e);
             reject(`Muzzle failed!`);
           });
       } else if (protectedUser) {
@@ -75,7 +74,7 @@ export class MuzzleService extends SuppressorService {
             channel,
             `:innocent: <@${requestorId}> attempted to muzzle <@${userId}> but he was protected by a \`Guardian Angel\`. <@${requestorId}> is now muzzled. :innocent:`,
           )
-          .catch((e) => console.error(e));
+          .catch((e) => this.logger.error(e));
 
         const userToCredit = await this.storePersistenceService
           .getUserOfUsedItem(protectedUser)
@@ -87,7 +86,7 @@ export class MuzzleService extends SuppressorService {
         await this.muzzlePersistenceService.addMuzzle(userToCredit, requestorId, teamId, timeToMuzzle, defensiveItemId);
         resolve(':innocent: The Light shines upon your enemy. :innocent:');
       } else if (await this.muzzlePersistenceService.isMaxMuzzlesReached(requestorId, teamId)) {
-        console.error(
+        this.logger.error(
           `User: ${requestorName} | ${requestorId}  attempted to muzzle ${userName} | ${userId} but failed because requestor: ${requestorName} | ${requestorId} has reached maximum muzzle of ${MAX_MUZZLES}`,
         );
         reject(`You're doing that too much. Only ${MAX_MUZZLES} muzzles are allowed per hour.`);
@@ -100,7 +99,7 @@ export class MuzzleService extends SuppressorService {
             resolve(`Successfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`);
           })
           .catch((e: unknown) => {
-            console.error(e);
+            this.logger.error(e);
             reject(`Muzzle failed!`);
           });
       }
@@ -115,7 +114,7 @@ export class MuzzleService extends SuppressorService {
     timestamp: string,
   ): Promise<void> {
     const muzzle = await this.muzzlePersistenceService.getMuzzle(userId, teamId).catch((e) => {
-      console.error('error retrieving muzzle', e);
+      this.logger.error('error retrieving muzzle', e);
       return null;
     });
     if (muzzle) {
@@ -144,7 +143,7 @@ export class MuzzleService extends SuppressorService {
                 userWhoIsBeingImpersonated.id
               }>! They are now muzzled until they assume their normal identity. :cop:`,
             )
-            .catch((e) => console.error(e));
+            .catch((e) => this.logger.error(e));
         });
       } else {
         this.removePermaMuzzle((request.event.user as unknown as Record<string, string>).id, request.team_id);
@@ -165,10 +164,7 @@ export class MuzzleService extends SuppressorService {
       const isMuzzled = await this.muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id);
       if (isMuzzled) {
         const containsTag = this.slackService.containsTag(request.event.text);
-        const userName = await this.slackService.getUserNameById(request.event.user, request.team_id);
-        console.log(`${userName} | ${request.event.user} is muzzled! Suppressing his voice...`);
         this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
-
         if (!containsTag) {
           this.sendMuzzledMessage(
             request.event.channel,
@@ -179,9 +175,6 @@ export class MuzzleService extends SuppressorService {
           );
         } else if (containsTag && isTopicChange) {
           const muzzleId = await this.muzzlePersistenceService.getMuzzle(request.event.user, request.team_id);
-          console.log(
-            `${userName} attempted to tag someone or change the channel topic. Muzzle increased by ${ABUSE_PENALTY_TIME}!`,
-          );
           if (muzzleId) {
             this.muzzlePersistenceService.addMuzzleTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
             this.muzzlePersistenceService.trackDeletedMessage(muzzleId, request.event.text);
@@ -194,7 +187,7 @@ export class MuzzleService extends SuppressorService {
                   ABUSE_PENALTY_TIME,
                 )} :rotating_light:`,
               )
-              .catch((e) => console.error(e));
+              .catch((e) => this.logger.error(e));
           }
         }
       }

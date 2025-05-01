@@ -4,11 +4,11 @@ import { SuppressorService } from '../shared/services/suppressor.service';
 import { ABUSE_PENALTY_TIME, MAX_SUPPRESSIONS } from '../muzzle/constants';
 import { getTimeString } from '../muzzle/muzzle-utilities';
 import { EventRequest } from '../shared/models/slack/slack-models';
+import { logger } from '../shared/logger/logger';
 
 export class CounterService extends SuppressorService {
-  /**
-   * Creates a counter in DB and stores it in memory.
-   */
+  logger = logger.child({ module: 'CounterService' });
+
   public createCounter(requestorId: string, teamId: string): Promise<string> {
     return new Promise(async (resolve, reject) => {
       if (!requestorId) {
@@ -73,7 +73,7 @@ export class CounterService extends SuppressorService {
           channel,
           `:crossed_swords: <@${userId}> successfully countered <@${requestorId}>! <@${requestorId}> has lost muzzle privileges for 24 hours and is muzzled for the next 5 minutes! :crossed_swords:`,
         )
-        .catch((e) => console.error(e));
+        .catch((e) => this.logger.error(e));
     }
   }
 
@@ -85,13 +85,10 @@ export class CounterService extends SuppressorService {
     const isTopicChange = !request.event.subtype || request.event.subtype === 'channel_topic';
     if (isMessage || isTopicChange) {
       const containsTag = this.slackService.containsTag(request.event.text);
-      const userName = await this.slackService.getUserNameById(request.event.user, request.team_id);
       const isCountered = await this.counterPersistenceService.isCounterMuzzled(request.event.user);
       if (!containsTag && isCountered) {
-        console.log(`${userName} | ${request.event.user} is counter-muzzled! Suppressing his voice...`);
         this.sendCounterMuzzledMessage(request.event.channel, request.event.user, request.event.text, request.event.ts);
       } else if (containsTag && isTopicChange && isCountered) {
-        console.log(`${userName} attempted to tag someone. Counter Muzzle increased by ${ABUSE_PENALTY_TIME}!`);
         this.counterPersistenceService.addCounterMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
         this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
         this.webService
@@ -101,7 +98,7 @@ export class CounterService extends SuppressorService {
               ABUSE_PENALTY_TIME,
             )} :rotating_light:`,
           )
-          .catch((e) => console.error(e));
+          .catch((e) => this.logger.error(e));
       }
     }
   }

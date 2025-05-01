@@ -4,22 +4,17 @@ import { USER_ID_REGEX } from './constants';
 import { SlackPersistenceService } from './slack.persistence.service';
 import { ChannelResponse, EventRequest, SlackUser } from '../../models/slack/slack-models';
 import { SlackUser as SlackUserFromDB } from '../../db/models/SlackUser';
+import { logger } from '../../logger/logger';
 
 export class SlackService {
-  public static getInstance(): SlackService {
-    if (!SlackService.instance) {
-      SlackService.instance = new SlackService();
-    }
-    return SlackService.instance;
-  }
-  private static instance: SlackService;
-  private web: WebService = WebService.getInstance();
-  private persistenceService: SlackPersistenceService = SlackPersistenceService.getInstance();
+  private web: WebService = new WebService();
+  private persistenceService: SlackPersistenceService = new SlackPersistenceService();
+  logger = logger.child({ module: 'SlackService' });
 
   public sendResponse(responseUrl: string, response: ChannelResponse): void {
     axios
       .post(encodeURI(responseUrl), response)
-      .catch((e: Error) => console.error(`Error responding: ${e.message} at ${responseUrl}`));
+      .catch((e: Error) => this.logger.error(`Error responding: ${e.message} at ${responseUrl}`));
   }
 
   /**
@@ -108,7 +103,7 @@ export class SlackService {
    * Retrieves a list of all users.
    */
   public async getAllUsers(): Promise<SlackUserFromDB[]> {
-    console.log('Retrieving new user list...');
+    this.logger.info('Retrieving new user list...');
     const cached = await this.persistenceService.getCachedUsers();
     if (!!cached) {
       return cached as SlackUserFromDB[];
@@ -116,13 +111,12 @@ export class SlackService {
     return this.web
       .getAllUsers()
       .then((resp) => {
-        console.log('New user list has been retrieved!');
+        this.logger.info('New user list has been retrieved!');
         return this.persistenceService.saveUsers(resp.members as SlackUser[]).catch((e) => e);
       })
       .catch((e) => {
-        console.error('Failed to retrieve users', e);
-        console.timeEnd('retrieved user list in: ');
-        console.error('Retrying in 60 seconds...');
+        this.logger.error('Failed to retrieve users', e);
+        this.logger.warn('Retrying in 60 seconds...');
         setTimeout(() => this.getAllUsers(), 60000);
         throw new Error('Unable to retrieve users');
       });
@@ -138,7 +132,7 @@ export class SlackService {
 
   public handle(request: EventRequest): void {
     if (request.event.type === 'team_join') {
-      this.getAllUsers().catch((e) => console.error('Error handling team join event:', e));
+      this.getAllUsers().catch((e) => this.logger.error('Error handling team join event:', e));
     } else if (request.event.type === 'channel_created') {
       this.getAndSaveAllChannels();
     }

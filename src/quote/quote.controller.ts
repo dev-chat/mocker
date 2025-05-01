@@ -8,7 +8,7 @@ export const quoteController: Router = express.Router();
 quoteController.use(suppressedMiddleware);
 quoteController.use(textMiddleware);
 
-const quoteService = QuoteService.getInstance();
+const quoteService = new QuoteService();
 
 quoteController.post('/', (req, res) => {
   const request: SlashCommandRequest = req.body;
