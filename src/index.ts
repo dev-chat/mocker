@@ -134,6 +134,7 @@ app.listen(PORT, (e?: Error) => {
         webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Muzzle is not operational.');
         process.exit(1);
       } else {
+        indexLogger.info('Database connection established successfully.');
         webService.sendMessage('#muzzlefeedback', 'A new version of Muzzle has been deployed.');
       }
     })

@@ -2,10 +2,19 @@ import { Redis } from 'ioredis';
 import { logger } from '../logger/logger';
 
 export class RedisPersistenceService {
+  public static getInstance(): RedisPersistenceService {
+    if (!RedisPersistenceService.instance) {
+      RedisPersistenceService.instance = RedisPersistenceService.getInstance();
+    }
+    return RedisPersistenceService.instance;
+  }
+
   logger = logger.child({ module: 'RedisPersistenceService' });
+
   constructor() {
     RedisPersistenceService.redis.on('connect', () => this.logger.info('Successfully connected to Redis'));
   }
+  private static instance: RedisPersistenceService;
   private static redis: Redis = !!process.env.REDIS_CONTAINER_NAME
     ? new Redis(process.env.REDIS_CONTAINER_NAME as string)
     : new Redis({ host: 'host.docker.internal' });

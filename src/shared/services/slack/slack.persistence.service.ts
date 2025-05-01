@@ -7,7 +7,7 @@ import { ConversationsListResponse } from '@slack/web-api';
 import { logger } from '../../logger/logger';
 
 export class SlackPersistenceService {
-  private redis: RedisPersistenceService = new RedisPersistenceService();
+  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
   logger = logger.child({ module: 'SlackPersistenceService' });
 
   // This sucks because TypeORM sucks. Time to consider removing this ORM.

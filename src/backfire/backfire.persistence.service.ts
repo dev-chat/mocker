@@ -3,7 +3,7 @@ import { RedisPersistenceService } from '../shared/services/redis.persistence.se
 import { Backfire } from '../shared/db/models/Backfire';
 
 export class BackFirePersistenceService {
-  private redis: RedisPersistenceService = new RedisPersistenceService();
+  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
 
   public addBackfire(userId: string, time: number, teamId: string): Promise<void> {
     const backfire = new Backfire();

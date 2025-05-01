@@ -6,7 +6,7 @@ import { StorePersistenceService } from '../store/store.persistence.service';
 import { MuzzleRedisTypeEnum, MAX_TIME_BETWEEN_MUZZLES, MAX_MUZZLES, ABUSE_PENALTY_TIME } from './constants';
 
 export class MuzzlePersistenceService {
-  private redis: RedisPersistenceService = new RedisPersistenceService();
+  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
   private storePersistenceService = new StorePersistenceService();
 
   public addPermaMuzzle(userId: string, teamId: string): Promise<Muzzle> {

@@ -11,7 +11,7 @@ enum AITypeEnum {
 const FIVE_MINUTES_MS = 300000;
 
 export class AIPersistenceService {
-  private redis: RedisPersistenceService = new RedisPersistenceService();
+  private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
 
   public async removeInflight(userId: string, teamId: string): Promise<number> {
     return this.redis.removeKey(this.getRedisKeyName(userId, teamId, AITypeEnum.Inflight));

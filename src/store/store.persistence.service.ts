@@ -12,7 +12,7 @@ interface ItemWithPrice extends Item {
   price: number;
 }
 export class StorePersistenceService {
-  private redisService: RedisPersistenceService = new RedisPersistenceService();
+  private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
   logger = logger.child({ module: 'StorePersistenceService' });
 
   async getItems(teamId: string): Promise<ItemWithPrice[]> {
