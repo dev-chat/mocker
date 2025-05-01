@@ -86,7 +86,7 @@ export class AIService {
     );
   }
 
-  public async generateImage(userId: string, teamId: string, text: string): Promise<void> {
+  public async generateImage(userId: string, teamId: string, channel: string, text: string): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
     return this.openai.images
@@ -110,7 +110,7 @@ export class AIService {
         }
       })
       .then((imageUrl) => {
-        this.sendImage(imageUrl, userId, teamId, userId, text);
+        this.sendImage(imageUrl, userId, teamId, channel, text);
       })
       .catch(async (e) => {
         this.aiServiceLogger.error(e);

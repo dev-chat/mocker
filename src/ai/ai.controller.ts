@@ -41,7 +41,7 @@ aiController.post('/gemini/text', (req, res) => {
 aiController.post('/image', (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
   res.status(200).send('Processing your request. Please be patient...');
-  aiService.generateImage(user_id, team_id, text).catch((e) => {
+  aiService.generateImage(user_id, team_id, channel_id, text).catch((e) => {
     aiLogger.error(e);
     const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
     webService.sendEphemeral(channel_id, errorMessage, user_id);
