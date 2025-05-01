@@ -11,6 +11,6 @@ const confessionService = new ConfessionService();
 
 confessionController.post('/', async (req, res) => {
   res.status(200).send();
-  const { user_id, team_id, channel_id, text } = req.body;
-  confessionService.confess(user_id, team_id, channel_id, text);
+  const { user_id, channel_id, text } = req.body;
+  confessionService.confess(user_id, channel_id, text);
 });

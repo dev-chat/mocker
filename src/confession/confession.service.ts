@@ -7,7 +7,7 @@ export class ConfessionService {
   public slackService = new SlackService();
   logger = logger.child({ module: 'ConfessionService' });
 
-  public async confess(requestorId: string, teamId: string, channelId: string, confession: string): Promise<void> {
+  public async confess(requestorId: string, channelId: string, confession: string): Promise<void> {
     this.webService
       .sendMessage(channelId, `:chicken: <@${requestorId}> :chicken: says: \`${confession}\``)
       .catch((e) => this.logger.error(e));
