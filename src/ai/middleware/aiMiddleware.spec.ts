@@ -11,7 +11,6 @@ describe('aiMiddleware', () => {
   let res: Partial<Response>;
   let next: NextFunction;
 
-
   beforeEach(() => {
     jest.clearAllMocks();
     req = {
