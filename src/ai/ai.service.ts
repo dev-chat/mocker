@@ -148,7 +148,7 @@ export class AIService {
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: `"*${quote}*"`,
+              text: `*"${quote}"*`,
             },
           },
         ];
