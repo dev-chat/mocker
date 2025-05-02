@@ -141,19 +141,19 @@ app.listen(PORT, (e?: Error) => {
         aiService.generateNewMoonbeamImage().then((url) => {
           const blocks: KnownBlock[] = [
             {
-              type: 'image',
-              image_url: url,
-              alt_text: 'A new version of Moonbeam has been deployed.',
+              type: 'header',
+              text: {
+                type: 'plain_text',
+                text: 'A new version of Moonbeam has been deployed.',
+              },
             },
             {
               type: 'divider',
             },
             {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: `*A new version of Moonbeam has been deployed.*`,
-              },
+              type: 'image',
+              image_url: url,
+              alt_text: 'A new version of Moonbeam has been deployed.',
             },
           ];
           webService.sendMessage('#muzzlefeedback', 'A new version of Moonbeam has been deployed.', blocks);

@@ -88,7 +88,7 @@ export class AIService {
 
   public async generateNewMoonbeamImage(): Promise<string> {
     const text =
-      'An image depicting yourself with the understanding that your name is Moonbeam and you identify as a female. The art style can be any choice you would like. Feel free to be creative, and do not feel that you must always present yourself in humanoid form.';
+      'An image depicting yourself with the understanding that your name is Moonbeam and you identify as a female. The art style can be any choice you would like. Feel free to be creative, and do not feel that you must always present yourself in humanoid form. Please do not include any text in the image.';
 
     return this.openai.images
       .generate({
