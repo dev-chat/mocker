@@ -146,10 +146,13 @@ app.listen(PORT, (e?: Error) => {
               alt_text: 'A new version of Moonbeam has been deployed.',
             },
             {
+              type: 'divider',
+            },
+            {
               type: 'section',
               text: {
                 type: 'mrkdwn',
-                text: `A new version of Moonbeam has been deployed.`,
+                text: `*A new version of Moonbeam has been deployed.*`,
               },
             },
           ];
