@@ -4,3 +4,4 @@
 history-upload-job/data
 .env
 /coverage
+*.log
