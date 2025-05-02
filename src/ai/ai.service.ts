@@ -127,6 +127,14 @@ export class AIService {
         const [imageUrl, quote] = results;
         const blocks: KnownBlock[] = [
           {
+            type: 'image',
+            image_url: imageUrl,
+            alt_text: 'Moonbeam has been deployed.',
+          },
+          {
+            type: 'divider',
+          },
+          {
             type: 'header',
             text: {
               type: 'plain_text',
@@ -137,18 +145,10 @@ export class AIService {
             type: 'divider',
           },
           {
-            type: 'image',
-            image_url: imageUrl,
-            alt_text: 'Moonbeam has been deployed.',
-          },
-          {
-            type: 'divider',
-          },
-          {
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: `*${quote}*`,
+              text: `"*${quote}*"`,
             },
           },
         ];
