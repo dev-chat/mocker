@@ -25,7 +25,6 @@ import { signatureVerificationMiddleware } from './shared/middleware/signatureVe
 import { WebService } from './shared/services/web/web.service';
 import { logger } from './shared/logger/logger';
 import { AIService } from './ai/ai.service';
-import { KnownBlock } from '@slack/web-api';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -134,35 +133,22 @@ app.listen(PORT, (e?: Error) => {
     .then((connected) => {
       if (!connected) {
         indexLogger.error('Failed to connect to the database. Exiting application.');
-        webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Moonbeam is not operational.');
+        webService.sendMessage(
+          '#muzzlefeedback',
+          ':siren-steves-a-moron: Failed to connect to the database. Moonbeam is not operational. :siren-steves-a-moron:',
+        );
         process.exit(1);
       } else {
         indexLogger.info('Database connection established successfully.');
-        aiService.generateNewMoonbeamImage().then((url) => {
-          const blocks: KnownBlock[] = [
-            {
-              type: 'header',
-              text: {
-                type: 'plain_text',
-                text: 'A new version of Moonbeam has been deployed.',
-              },
-            },
-            {
-              type: 'divider',
-            },
-            {
-              type: 'image',
-              image_url: url,
-              alt_text: 'A new version of Moonbeam has been deployed.',
-            },
-          ];
-          webService.sendMessage('#muzzlefeedback', 'A new version of Moonbeam has been deployed.', blocks);
-        });
+        aiService.redeployMoonbeam();
       }
     })
     .catch((error) => {
       indexLogger.error('Error during database connection:', error);
-      webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Moonbeam is not operational.');
+      webService.sendMessage(
+        '#muzzlefeedback',
+        ':siren-steves-a-moron: Failed to connect to the database. Moonbeam is not operational. :siren-steves-a-moron:',
+      );
       process.exit(1);
     });
 });

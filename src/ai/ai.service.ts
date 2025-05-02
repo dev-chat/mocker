@@ -86,14 +86,27 @@ export class AIService {
     );
   }
 
-  public async generateNewMoonbeamImage(): Promise<string> {
-    const text =
+  public async redeployMoonbeam(): Promise<void> {
+    const imagePrompt =
       'An image depicting yourself with the understanding that your name is Moonbeam and you identify as a female. The art style can be any choice you would like. Feel free to be creative, and do not feel that you must always present yourself in humanoid form. Please do not include any text in the image.';
+    const textPrompt = 'Provide either an encouraging or an omnious message about LLMs, AI or the future.';
+    const aiQuote = await this.openai.chat.completions
+      .create({
+        model: GPT_MODEL,
+        messages: [{ role: 'system', content: textPrompt }],
+        user: `MoonBeam-TextGen-DaBros2016`,
+      })
+      .then((x) => {
+        return this.convertAsterisks(x.choices[0].message?.content?.trim());
+      })
+      .catch((e) => {
+        this.aiServiceLogger.error(e);
+      });
 
-    return this.openai.images
+    const aiImage = this.openai.images
       .generate({
         model: 'dall-e-3',
-        prompt: text,
+        prompt: imagePrompt,
         n: 1,
         size: '1024x1024',
         response_format: 'b64_json',
@@ -104,9 +117,45 @@ export class AIService {
         if (b64_json) {
           return this.writeToDiskAndReturnUrl(b64_json);
         } else {
-          this.aiServiceLogger.error(`No b64_json was returned by OpenAI for prompt: ${text}`);
-          throw new Error(`No b64_json was returned by OpenAI for prompt: ${text}`);
+          this.aiServiceLogger.error(`No b64_json was returned by OpenAI for prompt: ${imagePrompt}`);
+          throw new Error(`No b64_json was returned by OpenAI for prompt: ${imagePrompt}`);
         }
+      });
+
+    return Promise.all([aiImage, aiQuote])
+      .then((results) => {
+        const [imageUrl, quote] = results;
+        const blocks: KnownBlock[] = [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: 'Moonbeam has been deployed.',
+            },
+          },
+          {
+            type: 'divider',
+          },
+          {
+            type: 'image',
+            image_url: imageUrl,
+            alt_text: 'Moonbeam has been deployed.',
+          },
+          {
+            type: 'divider',
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `*${quote}*`,
+            },
+          },
+        ];
+        this.webService.sendMessage('#muzzlefeedback', 'Moonbeam has been deployed.', blocks);
+      })
+      .catch((e) => {
+        this.aiServiceLogger.error(e);
       });
   }
 
