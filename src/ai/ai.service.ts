@@ -14,12 +14,12 @@ import { CORPO_SPEAK_PROMPT, GPT_MODEL, MAX_AI_REQUESTS_PER_DAY, PARTICIPATION_P
 import { logger } from '../shared/logger/logger';
 
 export class AIService {
-  private redis = new AIPersistenceService();
-  private openai = new OpenAI({
+  redis = new AIPersistenceService();
+  openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  private gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY as string);
+  gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY as string);
 
   historyService = new HistoryPersistenceService();
   webService = new WebService();

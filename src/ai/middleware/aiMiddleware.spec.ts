@@ -4,7 +4,20 @@ import { StoreService } from '../../store/store.service';
 import { AIService } from '../ai.service';
 
 jest.mock('openai');
-jest.mock('../ai.persistence');
+jest.mock('../ai.persistence', () => {
+  return {
+    AIPersistenceService: jest.fn().mockImplementation(() => {
+      return {
+        removeInflight: jest.fn(),
+        setInflight: jest.fn(),
+        getInflight: jest.fn(),
+        setDailyRequests: jest.fn(),
+        decrementDailyRequests: jest.fn(),
+        getDailyRequests: jest.fn(),
+      };
+    }),
+  };
+});
 
 describe('aiMiddleware', () => {
   let req: Partial<Request>;
