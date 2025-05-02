@@ -133,9 +133,6 @@ export class AIService {
             alt_text: 'Moonbeam has been deployed.',
           },
           {
-            type: 'divider',
-          },
-          {
             type: 'header',
             text: {
               type: 'plain_text',
