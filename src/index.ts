@@ -24,6 +24,8 @@ import { SlackService } from './shared/services/slack/slack.service';
 import { signatureVerificationMiddleware } from './shared/middleware/signatureVerification';
 import { WebService } from './shared/services/web/web.service';
 import { logger } from './shared/logger/logger';
+import { AIService } from './ai/ai.service';
+import { KnownBlock } from '@slack/web-api';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -62,6 +64,7 @@ app.use('/walkie', walkieController);
 
 const slackService = new SlackService();
 const webService = new WebService();
+const aiService = new AIService();
 const indexLogger = logger.child({ module: 'Index' });
 
 const connectToDb = async (): Promise<boolean> => {
@@ -131,16 +134,32 @@ app.listen(PORT, (e?: Error) => {
     .then((connected) => {
       if (!connected) {
         indexLogger.error('Failed to connect to the database. Exiting application.');
-        webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Muzzle is not operational.');
+        webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Moonbeam is not operational.');
         process.exit(1);
       } else {
         indexLogger.info('Database connection established successfully.');
-        webService.sendMessage('#muzzlefeedback', 'A new version of Muzzle has been deployed.');
+        aiService.generateNewMoonbeamImage().then((url) => {
+          const blocks: KnownBlock[] = [
+            {
+              type: 'image',
+              image_url: url,
+              alt_text: 'A new version of Moonbeam has been deployed.',
+            },
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: `A new version of Moonbeam has been deployed.`,
+              },
+            },
+          ];
+          webService.sendMessage('#muzzlefeedback', 'A new version of Moonbeam has been deployed.', blocks);
+        });
       }
     })
     .catch((error) => {
       indexLogger.error('Error during database connection:', error);
-      webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Muzzle is not operational.');
+      webService.sendMessage('#muzzlefeedback', 'Failed to connect to the database. Moonbeam is not operational.');
       process.exit(1);
     });
 });

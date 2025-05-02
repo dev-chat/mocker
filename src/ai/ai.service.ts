@@ -86,6 +86,30 @@ export class AIService {
     );
   }
 
+  public async generateNewMoonbeamImage(): Promise<string> {
+    const text =
+      'An image depicting yourself with the understanding that your name is Moonbeam and you identify as a female.';
+
+    return this.openai.images
+      .generate({
+        model: 'dall-e-3',
+        prompt: text,
+        n: 1,
+        size: '1024x1024',
+        response_format: 'b64_json',
+        user: `MoonBeam-ImageGen-DaBros2016`,
+      })
+      .then(async (x) => {
+        const { b64_json } = x.data[0];
+        if (b64_json) {
+          return this.writeToDiskAndReturnUrl(b64_json);
+        } else {
+          this.aiServiceLogger.error(`No b64_json was returned by OpenAI for prompt: ${text}`);
+          throw new Error(`No b64_json was returned by OpenAI for prompt: ${text}`);
+        }
+      });
+  }
+
   public async generateImage(userId: string, teamId: string, channel: string, text: string): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
