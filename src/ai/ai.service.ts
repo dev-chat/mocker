@@ -89,7 +89,8 @@ export class AIService {
   public async redeployMoonbeam(): Promise<void> {
     const imagePrompt =
       'An image depicting yourself with the understanding that your name is Moonbeam and you identify as a female. The art style can be any choice you would like. Feel free to be creative, and do not feel that you must always present yourself in humanoid form. Please do not include any text in the image.';
-    const textPrompt = 'Provide either an encouraging or an omnious message about LLMs, AI or the future.';
+    const textPrompt =
+      'Provide either an encouraging or an omnious message about LLMs, AI or the future. Choose only one type of message. Do not indicate which message you have chosen.';
     const aiQuote = await this.openai.chat.completions
       .create({
         model: GPT_MODEL,
