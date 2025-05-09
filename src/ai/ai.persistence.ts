@@ -9,6 +9,7 @@ enum AITypeEnum {
 }
 
 const FIVE_MINUTES_MS = 300000;
+const FIVE_SECONDS_MS = 5000;
 
 export class AIPersistenceService {
   private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
@@ -56,6 +57,23 @@ export class AIPersistenceService {
 
   public getDailyRequests(userId: string, teamId: string): Promise<string | null> {
     return this.redis.getValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily));
+  }
+
+  public setHasInFlight(teamId: string, channelId: string): Promise<unknown | null> {
+    return this.redis.setValueWithExpire(
+      this.getRedisKeyName(channelId, teamId, AITypeEnum.Inflight),
+      1,
+      'PX',
+      FIVE_SECONDS_MS,
+    );
+  }
+
+  public removeHasInFlight(teamId: string, channelId: string): Promise<number> {
+    return this.redis.removeKey(this.getRedisKeyName(channelId, teamId, AITypeEnum.Inflight));
+  }
+
+  public hasInFlight(teamId: string, channelId: string): Promise<string | null> {
+    return this.redis.getValue(this.getRedisKeyName(channelId, teamId, AITypeEnum.Inflight));
   }
 
   public setHasParticipated(teamId: string, channelId: string): Promise<unknown | null> {
