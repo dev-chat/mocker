@@ -59,7 +59,7 @@ export class AIPersistenceService {
     return this.redis.getValue(this.getRedisKeyName(userId, teamId, AITypeEnum.Daily));
   }
 
-  public setHasInFlight(teamId: string, channelId: string): Promise<unknown | null> {
+  public setParticipationInFlight(channelId: string, teamId: string): Promise<unknown | null> {
     return this.redis.setValueWithExpire(
       this.getRedisKeyName(channelId, teamId, AITypeEnum.Inflight),
       1,
@@ -68,15 +68,11 @@ export class AIPersistenceService {
     );
   }
 
-  public removeHasInFlight(teamId: string, channelId: string): Promise<number> {
+  public removeParticipationInFlight(channelId: string, teamId: string): Promise<number> {
     return this.redis.removeKey(this.getRedisKeyName(channelId, teamId, AITypeEnum.Inflight));
   }
 
-  public hasInFlight(teamId: string, channelId: string): Promise<string | null> {
-    return this.redis.getValue(this.getRedisKeyName(channelId, teamId, AITypeEnum.Inflight));
-  }
-
-  public setHasParticipated(teamId: string, channelId: string): Promise<unknown | null> {
+  public setHasParticipated(channelId: string, teamId: string): Promise<unknown | null> {
     return this.redis.setValueWithExpire(
       this.getRedisKeyName(channelId, teamId, AITypeEnum.Participated),
       1,
@@ -85,11 +81,11 @@ export class AIPersistenceService {
     );
   }
 
-  public getHasParticipated(teamId: string, channelId: string): Promise<string | null> {
+  public getHasParticipated(channelId: string, teamId: string): Promise<string | null> {
     return this.redis.getValue(this.getRedisKeyName(channelId, teamId, AITypeEnum.Participated));
   }
 
-  private getRedisKeyName(userId: string, teamId: string, type: AITypeEnum): string {
-    return `ai.${type}.${userId}-${teamId}`;
+  private getRedisKeyName(userOrChannelId: string, teamId: string, type: AITypeEnum): string {
+    return `ai.${type}.${userOrChannelId}-${teamId}`;
   }
 }

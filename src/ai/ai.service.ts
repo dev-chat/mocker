@@ -320,7 +320,7 @@ export class AIService {
 
   public async participate(teamId: string, channelId: string): Promise<void> {
     const isAbleToParticipate =
-      !(await this.redis.getHasParticipated(teamId, channelId)) && !(await this.redis.getInflight(teamId, channelId));
+      !(await this.redis.getHasParticipated(teamId, channelId)) && !(await this.redis.getInflight(channelId, teamId));
     const messageCount = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
     const isEnoughMessages = messageCount >= 20;
     const shouldParticipate = Math.random() < 0.25 && isAbleToParticipate && isEnoughMessages;
@@ -329,7 +329,7 @@ export class AIService {
       return;
     }
 
-    await this.redis.setHasInFlight(teamId, channelId);
+    await this.redis.setParticipationInFlight(channelId, teamId);
 
     const messages = await this.historyService
       .getHistory({ team_id: teamId, channel_id: channelId } as SlashCommandRequest, false)
@@ -362,7 +362,7 @@ export class AIService {
         throw e;
       })
       .finally(() => {
-        this.redis.removeHasInFlight(teamId, channelId);
+        this.redis.removeParticipationInFlight(channelId, teamId);
       });
   }
 
