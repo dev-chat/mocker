@@ -10,8 +10,15 @@ import { AIPersistenceService } from './ai.persistence';
 import { KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
 import { getChunks } from '../shared/util/getChunks';
-import { CORPO_SPEAK_PROMPT, GPT_MODEL, MAX_AI_REQUESTS_PER_DAY, PARTICIPATION_PROMPT } from './ai.constants';
+import {
+  CORPO_SPEAK_PROMPT,
+  GET_TAGGED_MESSAGE_PROMPT,
+  GPT_MODEL,
+  MAX_AI_REQUESTS_PER_DAY,
+  PARTICIPATION_PROMPT,
+} from './ai.constants';
 import { logger } from '../shared/logger/logger';
+import { SlackService } from '../shared/services/slack/slack.service';
 
 export class AIService {
   redis = new AIPersistenceService();
@@ -23,6 +30,7 @@ export class AIService {
 
   historyService = new HistoryPersistenceService();
   webService = new WebService();
+  slackService = new SlackService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
   convertAsterisks(text: string | undefined): string | undefined {
@@ -318,14 +326,14 @@ export class AIService {
       });
   }
 
-  public async participate(teamId: string, channelId: string): Promise<void> {
+  public async participate(teamId: string, channelId: string, taggedMessage?: string): Promise<void> {
     const isAbleToParticipate =
       !(await this.redis.getHasParticipated(teamId, channelId)) && !(await this.redis.getInflight(channelId, teamId));
     const messageCount = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
     const isEnoughMessages = messageCount >= 20;
     const shouldParticipate = Math.random() < 0.25 && isAbleToParticipate && isEnoughMessages;
 
-    if (!shouldParticipate) {
+    if (!taggedMessage && !shouldParticipate) {
       return;
     }
 
@@ -340,7 +348,7 @@ export class AIService {
         messages: [
           {
             role: 'system',
-            content: PARTICIPATION_PROMPT,
+            content: taggedMessage ? GET_TAGGED_MESSAGE_PROMPT(taggedMessage) : PARTICIPATION_PROMPT,
           },
           { role: 'system', content: messages },
         ],
@@ -482,6 +490,14 @@ export class AIService {
   }
 
   handle(request: EventRequest): void {
-    this.participate(request.team_id, request.event.channel);
+    if (this.slackService.containsTag(request.event.text)) {
+      const userId = this.slackService.getUserId(request.event.text);
+      const isMoonbeamTagged = userId && userId.includes('ULG8SJRFF');
+      if (isMoonbeamTagged) {
+        this.participate(request.team_id, request.event.channel, request.event.text);
+      }
+    } else {
+      this.participate(request.team_id, request.event.channel);
+    }
   }
 }
