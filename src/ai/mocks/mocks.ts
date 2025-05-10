@@ -1,0 +1,35 @@
+// Not working - why?
+export const mockAiPersistenceService = {
+  AIPersistenceService: jest.fn().mockImplementation(() => ({
+    removeInflight: jest.fn(),
+    setInflight: jest.fn(),
+    getInflight: jest.fn(),
+    setDailyRequests: jest.fn(),
+    getDailyRequests: jest.fn(),
+    decrementDailyRequests: jest.fn(),
+    getRedisKeyName: jest.fn(),
+    getDailySummary: jest.fn(),
+    setDailySummary: jest.fn(),
+    removeDailySummary: jest.fn(),
+    getParticipated: jest.fn(),
+    setParticipated: jest.fn(),
+    removeParticipated: jest.fn(),
+    getParticipatedKeyName: jest.fn(),
+    getDailySummaryKeyName: jest.fn(),
+    getInflightKeyName: jest.fn(),
+    getDailyKeyName: jest.fn(),
+  })),
+};
+
+export const mockOpenAi = {
+  OpenAI: jest.fn().mockImplementation(() => ({
+    chat: {
+      completions: {
+        create: jest.fn(),
+      },
+    },
+    images: {
+      generate: jest.fn(),
+    },
+  })),
+};
