@@ -1,6 +1,4 @@
 import { when } from 'jest-when';
-import { Muzzle } from '../../shared/db/models/Muzzle';
-import { WebService } from '../web/web.service';
 import { MAX_SUPPRESSIONS } from './constants';
 import { MuzzlePersistenceService } from './muzzle.persistence.service';
 import { MuzzleService } from './muzzle.service';
@@ -31,7 +29,7 @@ describe('MuzzleService', () => {
         let mockMaxMuzzles: jest.SpyInstance;
         beforeEach(() => {
           const mockMuzzle = { id: 1 };
-          const persistenceService = MuzzlePersistenceService.getInstance();
+          const persistenceService = new MuzzlePersistenceService();
           mockAddMuzzle = jest.spyOn(persistenceService, 'addMuzzle').mockResolvedValue(mockMuzzle as Muzzle);
           mockMaxMuzzles = jest.spyOn(persistenceService, 'isMaxMuzzlesReached').mockResolvedValue(false);
           jest

@@ -1,4 +1,4 @@
-import { ClapService } from '../services/clap/clap.service';
+import { ClapService } from './clap.service';
 
 describe('ClapService', () => {
   let clapService: ClapService;
@@ -9,11 +9,23 @@ describe('ClapService', () => {
 
   describe('clap()', () => {
     it('should clap a users input with multiple words', () => {
-      expect(clapService.clap('test this out')).toBe('test :clap: this :clap: out :clap:');
+      const messageSpy = jest.spyOn(clapService.slackService, 'sendResponse').mockImplementation(() => {});
+      clapService.clap('test this out', 'U12345', 'http://response.url');
+      expect(messageSpy).toHaveBeenCalledWith('http://response.url', {
+        attachments: [
+          {
+            text: 'test :clap: this :clap: out :clap:',
+          },
+        ],
+        response_type: 'in_channel',
+        text: '<@U12345>',
+      });
     });
 
-    it('should return input if it is an empty string', () => {
-      expect(clapService.clap('')).toBe('');
+    it('shoudl not clap if no text is passed in', () => {
+      const messageSpy = jest.spyOn(clapService.slackService, 'sendResponse').mockImplementation(() => {});
+      clapService.clap('', 'U12345', 'http://response.url');
+      expect(messageSpy).not.toHaveBeenCalled();
     });
   });
 });

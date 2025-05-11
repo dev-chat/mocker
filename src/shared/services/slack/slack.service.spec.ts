@@ -1,24 +1,18 @@
 import { SlackService } from './slack.service';
 
-describe('slack-utils', () => {
+jest.mock('./slack.persistence.service', () => ({
+  SlackPersistenceService: jest.fn().mockImplementation(() => ({
+    getUserByUserName: jest.fn(),
+    getUserById: jest.fn(),
+  })),
+}));
+
+describe('SlackService', () => {
   let slackService: SlackService;
 
   beforeEach(() => {
     slackService = new SlackService();
   });
-  // describe('getUserNameById()', () => {
-  //   it('should return the user.name property of a known user by id', () => {
-  //     expect(slackService.getUserName('123')).toBe('test_user123');
-  //   });
-
-  //   it('should return an empty string for a user that does not exist', () => {
-  //     expect(slackService.getUserName('1010')).toBe('');
-  //   });
-
-  //   it('should handle empty strings values', () => {
-  //     expect(slackService.getUserName('')).toBe('');
-  //   });
-  // });
 
   describe('getUserId()', () => {
     it('should return a userId when one is passed in without a username', () => {
@@ -33,8 +27,8 @@ describe('slack-utils', () => {
       expect(slackService.getUserId('<@U2TYNKJ|jrjrjr>')).toBe('U2TYNKJ');
     });
 
-    it('should return empty string when no userId exists', () => {
-      expect(slackService.getUserId('total waste of time')).toBe('');
+    it('should return undefined when no userId exists', () => {
+      expect(slackService.getUserId('total waste of time')).toBeUndefined();
     });
 
     it('should return the string when it exists inside of another string', () => {

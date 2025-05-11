@@ -5,27 +5,29 @@ export class MockService {
   slackService = new SlackService();
 
   public mock(request: SlashCommandRequest): void {
-    let mocked = '';
-    let shouldChangeCase = true;
-    for (const letter of request.text) {
-      if (letter === ' ') {
-        mocked += letter;
-      } else {
-        mocked += shouldChangeCase ? letter.toLowerCase() : letter.toUpperCase();
-        shouldChangeCase = !shouldChangeCase;
+    if (request.text) {
+      let mocked = '';
+      let shouldChangeCase = true;
+      for (const letter of request.text) {
+        if (letter === ' ') {
+          mocked += letter;
+        } else {
+          mocked += shouldChangeCase ? letter.toLowerCase() : letter.toUpperCase();
+          shouldChangeCase = !shouldChangeCase;
+        }
       }
+
+      const response: ChannelResponse = {
+        attachments: [
+          {
+            text: mocked,
+          },
+        ],
+        response_type: 'in_channel',
+        text: `<@${request.user_id}>`,
+      };
+
+      this.slackService.sendResponse(request.response_url, response);
     }
-
-    const response: ChannelResponse = {
-      attachments: [
-        {
-          text: mocked,
-        },
-      ],
-      response_type: 'in_channel',
-      text: `<@${request.user_id}>`,
-    };
-
-    this.slackService.sendResponse(request.response_url, response);
   }
 }
