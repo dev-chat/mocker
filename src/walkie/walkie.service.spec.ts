@@ -44,31 +44,31 @@ describe('slack-utils', () => {
 
   describe('walkieTalkie()', () => {
     // This code does work  but this test fails hrmrmrmr.
-    // it('should send a message with the correct format when natoName is found', () => {
-    //   const request = {
-    //     text: '<@U2YJQN2KB> test',
-    //     user_id: 'U12345',
-    //     response_url: 'http://response.url',
-    //   } as SlashCommandRequest;
+    it('should send a message with the correct format when natoName is found', () => {
+      const request = {
+        text: '<@U2YJQN2KB | jrjrjr> test',
+        user_id: 'U12345',
+        response_url: 'http://response.url',
+      } as SlashCommandRequest;
 
-    //   const sendResponseSpy = jest.spyOn(walkieService.slackService, 'sendResponse').mockImplementation(() => {});
+      const sendResponseSpy = jest.spyOn(walkieService.slackService, 'sendResponse').mockImplementation(() => {});
 
-    //   walkieService.walkieTalkie(request);
+      walkieService.walkieTalkie(request);
 
-    //   expect(sendResponseSpy).toHaveBeenCalledWith(request.response_url, {
-    //     attachments: [
-    //       {
-    //         text: ':walkietalkie: *chk* Zulu Mike test over. *chk* :walkietalkie:',
-    //       },
-    //     ],
-    //     response_type: 'in_channel',
-    //     text: '<@U12345>',
-    //   });
-    // });
+      expect(sendResponseSpy).toHaveBeenCalledWith(request.response_url, {
+        attachments: [
+          {
+            text: ':walkietalkie: *chk* Sierra Foxtrot test over. *chk* :walkietalkie:',
+          },
+        ],
+        response_type: 'in_channel',
+        text: '<@U12345>',
+      });
+    });
 
     it('should send a message with the correct format even when natoName is not found', () => {
       const request = {
-        text: '<@U12345|John Doe> test',
+        text: '<@U12345|JohnDoe> test',
         user_id: 'U12345',
         response_url: 'http://response.url',
       } as SlashCommandRequest;
@@ -79,7 +79,7 @@ describe('slack-utils', () => {
       expect(sendResponseSpy).toHaveBeenCalledWith(request.response_url, {
         attachments: [
           {
-            text: ':walkietalkie: *chk* <@U12345|John Doe> test over. *chk* :walkietalkie:',
+            text: ':walkietalkie: *chk* <@U12345|JohnDoe> test over. *chk* :walkietalkie:',
           },
         ],
         response_type: 'in_channel',
