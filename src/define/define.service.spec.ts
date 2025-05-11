@@ -68,11 +68,11 @@ const testArray: Definition[] = [
   },
 ];
 
-describe('define-utils', () => {
+describe('DefineService', () => {
   let defineService: DefineService;
 
   beforeEach(() => {
-    defineService = DefineService.getInstance();
+    defineService = new DefineService();
   });
 
   describe('capitalizeFirstLetter()', () => {
@@ -105,7 +105,10 @@ describe('define-utils', () => {
     });
 
     it(`should return [{ "Sorry, no definitions found" }] if defArr === 0`, () => {
-      expect(defineService.formatDefs([], 'test')[0].text).toBe('Sorry, no definitions found.');
+      expect(defineService.formatDefs([], 'test')[0].text).toEqual({
+        text: '> Sorry, no definitions found.',
+        type: 'mrkdwn',
+      });
     });
   });
 });
