@@ -495,7 +495,8 @@ export class AIService {
     if (this.slackService.containsTag(request.event.text) && !isUserMuzzled) {
       const userId = this.slackService.getUserId(request.event.text);
       const isMoonbeamTagged = userId && userId.includes('ULG8SJRFF');
-      if (isMoonbeamTagged) {
+      const isPosterMoonbeam = request.event.user === 'ULG8SJRFF';
+      if (isMoonbeamTagged && !isPosterMoonbeam) {
         this.participate(request.team_id, request.event.channel, request.event.text);
       }
     } else {
