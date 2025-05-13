@@ -212,9 +212,9 @@ export class SuppressorService {
   ): Promise<void> {
     await this.webService.deleteMessage(channel, timestamp, userId);
 
-    const words = text.split(' ');
+    const words = text?.split(' ');
 
-    const shouldMuzzle = words.length <= 250;
+    const shouldMuzzle = words?.length > 0 && words?.length <= 250;
 
     if (shouldMuzzle) {
       const textWithFallbackReplacments = words
