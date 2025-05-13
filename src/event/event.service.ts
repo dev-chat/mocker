@@ -49,7 +49,7 @@ export class EventService {
     this.backfireService.handle(request);
     this.counterService.handle(request);
     this.reactionService.handle(request);
-    this.aiService.handle(request);
     this.suppressorService.handleBotMessage(request);
+    this.aiService.handle(request);
   }
 }

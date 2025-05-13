@@ -19,6 +19,7 @@ import {
 } from './ai.constants';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
+import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 
 export class AIService {
   redis = new AIPersistenceService();
@@ -27,7 +28,7 @@ export class AIService {
   });
 
   gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY as string);
-
+  muzzlePersistenceService = new MuzzlePersistenceService();
   historyService = new HistoryPersistenceService();
   webService = new WebService();
   slackService = new SlackService();
@@ -489,8 +490,9 @@ export class AIService {
     }
   }
 
-  handle(request: EventRequest): void {
-    if (this.slackService.containsTag(request.event.text)) {
+  async handle(request: EventRequest): Promise<void> {
+    const isUserMuzzled = await this.muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id);
+    if (this.slackService.containsTag(request.event.text) && !isUserMuzzled) {
       const userId = this.slackService.getUserId(request.event.text);
       const isMoonbeamTagged = userId && userId.includes('ULG8SJRFF');
       if (isMoonbeamTagged) {
