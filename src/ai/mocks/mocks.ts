@@ -1,4 +1,3 @@
-// Not working - why?
 export const mockAiPersistenceService = {
   AIPersistenceService: jest.fn().mockImplementation(() => ({
     removeInflight: jest.fn(),
@@ -18,18 +17,5 @@ export const mockAiPersistenceService = {
     getDailySummaryKeyName: jest.fn(),
     getInflightKeyName: jest.fn(),
     getDailyKeyName: jest.fn(),
-  })),
-};
-
-export const mockOpenAi = {
-  OpenAI: jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: jest.fn(),
-      },
-    },
-    images: {
-      generate: jest.fn(),
-    },
   })),
 };

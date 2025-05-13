@@ -1,48 +1,16 @@
 import OpenAI from 'openai';
+import { OpenAIMock } from '../shared/mocks/openai.mock';
+import { mockAiPersistenceService } from './mocks/mocks';
 import { GPT_MODEL, MAX_AI_REQUESTS_PER_DAY } from './ai.constants';
 import { AIService } from './ai.service';
 import { Logger } from 'winston';
 
-jest.mock('./ai.persistence', () => {
-  return {
-    AIPersistenceService: jest.fn().mockImplementation(() => ({
-      removeInflight: jest.fn(),
-      setInflight: jest.fn(),
-      getInflight: jest.fn(),
-      setDailyRequests: jest.fn(),
-      getDailyRequests: jest.fn(),
-      decrementDailyRequests: jest.fn(),
-      getRedisKeyName: jest.fn(),
-      getDailySummary: jest.fn(),
-      setDailySummary: jest.fn(),
-      removeDailySummary: jest.fn(),
-      getParticipated: jest.fn(),
-      setParticipated: jest.fn(),
-      removeParticipated: jest.fn(),
-      getParticipatedKeyName: jest.fn(),
-      getDailySummaryKeyName: jest.fn(),
-      getInflightKeyName: jest.fn(),
-      getDailyKeyName: jest.fn(),
-    })),
-  };
-});
+jest.mock('openai', () => OpenAIMock);
+jest.mock('./ai.persistence', () => mockAiPersistenceService);
+
 jest.mock('../shared/services/history.persistence.service');
 jest.mock('../shared/services/web/web.service');
 jest.mock('../shared/logger/logger');
-jest.mock('openai', () => {
-  return {
-    OpenAI: jest.fn().mockImplementation(() => ({
-      chat: {
-        completions: {
-          create: jest.fn(),
-        },
-      },
-      images: {
-        generate: jest.fn(),
-      },
-    })),
-  };
-});
 
 describe('AIService', () => {
   let aiService: AIService;

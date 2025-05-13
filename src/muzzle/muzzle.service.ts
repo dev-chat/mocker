@@ -8,8 +8,8 @@ import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MAX_SUPPRESSIONS } from './constants';
 import { getTimeString, getTimeToMuzzle } from './muzzle-utilities';
 
 export class MuzzleService extends SuppressorService {
-  private counterService = new CounterService();
-  private storePersistenceService = new StorePersistenceService();
+  counterService = new CounterService();
+  storePersistenceService = new StorePersistenceService();
   logger = logger.child({ module: 'MuzzleService' });
 
   public permaMuzzle(impersonatingUserId: string, teamId: string): Promise<Muzzle> {
