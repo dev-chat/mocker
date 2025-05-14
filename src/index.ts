@@ -1,49 +1,33 @@
 import 'reflect-metadata'; // Necessary for TypeORM entities.
 import 'dotenv/config';
 import bodyParser from 'body-parser';
-import crypto from 'crypto';
-import express, { Application, Response, NextFunction, Request } from 'express';
-import { createConnection, getConnectionOptions } from 'typeorm';
 
-import { SlackService } from './services/slack/slack.service';
-import { controllers } from './controllers/index.controller';
+import express, { Application } from 'express';
+import { createConnection, getConnectionOptions } from 'typeorm';
 import { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
+import { aiController } from './ai/ai.controller';
+import { clapController } from './clap/clap.controller';
+import { confessionController } from './confession/confession.controller';
+import { counterController } from './counter/counter.controller';
+import { defineController } from './define/define.controller';
+import { eventController } from './event/event.controller';
+import { healthController } from './health/health.controller';
+import { listController } from './list/list.controller';
+import { mockController } from './mock/mock.controller';
+import { muzzleController } from './muzzle/muzzle.controller';
+import { quoteController } from './quote/quote.controller';
+import { reactionController } from './reaction/reaction.controller';
+import { storeController } from './store/store.controller';
+import { summaryController } from './summary/summary.controller';
+import { walkieController } from './walkie/walkie.controller';
+import { SlackService } from './shared/services/slack/slack.service';
+import { signatureVerificationMiddleware } from './shared/middleware/signatureVerification';
+import { WebService } from './shared/services/web/web.service';
+import { logger } from './shared/logger/logger';
+import { AIService } from './ai/ai.service';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
-
-const signatureVerification = (req: Request, res: Response, next: NextFunction) => {
-  const body = (req as RequestWithRawBody).rawBody;
-  const timestamp = req.headers['x-slack-request-timestamp'];
-  const slackSignature = req.headers['x-slack-signature'];
-  const base = 'v0:' + timestamp + ':' + body;
-  const hashed: string =
-    'v0=' +
-    crypto
-      .createHmac('sha256', process.env.MUZZLE_BOT_SIGNING_SECRET as string)
-      .update(base)
-      .digest('hex');
-
-  if (
-    hashed === slackSignature ||
-    req.body.token === process.env.CLAPPER_TOKEN ||
-    req.body.token === process.env.MOCKER_TOKEN ||
-    req.body.token === process.env.DEFINE_TOKEN ||
-    req.body.token === process.env.BLIND_TOKEN ||
-    req.hostname === '127.0.0.1'
-  ) {
-    next();
-  } else {
-    console.error('Someone is hitting your service from outside of slack.');
-    console.error(req.ip);
-    console.error(req.ips);
-    console.error(req.headers);
-    console.error(req.body);
-    console.error(req);
-    res.send('Naughty, naughty...');
-    return;
-  }
-};
 
 app.use(
   bodyParser.urlencoded({
@@ -60,12 +44,29 @@ app.use(
     },
   }),
 );
-app.use(signatureVerification);
-app.use(controllers);
+app.use(signatureVerificationMiddleware);
+app.use('/ai', aiController);
+app.use('/clap', clapController);
+app.use('/confess', confessionController);
+app.use('/counter', counterController);
+app.use('/define', defineController);
+app.use('/event', eventController);
+app.use('/health', healthController);
+app.use('/list', listController);
+app.use('/mock', mockController);
+app.use('/muzzle', muzzleController);
+app.use('/quote', quoteController);
+app.use('/rep', reactionController);
+app.use('/store', storeController);
+app.use('/summary', summaryController);
+app.use('/walkie', walkieController);
 
-const slackService = SlackService.getInstance();
+const slackService = new SlackService();
+const webService = new WebService();
+const aiService = new AIService();
+const indexLogger = logger.child({ module: 'Index' });
 
-const connectToDb = async (): Promise<void> => {
+const connectToDb = async (): Promise<boolean> => {
   try {
     const options = await getConnectionOptions();
     const overrideOptions = {
@@ -73,19 +74,24 @@ const connectToDb = async (): Promise<void> => {
       charset: 'utf8mb4',
       synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
     };
-    createConnection(overrideOptions)
+    return createConnection(overrideOptions)
       .then((connection) => {
         if (connection.isConnected) {
           slackService.getAllUsers();
           slackService.getAndSaveAllChannels();
-          console.log(`Connected to MySQL DB: ${options.database}`);
+          indexLogger.info(`Connected to MySQL DB: ${options.database}`);
+          return true;
         } else {
           throw Error('Unable to connect to database');
         }
       })
-      .catch((e) => console.error(e));
+      .catch((e) => {
+        indexLogger.error(e);
+        return false;
+      });
   } catch (e) {
-    console.error(e);
+    indexLogger.error(e);
+    return false;
   }
 };
 
@@ -121,7 +127,28 @@ const checkForEnvVariables = (): void => {
 };
 
 app.listen(PORT, (e?: Error) => {
-  e ? console.error(e) : console.log(`Listening on port ${PORT || 3000}`);
+  e ? indexLogger.error(e) : indexLogger.info(`Listening on port ${PORT || 3000}`);
   checkForEnvVariables();
-  connectToDb();
+  connectToDb()
+    .then((connected) => {
+      if (!connected) {
+        indexLogger.error('Failed to connect to the database. Exiting application.');
+        webService.sendMessage(
+          '#muzzlefeedback',
+          ':siren-steves-a-moron: Failed to connect to the database. Moonbeam is not operational. :siren-steves-a-moron:',
+        );
+        process.exit(1);
+      } else {
+        indexLogger.info('Database connection established successfully.');
+        aiService.redeployMoonbeam();
+      }
+    })
+    .catch((error) => {
+      indexLogger.error('Error during database connection:', error);
+      webService.sendMessage(
+        '#muzzlefeedback',
+        ':siren-steves-a-moron: Failed to connect to the database. Moonbeam is not operational. :siren-steves-a-moron:',
+      );
+      process.exit(1);
+    });
 });

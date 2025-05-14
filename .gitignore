@@ -3,3 +3,5 @@
 /src/ormconfig.ts
 history-upload-job/data
 .env
+/coverage
+*.log

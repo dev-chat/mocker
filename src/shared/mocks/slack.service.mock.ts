@@ -1,0 +1,16 @@
+export const MockSlackService = {
+  sendResponse: jest.fn(),
+  getUserId: jest.fn(),
+  getUserIdByName: jest.fn(),
+  getUserNameById: jest.fn(),
+  getUserIdByCallbackId: jest.fn(),
+  getBotId: jest.fn(),
+  containsTag: jest.fn(),
+  getAndSaveAllChannels: jest.fn(),
+  getChannelName: jest.fn(),
+  getImpersonatedUser: jest.fn(),
+  getAllUsers: jest.fn(),
+  getBotByBotId: jest.fn(),
+  getUserById: jest.fn(),
+  handle: jest.fn(),
+};

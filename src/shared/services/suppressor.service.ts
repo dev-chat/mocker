@@ -1,25 +1,27 @@
 import { EventRequest } from '../models/slack/slack-models';
-import { USER_ID_REGEX } from '../../services/counter/constants';
-import { SlackService } from '../../services/slack/slack.service';
-import { BackFirePersistenceService } from '../../services/backfire/backfire.persistence.service';
-import { MuzzlePersistenceService } from '../../services/muzzle/muzzle.persistence.service';
-import { CounterPersistenceService } from '../../services/counter/counter.persistence.service';
-import { WebService } from '../../services/web/web.service';
-import { isRandomEven } from '../../services/muzzle/muzzle-utilities';
-import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../services/muzzle/constants';
+import { USER_ID_REGEX } from '../../counter/constants';
+import { CounterPersistenceService } from '../../counter/counter.persistence.service';
+import { WebService } from './web/web.service';
 import { TranslationService } from './translation.service';
 import moment from 'moment';
 import { SlackUser } from '../db/models/SlackUser';
-import { AIService } from '../../services/ai/ai.service';
+import { AIService } from '../../ai/ai.service';
+import { BackFirePersistenceService } from '../../backfire/backfire.persistence.service';
+import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../muzzle/constants';
+import { isRandomEven } from '../../muzzle/muzzle-utilities';
+import { MuzzlePersistenceService } from '../../muzzle/muzzle.persistence.service';
+import { SlackService } from './slack/slack.service';
+import { logger } from '../logger/logger';
 
 export class SuppressorService {
-  public webService = WebService.getInstance();
-  public slackService = SlackService.getInstance();
+  public webService = new WebService();
+  public slackService = new SlackService();
   public translationService = new TranslationService();
-  public backfirePersistenceService = BackFirePersistenceService.getInstance();
-  public muzzlePersistenceService = MuzzlePersistenceService.getInstance();
+  public backfirePersistenceService = new BackFirePersistenceService();
+  public muzzlePersistenceService = new MuzzlePersistenceService();
   public counterPersistenceService = CounterPersistenceService.getInstance();
   public aiService = new AIService();
+  logger = logger.child({ module: 'SuppressorService' });
 
   public isBot(userId: string, teamId: string): Promise<boolean | undefined> {
     return this.slackService.getUserById(userId, teamId).then((user) => !!user?.isBot);
@@ -76,20 +78,15 @@ export class SuppressorService {
     const isMuzzled = await this.muzzlePersistenceService.isUserMuzzled(userId, teamId);
     const isBackfired = await this.backfirePersistenceService.isBackfire(userId, teamId);
     const isCountered = await this.counterPersistenceService.isCounterMuzzled(userId);
-    console.log('Removing suppression for ', userId, ' on team ', teamId);
     if (isCountered) {
-      console.log('Removing counter for ', userId);
-      // This should takea teamId but doesnt because we never finished converting counter.persistence to redis.
       await this.counterPersistenceService.removeCounterMuzzle(userId);
     }
 
     if (isMuzzled) {
-      console.log('Removing muzzle for ', userId, teamId);
       await this.muzzlePersistenceService.removeMuzzle(userId, teamId);
     }
 
     if (isBackfired) {
-      console.log('Removing backfire for ', userId);
       await this.backfirePersistenceService.removeBackfire(userId, teamId);
     }
   }
@@ -201,7 +198,7 @@ export class SuppressorService {
         persistenceService.incrementWordSuppressions(id, wordsSuppressed);
       }
     } catch (e) {
-      console.error(e);
+      this.logger.error(e);
     }
   }
 
@@ -215,9 +212,9 @@ export class SuppressorService {
   ): Promise<void> {
     await this.webService.deleteMessage(channel, timestamp, userId);
 
-    const words = text.split(' ');
+    const words = text?.split(' ');
 
-    const shouldMuzzle = words.length <= 250;
+    const shouldMuzzle = words?.length > 0 && words?.length <= 250;
 
     if (shouldMuzzle) {
       const textWithFallbackReplacments = words
@@ -236,10 +233,11 @@ export class SuppressorService {
             await this.webService.sendMessage(channel, `<@${userId}> says "${corpoText}"`);
           })
           .catch(async (e) => {
-            console.error('error on corpo');
-            console.error(e);
+            this.logger.error(e);
             const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
-            await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => console.error(e));
+            await this.webService
+              .sendMessage(channel, `<@${userId}> says "${message}"`)
+              .catch((e) => this.logger.error(e));
             return null;
           });
       } else {
@@ -247,13 +245,16 @@ export class SuppressorService {
           .translate(textWithFallbackReplacments)
           .then(async (message) => {
             await this.logTranslateSuppression(text, dbId, persistenceService);
-            await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => console.error(e));
+            await this.webService
+              .sendMessage(channel, `<@${userId}> says "${message}"`)
+              .catch((e) => this.logger.error(e));
           })
           .catch(async (e) => {
-            console.error('error on translation');
-            console.error(e);
+            this.logger.error(e);
             const message = this.sendFallbackSuppressedMessage(text, dbId, persistenceService);
-            await this.webService.sendMessage(channel, `<@${userId}> says "${message}"`).catch((e) => console.error(e));
+            await this.webService
+              .sendMessage(channel, `<@${userId}> says "${message}"`)
+              .catch((e) => this.logger.error(e));
             return null;
           });
       }
@@ -304,9 +305,33 @@ export class SuppressorService {
     const end = moment().format('YYYY-MM-DD HH:mm:ss');
 
     const muzzles = await this.muzzlePersistenceService.getMuzzlesByTimePeriod(requestorId, teamId, start, end);
-    console.log(`Number of muzzles for ${requestorId}: ${muzzles}`);
     const chanceOfBackfire = 0.05 + muzzles * 0.1;
-    console.log(`Chance of Backfire for ${requestorId}: ${chanceOfBackfire}`);
     return Math.random() <= chanceOfBackfire;
+  }
+
+  public async handleBotMessage(request: EventRequest): Promise<void> {
+    const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
+    const botUser = await this.shouldBotMessageBeMuzzled(request);
+    if (botUser && !isReaction) {
+      this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
+      const muzzleId = await this.muzzlePersistenceService.getMuzzle(botUser, request.team_id);
+      if (muzzleId) {
+        this.muzzlePersistenceService.trackDeletedMessage(muzzleId, 'A bot message');
+        return;
+      }
+
+      const backfireId = await this.backfirePersistenceService.getBackfireByUserId(botUser, request.team_id);
+      if (backfireId) {
+        this.backfirePersistenceService.trackDeletedMessage(backfireId, 'A bot user message');
+        return;
+      }
+
+      const counter = await this.counterPersistenceService.getCounterMuzzle(botUser);
+
+      if (counter?.counterId) {
+        this.counterPersistenceService.incrementMessageSuppressions(counter.counterId);
+        return;
+      }
+    }
   }
 }

@@ -16,8 +16,6 @@ describe('getChunks', () => {
 
   it('should return text without new lines split by 2920 characters', () => {
     const text = 'a '.repeat(5840);
-    const length = text.length;
-    console.log(length);
     const result = getChunks(text);
     const expected = [
       'a '.repeat(1459),
