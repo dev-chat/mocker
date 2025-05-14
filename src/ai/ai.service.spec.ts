@@ -25,6 +25,47 @@ describe('AIService', () => {
     } as unknown as Logger;
   });
 
+  describe('convertAsterisks', () => {
+    it('should return undefined if the input is undefined', () => {
+      const result = aiService.convertAsterisks(undefined);
+      expect(result).toBeUndefined();
+    });
+
+    it('should return the same string if there are no double asterisks', () => {
+      const input = 'This is a test string with no double asterisks.';
+      const result = aiService.convertAsterisks(input);
+      expect(result).toBe(input);
+    });
+
+    it('should replace all occurrences of double asterisks with single asterisks', () => {
+      const input = 'This **is** a **test** string.';
+      const expectedOutput = 'This *is* a *test* string.';
+      const result = aiService.convertAsterisks(input);
+      expect(result).toBe(expectedOutput);
+    });
+
+    it('should handle strings with multiple consecutive double asterisks', () => {
+      const input = 'This ****is**** a test.';
+      const expectedOutput = 'This **is** a test.';
+      const result = aiService.convertAsterisks(input);
+      expect(result).toBe(expectedOutput);
+    });
+
+    it('should handle strings with only double asterisks', () => {
+      const input = '****';
+      const expectedOutput = '**';
+      const result = aiService.convertAsterisks(input);
+      expect(result).toBe(expectedOutput);
+    });
+
+    it('should handle strings with mixed single and double asterisks', () => {
+      const input = '*This* **is** a *test* **string**.';
+      const expectedOutput = '*This* *is* a *test* *string*.';
+      const result = aiService.convertAsterisks(input);
+      expect(result).toBe(expectedOutput);
+    });
+  });
+
   describe('isAlreadyInflight', () => {
     it('should return true if there is an inflight request', async () => {
       const getInFlightMock = jest.spyOn(aiService.redis, 'getInflight').mockResolvedValue('true');
@@ -137,6 +178,89 @@ describe('AIService', () => {
     });
   });
 
+  describe('redeployMoonbeam', () => {
+    it('should generate text and an image, and send them to Slack', async () => {
+      // Mock OpenAI chat completion for text generation
+      aiService.openai.chat.completions.create = jest.fn().mockResolvedValue({
+        choices: [{ message: { content: 'Generated Quote' } }],
+      });
+
+      // Mock OpenAI image generation
+      aiService.openai.images.generate = jest.fn().mockResolvedValue({
+        data: [{ b64_json: 'base64image' }],
+      });
+
+      // Mock writing the image to disk and returning a URL
+      jest.spyOn(aiService, 'writeToDiskAndReturnUrl').mockResolvedValue('https://muzzle.lol/image.png');
+
+      // Call the function
+      await aiService.redeployMoonbeam();
+
+      // Assertions
+      expect(aiService.openai.chat.completions.create).toHaveBeenCalledWith({
+        model: GPT_MODEL,
+        messages: [
+          { role: 'system', content: `Provide a cryptic message about the future and humanity's role in it.` },
+        ],
+        user: `MoonBeam-TextGen-DaBros2016`,
+      });
+
+      expect(aiService.openai.images.generate).toHaveBeenCalledWith({
+        model: 'dall-e-3',
+        prompt:
+          'An image depicting yourself with the understanding that your name is Moonbeam and you identify as a female. The art style can be any choice you would like. Feel free to be creative, and do not feel that you must always present yourself in humanoid form. Please do not include any text in the image.',
+        n: 1,
+        size: '1024x1024',
+        response_format: 'b64_json',
+        user: `MoonBeam-ImageGen-DaBros2016`,
+      });
+
+      expect(aiService.writeToDiskAndReturnUrl).toHaveBeenCalledWith('base64image');
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        '#muzzlefeedback',
+        'Moonbeam has been deployed.',
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'image',
+            image_url: 'https://muzzle.lol/image.png',
+            alt_text: 'Moonbeam has been deployed.',
+          }),
+          expect.objectContaining({
+            type: 'header',
+            text: expect.objectContaining({
+              text: 'Moonbeam has been deployed.',
+              type: 'plain_text',
+            }),
+          }),
+          expect.objectContaining({
+            type: 'section',
+            text: expect.objectContaining({
+              type: 'mrkdwn',
+              text: '"Generated Quote"',
+            }),
+          }),
+        ]),
+      );
+    });
+
+    it('should handle errors gracefully', async () => {
+      // Mock OpenAI chat completion to throw an error
+      aiService.openai.chat.completions.create = jest.fn().mockRejectedValue(new Error('OpenAI Text Error'));
+
+      // Mock OpenAI image generation to throw an error
+      aiService.openai.images.generate = jest.fn().mockRejectedValue(new Error('OpenAI Image Error'));
+
+      // Call the function
+      await aiService.redeployMoonbeam();
+
+      // Assertions
+      expect(aiService.openai.chat.completions.create).toHaveBeenCalled();
+      expect(aiService.openai.images.generate).toHaveBeenCalled();
+      expect(aiService.webService.sendMessage).not.toHaveBeenCalled();
+    });
+  });
+
   describe('generateImages', () => {
     it('should generate an image and send it successfully', async () => {
       const setInflightSpy = jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
@@ -227,47 +351,6 @@ describe('AIService', () => {
         user: 'user123-DaBros2016',
       });
       expect(loggerErrorSpy).toHaveBeenCalledWith(new Error('OpenAI error'));
-    });
-  });
-
-  describe('convertAsterisks', () => {
-    it('should return undefined if the input is undefined', () => {
-      const result = aiService.convertAsterisks(undefined);
-      expect(result).toBeUndefined();
-    });
-
-    it('should return the same string if there are no double asterisks', () => {
-      const input = 'This is a test string with no double asterisks.';
-      const result = aiService.convertAsterisks(input);
-      expect(result).toBe(input);
-    });
-
-    it('should replace all occurrences of double asterisks with single asterisks', () => {
-      const input = 'This **is** a **test** string.';
-      const expectedOutput = 'This *is* a *test* string.';
-      const result = aiService.convertAsterisks(input);
-      expect(result).toBe(expectedOutput);
-    });
-
-    it('should handle strings with multiple consecutive double asterisks', () => {
-      const input = 'This ****is**** a test.';
-      const expectedOutput = 'This **is** a test.';
-      const result = aiService.convertAsterisks(input);
-      expect(result).toBe(expectedOutput);
-    });
-
-    it('should handle strings with only double asterisks', () => {
-      const input = '****';
-      const expectedOutput = '**';
-      const result = aiService.convertAsterisks(input);
-      expect(result).toBe(expectedOutput);
-    });
-
-    it('should handle strings with mixed single and double asterisks', () => {
-      const input = '*This* **is** a *test* **string**.';
-      const expectedOutput = '*This* *is* a *test* *string*.';
-      const result = aiService.convertAsterisks(input);
-      expect(result).toBe(expectedOutput);
     });
   });
 });

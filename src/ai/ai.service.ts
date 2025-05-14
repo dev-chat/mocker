@@ -148,9 +148,6 @@ export class AIService {
             },
           },
           {
-            type: 'divider',
-          },
-          {
             type: 'section',
             text: {
               type: 'mrkdwn',
