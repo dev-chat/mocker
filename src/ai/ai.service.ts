@@ -329,7 +329,7 @@ export class AIService {
       !(await this.redis.getHasParticipated(teamId, channelId)) && !(await this.redis.getInflight(channelId, teamId));
     const messageCount = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
     const isEnoughMessages = messageCount >= 20;
-    const shouldParticipate = Math.random() < 0.25 && isAbleToParticipate && isEnoughMessages;
+    const shouldParticipate = Math.random() < 0.05 && isAbleToParticipate && isEnoughMessages;
 
     if (!taggedMessage && !shouldParticipate) {
       return;
