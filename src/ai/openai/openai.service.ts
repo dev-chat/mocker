@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { GPT_IMAGE_MODEL, GPT_MODEL } from '../ai.constants';
+import { ResponseOutputItem, ResponseOutputMessage } from 'openai/resources/responses/responses';
 
 export class OpenAIService {
   openai = new OpenAI({
@@ -16,7 +17,9 @@ export class OpenAIService {
         user: `${userId}-DaBros2016`,
       })
       .then((x) => {
-        const textBlock = x.output.find((block) => block.type === 'message');
+        const textBlock: ResponseOutputMessage | undefined = x.output.find(
+          (block: ResponseOutputItem) => block.type === 'message',
+        );
         const outputText = textBlock?.content?.find((block) => block.type === 'output_text')?.text;
         return this.convertAsterisks(outputText?.trim());
       });
