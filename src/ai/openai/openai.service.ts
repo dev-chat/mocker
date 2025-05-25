@@ -25,8 +25,10 @@ export class OpenAIService {
         const textBlock: ResponseOutputMessage | undefined = x.output.find(
           (block: ResponseOutputItem) => block.type === 'message',
         );
-        const outputText = textBlock?.content?.find(
-          (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
+        const outputText = (
+          textBlock?.content?.find(
+            (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
+          ) as ResponseOutputText
         )?.text;
         return this.convertAsterisks(outputText?.trim());
       });
