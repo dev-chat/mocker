@@ -1,6 +1,11 @@
 import OpenAI from 'openai';
 import { GPT_IMAGE_MODEL, GPT_MODEL } from '../ai.constants';
-import { ResponseOutputItem, ResponseOutputMessage } from 'openai/resources/responses/responses';
+import {
+  ResponseOutputMessage,
+  ResponseOutputItem,
+  ResponseOutputText,
+  ResponseOutputRefusal,
+} from 'openai/resources/responses/responses';
 
 export class OpenAIService {
   openai = new OpenAI({
@@ -20,7 +25,9 @@ export class OpenAIService {
         const textBlock: ResponseOutputMessage | undefined = x.output.find(
           (block: ResponseOutputItem) => block.type === 'message',
         );
-        const outputText = textBlock?.content?.find((block) => block.type === 'output_text')?.text;
+        const outputText = textBlock?.content?.find(
+          (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
+        )?.text;
         return this.convertAsterisks(outputText?.trim());
       });
   };
