@@ -24,7 +24,7 @@ export class OpenAIService {
       .then((x) => {
         const textBlock: ResponseOutputMessage | undefined = x.output.find(
           (block: ResponseOutputItem) => block.type === 'message',
-        );
+        ) as ResponseOutputMessage;
         const outputText = (
           textBlock?.content?.find(
             (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
