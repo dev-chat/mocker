@@ -1,5 +1,5 @@
 export const GPT_MODEL = 'gpt-4.1';
-export const GPT_IMAGE_MODEL = 'gpt-image-1';
+export const GPT_IMAGE_MODEL = 'dall-e-3';
 
 export const MAX_AI_REQUESTS_PER_DAY = 10;
 export const GENERAL_TEXT_INSTRUCTIONS = 'Generate a response with a focus on being helpful and succinct.';

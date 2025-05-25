@@ -42,6 +42,7 @@ export class OpenAIService {
         user: `${userId}-DaBros2016`,
         n: 1,
         size: '1024x1024',
+        response_format: 'b64_json',
       })
       .then((x) => {
         return x?.data?.[0].b64_json;
