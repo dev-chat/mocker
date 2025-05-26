@@ -27,15 +27,15 @@ aiController.post('/text', async (req, res) => {
   });
 });
 
-aiController.post('/gemini/text', (req, res) => {
-  const { user_id, team_id, channel_id, text } = req.body;
-  res.status(200).send('Processing your request. Please be patient...');
-  aiService.generateGeminiText(user_id, team_id, channel_id, text).catch((e) => {
-    aiLogger.error(e);
-    const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
-    webService.sendEphemeral(channel_id, errorMessage, user_id);
-    return undefined;
-  });
+aiController.post('/gemini/text', (_, res) => {
+  // const { user_id, team_id, channel_id, text } = req.body;
+  res.status(200).send('Gemini is deprecated due to lack of use. Please use OpenAI instead.');
+  // aiService.generateGeminiText(user_id, team_id, channel_id, text).catch((e) => {
+  //   aiLogger.error(e);
+  //   const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
+  //   webService.sendEphemeral(channel_id, errorMessage, user_id);
+  //   return undefined;
+  // });
 });
 
 aiController.post('/image', (req, res) => {
