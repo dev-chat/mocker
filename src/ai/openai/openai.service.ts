@@ -30,7 +30,7 @@ export class OpenAIService {
             (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
           ) as ResponseOutputText
         )?.text;
-        return this.convertAsterisks(outputText?.trim());
+        return this.markdownToSlackMrkdwn(outputText?.trim());
       });
   };
 
@@ -49,11 +49,21 @@ export class OpenAIService {
       });
   };
 
-  convertAsterisks = (text?: string) => {
+  markdownToSlackMrkdwn = (text?: string) => {
     if (!text) {
       return text;
     }
-    // Replace ** with *
-    return text.replace(/\*\*/g, '*');
+    // Convert **bold** to *bold*
+    text = text.replace(/\*\*/g, '*');
+    // Convert *italic* to _italic_
+    text = text?.replace(/\*(.*?)\*/g, '_$1_');
+    // Convert `code` to `code`
+    text = text?.replace(/`(.*?)`/g, '`$1`');
+    // Convert [link](url) to <url|link>
+    text = text?.replace(/\[(.*?)\]\((.*?)\)/g, '<$2|$1>');
+    // Convert ![alt text](image url) to <image url|alt text>
+    text = text?.replace(/!\[(.*?)\]\((.*?)\)/g, '<$2|$1>');
+
+    return text;
   };
 }
