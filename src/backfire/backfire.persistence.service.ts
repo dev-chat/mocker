@@ -70,7 +70,10 @@ export class BackFirePersistenceService {
    * Determines suppression counts for messages that are ONLY deleted.
    * Used when a backfired user has hit their max suppressions or when they have tagged channel.
    */
-  public trackDeletedMessage(backfireId: number, text: string): void {
+  public trackDeletedMessage(backfireId: number, text?: string): void {
+    if (!text) {
+      return;
+    }
     const words = text.split(' ').length;
     const characters = text.split('').length;
     this.incrementMessageSuppressions(backfireId);

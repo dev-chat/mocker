@@ -198,9 +198,12 @@ export class MuzzlePersistenceService {
    * Determines suppression counts for messages that are ONLY deleted and not muzzled.
    * Used when a muzzled user has hit their max suppressions or when they have tagged channel.
    */
-  public trackDeletedMessage(muzzleId: number, text: string): void {
-    const words = text.split(' ').length;
-    const characters = text.split('').length;
+  public trackDeletedMessage(muzzleId: number, text?: string): void {
+    if (!text) {
+      return;
+    }
+    const words = text?.split(' ').length;
+    const characters = text?.split('').length;
     this.incrementMessageSuppressions(muzzleId);
     this.incrementWordSuppressions(muzzleId, words);
     this.incrementCharacterSuppressions(muzzleId, characters);
