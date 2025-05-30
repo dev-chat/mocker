@@ -45,7 +45,7 @@ export class OpenAIService {
         response_format: 'b64_json',
       })
       .then((x) => {
-        return x?.data?.[0].b64_json;
+        return x?.data?.[0]?.b64_json;
       });
   };
 
@@ -53,16 +53,36 @@ export class OpenAIService {
     if (!text) {
       return text;
     }
-    // Convert **bold** to *bold*
-    text = text.replace(/\*\*/g, '*');
-    // Convert *italic* to _italic_
-    text = text?.replace(/\*(.*?)\*/g, '_$1_');
-    // Convert `code` to `code`
-    text = text?.replace(/`(.*?)`/g, '`$1`');
+
+    // Convert ![alt text](image url) to <image url|alt text> (do this first to avoid conflicts with links)
+    text = text.replace(/!\[(.*?)\]\((.*?)\)/g, '<$2|$1>');
+
     // Convert [link](url) to <url|link>
-    text = text?.replace(/\[(.*?)\]\((.*?)\)/g, '<$2|$1>');
-    // Convert ![alt text](image url) to <image url|alt text>
-    text = text?.replace(/!\[(.*?)\]\((.*?)\)/g, '<$2|$1>');
+    text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<$2|$1>');
+
+    // Convert `code` to `code` (no change needed, but process before bold/italic to avoid conflicts)
+    text = text.replace(/`(.*?)`/g, '`$1`');
+
+    // Use a more robust approach for bold and italic
+    // First, temporarily replace **bold** with a placeholder to avoid conflicts
+    const boldPlaceholder = 'BOLD_PLACEHOLDER';
+    const boldMatches: string[] = [];
+
+    // Extract bold text and replace with placeholders, but first process italic within bold
+    text = text.replace(/\*\*(.*?)\*\*/g, (match, content) => {
+      // Process italic formatting within the bold content
+      const processedContent = content.replace(/\*([^*]+?)\*/g, '_$1_');
+      boldMatches.push(processedContent);
+      return `${boldPlaceholder}${boldMatches.length - 1}${boldPlaceholder}`;
+    });
+
+    // Now convert remaining single asterisks to italic (underscores)
+    text = text.replace(/\*([^*]+?)\*/g, '_$1_');
+
+    // Restore bold text with Slack formatting
+    text = text.replace(new RegExp(`${boldPlaceholder}(\\d+)${boldPlaceholder}`, 'g'), (match, index) => {
+      return `*${boldMatches[parseInt(index)]}*`;
+    });
 
     return text;
   };
