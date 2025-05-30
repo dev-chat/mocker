@@ -69,7 +69,7 @@ export class OpenAIService {
     const boldMatches: string[] = [];
 
     // Extract bold text and replace with placeholders, but first process italic within bold
-    text = text.replace(/\*\*(.*?)\*\*/g, (match, content) => {
+    text = text.replace(/\*\*(.*?)\*\*/g, (_, content) => {
       // Process italic formatting within the bold content
       const processedContent = content.replace(/\*([^*]+?)\*/g, '_$1_');
       boldMatches.push(processedContent);
@@ -80,7 +80,7 @@ export class OpenAIService {
     text = text.replace(/\*([^*]+?)\*/g, '_$1_');
 
     // Restore bold text with Slack formatting
-    text = text.replace(new RegExp(`${boldPlaceholder}(\\d+)${boldPlaceholder}`, 'g'), (match, index) => {
+    text = text.replace(new RegExp(`${boldPlaceholder}(\\d+)${boldPlaceholder}`, 'g'), (_, index) => {
       return `*${boldMatches[parseInt(index)]}*`;
     });
 
