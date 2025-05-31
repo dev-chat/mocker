@@ -31,6 +31,5 @@ Do not use capitalization or punctuation unless you are specifically trying to e
 };
 
 export const getHistoryInstructions = (history: string): string => {
-  return `Use this converrsation history to respond to the user's prompt: 
-    ${history} `;
+  return `Use this conversation history to respond to the user's prompt:\n${history}`;
 };
