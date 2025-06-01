@@ -214,6 +214,60 @@ describe('OpenAIService', () => {
       const result = service.markdownToSlackMrkdwn(input);
       expect(result).toBe('This is *bold with _italic_ inside*');
     });
+
+    it('should convert H1 headings to bold format', () => {
+      const input = '# Main Heading';
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe('*Main Heading*');
+    });
+
+    it('should convert H2 headings to bold format', () => {
+      const input = '## Secondary Heading';
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe('*Secondary Heading*');
+    });
+
+    it('should convert H3 headings to italic format', () => {
+      const input = '### Tertiary Heading';
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe('_Tertiary Heading_');
+    });
+
+    it('should handle multiple headings in text', () => {
+      const input = `# Main Title
+  ## Subtitle
+  ### Section
+  Some content here`;
+      const expected = `*Main Title*
+  *Subtitle*
+  _Section_
+  Some content here`;
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe(expected);
+    });
+
+    it('should handle headings with other formatting', () => {
+      const input = '# **Bold** heading with *italic*';
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe('**Bold* heading with _italic_*');
+    });
+
+    it('should not convert headings without space after hash', () => {
+      const input = '#NotAHeading';
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe('#NotAHeading');
+    });
+
+    it('should handle headings at different positions in text', () => {
+      const input = `Some text
+  ## Middle Heading
+  More text`;
+      const expected = `Some text
+  *Middle Heading*
+  More text`;
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe(expected);
+    });
   });
 
   describe('error handling', () => {

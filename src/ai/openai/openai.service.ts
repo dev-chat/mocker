@@ -84,6 +84,20 @@ export class OpenAIService {
       return `*${boldMatches[parseInt(index)]}*`;
     });
 
+    // Convert #, ## and ### headings to Slack's mrkdwn format
+    text = text.replace(/^(\s*)(#{1,3})\s+(.*)$/gm, (_, leadingSpace, hashes, content) => {
+      const level = hashes.length;
+      switch (level) {
+        case 1:
+        case 2:
+          return `${leadingSpace}*${content}*`; // Preserve leading whitespace
+        case 3:
+          return `${leadingSpace}_${content}_`; // Preserve leading whitespace
+        default:
+          return `${leadingSpace}${content}`;
+      }
+    });
+
     return text;
   };
 }
