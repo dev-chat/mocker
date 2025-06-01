@@ -246,6 +246,50 @@ describe('OpenAIService', () => {
       expect(result).toBe(expected);
     });
 
+    it('should handle multiple new lines with different formatting', () => {
+      const input = `# Heading 1
+  ## Heading 2
+  ### Heading 3`;
+      const expected = `*Heading 1*
+  *Heading 2*
+  _Heading 3_`;
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe(expected);
+    });
+
+    it('should handle multiple new lines with the same formatting (bold)', () => {
+      const input = `**This should
+     All Be
+      Bold**`;
+      const expected = `*This should
+     All Be
+      Bold*`;
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe(expected);
+    });
+
+    it('shold handle multiple new lines with the same formatting (italic)', () => {
+      const input = `*This should
+     All Be
+      Italic*`;
+      const expected = `_This should
+     All Be
+      Italic_`;
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe(expected);
+    });
+
+    it('should handle multiple lines with the same formatting (bold and italic)', () => {
+      const input = `**This should
+      All Be
+      Bold** and *Italic*`;
+      const expected = `*This should
+      All Be
+      Bold* and _Italic_`;
+      const result = service.markdownToSlackMrkdwn(input);
+      expect(result).toBe(expected);
+    });
+
     it('should handle headings with other formatting', () => {
       const input = '# **Bold** heading with *italic*';
       const result = service.markdownToSlackMrkdwn(input);
