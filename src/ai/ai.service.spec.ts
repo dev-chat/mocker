@@ -1,4 +1,5 @@
 import { mockAiPersistenceService } from './mocks/mocks';
+import { mockLogger } from '../shared/logger/logger.mock';
 import { MAX_AI_REQUESTS_PER_DAY } from './ai.constants';
 import { AIService } from './ai.service';
 import { Logger } from 'winston';
@@ -16,7 +17,6 @@ jest.mock('./openai/openai.service', () => ({
 jest.mock('./ai.persistence', () => mockAiPersistenceService);
 jest.mock('../shared/services/history.persistence.service');
 jest.mock('../shared/services/web/web.service');
-jest.mock('../shared/logger/logger');
 
 describe('AIService', () => {
   let aiService: AIService;
@@ -24,11 +24,7 @@ describe('AIService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     aiService = new AIService();
-    aiService.aiServiceLogger = {
-      info: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    } as unknown as Logger;
+    aiService.aiServiceLogger = mockLogger.Logger() as unknown as Logger;
   });
 
   describe('decrementDaiyRequests', () => {
@@ -306,6 +302,47 @@ Do not use capitalization or punctuation unless you are specifically trying to e
     });
   });
 
+  describe('redeployMoonbeam', () => {
+    it('should generate quote and image and send to muzzlefeedback channel', async () => {
+      const generateTextMock = jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Cryptic quote');
+      const generateImageMock = jest.spyOn(aiService.openAiService, 'generateImage').mockResolvedValue('base64image');
+      const writeToDiskMock = jest
+        .spyOn(aiService, 'writeToDiskAndReturnUrl')
+        .mockResolvedValue('https://muzzle.lol/moonbeam.png');
+      const sendMessageMock = jest
+        .spyOn(aiService.webService, 'sendMessage')
+        .mockImplementation(() => Promise.resolve({} as WebAPICallResult));
+
+      await aiService.redeployMoonbeam();
+
+      expect(generateTextMock).toHaveBeenCalledWith(
+        `Provide a cryptic message about the future and humanity's role in it.`,
+        'Moonbeam',
+      );
+      expect(generateImageMock).toHaveBeenCalledWith(expect.stringContaining('depicting yourself'), 'Moonbeam');
+      expect(writeToDiskMock).toHaveBeenCalledWith('base64image');
+      expect(sendMessageMock).toHaveBeenCalledWith(
+        '#muzzlefeedback',
+        'Moonbeam has been deployed.',
+        expect.arrayContaining([
+          expect.objectContaining({ type: 'image' }),
+          expect.objectContaining({ type: 'header' }),
+          expect.objectContaining({ type: 'section' }),
+        ]),
+      );
+    });
+
+    it('should handle errors gracefully', async () => {
+      jest.spyOn(aiService.openAiService, 'generateText').mockRejectedValue(new Error('Text generation failed'));
+      jest.spyOn(aiService.openAiService, 'generateImage').mockRejectedValue(new Error('Image generation failed'));
+      const errorSpy = jest.spyOn(aiService.aiServiceLogger, 'error');
+
+      await aiService.redeployMoonbeam();
+
+      expect(errorSpy).toHaveBeenCalled();
+    });
+  });
+
   describe('handle', () => {
     it('should handle', async () => {
       const request: EventRequest = {
@@ -318,18 +355,18 @@ Do not use capitalization or punctuation unless you are specifically trying to e
         team_id: 'team123',
       } as EventRequest;
 
-      const isInflightMock = jest.spyOn(aiService, 'isAlreadyInflight').mockResolvedValue(false);
-      const isMaxRequestsMock = jest.spyOn(aiService, 'isAlreadyAtMaxRequests').mockResolvedValue(false);
-      const generateTextMock = jest.spyOn(aiService, 'generateText').mockResolvedValue();
+      const isUserMuzzledMock = jest
+        .spyOn(aiService.muzzlePersistenceService, 'isUserMuzzled')
+        .mockResolvedValue(false);
+      const participateMock = jest.spyOn(aiService, 'participate').mockResolvedValue();
 
       await aiService.handle(request);
 
-      expect(isInflightMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(isMaxRequestsMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(generateTextMock).toHaveBeenCalledWith('user123', 'team123', 'channel123', 'Generate text');
+      expect(isUserMuzzledMock).toHaveBeenCalledWith('user123', 'team123');
+      expect(participateMock).toHaveBeenCalledWith('team123', 'channel123');
     });
 
-    it('should handle event request for muzzled user', async () => {
+    it('should handle event request for muzzled user if it does not include a tag', async () => {
       const request: EventRequest = {
         event: {
           type: 'message',
@@ -346,7 +383,45 @@ Do not use capitalization or punctuation unless you are specifically trying to e
       await aiService.handle(request);
 
       expect(isUserMuzzledMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(participateMock).toHaveBeenCalledWith('user123', 'team123', 'channel123');
+      expect(participateMock).toHaveBeenCalledWith('team123', 'channel123');
+    });
+
+    it('should not handle an event request with a tag if the user is muzzled by removing the prompt', async () => {
+      const request: EventRequest = {
+        event: {
+          type: 'message',
+          user: 'user123',
+          text: '<@ULG8SJRFF> Generate text',
+          channel: 'channel123',
+        },
+        team_id: 'team123',
+      } as EventRequest;
+      const isUserMuzzledMock = jest.spyOn(aiService.muzzlePersistenceService, 'isUserMuzzled').mockResolvedValue(true);
+      const participateMock = jest.spyOn(aiService, 'participate').mockResolvedValue();
+
+      await aiService.handle(request);
+      expect(isUserMuzzledMock).toHaveBeenCalledWith('user123', 'team123');
+      expect(participateMock).toHaveBeenCalledWith('team123', 'channel123');
+    });
+
+    it('should handle an event request with a tag if the user is not muzzled', async () => {
+      const request: EventRequest = {
+        event: {
+          type: 'message',
+          user: 'user123',
+          text: '<@ULG8SJRFF> Generate text',
+          channel: 'channel123',
+        },
+        team_id: 'team123',
+      } as EventRequest;
+      const isUserMuzzledMock = jest
+        .spyOn(aiService.muzzlePersistenceService, 'isUserMuzzled')
+        .mockResolvedValue(false);
+      const participateMock = jest.spyOn(aiService, 'participate').mockResolvedValue();
+
+      await aiService.handle(request);
+      expect(isUserMuzzledMock).toHaveBeenCalledWith('user123', 'team123');
+      expect(participateMock).toHaveBeenCalledWith('team123', 'channel123', '<@ULG8SJRFF> Generate text');
     });
   });
 
