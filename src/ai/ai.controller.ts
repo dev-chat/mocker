@@ -52,5 +52,10 @@ aiController.post('/image', (req, res) => {
 aiController.post('/prompt-with-history', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   res.status(200).send('Processing your request. Please be patient...');
-  aiService.promptWithHistory(request);
+  aiService.promptWithHistory(request).catch((e) => {
+    aiLogger.error(e);
+    const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
+    webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
+    return undefined;
+  });
 });

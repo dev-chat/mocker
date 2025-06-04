@@ -43,13 +43,19 @@ export class EventService {
 
   handle(request: EventRequest) {
     this.logger.info('Handling event:', request);
-    this.handleEvent(request);
-    this.slackService.handle(request);
-    this.muzzleService.handle(request);
-    this.backfireService.handle(request);
-    this.counterService.handle(request);
-    this.reactionService.handle(request);
-    this.suppressorService.handleBotMessage(request);
-    this.aiService.handle(request);
+    const handlers = [
+      this.handleEvent(request),
+      this.slackService.handle(request),
+      this.muzzleService.handle(request),
+      this.backfireService.handle(request),
+      this.counterService.handle(request),
+      this.reactionService.handle(request),
+      this.suppressorService.handleBotMessage(request),
+      this.aiService.handle(request),
+    ];
+    return Promise.all(handlers).catch((error) => {
+      this.logger.error('Error handling event:', error);
+      throw error;
+    });
   }
 }
