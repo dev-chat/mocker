@@ -239,7 +239,6 @@ describe('AIService', () => {
       const getHistoryMock = jest
         .spyOn(aiService.historyService, 'getHistory')
         .mockResolvedValue([{ name: 'John', message: 'Hello' }] as MessageWithName[]);
-      const getHasParticipatedMock = jest.spyOn(aiService.redis, 'getHasParticipated').mockResolvedValue(null);
       jest.spyOn(aiService.webService, 'sendMessage').mockImplementation(() => Promise.resolve({} as WebAPICallResult));
       const generateTextMock = jest
         .spyOn(aiService.openAiService, 'generateText')
@@ -247,7 +246,6 @@ describe('AIService', () => {
 
       await aiService.participate('team123', 'channel123', 'tagged message');
 
-      expect(getHasParticipatedMock).toHaveBeenCalledWith('team123', 'channel123');
       expect(getHistoryMock).toHaveBeenCalledWith({ channel_id: 'channel123', team_id: 'team123' }, false);
       expect(generateTextMock).toHaveBeenCalledWith(
         'John: Hello',
@@ -363,27 +361,7 @@ Do not use capitalization or punctuation unless you are specifically trying to e
       await aiService.handle(request);
 
       expect(isUserMuzzledMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(participateMock).toHaveBeenCalledWith('team123', 'channel123');
-    });
-
-    it('should handle event request for muzzled user if it does not include a tag', async () => {
-      const request: EventRequest = {
-        event: {
-          type: 'message',
-          user: 'user123',
-          text: 'Hello',
-          channel: 'channel123',
-        },
-        team_id: 'team123',
-      } as EventRequest;
-
-      const isUserMuzzledMock = jest.spyOn(aiService.muzzlePersistenceService, 'isUserMuzzled').mockResolvedValue(true);
-      const participateMock = jest.spyOn(aiService, 'participate').mockResolvedValue();
-
-      await aiService.handle(request);
-
-      expect(isUserMuzzledMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(participateMock).toHaveBeenCalledWith('team123', 'channel123');
+      expect(participateMock).not.toHaveBeenCalled();
     });
 
     it('should not handle an event request with a tag if the user is muzzled by removing the prompt', async () => {
@@ -401,7 +379,7 @@ Do not use capitalization or punctuation unless you are specifically trying to e
 
       await aiService.handle(request);
       expect(isUserMuzzledMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(participateMock).toHaveBeenCalledWith('team123', 'channel123');
+      expect(participateMock).not.toHaveBeenCalled();
     });
 
     it('should handle an event request with a tag if the user is not muzzled', async () => {
