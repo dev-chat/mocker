@@ -14,7 +14,6 @@ import {
   GET_TAGGED_MESSAGE_INSTRUCTIONS,
   getHistoryInstructions,
   MAX_AI_REQUESTS_PER_DAY,
-  PARTICIPATION_INSTRUCTIONS,
 } from './ai.constants';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
