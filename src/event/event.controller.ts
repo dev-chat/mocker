@@ -14,7 +14,10 @@ eventController.post('/handle', (req: Request, res: Response) => {
     res.send({ challenge: req.body.challenge });
   } else {
     const request: EventRequest = req.body;
-    eventService.handle(request);
+    eventService.handle(request).catch((error) => {
+      eventLogger.error('Error handling event:', error);
+      return;
+    });
     res.status(200).send();
   }
 });

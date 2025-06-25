@@ -14,7 +14,6 @@ import {
   GET_TAGGED_MESSAGE_INSTRUCTIONS,
   getHistoryInstructions,
   MAX_AI_REQUESTS_PER_DAY,
-  PARTICIPATION_INSTRUCTIONS,
 } from './ai.constants';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
@@ -227,23 +226,13 @@ export class AIService {
       });
   }
 
-  public async participate(teamId: string, channelId: string, taggedMessage?: string): Promise<void> {
-    const isAbleToParticipate =
-      !(await this.redis.getHasParticipated(teamId, channelId)) && !(await this.redis.getInflight(channelId, teamId));
-    const messageCount = await this.historyService.getLastFiveMinutesCount(teamId, channelId);
-    const isEnoughMessages = messageCount >= 20;
-    const shouldParticipate = Math.random() < 0.25 && isAbleToParticipate && isEnoughMessages;
-
-    if (!taggedMessage && !shouldParticipate) {
-      return;
-    }
-
+  public async participate(teamId: string, channelId: string, taggedMessage: string): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
     const messages = await this.historyService
       .getHistory({ team_id: teamId, channel_id: channelId } as SlashCommandRequest, false)
       .then((x) => this.formatHistory(x));
-    const instructions = taggedMessage ? GET_TAGGED_MESSAGE_INSTRUCTIONS(taggedMessage) : PARTICIPATION_INSTRUCTIONS;
+    const instructions = GET_TAGGED_MESSAGE_INSTRUCTIONS(taggedMessage);
     return this.openAiService
       .generateText(messages, 'Moonbeam', instructions)
       .then((result) => {
@@ -344,8 +333,6 @@ export class AIService {
       if (isMoonbeamTagged && !isPosterMoonbeam) {
         this.participate(request.team_id, request.event.channel, request.event.text);
       }
-    } else {
-      this.participate(request.team_id, request.event.channel);
     }
   }
 }

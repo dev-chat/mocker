@@ -17,5 +17,8 @@ export const mockAiPersistenceService = {
     getDailySummaryKeyName: jest.fn(),
     getInflightKeyName: jest.fn(),
     getDailyKeyName: jest.fn(),
+    getHasParticipated: jest.fn(),
+    setParticipationInFlight: jest.fn(),
+    removeParticipationInFlight: jest.fn(),
   })),
 };

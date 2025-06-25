@@ -81,6 +81,7 @@ export class WebService {
       token,
       channel,
       text,
+      unfurl_links: false,
     };
 
     if (blocks) {

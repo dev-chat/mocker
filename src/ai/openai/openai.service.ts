@@ -30,7 +30,7 @@ export class OpenAIService {
             (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
           ) as ResponseOutputText
         )?.text;
-        return this.convertAsterisks(outputText?.trim());
+        return this.markdownToSlackMrkdwn(outputText?.trim());
       });
   };
 
@@ -45,15 +45,59 @@ export class OpenAIService {
         response_format: 'b64_json',
       })
       .then((x) => {
-        return x?.data?.[0].b64_json;
+        return x?.data?.[0]?.b64_json;
       });
   };
 
-  convertAsterisks = (text?: string) => {
+  markdownToSlackMrkdwn = (text?: string) => {
     if (!text) {
       return text;
     }
-    // Replace ** with *
-    return text.replace(/\*\*/g, '*');
+
+    // Convert ![alt text](image url) to <image url|alt text> (do this first to avoid conflicts with links)
+    text = text.replace(/!\[(.*?)\]\((.*?)\)/g, '<$2|$1>');
+
+    // Convert [link](url) to <url|link>
+    text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<$2|$1>');
+
+    // Convert `code` to `code` (no change needed, but process before bold/italic to avoid conflicts)
+    text = text.replace(/`(.*?)`/g, '`$1`');
+
+    // Use a more robust approach for bold and italic
+    // First, temporarily replace **bold** with a placeholder to avoid conflicts
+    const boldPlaceholder = 'BOLD_PLACEHOLDER';
+    const boldMatches: string[] = [];
+
+    // Extract bold text and replace with placeholders, but first process italic within bold
+    text = text.replace(/\*\*([\s\S]*?)\*\*/g, (_, content) => {
+      // Process italic formatting within the bold content
+      const processedContent = content.replace(/\*([^*]+?)\*/g, '_$1_');
+      boldMatches.push(processedContent);
+      return `${boldPlaceholder}${boldMatches.length - 1}${boldPlaceholder}`;
+    });
+
+    // Now convert remaining single asterisks to italic (underscores)
+    text = text.replace(/\*([^*]+?)\*/g, '_$1_');
+
+    // Restore bold text with Slack formatting
+    text = text.replace(new RegExp(`${boldPlaceholder}(\\d+)${boldPlaceholder}`, 'g'), (_, index) => {
+      return `*${boldMatches[parseInt(index)]}*`;
+    });
+
+    // Convert #, ## and ### headings to Slack's mrkdwn format
+    text = text.replace(/^(\s*)(#{1,3})\s+(.*)$/gm, (_, leadingSpace, hashes, content) => {
+      const level = hashes.length;
+      switch (level) {
+        case 1:
+        case 2:
+          return `${leadingSpace}*${content}*`; // Preserve leading whitespace
+        case 3:
+          return `${leadingSpace}_${content}_`; // Preserve leading whitespace
+        default:
+          return `${leadingSpace}${content}`;
+      }
+    });
+
+    return text;
   };
 }
