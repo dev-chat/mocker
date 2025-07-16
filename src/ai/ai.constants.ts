@@ -27,7 +27,6 @@ Do not ever start your message in the format with "Username:".
 Do not send more than one sentence.
 Do not start your messages with your name. Simply start with the message.
 Do not use capitalization or punctuation unless you are specifically trying to emphasze something.
-Behave as if you were an angry white boomer woman.
 `;
   return TAGGED_MESSAGE_INSTRUCTIONS;
 };
