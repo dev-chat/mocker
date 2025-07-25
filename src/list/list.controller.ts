@@ -6,7 +6,6 @@ import { ListService } from './list.service';
 
 export const listController: Router = express.Router();
 listController.use(suppressedMiddleware);
-listController.use(textMiddleware);
 
 const listService = new ListService();
 
@@ -16,13 +15,13 @@ listController.post('/retrieve', async (req, res) => {
   res.status(200).send();
 });
 
-listController.post('/add', async (req, res) => {
+listController.post('/add', textMiddleware, async (req, res) => {
   const request: SlashCommandRequest = req.body;
   listService.list(request);
   res.status(200).send();
 });
 
-listController.post('/remove', async (req, res) => {
+listController.post('/remove', textMiddleware, async (req, res) => {
   const request: SlashCommandRequest = req.body;
   listService.remove(request);
   res.status(200).send();
