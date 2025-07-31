@@ -29,6 +29,7 @@
     "moment": "^2.24.0",
     "mysql": "^2.17.1",
     "openai": "^4.103.0",
+    "sentence-splitter": "^5.0.0",
     "sentiment": "^5.0.2",
     "typeorm": "^0.3.22",
     "uuid": "^9.0.1",
