@@ -7,7 +7,7 @@ export const suppressedMiddleware = async (req: Request, res: Response, next: Ne
   const { user_id, team_id } = req.body;
   const suppressorService = new SuppressorService();
   const isSuppressed = await suppressorService.isSuppressed(user_id, team_id);
-  if (isSuppressed || user_id === 'U2ZV8aE68N') {
+  if (isSuppressed || user_id === 'U2ZV8E68N') {
     suppressedMiddlewareLogger.info(`User ${user_id} from team ${team_id} is currently suppressed. Rejecting request.`);
     res.send(`Sorry, can't do that while muzzled.`);
   } else {
