@@ -4,6 +4,7 @@ import { StoreService } from './store.service';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { ItemService } from './item.service';
 import { logger } from '../shared/logger/logger';
+import { suppressedMiddleware } from '../shared/middleware/suppression';
 
 export const storeController: Router = express.Router();
 
@@ -11,6 +12,8 @@ const suppressorService: SuppressorService = new SuppressorService();
 const storeService: StoreService = new StoreService();
 const itemService: ItemService = new ItemService();
 const storeLogger = logger.child({ module: 'StoreController' });
+
+storeController.use(suppressedMiddleware);
 
 storeController.post('/', async (req, res) => {
   const request: SlashCommandRequest = req.body;
@@ -41,9 +44,7 @@ storeController.post('/buy', async (req, res) => {
   const canAffordItem = await storeService.canAfford(itemId, request.user_id, request.team_id);
   const isUserRequired = await storeService.isUserRequired(itemId);
 
-  if (await suppressorService.isSuppressed(request.user_id, request.team_id)) {
-    res.send(`Sorry, can't do that while muzzled.`);
-  } else if (!itemId) {
+  if (!itemId) {
     res.send('You must provide an item_id in order to buy an item');
   } else if (!canAffordItem) {
     res.send(`Sorry, you can't afford that item.`);
