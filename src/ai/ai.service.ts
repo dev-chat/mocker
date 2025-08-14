@@ -326,8 +326,7 @@ export class AIService {
 
   async handle(request: EventRequest): Promise<void> {
     const isUserMuzzled = await this.muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id);
-    const isJudka = request.event.user === 'U2ZV8E68N';
-    if (this.slackService.containsTag(request.event.text) && !isUserMuzzled && !isJudka) {
+    if (this.slackService.containsTag(request.event.text) && !isUserMuzzled) {
       const userId = this.slackService.getUserId(request.event.text);
       const isMoonbeamTagged = userId && userId.includes('ULG8SJRFF');
       const isPosterMoonbeam = request.event.user === 'ULG8SJRFF';
