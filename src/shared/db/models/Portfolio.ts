@@ -1,4 +1,5 @@
-import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { JoinColumn } from 'typeorm/decorator/relations/JoinColumn';
 import { PortfolioTransactions } from './PortfolioTransaction';
 import { UUID } from 'typeorm/driver/mongodb/bson.typings';
 import { SlackUser } from './SlackUser';
