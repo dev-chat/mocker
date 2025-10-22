@@ -20,28 +20,34 @@ export enum TransactionType {
 }
 
 export class PortfolioPersistenceService {
-  public getPortfolio(userId: string, teamId: string): Promise<Portfolio> {
-    return getRepository(SlackUser)
-      .findOne({ where: { slackId: userId, teamId }, relations: ['portfolio'] })
-      .then((user) => {
-        if (!user) {
-          throw new Error('User not found');
-        } else if (!user.portfolio) {
-          const portfolio = new Portfolio();
-          return getRepository(Portfolio)
-            .save(portfolio)
-            .then((savedPortfolio) => {
-              user.portfolio = savedPortfolio;
-              return getRepository(SlackUser)
-                .save(user)
-                .then(() => savedPortfolio);
-            });
-        }
-        return user?.portfolio as Portfolio;
-      });
+  public async getPortfolio(userId: string, teamId: string): Promise<Portfolio> {
+    const userRepo = getRepository(SlackUser);
+    const user = await userRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.portfolio', 'portfolio')
+      .leftJoinAndSelect('portfolio.transactions', 'transactions')
+      .where('user.slackId = :userId', { userId })
+      .andWhere('user.teamId = :teamId', { teamId })
+      .getOne();
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (!user.portfolio) {
+      const portfolioRepo = getRepository(Portfolio);
+      const portfolio = new Portfolio();
+      const savedPortfolio = await portfolioRepo.save(portfolio);
+
+      user.portfolio = savedPortfolio;
+      await userRepo.save(user);
+      return savedPortfolio;
+    }
+
+    return user.portfolio;
   }
 
-  public transact(
+  public async transact(
     userId: string,
     teamId: string,
     type: TransactionType,
@@ -49,52 +55,61 @@ export class PortfolioPersistenceService {
     quantity: number,
     price: number,
   ): Promise<InsertResult> {
-    return this.getPortfolio(userId, teamId).then((portfolio) => {
-      const transaction = new PortfolioTransactions();
-      transaction.portfolioId = portfolio;
-      transaction.type = type;
-      transaction.assetSymbol = stockSymbol;
-      transaction.quantity = quantity;
-      transaction.price = price;
-      return getRepository(PortfolioTransactions).insert(transaction);
-    });
+    const portfolio = await this.getPortfolio(userId, teamId);
+
+    const txRepo = getRepository(PortfolioTransactions);
+    const transaction = new PortfolioTransactions();
+    transaction.portfolioId = portfolio;
+    transaction.type = type;
+    transaction.assetSymbol = stockSymbol;
+    transaction.quantity = quantity;
+    transaction.price = price;
+
+    return txRepo.createQueryBuilder().insert().into(PortfolioTransactions).values(transaction).execute();
   }
 
-  public getPortfolioSummary(userId: string, teamId: string): Promise<PortfolioSummary> {
-    return this.getPortfolio(userId, teamId).then((portfolio) => {
-      const summary: PortfolioSummary = {
-        transactions: portfolio?.transactions || [],
-        summary: [],
-      };
+  public async getPortfolioSummary(userId: string, teamId: string): Promise<PortfolioSummary> {
+    const portfolio = await this.getPortfolio(userId, teamId);
 
-      if (!portfolio?.transactions) {
-        return summary;
-      }
+    // Get transactions with explicit query
+    const transactions = await getRepository(PortfolioTransactions)
+      .createQueryBuilder('tx')
+      .where('tx.portfolioId = :portfolioId', { portfolioId: portfolio.id })
+      .orderBy('tx.createdAt', 'ASC')
+      .getMany();
 
-      const { transactions } = portfolio;
-      const portfolioSummaryItems: PortfolioSummaryItem[] = [];
+    const summary: PortfolioSummary = {
+      transactions,
+      summary: [],
+    };
 
-      transactions.forEach((tx) => {
-        const foundItem = portfolioSummaryItems.find((item) => item.symbol === tx.assetSymbol);
-
-        if (!foundItem) {
-          const newItem = {
-            symbol: tx.assetSymbol,
-            quantity: tx.type === 'BUY' ? tx.quantity : -tx.quantity,
-            costBasis: tx.type === 'BUY' ? tx.quantity * tx.price : 0,
-          };
-          portfolioSummaryItems.push(newItem);
-        } else if (foundItem) {
-          if (tx.type === 'BUY') {
-            foundItem.quantity += tx.quantity;
-            foundItem.costBasis = (foundItem.costBasis || 0) + tx.quantity * tx.price;
-          } else if (tx.type === 'SELL') {
-            foundItem.quantity -= tx.quantity;
-          }
-        }
-      });
-
+    if (!transactions || transactions.length === 0) {
       return summary;
+    }
+
+    const portfolioSummaryItems: PortfolioSummaryItem[] = [];
+
+    transactions.forEach((tx) => {
+      const foundItem = portfolioSummaryItems.find((item) => item.symbol === tx.assetSymbol);
+
+      if (!foundItem) {
+        const newItem = {
+          symbol: tx.assetSymbol,
+          quantity: tx.type === 'BUY' ? tx.quantity : -tx.quantity,
+          costBasis: tx.type === 'BUY' ? tx.quantity * tx.price : 0,
+        };
+        portfolioSummaryItems.push(newItem);
+      } else if (foundItem) {
+        if (tx.type === 'BUY') {
+          foundItem.quantity += tx.quantity;
+          foundItem.costBasis = (foundItem.costBasis || 0) + tx.quantity * tx.price;
+        } else if (tx.type === 'SELL') {
+          foundItem.quantity -= tx.quantity;
+        }
+      }
     });
+
+    summary.summary = portfolioSummaryItems;
+    return summary;
   }
 }
