@@ -38,7 +38,10 @@ export class ReactionPersistenceService {
 
   public async getTotalRep(userId: string, teamId: string): Promise<TotalRep> {
     await getRepository(Rep).increment({ user: userId, teamId }, 'timesChecked', 1);
-    const user = await getRepository(SlackUser).findOne({ where: { slackId: userId, teamId } });
+    const user = await getRepository(SlackUser).findOne({
+      where: { slackId: userId, teamId },
+      relations: ['portfolio'],
+    });
     if (!user) {
       throw new Error(`Unable to find user: ${userId} on team ${teamId}`);
     }
@@ -53,25 +56,34 @@ export class ReactionPersistenceService {
       .query(totalRepSpentQuery, [user.slackId])
       .then((x) => (!x[0].sum ? 0 : x[0].sum));
 
-    const totalRepInvestedQuery = `SELECT SUM(quantity * price) as sum FROM portfolio_transactions pt JOIN portfolio p ON pt.portfolioId = p.id WHERE p.userId = ? AND pt.type = 'BUY';`;
-    const totalRepInvested = await getRepository(PortfolioTransactions)
-      .query(totalRepInvestedQuery, [user.slackId])
-      .then((x) => (!x[0].sum ? 0 : x[0].sum));
+    if (user.portfolio?.id) {
+      const totalRepInvestedQuery = `SELECT SUM(quantity * price) as sum FROM portfolio_transactions pt WHERE pt.portfolioId = ? AND pt.type = 'BUY';`;
+      const totalRepInvested = await getRepository(PortfolioTransactions)
+        .query(totalRepInvestedQuery, [user.portfolio?.id])
+        .then((x) => (!x[0].sum ? 0 : x[0].sum));
 
-    const totalRepSoldQuery = `SELECT SUM(quantity * price) as sum FROM portfolio_transactions pt JOIN portfolio p ON pt.portfolioId = p.id WHERE p.userId = ? AND pt.type = 'SELL';`;
-    const totalRepSold = await getRepository(PortfolioTransactions)
-      .query(totalRepSoldQuery, [user.slackId])
-      .then((x) => (!x[0].sum ? 0 : x[0].sum));
+      const totalRepSoldQuery = `SELECT SUM(quantity * price) as sum FROM portfolio_transactions pt WHERE pt.portfolioId = ? AND pt.type = 'SELL';`;
+      const totalRepSold = await getRepository(PortfolioTransactions)
+        .query(totalRepSoldQuery, [user.portfolio?.id])
+        .then((x) => (!x[0].sum ? 0 : x[0].sum));
 
-    const totalRepInvestedNet = totalRepSold - totalRepInvested;
-
-    return {
-      totalRepEarned,
-      totalRepSpent,
-      totalRepAvailable: totalRepEarned + totalRepInvestedNet - totalRepSpent,
-      totalRepInvested,
-      totalRepInvestedNet,
-    };
+      const totalRepInvestedNet = totalRepSold - totalRepInvested;
+      return {
+        totalRepEarned,
+        totalRepSpent,
+        totalRepAvailable: totalRepEarned + totalRepInvestedNet - totalRepSpent,
+        totalRepInvested,
+        totalRepInvestedNet,
+      };
+    } else {
+      return {
+        totalRepEarned,
+        totalRepSpent,
+        totalRepAvailable: totalRepEarned - totalRepSpent,
+        totalRepInvested: 0,
+        totalRepInvestedNet: 0,
+      };
+    }
   }
 
   public getRepByUser(userId: string, teamId: string): Promise<ReactionByUser[]> {
