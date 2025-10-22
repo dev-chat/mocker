@@ -68,12 +68,12 @@ export class PortfolioService {
       const totalCost = price * quantity;
       if (totalRepAvailable < totalCost) {
         return {
-          message: `Insufficient rep to complete purchase of ${quantity} shares of ${stockSymbol}. You only have ${totalRepAvailable} rep available.`,
+          message: `Insufficient rep to complete purchase of \`${quantity}\` shares of \`${stockSymbol}\`. You only have \`${totalRepAvailable}\` rep available.`,
           classification: MessageHandlerEnum.PRIVATE,
         };
       } else if (!price) {
         return {
-          message: `Unable to retrieve price for ${stockSymbol}. Transaction aborted.`,
+          message: `Unable to retrieve price for \`${stockSymbol}\`. Transaction aborted.`,
           classification: MessageHandlerEnum.PRIVATE,
         };
       } else {
@@ -81,7 +81,7 @@ export class PortfolioService {
           .transact(userId, teamId, action, stockSymbol, quantity, price)
           .then(() => {
             return {
-              message: `<@${userId}> has successfully purchased ${quantity} shares of ${stockSymbol} at $${price.toFixed(2)} per share. Total cost: $${totalCost.toFixed(2)}.`,
+              message: `<@${userId}> has successfully purchased \`${quantity}\` shares of \`${stockSymbol}\` at \`$${price.toFixed(2)}\` per share. Total cost: \`$${totalCost.toFixed(2)}\`.`,
               classification: MessageHandlerEnum.PUBLIC,
             };
           });
@@ -94,12 +94,12 @@ export class PortfolioService {
 
       if (ownedShares < quantity) {
         return {
-          message: `Insufficient shares to complete sale of ${quantity} shares of ${stockSymbol}. You only own ${ownedShares} shares.`,
+          message: `Insufficient shares to complete sale of \`${quantity}\` shares of \`${stockSymbol}\`. You only own \`${ownedShares}\` shares.`,
           classification: MessageHandlerEnum.PRIVATE,
         };
       } else if (!price) {
         return {
-          message: `Unable to retrieve price for ${stockSymbol}. Transaction aborted.`,
+          message: `Unable to retrieve price for \`${stockSymbol}\`. Transaction aborted.`,
           classification: MessageHandlerEnum.PRIVATE,
         };
       } else {
@@ -108,7 +108,7 @@ export class PortfolioService {
           .then(() => {
             const totalProceeds = price * quantity;
             return {
-              message: `<@${userId}> has successfully sold ${quantity} shares of ${stockSymbol} at $${price.toFixed(2)} per share. Total proceeds: $${totalProceeds.toFixed(2)}.`,
+              message: `<@${userId}> has successfully sold \`${quantity}\` shares of \`${stockSymbol}\` at \`$${price.toFixed(2)}\` per share. Total proceeds: \`$${totalProceeds.toFixed(2)}\`.`,
               classification: MessageHandlerEnum.PUBLIC,
             };
           });

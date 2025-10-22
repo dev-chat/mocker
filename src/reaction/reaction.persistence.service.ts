@@ -70,7 +70,7 @@ export class ReactionPersistenceService {
       const totalRepInvested = await getRepository(PortfolioTransactions)
         .createQueryBuilder('pt')
         .select('SUM(pt.quantity * pt.price)', 'sum')
-        .where('pt.portfolioId = :portfolioId', { portfolioId: user.portfolio.id })
+        .where('pt.portfolio_id = :portfolioId', { portfolioId: user.portfolio.id })
         .andWhere("pt.type = 'BUY'")
         .getRawOne()
         .then((result) => result?.sum || 0);
@@ -78,7 +78,7 @@ export class ReactionPersistenceService {
       const totalRepSold = await getRepository(PortfolioTransactions)
         .createQueryBuilder('pt')
         .select('SUM(pt.quantity * pt.price)', 'sum')
-        .where('pt.portfolioId = :portfolioId', { portfolioId: user.portfolio.id })
+        .where('pt.portfolio_id = :portfolioId', { portfolioId: user.portfolio.id })
         .andWhere("pt.type = 'SELL'")
         .getRawOne()
         .then((result) => result?.sum || 0);
