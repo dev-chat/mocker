@@ -38,34 +38,50 @@ export class ReactionPersistenceService {
 
   public async getTotalRep(userId: string, teamId: string): Promise<TotalRep> {
     await getRepository(Rep).increment({ user: userId, teamId }, 'timesChecked', 1);
-    const user = await getRepository(SlackUser).findOne({
-      where: { slackId: userId, teamId },
-      relations: ['portfolio'],
-    });
+
+    const userRepo = getRepository(SlackUser);
+    const user = await userRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.portfolio', 'portfolio')
+      .where('user.slackId = :userId', { userId })
+      .andWhere('user.teamId = :teamId', { teamId })
+      .getOne();
+
     if (!user) {
       throw new Error(`Unable to find user: ${userId} on team ${teamId}`);
     }
 
-    const totalRepEarnedQuery = 'SELECT SUM(VALUE) as sum FROM reaction WHERE affectedUser=? AND teamId=?;';
     const totalRepEarned = await getRepository(Reaction)
-      .query(totalRepEarnedQuery, [user.slackId, user.teamId])
-      .then((x) => (!x[0].sum ? 0 : x[0].sum));
+      .createQueryBuilder('reaction')
+      .select('SUM(reaction.value)', 'sum')
+      .where('reaction.affectedUser = :userId', { userId: user.slackId })
+      .andWhere('reaction.teamId = :teamId', { teamId: user.teamId })
+      .getRawOne()
+      .then((result) => result?.sum || 0);
 
-    const totalRepSpentQuery = 'SELECT SUM(PRICE) as sum FROM purchase WHERE user=?;';
     const totalRepSpent = await getRepository(Purchase)
-      .query(totalRepSpentQuery, [user.slackId])
-      .then((x) => (!x[0].sum ? 0 : x[0].sum));
+      .createQueryBuilder('purchase')
+      .select('SUM(purchase.price)', 'sum')
+      .where('purchase.user = :userId', { userId: user.slackId })
+      .getRawOne()
+      .then((result) => result?.sum || 0);
 
     if (user.portfolio?.id) {
-      const totalRepInvestedQuery = `SELECT SUM(quantity * price) as sum FROM portfolio_transactions pt WHERE pt.portfolioId = ? AND pt.type = 'BUY';`;
       const totalRepInvested = await getRepository(PortfolioTransactions)
-        .query(totalRepInvestedQuery, [user.portfolio?.id])
-        .then((x) => (!x[0].sum ? 0 : x[0].sum));
+        .createQueryBuilder('pt')
+        .select('SUM(pt.quantity * pt.price)', 'sum')
+        .where('pt.portfolioId = :portfolioId', { portfolioId: user.portfolio.id })
+        .andWhere("pt.type = 'BUY'")
+        .getRawOne()
+        .then((result) => result?.sum || 0);
 
-      const totalRepSoldQuery = `SELECT SUM(quantity * price) as sum FROM portfolio_transactions pt WHERE pt.portfolioId = ? AND pt.type = 'SELL';`;
       const totalRepSold = await getRepository(PortfolioTransactions)
-        .query(totalRepSoldQuery, [user.portfolio?.id])
-        .then((x) => (!x[0].sum ? 0 : x[0].sum));
+        .createQueryBuilder('pt')
+        .select('SUM(pt.quantity * pt.price)', 'sum')
+        .where('pt.portfolioId = :portfolioId', { portfolioId: user.portfolio.id })
+        .andWhere("pt.type = 'SELL'")
+        .getRawOne()
+        .then((result) => result?.sum || 0);
 
       const totalRepInvestedNet = totalRepSold - totalRepInvested;
       return {
