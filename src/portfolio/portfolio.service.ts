@@ -97,7 +97,7 @@ export class PortfolioService {
       };
     }
 
-    let price;
+    let price: number;
 
     try {
       const { c } = await this.quoteService.getQuote(stockSymbol);
