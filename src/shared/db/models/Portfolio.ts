@@ -1,0 +1,19 @@
+import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { SlackUser } from './SlackUser';
+import { PortfolioTransactions } from './PortfolioTransaction';
+import { UUID } from 'typeorm/driver/mongodb/bson.typings';
+
+@Entity()
+export class Portfolio {
+  @PrimaryGeneratedColumn()
+  public id!: UUID;
+
+  @OneToOne(() => SlackUser, (user) => user.portfolio)
+  public userId!: SlackUser;
+
+  @OneToMany(() => PortfolioTransactions, (transaction) => transaction.id, { eager: true })
+  public transactions?: PortfolioTransactions[];
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  public createdAt!: Date;
+}

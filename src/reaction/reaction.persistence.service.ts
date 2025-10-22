@@ -7,6 +7,8 @@ import { Rep } from '../shared/db/models/Rep';
 import { SlackUser } from '../shared/db/models/SlackUser';
 import { ReactionByUser } from '../shared/models/reaction/ReactionByUser.model';
 import { Event } from '../shared/models/slack/slack-models';
+import { PortfolioTransactions } from '../shared/db/models/PortfolioTransaction';
+
 export class ReactionPersistenceService {
   public saveReaction(event: Event, value: number, teamId: string): Promise<Reaction> {
     const reaction = new Reaction();
@@ -51,7 +53,25 @@ export class ReactionPersistenceService {
       .query(totalRepSpentQuery, [user.slackId])
       .then((x) => (!x[0].sum ? 0 : x[0].sum));
 
-    return { totalRepEarned, totalRepSpent, totalRepAvailable: totalRepEarned - totalRepSpent };
+    const totalRepInvestedQuery = `SELECT SUM(quantity * price) as sum FROM portfolio_transactions pt JOIN portfolio p ON pt.portfolioId = p.id WHERE p.userId = ? AND pt.type = 'BUY';`;
+    const totalRepInvested = await getRepository(PortfolioTransactions)
+      .query(totalRepInvestedQuery, [user.slackId])
+      .then((x) => (!x[0].sum ? 0 : x[0].sum));
+
+    const totalRepSoldQuery = `SELECT SUM(quantity * price) as sum FROM portfolio_transactions pt JOIN portfolio p ON pt.portfolioId = p.id WHERE p.userId = ? AND pt.type = 'SELL';`;
+    const totalRepSold = await getRepository(PortfolioTransactions)
+      .query(totalRepSoldQuery, [user.slackId])
+      .then((x) => (!x[0].sum ? 0 : x[0].sum));
+
+    const totalRepInvestedNet = totalRepSold - totalRepInvested;
+
+    return {
+      totalRepEarned,
+      totalRepSpent,
+      totalRepAvailable: totalRepEarned + totalRepInvestedNet - totalRepSpent,
+      totalRepInvested,
+      totalRepInvestedNet,
+    };
   }
 
   public getRepByUser(userId: string, teamId: string): Promise<ReactionByUser[]> {
