@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany, JoinColumn, OneToOne } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany, OneToOne } from 'typeorm';
 import { Activity } from './Activity';
 import { Message } from './Message';
 import { Portfolio } from './Portfolio';
@@ -31,6 +31,5 @@ export class SlackUser {
   public messages?: Message[];
 
   @OneToOne(() => Portfolio, (portfolio) => portfolio.userId)
-  @JoinColumn()
   public portfolio?: Portfolio;
 }
