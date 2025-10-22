@@ -7,13 +7,11 @@ import { TransactionType } from './portfolio.persistence.service';
 import { WebService } from '../shared/services/web/web.service';
 
 export const portfolioController: Router = express.Router();
-portfolioController.use(suppressedMiddleware);
-portfolioController.use(textMiddleware);
 
 const portfolioService = new PortfolioService();
 const webService = new WebService();
 
-portfolioController.post('/buy', (req, res) => {
+portfolioController.post('/buy', suppressedMiddleware, textMiddleware, (req, res) => {
   const request: SlashCommandRequest = req.body;
   res.status(200).send();
   portfolioService
@@ -33,7 +31,7 @@ portfolioController.post('/buy', (req, res) => {
     });
 });
 
-portfolioController.post('/sell', (req, res) => {
+portfolioController.post('/sell', suppressedMiddleware, textMiddleware, (req, res) => {
   const request: SlashCommandRequest = req.body;
   res.status(200).send();
   portfolioService

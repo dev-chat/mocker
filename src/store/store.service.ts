@@ -12,7 +12,7 @@ export class StoreService {
     items.map((item) => {
       view += `*${item.id}. ${item.name}* \n *Cost:* ${item.price} rep \n *Description:* ${
         item.description
-      } \n *How to Use:* ${item.requiresUser ? `\`/buy ${item.id} @user\`` : `\`/buy ${item.id}\``} \n \n`;
+      } \n *How to Use:* ${item.requiresUser ? `\`/use ${item.id} @user\`` : `\`/use ${item.id}\``} \n \n`;
     });
 
     view += `You currently have *${totalRepAvailable} Rep* to spend. Spend it wisely!`;
