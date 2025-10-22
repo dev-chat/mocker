@@ -64,25 +64,48 @@ export class PortfolioService {
   }
 
   public isTradingHours(): boolean {
+    // Assuming machine is in UTC, use UTC methods
     const now = new Date();
     const day = now.getUTCDay();
-    const hours = now.getUTCHours();
-    const minutes = now.getUTCMinutes();
+    const utcHours = now.getUTCHours();
+    const utcMinutes = now.getUTCMinutes();
 
-    // Market is open 9:30 AM - 4:00 PM Eastern Time
-    // During EST (not DST): UTC 14:30 - 21:00
-    // During EDT (DST): UTC 13:30 - 20:00
+    // First check if it's a weekday (Monday = 1, Friday = 5)
+    if (day < 1 || day > 5) {
+      return false;
+    }
+
+    // Convert UTC to Eastern Time
+    // Market hours: 9:30 AM - 4:00 PM ET
+    // EDT (UTC-4): 13:30 - 20:00 UTC
+    // EST (UTC-5): 14:30 - 21:00 UTC
     const isDST = this.isInDST(now);
-    const utcOffset = isDST ? 4 : 5; // EDT is UTC-4, EST is UTC-5
 
-    const isWeekday = day >= 1 && day <= 5;
-    const marketOpenHour = 13 + utcOffset;
-    const marketCloseHour = 20 + utcOffset;
+    // Define market hours in UTC
+    const marketOpen = {
+      hour: isDST ? 13 : 14,
+      minute: 30,
+    };
 
-    const isAfterOpen = hours > marketOpenHour || (hours === marketOpenHour && minutes >= 30);
-    const isBeforeClose = hours < marketCloseHour;
+    const marketClose = {
+      hour: isDST ? 20 : 21,
+      minute: 0,
+    };
 
-    return isWeekday && isAfterOpen && isBeforeClose;
+    // Check if current UTC time is within market hours
+    if (utcHours < marketOpen.hour || utcHours > marketClose.hour) {
+      return false;
+    }
+
+    if (utcHours === marketOpen.hour && utcMinutes < marketOpen.minute) {
+      return false;
+    }
+
+    if (utcHours === marketClose.hour && utcMinutes > marketClose.minute) {
+      return false;
+    }
+
+    return true;
   }
 
   public async transact(
