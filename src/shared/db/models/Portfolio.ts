@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { PortfolioTransactions } from './PortfolioTransaction';
 import { UUID } from 'typeorm/driver/mongodb/bson.typings';
 import { SlackUser } from './SlackUser';
@@ -15,5 +15,6 @@ export class Portfolio {
   public createdAt!: Date;
 
   @OneToOne(() => SlackUser, (user) => user.portfolio)
+  @JoinColumn()
   public user!: SlackUser;
 }
