@@ -54,16 +54,33 @@ export class PortfolioService {
     });
   }
 
+  private isInDST(date: Date): boolean {
+    // US DST starts on second Sunday in March and ends on first Sunday in November
+    const year = date.getFullYear();
+    const dstStart = new Date(year, 2, 14 - new Date(year, 2, 1).getDay(), 2); // 2nd Sunday March 2AM
+    const dstEnd = new Date(year, 10, 7 - new Date(year, 10, 1).getDay(), 2); // 1st Sunday Nov 2AM
+
+    return date >= dstStart && date < dstEnd;
+  }
+
   public isTradingHours(): boolean {
     const now = new Date();
     const day = now.getUTCDay();
     const hours = now.getUTCHours();
     const minutes = now.getUTCMinutes();
 
-    // Trading hours: Monday to Friday, 13:30 to 20:00 UTC
+    // Market is open 9:30 AM - 4:00 PM Eastern Time
+    // During EST (not DST): UTC 14:30 - 21:00
+    // During EDT (DST): UTC 13:30 - 20:00
+    const isDST = this.isInDST(now);
+    const utcOffset = isDST ? 4 : 5; // EDT is UTC-4, EST is UTC-5
+
     const isWeekday = day >= 1 && day <= 5;
-    const isAfterOpen = hours > 13 || (hours === 13 && minutes >= 30);
-    const isBeforeClose = hours < 20;
+    const marketOpenHour = 13 + utcOffset;
+    const marketCloseHour = 20 + utcOffset;
+
+    const isAfterOpen = hours > marketOpenHour || (hours === marketOpenHour && minutes >= 30);
+    const isBeforeClose = hours < marketCloseHour;
 
     return isWeekday && isAfterOpen && isBeforeClose;
   }
