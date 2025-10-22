@@ -59,7 +59,7 @@ export class PortfolioPersistenceService {
 
     const txRepo = getRepository(PortfolioTransactions);
     const transaction = new PortfolioTransactions();
-    transaction.portfolioId = portfolio;
+    transaction.portfolio = portfolio;
     transaction.type = type;
     transaction.assetSymbol = stockSymbol;
     transaction.quantity = quantity;
@@ -74,7 +74,7 @@ export class PortfolioPersistenceService {
     // Get transactions with explicit query
     const transactions = await getRepository(PortfolioTransactions)
       .createQueryBuilder('tx')
-      .where('tx.portfolioId = :portfolioId', { portfolioId: portfolio.id })
+      .where('tx.portfolio = :portfolioId', { portfolioId: portfolio.id })
       .orderBy('tx.createdAt', 'ASC')
       .getMany();
 
