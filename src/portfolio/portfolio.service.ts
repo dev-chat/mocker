@@ -61,7 +61,31 @@ export class PortfolioService {
     quantity: number,
     action: TransactionType,
   ): Promise<MessageHandler> {
-    const { c: price } = await this.quoteService.getQuote(stockSymbol);
+    if (!quantity || quantity <= 0) {
+      return {
+        message: `Invalid quantity: \`${quantity}\`. Quantity must be a positive integer. Transaction aborted.`,
+        classification: MessageHandlerEnum.PRIVATE,
+      };
+    }
+
+    if (!stockSymbol || stockSymbol.trim() === '') {
+      return {
+        message: 'Stock symbol cannot be empty. Transaction aborted.',
+        classification: MessageHandlerEnum.PRIVATE,
+      };
+    }
+
+    let price;
+
+    try {
+      const { c } = await this.quoteService.getQuote(stockSymbol);
+      price = c;
+    } catch (e) {
+      return {
+        message: `Unable to retrieve price for \`${stockSymbol}\`. Transaction aborted.`,
+        classification: MessageHandlerEnum.PRIVATE,
+      };
+    }
 
     if (action === TransactionType.BUY) {
       const { totalRepAvailable } = await this.repPersistenceService.getTotalRep(userId, teamId);
