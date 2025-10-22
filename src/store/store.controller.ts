@@ -21,7 +21,7 @@ storeController.post('/', async (req, res) => {
   res.status(200).send(storeItems);
 });
 
-storeController.post('/buy', async (req, res) => {
+storeController.post('/use', async (req, res) => {
   const request: SlashCommandRequest = req.body;
   const textArgs = request.text.split(' ');
   let itemId: string | undefined;
@@ -37,7 +37,7 @@ storeController.post('/buy', async (req, res) => {
   const isValidItem = await storeService.isValidItem(itemId, request.team_id);
 
   if (!isValidItem) {
-    res.send('Invalid item. Please use `/buy item_id`.');
+    res.send('Invalid item. Please use `/use item_id`.');
     return;
   }
 
@@ -45,15 +45,15 @@ storeController.post('/buy', async (req, res) => {
   const isUserRequired = await storeService.isUserRequired(itemId);
 
   if (!itemId) {
-    res.send('You must provide an item_id in order to buy an item');
+    res.send('You must provide an item_id in order to use an item');
   } else if (!canAffordItem) {
     res.send(`Sorry, you can't afford that item.`);
   } else if (!isUserRequired && userIdForItem) {
     res.send(
-      'Sorry, this item cannot be used on other people. Try `/buy item_id`. You do not need to specify a user you wish to use this on.',
+      'Sorry, this item cannot be used on other people. Try `/use item_id`. You do not need to specify a user you wish to use this on.',
     );
   } else if (isUserRequired && (!userIdForItem || userIdForItem === request.user_id)) {
-    res.send('Sorry, this item can only be used on other people. Try `/buy item_id @user` in order to use this item.');
+    res.send('Sorry, this item can only be used on other people. Try `/use item_id @user` in order to use this item.');
   } else {
     const useReceipt = await itemService
       .useItem(itemId, request.user_id, request.team_id, userIdForItem as string, request.channel_name)

@@ -25,6 +25,7 @@ import { signatureVerificationMiddleware } from './shared/middleware/signatureVe
 import { WebService } from './shared/services/web/web.service';
 import { logger } from './shared/logger/logger';
 import { AIService } from './ai/ai.service';
+import { portfolioController } from './portfolio/portfolio.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -55,6 +56,7 @@ app.use('/health', healthController);
 app.use('/list', listController);
 app.use('/mock', mockController);
 app.use('/muzzle', muzzleController);
+app.use('/portfolio', portfolioController);
 app.use('/quote', quoteController);
 app.use('/rep', reactionController);
 app.use('/store', storeController);
