@@ -8,8 +8,11 @@ import { SlackUser } from '../shared/db/models/SlackUser';
 import { ReactionByUser } from '../shared/models/reaction/ReactionByUser.model';
 import { Event } from '../shared/models/slack/slack-models';
 import { PortfolioTransactions } from '../shared/db/models/PortfolioTransaction';
+import { logger } from '../shared/logger/logger';
 
 export class ReactionPersistenceService {
+  customLogger = logger.child('ReactionPersistenceService');
+
   public saveReaction(event: Event, value: number, teamId: string): Promise<Reaction> {
     const reaction = new Reaction();
     reaction.affectedUser = event.item_user;
@@ -51,46 +54,81 @@ export class ReactionPersistenceService {
       throw new Error(`Unable to find user: ${userId} on team ${teamId}`);
     }
 
-    const totalRepEarned = await getRepository(Reaction)
+    const earnedQuery = getRepository(Reaction)
       .createQueryBuilder('reaction')
-      .select('SUM(reaction.value)', 'sum')
+      .select('CAST(SUM(reaction.value) as DECIMAL(18,8))', 'sum')
       .where('reaction.affectedUser = :userId', { userId: user.slackId })
-      .andWhere('reaction.teamId = :teamId', { teamId: user.teamId })
-      .getRawOne()
-      .then((result) => result?.sum || 0);
+      .andWhere('reaction.teamId = :teamId', { teamId: user.teamId });
 
-    const totalRepSpent = await getRepository(Purchase)
+    this.customLogger.log('Earned Query:', earnedQuery.getSql());
+
+    const totalRepEarned = await earnedQuery.getRawOne().then((result) => {
+      this.customLogger.log('Earned Result:', result);
+      return Number(result?.sum || 0);
+    });
+
+    const spentQuery = getRepository(Purchase)
       .createQueryBuilder('purchase')
-      .select('SUM(purchase.price)', 'sum')
-      .where('purchase.user = :userId', { userId: user.slackId })
-      .getRawOne()
-      .then((result) => result?.sum || 0);
+      .select('CAST(SUM(purchase.price) as DECIMAL(18,8))', 'sum')
+      .where('purchase.user = :userId', { userId: user.slackId });
+
+    this.customLogger.log('Spent Query:', spentQuery.getSql());
+
+    const totalRepSpent = await spentQuery.getRawOne().then((result) => {
+      this.customLogger.log('Spent Result:', result);
+      return Number(result?.sum || 0);
+    });
 
     if (user.portfolio?.id) {
-      const totalRepInvested = await getRepository(PortfolioTransactions)
-        .createQueryBuilder('pt')
-        .select('SUM(pt.quantity * pt.price)', 'sum')
-        .where('pt.portfolio_id = :portfolioId', { portfolioId: user.portfolio.id })
-        .andWhere("pt.type = 'BUY'")
-        .getRawOne()
-        .then((result) => result?.sum || 0);
+      // Debug the portfolio ID
+      this.customLogger.log('Portfolio ID:', user.portfolio.id);
 
-      const totalRepSold = await getRepository(PortfolioTransactions)
+      const investedQuery = getRepository(PortfolioTransactions)
         .createQueryBuilder('pt')
         .select('SUM(pt.quantity * pt.price)', 'sum')
         .where('pt.portfolio_id = :portfolioId', { portfolioId: user.portfolio.id })
-        .andWhere("pt.type = 'SELL'")
-        .getRawOne()
-        .then((result) => result?.sum || 0);
+        .andWhere("pt.type = 'BUY'");
+
+      this.customLogger.log('Invested Query:', investedQuery.getSql());
+
+      const totalRepInvested = await investedQuery.getRawOne().then((result) => {
+        this.customLogger.log('Invested Result:', result);
+        return Number(result?.sum || 0);
+      });
+
+      const soldQuery = getRepository(PortfolioTransactions)
+        .createQueryBuilder('pt')
+        .select('SUM(pt.quantity * pt.price)', 'sum')
+        .where('pt.portfolio_id = :portfolioId', { portfolioId: user.portfolio.id })
+        .andWhere("pt.type = 'SELL'");
+
+      this.customLogger.log('Sold Query:', soldQuery.getSql());
+
+      const totalRepSold = await soldQuery.getRawOne().then((result) => {
+        this.customLogger.log('Sold Result:', result);
+        return Number(result?.sum || 0);
+      });
+
+      // Debug all values
+      this.customLogger.log('Values:', {
+        totalRepEarned,
+        totalRepSpent,
+        totalRepInvested,
+        totalRepSold,
+      });
 
       const totalRepInvestedNet = totalRepSold - totalRepInvested;
-      return {
+
+      const result = {
         totalRepEarned,
         totalRepSpent,
         totalRepAvailable: totalRepEarned + totalRepInvestedNet - totalRepSpent,
         totalRepInvested,
         totalRepInvestedNet,
       };
+
+      this.customLogger.log('Final Result:', result);
+      return result;
     } else {
       return {
         totalRepEarned,
