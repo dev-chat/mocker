@@ -68,7 +68,7 @@ export class PortfolioService {
       const totalCost = price * quantity;
       if (totalRepAvailable < totalCost) {
         return {
-          message: `Insufficient rep to complete purchase of ${quantity} shares of ${stockSymbol}.`,
+          message: `Insufficient rep to complete purchase of ${quantity} shares of ${stockSymbol}. You only have ${totalRepAvailable} rep available.`,
           classification: MessageHandlerEnum.PRIVATE,
         };
       } else if (!price) {
