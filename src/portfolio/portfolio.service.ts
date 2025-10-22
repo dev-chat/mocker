@@ -54,6 +54,20 @@ export class PortfolioService {
     });
   }
 
+  public isTradingHours(): boolean {
+    const now = new Date();
+    const day = now.getUTCDay();
+    const hours = now.getUTCHours();
+    const minutes = now.getUTCMinutes();
+
+    // Trading hours: Monday to Friday, 13:30 to 20:00 UTC
+    const isWeekday = day >= 1 && day <= 5;
+    const isAfterOpen = hours > 13 || (hours === 13 && minutes >= 30);
+    const isBeforeClose = hours < 20;
+
+    return isWeekday && isAfterOpen && isBeforeClose;
+  }
+
   public async transact(
     userId: string,
     teamId: string,
@@ -61,6 +75,14 @@ export class PortfolioService {
     quantity: number,
     action: TransactionType,
   ): Promise<MessageHandler> {
+    if (!this.isTradingHours()) {
+      return {
+        message:
+          'Transactions can only be made during trading hours (Monday to Friday, 9:30 AM to 4:00 PM EST). Transaction aborted.',
+        classification: MessageHandlerEnum.PRIVATE,
+      };
+    }
+
     if (!quantity || quantity <= 0) {
       return {
         message: `Invalid quantity: \`${quantity}\`. Quantity must be a positive integer. Transaction aborted.`,
