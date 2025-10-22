@@ -28,7 +28,6 @@ export class PortfolioPersistenceService {
           throw new Error('User not found');
         } else if (!user.portfolio) {
           const portfolio = new Portfolio();
-          portfolio.userId = user;
           return getRepository(Portfolio)
             .save(portfolio)
             .then((savedPortfolio) => {
