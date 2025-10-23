@@ -117,6 +117,20 @@ export class PortfolioService {
     quantity: number,
     action: TransactionType,
   ): Promise<MessageHandler> {
+    if (typeof stockSymbol !== 'string') {
+      return {
+        message: 'Stock symbol must be a string. Transaction aborted.',
+        classification: MessageHandlerEnum.PRIVATE,
+      };
+    }
+
+    if (typeof quantity !== 'number' || isNaN(quantity) || !Number.isInteger(quantity)) {
+      return {
+        message: `Invalid quantity: \`${quantity}\`. Quantity must be a positive integer. Transaction aborted.`,
+        classification: MessageHandlerEnum.PRIVATE,
+      };
+    }
+
     if (!this.isTradingHours()) {
       return {
         message:
@@ -175,10 +189,21 @@ export class PortfolioService {
           });
       }
     } else if (action === TransactionType.SELL) {
-      const ownedShares = await this.portfolioPersistenceService.getPortfolioSummary(userId, teamId).then((summary) => {
-        const item = summary.summary.find((s) => s.symbol === stockSymbol);
-        return item ? item.quantity : 0;
-      });
+      const portfolio = await this.portfolioPersistenceService.getPortfolioSummary(userId, teamId);
+
+      let ownedShares = 0;
+      if (portfolio.transactions) {
+        ownedShares = portfolio.transactions
+          .filter((tx) => tx.assetSymbol === stockSymbol)
+          .reduce((total, tx) => {
+            if (tx.type === TransactionType.BUY) {
+              return total + tx.quantity;
+            } else if (tx.type === TransactionType.SELL) {
+              return total - tx.quantity;
+            }
+            return total;
+          }, 0);
+      }
 
       if (ownedShares < quantity) {
         return {
