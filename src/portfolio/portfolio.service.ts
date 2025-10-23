@@ -124,7 +124,7 @@ export class PortfolioService {
       };
     }
 
-    if (typeof quantity !== 'number' || isNaN(quantity) || !Number.isInteger(quantity)) {
+    if (typeof quantity !== 'number' || isNaN(quantity) || !Number.isInteger(quantity) || quantity <= 0) {
       return {
         message: `Invalid quantity: \`${quantity}\`. Quantity must be a positive integer. Transaction aborted.`,
         classification: MessageHandlerEnum.PRIVATE,
