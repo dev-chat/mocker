@@ -42,10 +42,12 @@ export class PortfolioService {
   public getPortfolioSummaryWithQuotes(userId: string, teamId: string): Promise<PortfolioSummaryWithQuotes> {
     return this.portfolioPersistenceService.getPortfolioSummary(userId, teamId).then((summary) => {
       return this.getQuotesWithTicker(summary.summary).then((quotes) => {
-        const summaryWithQuotes: (PortfolioSummaryItem & { currentPrice: number })[] = summary.summary.map((item) => ({
-          ...item,
-          currentPrice: quotes.find((q) => q && q.ticker === item.symbol)?.c || 0,
-        }));
+        const summaryWithQuotes: (PortfolioSummaryItem & { currentPrice: number })[] = summary.summary
+          .filter((item) => item.quantity > 0)
+          .map((item) => ({
+            ...item,
+            currentPrice: quotes.find((q) => q && q.ticker === item.symbol)?.c || 0,
+          }));
         return {
           transactions: summary.transactions,
           summary: summaryWithQuotes,
