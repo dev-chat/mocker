@@ -60,10 +60,10 @@ export class ReactionPersistenceService {
       .where('reaction.affectedUser = :userId', { userId: user.slackId })
       .andWhere('reaction.teamId = :teamId', { teamId: user.teamId });
 
-    this.customLogger.log('Earned Query:', earnedQuery.getSql());
+    this.customLogger.info('Earned Query:', earnedQuery.getSql());
 
     const totalRepEarned = await earnedQuery.getRawOne().then((result) => {
-      this.customLogger.log('Earned Result:', result);
+      this.customLogger.info('Earned Result:', result);
       return Number(result?.sum || 0);
     });
 
@@ -72,16 +72,16 @@ export class ReactionPersistenceService {
       .select('CAST(SUM(purchase.price) as DECIMAL(18,8))', 'sum')
       .where('purchase.user = :userId', { userId: user.slackId });
 
-    this.customLogger.log('Spent Query:', spentQuery.getSql());
+    this.customLogger.info('Spent Query:', spentQuery.getSql());
 
     const totalRepSpent = await spentQuery.getRawOne().then((result) => {
-      this.customLogger.log('Spent Result:', result);
+      this.customLogger.info('Spent Result:', result);
       return Number(result?.sum || 0);
     });
 
     if (user.portfolio?.id) {
       // Debug the portfolio ID
-      this.customLogger.log('Portfolio ID:', user.portfolio.id);
+      this.customLogger.info('Portfolio ID:', user.portfolio.id);
 
       const investedQuery = getRepository(PortfolioTransactions)
         .createQueryBuilder('pt')
@@ -89,10 +89,10 @@ export class ReactionPersistenceService {
         .where('pt.portfolio_id = :portfolioId', { portfolioId: user.portfolio.id })
         .andWhere("pt.type = 'BUY'");
 
-      this.customLogger.log('Invested Query:', investedQuery.getSql());
+      this.customLogger.info('Invested Query:', investedQuery.getSql());
 
       const totalRepInvested = await investedQuery.getRawOne().then((result) => {
-        this.customLogger.log('Invested Result:', result);
+        this.customLogger.info('Invested Result:', result);
         return Number(result?.sum || 0);
       });
 
@@ -102,15 +102,15 @@ export class ReactionPersistenceService {
         .where('pt.portfolio_id = :portfolioId', { portfolioId: user.portfolio.id })
         .andWhere("pt.type = 'SELL'");
 
-      this.customLogger.log('Sold Query:', soldQuery.getSql());
+      this.customLogger.info('Sold Query:', soldQuery.getSql());
 
       const totalRepSold = await soldQuery.getRawOne().then((result) => {
-        this.customLogger.log('Sold Result:', result);
+        this.customLogger.info('Sold Result:', result);
         return Number(result?.sum || 0);
       });
 
       // Debug all values
-      this.customLogger.log('Values:', {
+      this.customLogger.info('Values:', {
         totalRepEarned,
         totalRepSpent,
         totalRepInvested,
@@ -127,7 +127,7 @@ export class ReactionPersistenceService {
         totalRepInvestedNet,
       };
 
-      this.customLogger.log('Final Result:', result);
+      this.customLogger.info('Final Result:', result);
       return result;
     } else {
       return {
