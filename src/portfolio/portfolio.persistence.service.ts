@@ -5,6 +5,7 @@ import { SlackUser } from '../shared/db/models/SlackUser';
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
 import { TotalRep } from '../reaction/reaction.interface';
 import Decimal from 'decimal.js';
+import { logger as loglib } from '../shared/logger/logger';
 
 export interface PortfolioSummaryItem {
   symbol: string;
@@ -25,6 +26,7 @@ export enum TransactionType {
 
 export class PortfolioPersistenceService {
   reactionPersistenceService = new ReactionPersistenceService();
+  logger = loglib.child('PortfolioPersistenceService');
 
   public async getPortfolio(userId: string, teamId: string): Promise<Portfolio> {
     const userRepo = getRepository(SlackUser);
@@ -72,6 +74,8 @@ export class PortfolioPersistenceService {
     return await getRepository(PortfolioTransactions).manager.transaction(async (transactionalEntityManager) => {
       // Try to acquire MySQL named lock with 10 second timeout
       const lockResult = await transactionalEntityManager.query('SELECT GET_LOCK(?, 10)', [lockName]);
+
+      this.logger.info(`Acquired lock result: ${JSON.stringify(lockResult)}`);
 
       // MySQL GET_LOCK returns 1 if the lock was obtained successfully, 0 if timeout, or NULL if error
       if (!lockResult[0]['GET_LOCK(?, 10)']) {
