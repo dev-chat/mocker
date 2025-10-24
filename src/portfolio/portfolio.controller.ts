@@ -6,6 +6,7 @@ import { PortfolioService } from './portfolio.service';
 import { TransactionType } from './portfolio.persistence.service';
 import { WebService } from '../shared/services/web/web.service';
 import { logger as loglib } from '../shared/logger/logger';
+import Decimal from 'decimal.js';
 
 export const portfolioController: Router = express.Router();
 
@@ -61,9 +62,9 @@ portfolioController.post('/summary', (req, res) => {
     let message = `*<@${request.user_id}>'s Portfolio Summary:*\n`;
     logger.info('Portfolio Summary:', summary);
     summary.summary.forEach((item) => {
-      const currentValue = (item.quantity * item.currentPrice).toFixed(2);
+      const currentValue = new Decimal(item.quantity).mul(new Decimal(item.currentPrice)).toFixed(2);
       const deltaText = item.costBasis
-        ? ` (Gain/Loss: $${(item.quantity * item.currentPrice - item.costBasis).toFixed(2)})`
+        ? ` (Gain/Loss: $${new Decimal(item.quantity).mul(new Decimal(item.currentPrice).minus(new Decimal(item.costBasis))).toFixed(2)})`
         : '';
       message += `• *${item.symbol}*: ${item.quantity.toFixed(2)} shares @ $${item.currentPrice.toFixed(2)} | $${currentValue} | ${deltaText} |`;
       if (item.costBasis) {
@@ -73,9 +74,9 @@ portfolioController.post('/summary', (req, res) => {
     });
 
     const unrealizedGains = summary.summary.reduce((total, item) => {
-      const currentValue = item.quantity * (item?.currentPrice || 0);
-      return total + (currentValue - (item.costBasis || 0));
-    }, 0);
+      const currentValue = item.quantity.mul(item?.currentPrice || 0);
+      return total.plus(currentValue.minus(item.costBasis || 0));
+    }, new Decimal(0));
 
     message += `*Unrealized Gains:* $${unrealizedGains.toFixed(2)}\n`;
     message += `*Total Dollars Available:* $${summary.rep.totalRepAvailable.toFixed(2)}\n`;

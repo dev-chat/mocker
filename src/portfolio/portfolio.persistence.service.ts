@@ -4,11 +4,12 @@ import { Portfolio } from '../shared/db/models/Portfolio';
 import { SlackUser } from '../shared/db/models/SlackUser';
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
 import { TotalRep } from '../reaction/reaction.interface';
+import Decimal from 'decimal.js';
 
 export interface PortfolioSummaryItem {
   symbol: string;
-  quantity: number;
-  costBasis?: number;
+  quantity: Decimal;
+  costBasis?: Decimal;
 }
 
 export interface PortfolioSummary {
@@ -103,21 +104,23 @@ export class PortfolioPersistenceService {
       if (!foundItem) {
         const newItem = {
           symbol: tx.assetSymbol,
-          quantity: tx.type === 'BUY' ? tx.quantity : -tx.quantity,
-          costBasis: tx.type === 'BUY' ? tx.quantity * tx.price : 0,
+          quantity: tx.type === 'BUY' ? new Decimal(tx.quantity) : new Decimal(`-${tx.quantity}`),
+          costBasis: tx.type === 'BUY' ? new Decimal(tx.quantity).mul(tx.price) : new Decimal(0),
         };
         portfolioSummaryItems.push(newItem);
       } else if (foundItem) {
         if (tx.type === 'BUY') {
-          foundItem.quantity += tx.quantity;
-          foundItem.costBasis = (foundItem.costBasis || 0) + tx.quantity * tx.price;
+          foundItem.quantity = new Decimal(foundItem.quantity).plus(new Decimal(tx.quantity));
+          foundItem.costBasis = (foundItem.costBasis || new Decimal(0))
+            .plus(new Decimal(tx.quantity))
+            .mul(new Decimal(tx.price));
         } else if (tx.type === 'SELL') {
-          foundItem.quantity -= tx.quantity;
+          foundItem.quantity = new Decimal(foundItem.quantity).minus(new Decimal(tx.quantity));
         }
       }
     });
 
-    summary.summary = portfolioSummaryItems.filter((item) => item.quantity > 0);
+    summary.summary = portfolioSummaryItems.filter((item) => new Decimal(item.quantity).greaterThan(new Decimal(0)));
     return summary;
   }
 }
