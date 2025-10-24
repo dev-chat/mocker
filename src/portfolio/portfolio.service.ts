@@ -8,6 +8,7 @@ import {
   PortfolioSummaryItem,
   TransactionType,
 } from './portfolio.persistence.service';
+import { logger } from '../shared/logger/logger';
 
 export enum MessageHandlerEnum {
   PRIVATE = 'PRIVATE',
@@ -35,6 +36,7 @@ export class PortfolioService {
   quoteService = new QuoteService();
   repPersistenceService = new ReactionPersistenceService();
   portfolioPersistenceService = new PortfolioPersistenceService();
+  logger = logger.child('PortfolioService');
 
   public getQuotesWithTicker(portfolioSummaryItem: PortfolioSummaryItem[]): Promise<QuoteWithTicker[]> {
     return Promise.all(
@@ -49,6 +51,8 @@ export class PortfolioService {
       return this.getQuotesWithTicker(summary.summary).then((quotes) => {
         const summaryWithQuotes: PortfolioSummaryWithQuotesItem[] = summary.summary.map((item) => {
           const price = quotes.find((q) => q && q.ticker === item.symbol)?.c || 0;
+          this.logger.info(`Quote for ${item.symbol}: ${price}`);
+          this.logger.info(JSON.stringify({ ...item, currentPrice: new Decimal(price) }));
           return {
             ...item,
             currentPrice: new Decimal(price),

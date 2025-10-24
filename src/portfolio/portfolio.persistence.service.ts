@@ -128,7 +128,7 @@ export class PortfolioPersistenceService {
 
   public async getPortfolioSummary(userId: string, teamId: string): Promise<PortfolioSummary> {
     const portfolio = await this.getPortfolio(userId, teamId);
-
+    this.logger.info(`Fetched portfolio for user ${userId}, team ${teamId}: ${JSON.stringify(portfolio)}`);
     // Get transactions with explicit query
     const transactions = await getRepository(PortfolioTransactions)
       .createQueryBuilder('tx')
@@ -163,9 +163,9 @@ export class PortfolioPersistenceService {
       } else if (foundItem) {
         if (tx.type === 'BUY') {
           foundItem.quantity = new Decimal(foundItem.quantity).plus(new Decimal(tx.quantity));
-          foundItem.costBasis = (foundItem.costBasis || new Decimal(0))
-            .plus(new Decimal(tx.quantity))
-            .mul(new Decimal(tx.price));
+          foundItem.costBasis = (foundItem.costBasis || new Decimal(0)).plus(
+            new Decimal(tx.quantity).mul(new Decimal(tx.price)),
+          );
         } else if (tx.type === 'SELL') {
           foundItem.quantity = new Decimal(foundItem.quantity).minus(new Decimal(tx.quantity));
         }
@@ -173,6 +173,9 @@ export class PortfolioPersistenceService {
     });
 
     summary.summary = portfolioSummaryItems.filter((item) => new Decimal(item.quantity).greaterThan(new Decimal(0)));
+
+    this.logger.info(`Computed portfolio summary for user ${userId}, team ${teamId}: ${JSON.stringify(summary)}`);
+
     return summary;
   }
 }
