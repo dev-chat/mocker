@@ -64,11 +64,13 @@ portfolioController.post('/summary', (req, res) => {
     summary.summary.forEach((item) => {
       const currentValue = new Decimal(item.quantity).mul(new Decimal(item.currentPrice)).toFixed(2);
       const deltaText = item.costBasis
-        ? ` Gain/Loss: $${new Decimal(item.quantity).mul(new Decimal(item.currentPrice)).minus(new Decimal(item.costBasis)).toFixed(2)}`
+        ? `*Gain/Loss:* $${new Decimal(item.quantity).mul(new Decimal(item.currentPrice)).minus(new Decimal(item.costBasis)).toFixed(2)}`
         : '';
-      message += `• *${item.symbol}*: \n Value: ${currentValue} (${item.quantity.toFixed(2)} shares @ $${item.currentPrice.toFixed(2)} \n ${deltaText} |`;
+      message += `• *${item.symbol}*: \n`;
+      message += `*Value:* ${currentValue} (${item.quantity.toFixed(2)} shares @ $${item.currentPrice.toFixed(2)}) \n`;
+      message += `${deltaText} \n`;
       if (item.costBasis) {
-        message += ` \n Cost Basis: $${item.costBasis.toFixed(2)}`;
+        message += `*Cost Basis:* $${item.costBasis.toFixed(2)}`;
       }
       message += `\n`;
     });
