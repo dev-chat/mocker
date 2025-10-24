@@ -77,7 +77,7 @@ export class PortfolioPersistenceService {
 
       this.logger.info(`Acquired lock result: ${JSON.stringify(lockResult)}`);
       // MySQL GET_LOCK returns 1 if the lock was obtained successfully, 0 if timeout, or NULL if error
-      if (!lockResult[0][`'GET_LOCK(${lockName}, 10)'`]) {
+      if (!lockResult[0][`GET_LOCK(${lockName}, 10)`]) {
         throw new Error('Another transaction is in progress for this user and symbol. Please try again.');
       }
 
