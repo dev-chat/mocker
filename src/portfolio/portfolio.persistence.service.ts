@@ -2,6 +2,8 @@ import { getRepository, InsertResult } from 'typeorm';
 import { PortfolioTransactions } from '../shared/db/models/PortfolioTransaction';
 import { Portfolio } from '../shared/db/models/Portfolio';
 import { SlackUser } from '../shared/db/models/SlackUser';
+import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
+import { TotalRep } from '../reaction/reaction.interface';
 
 export interface PortfolioSummaryItem {
   symbol: string;
@@ -12,6 +14,7 @@ export interface PortfolioSummaryItem {
 export interface PortfolioSummary {
   transactions: PortfolioTransactions[];
   summary: PortfolioSummaryItem[];
+  rep: TotalRep;
 }
 
 export enum TransactionType {
@@ -20,6 +23,8 @@ export enum TransactionType {
 }
 
 export class PortfolioPersistenceService {
+  reactionPersistenceService = new ReactionPersistenceService();
+
   public async getPortfolio(userId: string, teamId: string): Promise<Portfolio> {
     const userRepo = getRepository(SlackUser);
     const user = await userRepo
@@ -78,9 +83,12 @@ export class PortfolioPersistenceService {
       .orderBy('tx.createdAt', 'ASC')
       .getMany();
 
+    const rep = await this.reactionPersistenceService.getTotalRep(userId, teamId);
+
     const summary: PortfolioSummary = {
       transactions,
       summary: [],
+      rep,
     };
 
     if (!transactions || transactions.length === 0) {
@@ -109,7 +117,7 @@ export class PortfolioPersistenceService {
       }
     });
 
-    summary.summary = portfolioSummaryItems;
+    summary.summary = portfolioSummaryItems.filter((item) => item.quantity > 0);
     return summary;
   }
 }

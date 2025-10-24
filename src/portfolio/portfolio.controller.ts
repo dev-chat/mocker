@@ -57,12 +57,24 @@ portfolioController.post('/summary', (req, res) => {
   portfolioService.getPortfolioSummaryWithQuotes(request.user_id, request.team_id).then((summary) => {
     let message = `*<@${request.user_id}>'s Portfolio Summary:*\n`;
     summary.summary.forEach((item) => {
-      message += `• *${item.symbol}*: ${item.quantity} shares @ $${item.currentPrice.toFixed(2)} = $${(item.quantity * item.currentPrice).toFixed(2)}`;
+      const currentValue = (item.quantity * item.currentPrice).toFixed(2);
+      const deltaText = item.costBasis
+        ? ` (Gain/Loss: $${(item.quantity * item.currentPrice - item.costBasis).toFixed(2)})`
+        : '';
+      message += `• *${item.symbol}*: ${item.quantity.toFixed(2)} shares @ $${item.currentPrice.toFixed(2)} | $${currentValue} | ${deltaText} |`;
       if (item.costBasis) {
         message += ` (Cost Basis: $${item.costBasis.toFixed(2)})`;
       }
       message += `\n`;
     });
+
+    const unrealizedGains = summary.summary.reduce((total, item) => {
+      const currentValue = item.quantity * (item?.currentPrice || 0);
+      return total + (currentValue - (item.costBasis || 0));
+    }, 0);
+
+    message += `*Unrealized Gains:* $${unrealizedGains.toFixed(2)}\n`;
+    message += `*Total Dollars Available:* $${summary.rep.totalRepAvailable.toFixed(2)}\n`;
     webService.sendEphemeral(request.channel_id, message, request.user_id);
   });
 });
