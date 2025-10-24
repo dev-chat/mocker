@@ -193,6 +193,12 @@ export class PortfolioService {
               message: `<@${userId}> has successfully purchased \`${quantity}\` shares of \`${stockSymbol}\` at \`$${price.toFixed(2)}\` per share. Total cost: \`$${totalCost.toFixed(2)}\`.`,
               classification: MessageHandlerEnum.PUBLIC,
             };
+          })
+          .catch((e) => {
+            return {
+              message: `Transaction failed due to an error: ${e.message}`,
+              classification: MessageHandlerEnum.PRIVATE,
+            };
           });
       }
     } else if (action === TransactionType.SELL) {
@@ -230,6 +236,12 @@ export class PortfolioService {
             return {
               message: `<@${userId}> has successfully sold \`${quantity}\` shares of \`${stockSymbol}\` at \`$${price.toFixed(2)}\` per share. Total proceeds: \`$${totalProceeds.toFixed(2)}\`.`,
               classification: MessageHandlerEnum.PUBLIC,
+            };
+          })
+          .catch((e) => {
+            return {
+              message: `Transaction failed due to an error: ${e.message}`,
+              classification: MessageHandlerEnum.PRIVATE,
             };
           });
       }
