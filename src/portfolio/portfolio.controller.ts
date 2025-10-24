@@ -78,6 +78,11 @@ portfolioController.post('/summary', (req, res) => {
       return total.plus(currentValue.minus(item.costBasis || 0));
     }, new Decimal(0));
 
+    message += `*Total Portfolio Balance:* $${summary.summary
+      .reduce((total, item) => {
+        return total.plus(new Decimal(item.quantity).mul(new Decimal(item.currentPrice)));
+      }, new Decimal(0))
+      .toFixed(2)}\n`;
     message += `*Unrealized Gains:* $${unrealizedGains.toFixed(2)}\n`;
     message += `*Total Dollars Available:* $${summary.rep.totalRepAvailable.toFixed(2)}\n`;
     webService.sendEphemeral(request.channel_id, message, request.user_id);
