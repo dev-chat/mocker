@@ -55,9 +55,9 @@ export class PortfolioPersistenceService {
     return user.portfolio;
   }
 
-  private getLockName(userId: string, symbol: string): string {
+  private getLockName(userId: string): string {
     // Create a deterministic lock name for this user and symbol combination
-    return `portfolio_lock_${userId}_${symbol}`.replace(/[^a-zA-Z0-9_]/g, '_');
+    return `portfolio_lock_${userId}`.replace(/[^a-zA-Z0-9_]/g, '_');
   }
 
   public async transact(
@@ -68,7 +68,7 @@ export class PortfolioPersistenceService {
     quantity: number,
     price: number,
   ): Promise<InsertResult> {
-    const lockName = this.getLockName(userId, stockSymbol);
+    const lockName = this.getLockName(userId);
 
     // Use transaction to ensure atomicity and automatic lock release
     return await getRepository(PortfolioTransactions).manager.transaction(async (transactionalEntityManager) => {
@@ -77,7 +77,7 @@ export class PortfolioPersistenceService {
 
       this.logger.info(`Acquired lock result: ${JSON.stringify(lockResult)}`);
       // MySQL GET_LOCK returns 1 if the lock was obtained successfully, 0 if timeout, or NULL if error
-      if (!lockResult[0][`GET_LOCK(${lockName}, 10)`]) {
+      if (!lockResult[0][`GET_LOCK('${lockName}', 10)`]) {
         throw new Error('Another transaction is in progress for this user and symbol. Please try again.');
       }
 
