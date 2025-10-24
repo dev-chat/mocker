@@ -5,8 +5,11 @@ import { textMiddleware } from '../shared/middleware/textMiddleware';
 import { PortfolioService } from './portfolio.service';
 import { TransactionType } from './portfolio.persistence.service';
 import { WebService } from '../shared/services/web/web.service';
+import { logger as loglib } from '../shared/logger/logger';
 
 export const portfolioController: Router = express.Router();
+
+const logger = loglib.child('PortfolioController');
 
 const portfolioService = new PortfolioService();
 const webService = new WebService();
@@ -56,6 +59,7 @@ portfolioController.post('/summary', (req, res) => {
   res.status(200).send();
   portfolioService.getPortfolioSummaryWithQuotes(request.user_id, request.team_id).then((summary) => {
     let message = `*<@${request.user_id}>'s Portfolio Summary:*\n`;
+    logger.info('Portfolio Summary:', summary);
     summary.summary.forEach((item) => {
       const currentValue = (item.quantity * item.currentPrice).toFixed(2);
       const deltaText = item.costBasis
