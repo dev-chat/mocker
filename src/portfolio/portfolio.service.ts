@@ -1,3 +1,4 @@
+import Decimal from 'decimal.js';
 import { QuoteResponse } from '../quote/quote.models';
 import { QuoteService } from '../quote/quote.service';
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
@@ -19,7 +20,11 @@ interface MessageHandler {
 }
 
 interface PortfolioSummaryWithQuotes extends PortfolioSummary {
-  summary: (PortfolioSummaryItem & { currentPrice: number })[];
+  summary: PortfolioSummaryWithQuotesItem[];
+}
+
+interface PortfolioSummaryWithQuotesItem extends PortfolioSummaryItem {
+  currentPrice: Decimal;
 }
 
 interface QuoteWithTicker extends QuoteResponse {
@@ -42,10 +47,13 @@ export class PortfolioService {
   public getPortfolioSummaryWithQuotes(userId: string, teamId: string): Promise<PortfolioSummaryWithQuotes> {
     return this.portfolioPersistenceService.getPortfolioSummary(userId, teamId).then((summary) => {
       return this.getQuotesWithTicker(summary.summary).then((quotes) => {
-        const summaryWithQuotes: (PortfolioSummaryItem & { currentPrice: number })[] = summary.summary.map((item) => ({
-          ...item,
-          currentPrice: quotes.find((q) => q && q.ticker === item.symbol)?.c || 0,
-        }));
+        const summaryWithQuotes: PortfolioSummaryWithQuotesItem[] = summary.summary.map((item) => {
+          const price = quotes.find((q) => q && q.ticker === item.symbol)?.c || 0;
+          return {
+            ...item,
+            currentPrice: new Decimal(price),
+          };
+        });
         return {
           transactions: summary.transactions,
           summary: summaryWithQuotes,

@@ -62,12 +62,12 @@ portfolioController.post('/summary', (req, res) => {
     let message = `*<@${request.user_id}>'s Portfolio Summary:*\n`;
     logger.info('Portfolio Summary:', summary);
     summary.summary.forEach((item) => {
-      const currentValue = new Decimal(item.quantity).mul(new Decimal(item.currentPrice)).toFixed(2);
+      const currentValue = item.quantity.mul(item.currentPrice).toFixed(2);
       const deltaText = item.costBasis
-        ? `*Gain/Loss:* $${new Decimal(item.quantity).mul(new Decimal(item.currentPrice)).minus(new Decimal(item.costBasis)).toFixed(2)}`
+        ? `*Gain/Loss:* $${item.quantity.mul(item.currentPrice).minus(item.costBasis).toFixed(2)}`
         : '';
       message += `• *${item.symbol}*: \n`;
-      message += `*Value:* ${currentValue} (${item.quantity.toFixed(2)} shares @ $${item.currentPrice.toFixed(2)}) \n`;
+      message += `*Value:* $${currentValue} (${item.quantity.toFixed(2)} shares @ $${item.currentPrice.toFixed(2)}) \n`;
       message += `${deltaText} \n`;
       if (item.costBasis) {
         message += `*Cost Basis:* $${item.costBasis.toFixed(2)}`;
@@ -82,7 +82,7 @@ portfolioController.post('/summary', (req, res) => {
 
     message += `\n\n*Total Portfolio Balance:* $${summary.summary
       .reduce((total, item) => {
-        return total.plus(new Decimal(item.quantity).mul(new Decimal(item.currentPrice)));
+        return total.plus(item.quantity.mul(item.currentPrice));
       }, new Decimal(0))
       .toFixed(2)}\n`;
     message += `*Unrealized Gains:* $${unrealizedGains.toFixed(2)}\n`;
