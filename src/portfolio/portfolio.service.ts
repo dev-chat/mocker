@@ -49,6 +49,7 @@ export class PortfolioService {
         return {
           transactions: summary.transactions,
           summary: summaryWithQuotes,
+          rep: summary.rep,
         };
       });
     });
