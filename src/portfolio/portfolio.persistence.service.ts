@@ -53,14 +53,9 @@ export class PortfolioPersistenceService {
     return user.portfolio;
   }
 
-  private getLockKey(userId: string, symbol: string): number {
-    // Create a deterministic number from userId and symbol
-    // Using a simple hash function that should be good enough for our use case
-    const str = `${userId}:${symbol}`;
-    return Array.from(str).reduce((hash, char) => {
-      // Multiply by 31 (common hash multiplier) and add char code
-      return (hash << 5) - hash + char.charCodeAt(0);
-    }, 0);
+  private getLockName(userId: string, symbol: string): string {
+    // Create a deterministic lock name for this user and symbol combination
+    return `portfolio_lock_${userId}_${symbol}`.replace(/[^a-zA-Z0-9_]/g, '_');
   }
 
   public async transact(
@@ -71,48 +66,60 @@ export class PortfolioPersistenceService {
     quantity: number,
     price: number,
   ): Promise<InsertResult> {
-    const lockKey = this.getLockKey(userId, stockSymbol);
+    const lockName = this.getLockName(userId, stockSymbol);
 
     // Use transaction to ensure atomicity and automatic lock release
     return await getRepository(PortfolioTransactions).manager.transaction(async (transactionalEntityManager) => {
-      // Try to acquire advisory lock
-      const lockResult = await transactionalEntityManager.query('SELECT pg_try_advisory_xact_lock($1)', [lockKey]);
+      // Try to acquire MySQL named lock with 10 second timeout
+      const lockResult = await transactionalEntityManager.query('SELECT GET_LOCK(?, 10)', [lockName]);
 
-      if (!lockResult[0].pg_try_advisory_xact_lock) {
+      // MySQL GET_LOCK returns 1 if the lock was obtained successfully, 0 if timeout, or NULL if error
+      if (!lockResult[0]['GET_LOCK(?, 10)']) {
         throw new Error('Another transaction is in progress for this user and symbol. Please try again.');
       }
 
       const portfolio = await this.getPortfolio(userId, teamId);
 
-      // For SELL transactions, verify sufficient shares within the transaction
-      if (type === TransactionType.SELL) {
-        const ownedShares = await transactionalEntityManager
-          .createQueryBuilder(PortfolioTransactions, 'tx')
-          .where('tx.portfolio_id = :portfolioId', { portfolioId: portfolio.id })
-          .andWhere('tx.assetSymbol = :symbol', { symbol: stockSymbol })
-          .select('SUM(CASE WHEN tx.type = :buyType THEN quantity ELSE -quantity END)', 'netQuantity')
-          .setParameter('buyType', TransactionType.BUY)
-          .getRawOne()
-          .then((result) => Number(result?.netQuantity || 0));
+      try {
+        // For SELL transactions, verify sufficient shares within the transaction
+        if (type === TransactionType.SELL) {
+          const ownedShares = await transactionalEntityManager
+            .createQueryBuilder(PortfolioTransactions, 'tx')
+            .where('tx.portfolio_id = :portfolioId', { portfolioId: portfolio.id })
+            .andWhere('tx.assetSymbol = :symbol', { symbol: stockSymbol })
+            .select('SUM(CASE WHEN tx.type = :buyType THEN quantity ELSE -quantity END)', 'netQuantity')
+            .setParameter('buyType', TransactionType.BUY)
+            .getRawOne()
+            .then((result) => Number(result?.netQuantity || 0));
 
-        if (ownedShares < quantity) {
-          throw new Error(`Insufficient shares: owns ${ownedShares}, attempting to sell ${quantity}`);
+          if (ownedShares < quantity) {
+            throw new Error(`Insufficient shares: owns ${ownedShares}, attempting to sell ${quantity}`);
+          }
         }
+
+        const transaction = new PortfolioTransactions();
+        transaction.portfolio = portfolio;
+        transaction.type = type;
+        transaction.assetSymbol = stockSymbol;
+        transaction.quantity = quantity;
+        transaction.price = price;
+
+        const result = await transactionalEntityManager
+          .createQueryBuilder()
+          .insert()
+          .into(PortfolioTransactions)
+          .values(transaction)
+          .execute();
+
+        // Release the lock explicitly before returning
+        await transactionalEntityManager.query('SELECT RELEASE_LOCK(?)', [lockName]);
+
+        return result;
+      } catch (error) {
+        // Make sure to release the lock in case of error
+        await transactionalEntityManager.query('SELECT RELEASE_LOCK(?)', [lockName]);
+        throw error;
       }
-
-      const transaction = new PortfolioTransactions();
-      transaction.portfolio = portfolio;
-      transaction.type = type;
-      transaction.assetSymbol = stockSymbol;
-      transaction.quantity = quantity;
-      transaction.price = price;
-
-      return await transactionalEntityManager
-        .createQueryBuilder()
-        .insert()
-        .into(PortfolioTransactions)
-        .values(transaction)
-        .execute();
     });
   }
 
