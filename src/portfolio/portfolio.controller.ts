@@ -62,12 +62,10 @@ portfolioController.post('/summary', (req, res) => {
     let message = `*<@${request.user_id}>'s Portfolio Summary:*\n`;
     logger.info('Portfolio Summary:', summary);
     summary.summary.forEach((item) => {
-      const currentValue = item.quantity.mul(item.currentPrice).toFixed(2);
-      const deltaText = item.costBasis
-        ? `*Gain/Loss:* $${item.quantity.mul(item.currentPrice).minus(item.costBasis).toFixed(2)}`
-        : '';
+      const currentValue = item.quantity.mul(item.currentPrice);
+      const deltaText = item.costBasis ? `*Gain/Loss:* $${currentValue.minus(item.costBasis).toFixed(2)}` : '';
       message += `• *${item.symbol}*: \n`;
-      message += `*Value:* $${currentValue} (${item.quantity.toFixed(2)} shares @ $${item.currentPrice.toFixed(2)}) \n`;
+      message += `*Value:* $${currentValue.toFixed(2)} (${item.quantity.toFixed(2)} shares @ $${item.currentPrice.toFixed(2)}) \n`;
       message += `${deltaText} \n`;
       if (item.costBasis) {
         message += `*Cost Basis:* $${item.costBasis.toFixed(2)}`;
