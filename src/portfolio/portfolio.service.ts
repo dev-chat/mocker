@@ -208,20 +208,20 @@ export class PortfolioService {
     } else if (action === TransactionType.SELL) {
       const portfolio = await this.portfolioPersistenceService.getPortfolioSummary(userId, teamId);
 
-      let ownedShares = 0;
-      // Use Decimal for money math to avoid floating point issues and NaN
+      let ownedShares = new Decimal(0);
       let totalCost = new Decimal(0);
+
       if (portfolio.transactions && portfolio.transactions.length > 0) {
         const txs = portfolio.transactions.filter((tx) => tx.assetSymbol === stockSymbol);
 
         ownedShares = txs.reduce((total, tx) => {
           if (tx.type === TransactionType.BUY) {
-            return total + tx.quantity;
+            return total.plus(new Decimal(tx.quantity));
           } else if (tx.type === TransactionType.SELL) {
-            return total - tx.quantity;
+            return total.minus(new Decimal(tx.quantity));
           }
           return total;
-        }, 0);
+        }, new Decimal(0));
 
         totalCost = txs.reduce((acc, tx) => {
           if (tx.type === TransactionType.BUY) {
@@ -233,7 +233,7 @@ export class PortfolioService {
         }, new Decimal(0));
       }
 
-      if (ownedShares < quantity) {
+      if (ownedShares.gt(new Decimal(quantity))) {
         return {
           message: `Insufficient shares to complete sale of \`${quantity}\` shares of \`${stockSymbol}\`. You only own \`${ownedShares}\` shares.`,
           classification: MessageHandlerEnum.PRIVATE,
