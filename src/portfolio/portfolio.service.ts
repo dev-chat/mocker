@@ -222,16 +222,17 @@ export class PortfolioService {
             return total;
           }, 0);
 
-        costBasis = portfolio.transactions
-          .filter((tx) => tx.assetSymbol === stockSymbol)
-          .reduce((total, tx) => {
-            if (tx.type === TransactionType.BUY) {
-              return total + tx.quantity * tx.price;
-            } else if (tx.type === TransactionType.SELL) {
-              return total - tx.quantity * (total / ownedShares); // Average cost basis reduction
-            }
-            return total;
-          }, 0);
+        costBasis =
+          portfolio.transactions
+            .filter((tx) => tx.assetSymbol === stockSymbol)
+            .reduce((total, tx) => {
+              if (tx.type === TransactionType.BUY) {
+                return total + tx.quantity * tx.price;
+              } else if (tx.type === TransactionType.SELL) {
+                return total - tx.quantity * tx.price;
+              }
+              return total;
+            }, 0) / ownedShares;
       }
 
       if (ownedShares < quantity) {
