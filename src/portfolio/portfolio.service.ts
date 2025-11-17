@@ -248,14 +248,19 @@ export class PortfolioService {
           .transact(userId, teamId, action, stockSymbol, quantity, price)
           .then(() => {
             const totalProceeds = new Decimal(price).mul(quantity);
-
+            this.logger.info(`Total Proceeds: ${totalProceeds.toString()}`);
             const owned = new Decimal(ownedShares);
+            this.logger.info(`Owned shares (Decimal): ${owned.toString()}`);
             const costBasisPerShare = owned.gt(0) ? totalCost.div(owned) : new Decimal(0);
+            this.logger.info(`Cost Basis Per Share: ${costBasisPerShare.toString()}`);
+            this.logger.info(`Quantity: ${quantity.toString()}`);
 
             const totalGainLoss = totalProceeds.minus(costBasisPerShare.mul(quantity));
+            this.logger.info(`Total Gain/Loss: ${totalGainLoss.toString()}`);
+
             const emoji = totalGainLoss.gt(0) ? ':chart_with_upwards_trend:' : ':chart_with_downwards_trend:';
             return {
-              message: `${emoji} <@${userId}> has successfully sold \`${quantity}\` shares of \`${stockSymbol}\` at \`$${new Decimal(price).toFixed(2)}\` per share for a ${totalGainLoss.gt(0) ? 'gain' : 'loss'} of $${totalGainLoss.toFixed(2)}. Total proceeds: \`$${totalProceeds.toFixed(2)}\`. ${emoji}`,
+              message: `${emoji} <@${userId}> has successfully sold \`${quantity}\` shares of \`${stockSymbol}\` at \`$${new Decimal(price).toFixed(2)}\` per share for a ${totalGainLoss.gt(0) ? 'gain' : 'loss'} of \`$${totalGainLoss.toFixed(2)}\`. Total proceeds: \`$${totalProceeds.toFixed(2)}\`. ${emoji}`,
               classification: MessageHandlerEnum.PUBLIC,
             };
           })
