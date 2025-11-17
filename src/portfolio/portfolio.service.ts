@@ -233,7 +233,7 @@ export class PortfolioService {
         }, new Decimal(0));
       }
 
-      if (ownedShares.gt(new Decimal(quantity))) {
+      if (ownedShares.lt(new Decimal(quantity))) {
         return {
           message: `Insufficient shares to complete sale of \`${quantity}\` shares of \`${stockSymbol}\`. You only own \`${ownedShares}\` shares.`,
           classification: MessageHandlerEnum.PRIVATE,
