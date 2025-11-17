@@ -168,6 +168,9 @@ export class PortfolioPersistenceService {
           );
         } else if (tx.type === 'SELL') {
           foundItem.quantity = new Decimal(foundItem.quantity).minus(new Decimal(tx.quantity));
+          foundItem.costBasis = (foundItem.costBasis || new Decimal(0)).minus(
+            new Decimal(tx.quantity).mul(new Decimal(tx.price)),
+          );
         }
       }
     });
