@@ -209,30 +209,28 @@ export class PortfolioService {
       const portfolio = await this.portfolioPersistenceService.getPortfolioSummary(userId, teamId);
 
       let ownedShares = 0;
-      let costBasis = 0;
-      if (portfolio.transactions) {
-        ownedShares = portfolio.transactions
-          .filter((tx) => tx.assetSymbol === stockSymbol)
-          .reduce((total, tx) => {
-            if (tx.type === TransactionType.BUY) {
-              return total + tx.quantity;
-            } else if (tx.type === TransactionType.SELL) {
-              return total - tx.quantity;
-            }
-            return total;
-          }, 0);
+      // Use Decimal for money math to avoid floating point issues and NaN
+      let totalCost = new Decimal(0);
+      if (portfolio.transactions && portfolio.transactions.length > 0) {
+        const txs = portfolio.transactions.filter((tx) => tx.assetSymbol === stockSymbol);
 
-        costBasis =
-          portfolio.transactions
-            .filter((tx) => tx.assetSymbol === stockSymbol)
-            .reduce((total, tx) => {
-              if (tx.type === TransactionType.BUY) {
-                return total + tx.quantity * tx.price;
-              } else if (tx.type === TransactionType.SELL) {
-                return total - tx.quantity * tx.price;
-              }
-              return total;
-            }, 0) / ownedShares;
+        ownedShares = txs.reduce((total, tx) => {
+          if (tx.type === TransactionType.BUY) {
+            return total + tx.quantity;
+          } else if (tx.type === TransactionType.SELL) {
+            return total - tx.quantity;
+          }
+          return total;
+        }, 0);
+
+        totalCost = txs.reduce((acc, tx) => {
+          if (tx.type === TransactionType.BUY) {
+            return acc.plus(new Decimal(tx.quantity).mul(tx.price));
+          } else if (tx.type === TransactionType.SELL) {
+            return acc.minus(new Decimal(tx.quantity).mul(tx.price));
+          }
+          return acc;
+        }, new Decimal(0));
       }
 
       if (ownedShares < quantity) {
@@ -249,11 +247,15 @@ export class PortfolioService {
         return this.portfolioPersistenceService
           .transact(userId, teamId, action, stockSymbol, quantity, price)
           .then(() => {
-            const totalProceeds = price * quantity;
-            const totalGainLoss = totalProceeds - costBasis;
-            const emoji = totalGainLoss > 0 ? ':chart_with_upwards_trend:' : ':chart_with_downwards_trend:';
+            const totalProceeds = new Decimal(price).mul(quantity);
+
+            const owned = new Decimal(ownedShares);
+            const costBasisPerShare = owned.gt(0) ? totalCost.div(owned) : new Decimal(0);
+
+            const totalGainLoss = totalProceeds.minus(costBasisPerShare.mul(quantity));
+            const emoji = totalGainLoss.gt(0) ? ':chart_with_upwards_trend:' : ':chart_with_downwards_trend:';
             return {
-              message: `${emoji} <@${userId}> has successfully sold \`${quantity}\` shares of \`${stockSymbol}\` at \`$${price.toFixed(2)}\` per share for a ${totalGainLoss > 0 ? 'gain' : 'loss'} of $${totalGainLoss}. Total proceeds: \`$${totalProceeds.toFixed(2)}\`. ${emoji}`,
+              message: `${emoji} <@${userId}> has successfully sold \`${quantity}\` shares of \`${stockSymbol}\` at \`$${new Decimal(price).toFixed(2)}\` per share for a ${totalGainLoss.gt(0) ? 'gain' : 'loss'} of $${totalGainLoss.toFixed(2)}. Total proceeds: \`$${totalProceeds.toFixed(2)}\`. ${emoji}`,
               classification: MessageHandlerEnum.PUBLIC,
             };
           })
