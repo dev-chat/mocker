@@ -250,7 +250,7 @@ export class PortfolioService {
           .then(() => {
             const totalProceeds = price * quantity;
             const totalGainLoss = totalProceeds - costBasis;
-            const emoji = totalGainLoss > 0 ? ':chart_with_upwards_trend' : 'chart_with_downwards_trend';
+            const emoji = totalGainLoss > 0 ? ':chart_with_upwards_trend:' : ':chart_with_downwards_trend:';
             return {
               message: `${emoji} <@${userId}> has successfully sold \`${quantity}\` shares of \`${stockSymbol}\` at \`$${price.toFixed(2)}\` per share for a ${totalGainLoss > 0 ? 'gain' : 'loss'} of $${totalGainLoss}. Total proceeds: \`$${totalProceeds.toFixed(2)}\`. ${emoji}`,
               classification: MessageHandlerEnum.PUBLIC,
