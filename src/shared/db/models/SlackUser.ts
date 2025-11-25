@@ -1,6 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany, OneToOne } from 'typeorm';
 import { Activity } from './Activity';
 import { Message } from './Message';
+import { Portfolio } from './Portfolio';
 
 @Entity()
 @Unique(['slackId', 'teamId'])
@@ -28,4 +29,7 @@ export class SlackUser {
 
   @OneToMany(() => Message, (message) => message.userId)
   public messages?: Message[];
+
+  @OneToOne(() => Portfolio, (portfolio) => portfolio.user, { cascade: true })
+  public portfolio?: Portfolio;
 }
