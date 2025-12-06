@@ -19,10 +19,12 @@ import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { OpenAIService } from './openai/openai.service';
+import { GeminiService } from './gemini/gemini.service';
 
 export class AIService {
   redis = new AIPersistenceService();
   openAiService = new OpenAIService();
+  geminiService = new GeminiService();
 
   muzzlePersistenceService = new MuzzlePersistenceService();
   historyService = new HistoryPersistenceService();
@@ -84,7 +86,7 @@ export class AIService {
       this.aiServiceLogger.error(e);
     });
 
-    const aiImage = this.openAiService.generateImage(imagePrompt, 'Moonbeam').then(async (x) => {
+    const aiImage = this.geminiService.generateImage(imagePrompt).then(async (x) => {
       if (x) {
         return this.writeToDiskAndReturnUrl(x);
       } else {
@@ -124,11 +126,19 @@ export class AIService {
       });
   }
 
-  public async generateImage(userId: string, teamId: string, channel: string, text: string): Promise<void> {
+  public async generateImage(
+    userId: string,
+    teamId: string,
+    channel: string,
+    text: string,
+    isGemini: boolean,
+  ): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
-    return this.openAiService
-      .generateImage(text, userId)
+    const imagePromise = isGemini
+      ? this.geminiService.generateImage(text)
+      : this.openAiService.generateImage(text, userId);
+    return imagePromise
       .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
 
