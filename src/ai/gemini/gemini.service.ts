@@ -1,4 +1,4 @@
-import { GoogleGenAI, HarmBlockMethod, HarmBlockThreshold, HarmCategory } from '@google/genai';
+import { GoogleGenAI, HarmBlockThreshold, HarmCategory } from '@google/genai';
 
 export class GeminiService {
   client = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY });
@@ -16,7 +16,6 @@ export class GeminiService {
     const safetySettings = Object.values(HarmCategory).map((category) => ({
       category,
       threshold: HarmBlockThreshold.OFF,
-      method: HarmBlockMethod.SEVERITY,
     }));
 
     return this.client.models
