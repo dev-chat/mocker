@@ -1,4 +1,4 @@
-import { GoogleGenAI, PersonGeneration, SafetyFilterLevel } from '@google/genai';
+import { GoogleGenAI, HarmBlockMethod, HarmBlockThreshold, HarmCategory } from '@google/genai';
 
 export class GeminiService {
   client = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY });
@@ -12,18 +12,35 @@ export class GeminiService {
       .then((response) => response.text);
   }
 
-  generateImage(prompt: string) {
+  generateImage(prompt: string): Promise<string> {
+    const safetySettings = Object.values(HarmCategory).map((category) => ({
+      category,
+      threshold: HarmBlockThreshold.OFF,
+      method: HarmBlockMethod.SEVERITY,
+    }));
+
     return this.client.models
-      .generateImages({
+      .generateContent({
         model: 'gemini-3-pro-image-preview',
-        prompt: prompt,
+        contents: prompt,
         config: {
-          numberOfImages: 1,
-          imageSize: '1024x1024',
-          safetyFilterLevel: SafetyFilterLevel.BLOCK_NONE,
-          personGeneration: PersonGeneration.ALLOW_ALL,
+          candidateCount: 1,
+          responseModalities: ['IMAGE'],
+          imageConfig: {
+            imageSize: '1024x1024',
+          },
+          safetySettings,
         },
       })
-      .then((response) => response.generatedImages?.[0].image?.imageBytes);
+      .then((response) => {
+        let imageBytes = Buffer.from([]);
+        response.candidates?.[0].content?.parts?.forEach((part) => {
+          if (part?.inlineData?.data) {
+            imageBytes = Buffer.concat([imageBytes, Buffer.from(part?.inlineData?.data, 'base64')]);
+          }
+        });
+
+        return imageBytes.toString('base64');
+      });
   }
 }
