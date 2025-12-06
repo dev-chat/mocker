@@ -13,10 +13,24 @@ export class GeminiService {
   }
 
   generateImage(prompt: string): Promise<string> {
-    const safetySettings = Object.values(HarmCategory).map((category) => ({
-      category,
-      threshold: HarmBlockThreshold.OFF,
-    }));
+    const validSafetySettings = Object.values(HarmCategory).filter((x) => {
+      return (
+        x === HarmCategory.HARM_CATEGORY_UNSPECIFIED ||
+        x === HarmCategory.HARM_CATEGORY_HARASSMENT ||
+        x === HarmCategory.HARM_CATEGORY_HATE_SPEECH ||
+        x === HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT ||
+        x === HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT
+      );
+    });
+
+    const safetySettings = Object.values(validSafetySettings)
+      .filter((x) => {
+        return x !== HarmCategory.HARM_CATEGORY_UNSPECIFIED;
+      })
+      .map((category) => ({
+        category,
+        threshold: HarmBlockThreshold.OFF,
+      }));
 
     return this.client.models
       .generateContent({
