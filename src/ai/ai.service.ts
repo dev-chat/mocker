@@ -44,15 +44,27 @@ export class AIService {
     return this.redis.getDailyRequests(userId, teamId).then((x) => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
   }
 
-  public async generateText(userId: string, teamId: string, channelId: string, text: string): Promise<void> {
+  public async generateText(
+    userId: string,
+    teamId: string,
+    channelId: string,
+    text: string,
+    isGemini: boolean,
+  ): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
-
-    return this.openAiService
-      .generateText(text, userId, GENERAL_TEXT_INSTRUCTIONS)
+    const textPromise = isGemini
+      ? this.geminiService.generateText(text, GENERAL_TEXT_INSTRUCTIONS)
+      : this.openAiService.generateText(text, userId, GENERAL_TEXT_INSTRUCTIONS);
+    return textPromise
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
-        this.sendGptText(result, userId, teamId, channelId, text);
+        if (result) {
+          this.sendGptText(result, userId, teamId, channelId, text);
+        } else {
+          this.aiServiceLogger.warn(`No result returned for prompt: ${text}`);
+          throw new Error(`No result returned for prompt: ${text}`);
+        }
       })
       .catch(async (e) => {
         this.aiServiceLogger.error(e);
@@ -175,14 +187,17 @@ export class AIService {
       .join('\n');
   }
 
-  public async promptWithHistory(request: SlashCommandRequest): Promise<void> {
+  public async promptWithHistory(request: SlashCommandRequest, isGemini: boolean): Promise<void> {
     const { user_id, team_id, text: prompt } = request;
     await this.redis.setInflight(user_id, team_id);
     await this.redis.setDailyRequests(user_id, team_id);
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
     const formattedHistory: string = this.formatHistory(history);
-    return this.openAiService
-      .generateText(prompt, user_id, getHistoryInstructions(formattedHistory))
+    const systemInstructions = getHistoryInstructions(formattedHistory);
+    const textGenPromise = isGemini
+      ? this.geminiService.generateText(prompt, systemInstructions)
+      : this.openAiService.generateText(prompt, user_id, systemInstructions);
+    return textGenPromise
       .then(async (result) => {
         await this.redis.removeInflight(user_id, team_id);
         if (!result) {

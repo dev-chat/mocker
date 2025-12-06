@@ -19,7 +19,7 @@ const aiLogger = logger.child({ module: 'AIController' });
 aiController.post('/text', async (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
   res.status(200).send('Processing your request. Please be patient...');
-  aiService.generateText(user_id, team_id, channel_id, text).catch((e) => {
+  aiService.generateText(user_id, team_id, channel_id, text, true).catch((e) => {
     aiLogger.error(e);
     const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
     webService.sendEphemeral(channel_id, errorMessage, user_id);

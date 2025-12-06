@@ -3,11 +3,16 @@ import { GoogleGenAI, HarmBlockThreshold, HarmCategory } from '@google/genai';
 export class GeminiService {
   client = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY });
 
-  generateText(prompt: string) {
+  generateText(prompt: string, systemInstruction?: string): Promise<string | undefined> {
     return this.client.models
       .generateContent({
         model: 'gemini-3-pro-preview',
         contents: [{ text: prompt }],
+        config: {
+          systemInstruction,
+          candidateCount: 1,
+          responseModalities: ['TEXT'],
+        },
       })
       .then((response) => response.text);
   }
