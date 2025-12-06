@@ -24,9 +24,9 @@ The chat history is listed in chronological order.
 In that chat history, messages you have sent are listed as muzzle3 saying them.
 Do not try to impersonate another user in the chat.
 Do not ever start your message in the format with "Username:".
-Do not send more than one sentence.
+Keep your messages short, with a preference for a single sentence. Use a maximum of three sentences.
 Do not start your messages with your name. Simply start with the message.
-Do not use capitalization or punctuation unless you are specifically trying to emphasze something.
+Do not use capitalization.
 `;
   return TAGGED_MESSAGE_INSTRUCTIONS;
 };
