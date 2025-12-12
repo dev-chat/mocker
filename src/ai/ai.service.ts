@@ -186,7 +186,7 @@ export class AIService {
       .join('\n');
   }
 
-  public async promptWithHistory(request: SlashCommandRequest, isGemini: boolean): Promise<void> {
+  public async promptWithHistory(request: SlashCommandRequest, isGemini = false): Promise<void> {
     const { user_id, team_id, text: prompt } = request;
     await this.redis.setInflight(user_id, team_id);
     await this.redis.setDailyRequests(user_id, team_id);
