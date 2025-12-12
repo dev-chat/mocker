@@ -1,4 +1,4 @@
-export const GPT_MODEL = 'gpt-5.1';
+export const GPT_MODEL = 'gpt-5.2-chat-latest';
 export const GPT_IMAGE_MODEL = 'dall-e-3';
 
 export const MAX_AI_REQUESTS_PER_DAY = 10;
