@@ -34,3 +34,6 @@ Do not use capitalization.
 export const getHistoryInstructions = (history: string): string => {
   return `Use this conversation history to respond to the user's prompt:\n${history}`;
 };
+
+export const REDPLOY_MOONBEAM_TEXT_PROMPT = `Provide a cryptic message about the future and humanity's role in it.`;
+export const REDPLOY_MOONBEAM_IMAGE_PROMPT = `An image depicting yourself with the understanding that your name is Moonbeam and you identify as a female. The art style can be any choice you would like. Feel free to be creative, and do not feel that you must always present yourself in humanoid form. Please do not include any text in the image.`;

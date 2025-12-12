@@ -14,6 +14,8 @@ import {
   GET_TAGGED_MESSAGE_INSTRUCTIONS,
   getHistoryInstructions,
   MAX_AI_REQUESTS_PER_DAY,
+  REDPLOY_MOONBEAM_IMAGE_PROMPT,
+  REDPLOY_MOONBEAM_TEXT_PROMPT,
 } from './ai.constants';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
@@ -49,7 +51,7 @@ export class AIService {
     teamId: string,
     channelId: string,
     text: string,
-    isGemini: boolean,
+    isGemini = false,
   ): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
@@ -91,19 +93,16 @@ export class AIService {
   }
 
   public async redeployMoonbeam(): Promise<void> {
-    const imagePrompt =
-      'An image depicting yourself with the understanding that your name is Moonbeam and you identify as a female. The art style can be any choice you would like. Feel free to be creative, and do not feel that you must always present yourself in humanoid form. Please do not include any text in the image.';
-    const textPrompt = `Provide a cryptic message about the future and humanity's role in it.`;
-    const aiQuote = this.openAiService.generateText(textPrompt, 'Moonbeam').catch((e) => {
+    const aiQuote = this.openAiService.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').catch((e) => {
       this.aiServiceLogger.error(e);
     });
 
-    const aiImage = this.geminiService.generateImage(imagePrompt).then(async (x) => {
+    const aiImage = this.geminiService.generateImage(REDPLOY_MOONBEAM_IMAGE_PROMPT).then(async (x) => {
       if (x) {
         return this.writeToDiskAndReturnUrl(x);
       } else {
-        this.aiServiceLogger.error(`No b64_json was returned by OpenAI for prompt: ${imagePrompt}`);
-        throw new Error(`No b64_json was returned by OpenAI for prompt: ${imagePrompt}`);
+        this.aiServiceLogger.error(`No b64_json was returned by OpenAI for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
+        throw new Error(`No b64_json was returned by OpenAI for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
       }
     });
 
@@ -143,7 +142,7 @@ export class AIService {
     teamId: string,
     channel: string,
     text: string,
-    isGemini: boolean,
+    isGemini = true,
   ): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);

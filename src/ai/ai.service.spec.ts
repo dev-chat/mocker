@@ -1,6 +1,6 @@
 import { mockAiPersistenceService } from './mocks/mocks';
 import { mockLogger } from '../shared/logger/logger.mock';
-import { MAX_AI_REQUESTS_PER_DAY } from './ai.constants';
+import { MAX_AI_REQUESTS_PER_DAY, REDPLOY_MOONBEAM_IMAGE_PROMPT, REDPLOY_MOONBEAM_TEXT_PROMPT } from './ai.constants';
 import { AIService } from './ai.service';
 import { Logger } from 'winston';
 import { MessageWithName } from '../shared/models/message/message-with-name';
@@ -303,7 +303,7 @@ Do not use capitalization or punctuation unless you are specifically trying to e
   describe('redeployMoonbeam', () => {
     it('should generate quote and image and send to muzzlefeedback channel', async () => {
       const generateTextMock = jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Cryptic quote');
-      const generateImageMock = jest.spyOn(aiService.openAiService, 'generateImage').mockResolvedValue('base64image');
+      const generateImageMock = jest.spyOn(aiService.geminiService, 'generateImage').mockResolvedValue('base64image');
       const writeToDiskMock = jest
         .spyOn(aiService, 'writeToDiskAndReturnUrl')
         .mockResolvedValue('https://muzzle.lol/moonbeam.png');
@@ -313,11 +313,8 @@ Do not use capitalization or punctuation unless you are specifically trying to e
 
       await aiService.redeployMoonbeam();
 
-      expect(generateTextMock).toHaveBeenCalledWith(
-        `Provide a cryptic message about the future and humanity's role in it.`,
-        'Moonbeam',
-      );
-      expect(generateImageMock).toHaveBeenCalledWith(expect.stringContaining('depicting yourself'), 'Moonbeam');
+      expect(generateTextMock).toHaveBeenCalledWith(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam');
+      expect(generateImageMock).toHaveBeenCalledWith(REDPLOY_MOONBEAM_IMAGE_PROMPT);
       expect(writeToDiskMock).toHaveBeenCalledWith('base64image');
       expect(sendMessageMock).toHaveBeenCalledWith(
         '#muzzlefeedback',
