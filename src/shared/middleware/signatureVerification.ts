@@ -22,6 +22,7 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
     req.body.token === process.env.MOCKER_TOKEN ||
     req.body.token === process.env.DEFINE_TOKEN ||
     req.body.token === process.env.BLIND_TOKEN ||
+    req.headers.authorization === process.env.HOOK_TOKEN ||
     req.hostname === '127.0.0.1'
   ) {
     next();
@@ -31,7 +32,11 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
     midLogger.error('ips: ', req.ips);
     midLogger.error('headers: ', req.headers);
     midLogger.error('body:', req.body);
-    res.send('Naughty, naughty...');
+    res
+      .status(400)
+      .send(
+        'You are trying to use this service from outside of Slack.\nEither request an API Token from Uncle JR or use the Slack client as god intended.',
+      );
     return;
   }
 };

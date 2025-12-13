@@ -26,6 +26,7 @@ import { WebService } from './shared/services/web/web.service';
 import { logger } from './shared/logger/logger';
 import { AIService } from './ai/ai.service';
 import { portfolioController } from './portfolio/portfolio.controller';
+import { hookController } from './hook/hook.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -53,6 +54,7 @@ app.use('/counter', counterController);
 app.use('/define', defineController);
 app.use('/event', eventController);
 app.use('/health', healthController);
+app.use('/hook', hookController);
 app.use('/list', listController);
 app.use('/mock', mockController);
 app.use('/muzzle', muzzleController);
