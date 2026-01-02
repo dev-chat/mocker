@@ -14,15 +14,19 @@ import {
   GET_TAGGED_MESSAGE_INSTRUCTIONS,
   getHistoryInstructions,
   MAX_AI_REQUESTS_PER_DAY,
+  REDPLOY_MOONBEAM_IMAGE_PROMPT,
+  REDPLOY_MOONBEAM_TEXT_PROMPT,
 } from './ai.constants';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { OpenAIService } from './openai/openai.service';
+import { GeminiService } from './gemini/gemini.service';
 
 export class AIService {
   redis = new AIPersistenceService();
   openAiService = new OpenAIService();
+  geminiService = new GeminiService();
 
   muzzlePersistenceService = new MuzzlePersistenceService();
   historyService = new HistoryPersistenceService();
@@ -42,15 +46,27 @@ export class AIService {
     return this.redis.getDailyRequests(userId, teamId).then((x) => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
   }
 
-  public async generateText(userId: string, teamId: string, channelId: string, text: string): Promise<void> {
+  public async generateText(
+    userId: string,
+    teamId: string,
+    channelId: string,
+    text: string,
+    isGemini = false,
+  ): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
-
-    return this.openAiService
-      .generateText(text, userId, GENERAL_TEXT_INSTRUCTIONS)
+    const textPromise = isGemini
+      ? this.geminiService.generateText(text, GENERAL_TEXT_INSTRUCTIONS)
+      : this.openAiService.generateText(text, userId, GENERAL_TEXT_INSTRUCTIONS);
+    return textPromise
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
-        this.sendGptText(result, userId, teamId, channelId, text);
+        if (result) {
+          this.sendGptText(result, userId, teamId, channelId, text);
+        } else {
+          this.aiServiceLogger.warn(`No result returned for prompt: ${text}`);
+          throw new Error(`No result returned for prompt: ${text}`);
+        }
       })
       .catch(async (e) => {
         this.aiServiceLogger.error(e);
@@ -77,19 +93,16 @@ export class AIService {
   }
 
   public async redeployMoonbeam(): Promise<void> {
-    const imagePrompt =
-      'An image depicting yourself with the understanding that your name is Moonbeam and you identify as a female. The art style can be any choice you would like. Feel free to be creative, and do not feel that you must always present yourself in humanoid form. Please do not include any text in the image.';
-    const textPrompt = `Provide a cryptic message about the future and humanity's role in it.`;
-    const aiQuote = this.openAiService.generateText(textPrompt, 'Moonbeam').catch((e) => {
+    const aiQuote = this.openAiService.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').catch((e) => {
       this.aiServiceLogger.error(e);
     });
 
-    const aiImage = this.openAiService.generateImage(imagePrompt, 'Moonbeam').then(async (x) => {
+    const aiImage = this.geminiService.generateImage(REDPLOY_MOONBEAM_IMAGE_PROMPT).then(async (x) => {
       if (x) {
         return this.writeToDiskAndReturnUrl(x);
       } else {
-        this.aiServiceLogger.error(`No b64_json was returned by OpenAI for prompt: ${imagePrompt}`);
-        throw new Error(`No b64_json was returned by OpenAI for prompt: ${imagePrompt}`);
+        this.aiServiceLogger.error(`No b64_json was returned by OpenAI for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
+        throw new Error(`No b64_json was returned by OpenAI for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
       }
     });
 
@@ -124,11 +137,19 @@ export class AIService {
       });
   }
 
-  public async generateImage(userId: string, teamId: string, channel: string, text: string): Promise<void> {
+  public async generateImage(
+    userId: string,
+    teamId: string,
+    channel: string,
+    text: string,
+    isGemini = true,
+  ): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
-    return this.openAiService
-      .generateImage(text, userId)
+    const imagePromise = isGemini
+      ? this.geminiService.generateImage(text)
+      : this.openAiService.generateImage(text, userId);
+    return imagePromise
       .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
 
@@ -165,14 +186,17 @@ export class AIService {
       .join('\n');
   }
 
-  public async promptWithHistory(request: SlashCommandRequest): Promise<void> {
+  public async promptWithHistory(request: SlashCommandRequest, isGemini = false): Promise<void> {
     const { user_id, team_id, text: prompt } = request;
     await this.redis.setInflight(user_id, team_id);
     await this.redis.setDailyRequests(user_id, team_id);
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
     const formattedHistory: string = this.formatHistory(history);
-    return this.openAiService
-      .generateText(prompt, user_id, getHistoryInstructions(formattedHistory))
+    const systemInstructions = getHistoryInstructions(formattedHistory);
+    const textGenPromise = isGemini
+      ? this.geminiService.generateText(prompt, systemInstructions)
+      : this.openAiService.generateText(prompt, user_id, systemInstructions);
+    return textGenPromise
       .then(async (result) => {
         await this.redis.removeInflight(user_id, team_id);
         if (!result) {
