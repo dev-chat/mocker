@@ -36,6 +36,54 @@ describe('SlackService', () => {
     });
   });
 
+  describe('getAllUserIds()', () => {
+    it('should return all user IDs when multiple mentions exist', () => {
+      expect(slackService.getAllUserIds('<@UALICE> <@UBOB> what do you think?')).toEqual(['UALICE', 'UBOB']);
+    });
+
+    it('should return a single user ID when only one mention exists', () => {
+      expect(slackService.getAllUserIds('<@U2TYNKJ> hello')).toEqual(['U2TYNKJ']);
+    });
+
+    it('should return empty array when no mentions exist', () => {
+      expect(slackService.getAllUserIds('no mentions here')).toEqual([]);
+    });
+
+    it('should return empty array for empty string', () => {
+      expect(slackService.getAllUserIds('')).toEqual([]);
+    });
+
+    it('should handle mentions with usernames', () => {
+      expect(slackService.getAllUserIds('<@UALICE|alice> <@UBOB|bob>')).toEqual(['UALICE', 'UBOB']);
+    });
+  });
+
+  describe('isUserMentioned()', () => {
+    it('should return true when user is mentioned first', () => {
+      expect(slackService.isUserMentioned('<@UMOONBEAM> hello', 'UMOONBEAM')).toBe(true);
+    });
+
+    it('should return true when user is mentioned second', () => {
+      expect(slackService.isUserMentioned('<@UALICE> <@UMOONBEAM> what do you think?', 'UMOONBEAM')).toBe(true);
+    });
+
+    it('should return true when user is mentioned in the middle', () => {
+      expect(slackService.isUserMentioned('<@UALICE> <@UMOONBEAM> <@UBOB> thoughts?', 'UMOONBEAM')).toBe(true);
+    });
+
+    it('should return false when user is not mentioned', () => {
+      expect(slackService.isUserMentioned('<@UALICE> <@UBOB> hello', 'UMOONBEAM')).toBe(false);
+    });
+
+    it('should return false for empty text', () => {
+      expect(slackService.isUserMentioned('', 'UMOONBEAM')).toBe(false);
+    });
+
+    it('should return false when no mentions exist', () => {
+      expect(slackService.isUserMentioned('no mentions here', 'UMOONBEAM')).toBe(false);
+    });
+  });
+
   describe('containsTag()', () => {
     it('should return false if a word has @ in it and is not a tag', () => {
       const testWord = '.@channel';

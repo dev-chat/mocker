@@ -22,7 +22,7 @@ export class EventService {
   suppressorService = new SuppressorService();
   logger = logger.child({ module: 'EventService' });
 
-  handleEvent(request: EventRequest) {
+  async handleEvent(request: EventRequest): Promise<void> {
     const isMessage =
       request.event.type === 'message' ||
       request.event.type === 'message.channels' ||
@@ -35,16 +35,21 @@ export class EventService {
         request.event.channel,
         request.event.text,
       );
-      this.historyPersistenceService.logHistory(request);
+      // Await history logging to ensure message is in DB before AI queries it
+      await this.historyPersistenceService.logHistory(request);
     } else if (isAnyEventOtherThanUserProfileChanged) {
       this.eventPersistenceService.logActivity(request);
     }
   }
 
-  handle(request: EventRequest) {
+  async handle(request: EventRequest) {
     this.logger.info('Handling event:', request);
+
+    // First: Log the message to ensure it's in history before AI reads it
+    await this.handleEvent(request);
+
+    // Then: Run remaining handlers in parallel
     const handlers = [
-      this.handleEvent(request),
       this.slackService.handle(request),
       this.muzzleService.handle(request),
       this.backfireService.handle(request),

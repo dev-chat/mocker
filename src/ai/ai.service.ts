@@ -11,7 +11,7 @@ import { getChunks } from '../shared/util/getChunks';
 import {
   CORPO_SPEAK_INSTRUCTIONS,
   GENERAL_TEXT_INSTRUCTIONS,
-  GET_TAGGED_MESSAGE_INSTRUCTIONS,
+  MOONBEAM_SYSTEM_INSTRUCTIONS,
   getHistoryInstructions,
   MAX_AI_REQUESTS_PER_DAY,
   REDPLOY_MOONBEAM_IMAGE_PROMPT,
@@ -179,9 +179,20 @@ export class AIService {
   }
 
   public formatHistory(history: MessageWithName[]): string {
+    if (!history || history.length === 0) {
+      return '[No recent messages in channel]';
+    }
+
     return history
       .map((x) => {
-        return `${x.name}: ${x.message}`;
+        const timestamp = x.createdAt
+          ? new Date(x.createdAt).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '';
+        const prefix = timestamp ? `[${timestamp}] ` : '';
+        return `${prefix}${x.name}: ${x.message}`;
       })
       .join('\n');
   }
@@ -253,12 +264,23 @@ export class AIService {
   public async participate(teamId: string, channelId: string, taggedMessage: string): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
-    const messages = await this.historyService
-      .getHistory({ team_id: teamId, channel_id: channelId } as SlashCommandRequest, false)
+    // Use getHistoryWithOptions to include Moonbeam's own messages and use larger context window
+    const history = await this.historyService
+      .getHistoryWithOptions({
+        teamId,
+        channelId,
+        maxMessages: 200,
+        timeWindowMinutes: 120,
+        // No excludeUserId - include all messages including Moonbeam's for conversational continuity
+      })
       .then((x) => this.formatHistory(x));
-    const instructions = GET_TAGGED_MESSAGE_INSTRUCTIONS(taggedMessage);
+
+    // Append tagged message to history as user input (not in system instructions)
+    // This prevents prompt injection and follows best practices
+    const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
+
     return this.openAiService
-      .generateText(messages, 'Moonbeam', instructions)
+      .generateText(input, 'Moonbeam', MOONBEAM_SYSTEM_INSTRUCTIONS)
       .then((result) => {
         if (result) {
           this.webService
@@ -351,8 +373,8 @@ export class AIService {
   async handle(request: EventRequest): Promise<void> {
     const isUserMuzzled = await this.muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id);
     if (this.slackService.containsTag(request.event.text) && !isUserMuzzled) {
-      const userId = this.slackService.getUserId(request.event.text);
-      const isMoonbeamTagged = userId && userId.includes('ULG8SJRFF');
+      // Check if Moonbeam is mentioned ANYWHERE in the message (not just first mention)
+      const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, 'ULG8SJRFF');
       const isPosterMoonbeam = request.event.user === 'ULG8SJRFF';
       if (isMoonbeamTagged && !isPosterMoonbeam) {
         this.participate(request.team_id, request.event.channel, request.event.text);
