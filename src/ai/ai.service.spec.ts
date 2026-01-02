@@ -164,21 +164,36 @@ describe('AIService', () => {
   });
 
   describe('formatHistory', () => {
-    it('should format message history correctly', () => {
+    it('should format message history correctly with timestamps', () => {
       const history: MessageWithName[] = [
-        { name: 'John', message: 'Hello there' },
-        { name: 'Jane', message: 'How are you?' },
-        { name: 'Bob', message: 'Good morning!' },
+        { name: 'John', message: 'Hello there', createdAt: new Date('2024-01-15T10:30:00') },
+        { name: 'Jane', message: 'How are you?', createdAt: new Date('2024-01-15T10:31:00') },
+        { name: 'Bob', message: 'Good morning!', createdAt: new Date('2024-01-15T10:32:00') },
       ] as MessageWithName[];
 
       const result = aiService.formatHistory(history);
 
-      expect(result).toBe('John: Hello there\nJane: How are you?\nBob: Good morning!');
+      expect(result).toContain('John: Hello there');
+      expect(result).toContain('Jane: How are you?');
+      expect(result).toContain('Bob: Good morning!');
+      // Should include timestamps in format [HH:MM AM/PM]
+      expect(result).toMatch(/\[\d{2}:\d{2}\s[AP]M\]/);
+    });
+
+    it('should handle messages without timestamps', () => {
+      const history: MessageWithName[] = [
+        { name: 'John', message: 'Hello there' },
+        { name: 'Jane', message: 'How are you?' },
+      ] as MessageWithName[];
+
+      const result = aiService.formatHistory(history);
+
+      expect(result).toBe('John: Hello there\nJane: How are you?');
     });
 
     it('should handle empty history', () => {
       const result = aiService.formatHistory([]);
-      expect(result).toBe('');
+      expect(result).toBe('[No recent messages in channel]');
     });
   });
 
@@ -235,9 +250,9 @@ describe('AIService', () => {
   });
 
   describe('participate', () => {
-    it('should participate in conversation with recent history', async () => {
-      const getHistoryMock = jest
-        .spyOn(aiService.historyService, 'getHistory')
+    it('should participate in conversation with recent history using getHistoryWithOptions', async () => {
+      const getHistoryWithOptionsMock = jest
+        .spyOn(aiService.historyService, 'getHistoryWithOptions')
         .mockResolvedValue([{ name: 'John', message: 'Hello' }] as MessageWithName[]);
       jest.spyOn(aiService.webService, 'sendMessage').mockImplementation(() => Promise.resolve({} as WebAPICallResult));
       const generateTextMock = jest
@@ -246,21 +261,18 @@ describe('AIService', () => {
 
       await aiService.participate('team123', 'channel123', 'tagged message');
 
-      expect(getHistoryMock).toHaveBeenCalledWith({ channel_id: 'channel123', team_id: 'team123' }, false);
+      // Should use getHistoryWithOptions with increased limits and no user exclusion
+      expect(getHistoryWithOptionsMock).toHaveBeenCalledWith({
+        teamId: 'team123',
+        channelId: 'channel123',
+        maxMessages: 200,
+        timeWindowMinutes: 120,
+      });
+      // Should pass tagged message in input (not instructions) and use static system instructions
       expect(generateTextMock).toHaveBeenCalledWith(
-        'John: Hello',
+        expect.stringContaining('---\n[Tagged message to respond to]:\ntagged message'),
         'Moonbeam',
-        `
-You are Moonbeam. Your purpose is to respond to this question: \"tagged message\" given the context of the chat you will receive in the following message.
-You should focus on either being helpful, informative, or incredibly toxic in your responses.
-The chat history is listed in chronological order.
-In that chat history, messages you have sent are listed as muzzle3 saying them.
-Do not try to impersonate another user in the chat.
-Do not ever start your message in the format with \"Username:\".
-Do not send more than one sentence.
-Do not start your messages with your name. Simply start with the message.
-Do not use capitalization or punctuation unless you are specifically trying to emphasze something.
-`,
+        expect.stringContaining('you are moonbeam'),
       );
     });
   });
