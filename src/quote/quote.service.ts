@@ -49,6 +49,13 @@ export class QuoteService {
             'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
           );
         });
+      })
+      .catch((e) => {
+        this.logger.error(e);
+        this.webService.sendMessage(
+          userId,
+          'Sorry, something went wrong while fetching the quote. Please try again later.',
+        );
       });
   }
 
