@@ -154,6 +154,9 @@ export class SlackService {
       this.getAllUsers().catch((e) => this.logger.error('Error handling team join event:', e));
     } else if (request.event.type === 'channel_created') {
       this.getAndSaveAllChannels();
+    } else if (request.event.type === 'member_joined_channel') {
+      // Refresh channels when bot joins a new channel (including private)
+      this.getAndSaveAllChannels();
     }
   }
 }

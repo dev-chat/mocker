@@ -115,7 +115,10 @@ export class WebService {
   }
 
   public getAllChannels(): Promise<ConversationsListResponse> {
-    return this.web.conversations.list();
+    return this.web.conversations.list({
+      types: 'public_channel,private_channel',
+      exclude_archived: true,
+    });
   }
 
   public uploadFile(channel: string, content: string, title: string, userId: string): void {
