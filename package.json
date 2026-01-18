@@ -9,16 +9,19 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "build:backend": "npm run build -w @mocker/backend",
+    "build:frontend": "npm run build -w @mocker/frontend",
     "build:prod": "npm run build:prod --workspaces --if-present",
     "build:prod:backend": "npm run build:prod -w @mocker/backend",
     "start": "npm run start -w @mocker/backend",
     "start:prod": "npm run start:prod -w @mocker/backend",
+    "dev:frontend": "npm run dev -w @mocker/frontend",
+    "preview:frontend": "npm run preview -w @mocker/frontend",
     "test": "npm run test --workspaces --if-present",
     "test:backend": "npm run test -w @mocker/backend",
-    "lint": "eslint 'packages/**/*.{js,ts}'",
-    "lint:fix": "eslint 'packages/**/*.{js,ts}' --quiet --fix",
-    "format:check": "prettier --check 'packages/**/*.ts'",
-    "format:fix": "prettier --write 'packages/**/*.ts'"
+    "lint": "eslint 'packages/**/*.{js,ts,tsx}'",
+    "lint:fix": "eslint 'packages/**/*.{js,ts,tsx}' --quiet --fix",
+    "format:check": "prettier --check 'packages/**/*.{ts,tsx}'",
+    "format:fix": "prettier --write 'packages/**/*.{ts,tsx}'"
   },
   "author": "",
   "license": "ISC",
@@ -38,7 +41,7 @@
     }
   },
   "lint-staged": {
-    "*.{ts,js}": [
+    "*.{ts,tsx,js}": [
       "npm run lint",
       "git add"
     ]

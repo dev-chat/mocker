@@ -1,6 +1,7 @@
 import 'reflect-metadata'; // Necessary for TypeORM entities.
 import 'dotenv/config';
 import bodyParser from 'body-parser';
+import cors from 'cors';
 
 import express, { Application } from 'express';
 import { createConnection, getConnectionOptions } from 'typeorm';
@@ -27,6 +28,7 @@ import { logger } from './shared/logger/logger';
 import { AIService } from './ai/ai.service';
 import { portfolioController } from './portfolio/portfolio.controller';
 import { hookController } from './hook/hook.controller';
+import { searchController } from './search/search.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +48,18 @@ app.use(
     },
   }),
 );
+
+// Mount search routes with Slack OAuth auth (BEFORE Slack signature middleware)
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+app.use(
+  '/search',
+  cors({
+    origin: frontendUrl,
+    credentials: true,
+  }),
+  searchController,
+);
+
 app.use(signatureVerificationMiddleware);
 app.use('/ai', aiController);
 app.use('/clap', clapController);
