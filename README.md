@@ -46,7 +46,6 @@ mocker/
 Each of the slash commands should have `Escape Channels, users and links sent to your app` checked.
 
 - Event Subscriptions
-
   - Request URL: `<ngrokUrl>/muzzle/handle`
   - Subscribe to Workspace Events:
     - messages.channels
@@ -95,19 +94,20 @@ Each of the slash commands should have `Escape Channels, users and links sent to
 
 From the root directory, you can run:
 
-| Command | Description |
-|---------|-------------|
-| `npm run start` | Start the backend development server |
-| `npm run start:prod` | Start the backend in production mode |
-| `npm run build` | Build all workspaces |
-| `npm run build:backend` | Build only the backend |
-| `npm run test` | Run tests across all workspaces |
-| `npm run test:backend` | Run tests for the backend only |
-| `npm run lint` | Lint all packages |
-| `npm run lint:fix` | Lint and auto-fix issues |
-| `docker build -f packages/backend/Dockerfile .` | Build the backend Docker image |
+| Command                                                   | Description                          |
+| --------------------------------------------------------- | ------------------------------------ |
+| `npm run start`                                           | Start the backend development server |
+| `npm run start:prod`                                      | Start the backend in production mode |
+| `npm run build`                                           | Build all workspaces                 |
+| `npm run build:backend`                                   | Build only the backend               |
+| `npm run test`                                            | Run tests across all workspaces      |
+| `npm run test:backend`                                    | Run tests for the backend only       |
+| `npm run lint`                                            | Lint all packages                    |
+| `npm run lint:fix`                                        | Lint and auto-fix issues             |
+| `docker build -f packages/backend/Dockerfile -t muzzle .` | Build the backend Docker image       |
 
 You can also run workspace-specific commands using:
+
 ```
 npm run <script> -w @mocker/backend
 npm run <script> -w @mocker/frontend
