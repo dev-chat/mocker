@@ -1,0 +1,9 @@
+{
+  "name": "@mocker/frontend",
+  "version": "1.0.0",
+  "description": "Mock your friends - Frontend",
+  "private": true,
+  "scripts": {},
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,66 +1,35 @@
 {
-  "name": "mock",
+  "name": "mocker",
   "version": "1.0.0",
-  "description": "Mock your friends",
-  "main": "src/index.ts",
+  "description": "Mock your friends - Monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "build:prod": "tsc -p tsconfig.prod.json",
-    "format:check": "prettier --check 'src/**/*.ts'",
-    "format:fix": "prettier --write 'src/**/*.ts'",
-    "lint": "eslint '*/**/*.{js,ts}'",
-    "lint:fix": "eslint '*/**/*.{js,ts}' --quiet --fix",
-    "minify": "esbuild dist/**.js dist/**/*.js --bundle --minify --target=node18 --platform=node --outdir=dist --allow-overwrite --packages=external --external:dist/shared/db/models/*",
-    "start": "npm run start:dev",
-    "start:prod": "node dist/index.js",
-    "start:dev": "nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.spec.ts' --exec 'ts-node' src/index.ts",
-    "test": "jest --silent",
-    "test:watch": "jest --watch"
+    "build": "npm run build --workspaces",
+    "build:backend": "npm run build -w @mocker/backend",
+    "build:prod": "npm run build:prod --workspaces --if-present",
+    "build:prod:backend": "npm run build:prod -w @mocker/backend",
+    "start": "npm run start -w @mocker/backend",
+    "start:prod": "npm run start:prod -w @mocker/backend",
+    "test": "npm run test --workspaces --if-present",
+    "test:backend": "npm run test -w @mocker/backend",
+    "lint": "eslint 'packages/**/*.{js,ts}'",
+    "lint:fix": "eslint 'packages/**/*.{js,ts}' --quiet --fix",
+    "format:check": "prettier --check 'packages/**/*.ts'",
+    "format:fix": "prettier --write 'packages/**/*.ts'"
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "@google/genai": "^1.30.0",
-    "@slack/web-api": "^6.8.0",
-    "axios": "^0.18.1",
-    "body-parser": "^1.20.2",
-    "decimal.js": "^10.6.0",
-    "easy-table": "^1.1.1",
-    "express": "^4.18.2",
-    "ioredis": "^5.0.4",
-    "moment": "^2.24.0",
-    "mysql": "^2.17.1",
-    "openai": "^4.103.0",
-    "sentence-splitter": "^5.0.0",
-    "sentiment": "^5.0.2",
-    "typeorm": "^0.3.22",
-    "uuid": "^9.0.1",
-    "winston": "^3.17.0"
-  },
   "devDependencies": {
-    "@types/body-parser": "^1.19.5",
-    "@types/easy-table": "0.0.32",
-    "@types/express": "^4.17.21",
-    "@types/jest": "^24.0.15",
-    "@types/jest-when": "^2.7.0",
-    "@types/lolex": "^3.1.1",
-    "@types/node": "^12.12.56",
-    "@types/sentiment": "^5.0.1",
-    "@types/uuid": "^9.0.6",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
-    "dotenv": "^16.3.1",
-    "esbuild": "^0.24.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "husky": "^2.3.0",
-    "jest": "^29.7.0",
-    "jest-when": "^2.7.0",
     "lint-staged": "^8.1.7",
-    "nodemon": "^1.19.0",
     "prettier": "^3.2.2",
-    "ts-jest": "^29.3.2",
-    "ts-node": "^10.4.0",
     "typescript": "^5.3.3"
   },
   "husky": {
@@ -69,7 +38,7 @@
     }
   },
   "lint-staged": {
-    "*.{ts, spec.ts, css,json}": [
+    "*.{ts,js}": [
       "npm run lint",
       "git add"
     ]
