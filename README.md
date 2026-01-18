@@ -2,6 +2,23 @@
 
 ## A Slack app to annoy your friends.
 
+## Project Structure
+
+This project is organized as a monorepo using npm workspaces:
+
+```
+mocker/
+├── packages/
+│   ├── backend/      # @mocker/backend - Express API server with Slack integration
+│   ├── frontend/     # @mocker/frontend - Frontend application
+│   └── jobs/         # Scheduled jobs
+│       ├── fun-fact-job/
+│       ├── health-job/
+│       └── pricing-job/
+├── package.json      # Root package with workspace configuration
+└── tsconfig.base.json
+```
+
 ## Getting Started
 
 ### Setting Up Your Slack Environment
@@ -58,7 +75,7 @@ Each of the slash commands should have `Escape Channels, users and links sent to
 
 ### Running Locally
 
-1. `npm install`
+1. `npm install` (from the root directory - this installs dependencies for all workspaces)
 2. Add the following environment variables for typeORM:
 
 ```
@@ -68,8 +85,30 @@ Each of the slash commands should have `Escape Channels, users and links sent to
   TYPEORM_USERNAME: <USER-NAME-FOR-MYSQL>,
   TYPEORM_PASSWORD: <PASSWORD-FOR-MYSQL>,
   TYPEORM_DATABASE: mockerdbdev,
-  TYPEORM_ENTITIES: /absolute/path/to/mocker/src/shared/db/models/*.ts,
+  TYPEORM_ENTITIES: /absolute/path/to/mocker/packages/backend/src/shared/db/models/*.ts,
   TYPEORM_SYNCHRONIZE: true
 ```
 
-3. `npm run start`
+3. `npm run start` (starts the backend server)
+
+### Available Scripts
+
+From the root directory, you can run:
+
+| Command | Description |
+|---------|-------------|
+| `npm run start` | Start the backend development server |
+| `npm run start:prod` | Start the backend in production mode |
+| `npm run build` | Build all workspaces |
+| `npm run build:backend` | Build only the backend |
+| `npm run test` | Run tests across all workspaces |
+| `npm run test:backend` | Run tests for the backend only |
+| `npm run lint` | Lint all packages |
+| `npm run lint:fix` | Lint and auto-fix issues |
+| `docker build -f packages/backend/Dockerfile .` | Build the backend Docker image |
+
+You can also run workspace-specific commands using:
+```
+npm run <script> -w @mocker/backend
+npm run <script> -w @mocker/frontend
+```
