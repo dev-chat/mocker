@@ -1,7 +1,11 @@
-/node_modules
-/dist
-/src/ormconfig.ts
-history-upload-job/data
+node_modules
+dist
 .env
-/coverage
 *.log
+coverage
+
+# Backend specific
+packages/backend/src/ormconfig.ts
+
+# Legacy
+history-upload-job/data
