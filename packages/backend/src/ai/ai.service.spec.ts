@@ -11,7 +11,6 @@ jest.mock('./openai/openai.service', () => ({
   OpenAIService: jest.fn().mockImplementation(() => ({
     generateText: jest.fn(),
     generateImage: jest.fn(),
-    convertAsterisks: jest.fn(),
   })),
 }));
 jest.mock('./ai.persistence', () => mockAiPersistenceService);
@@ -234,7 +233,7 @@ describe('AIService', () => {
         true,
       );
       expect(sendMessageMock).toHaveBeenCalledWith('channel123', 'Prompt', [
-        { text: { text: 'Response with context', type: 'mrkdwn' }, type: 'section' },
+        { type: 'markdown', text: 'Response with context' },
         { type: 'divider' },
         {
           elements: [
@@ -334,7 +333,7 @@ describe('AIService', () => {
         expect.arrayContaining([
           expect.objectContaining({ type: 'image' }),
           expect.objectContaining({ type: 'header' }),
-          expect.objectContaining({ type: 'section' }),
+          expect.objectContaining({ type: 'markdown' }),
         ]),
       );
     });

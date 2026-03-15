@@ -1,7 +1,6 @@
 import {
   ChatDeleteArguments,
   ChatPostMessageArguments,
-  FilesUploadArguments,
   WebAPICallResult,
   WebClient,
   ChatPostEphemeralArguments,
@@ -30,7 +29,6 @@ export class WebService {
       token: muzzleToken,
       channel,
       ts,
-      as_user: true,
     };
 
     this.web.chat
@@ -77,16 +75,13 @@ export class WebService {
    */
   public sendMessage(channel: string, text: string, blocks?: Block[] | KnownBlock[]): Promise<WebAPICallResult> {
     const token: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
-    const postRequest: ChatPostMessageArguments = {
+    const postRequest = {
       token,
       channel,
       text,
       unfurl_links: false,
-    };
-
-    if (blocks) {
-      postRequest.blocks = blocks;
-    }
+      ...(blocks && { blocks }),
+    } as ChatPostMessageArguments;
 
     return this.web.chat
       .postMessage(postRequest)
@@ -111,7 +106,7 @@ export class WebService {
   }
 
   public getAllUsers(): Promise<WebAPICallResult> {
-    return this.web.users.list();
+    return this.web.users.list({});
   }
 
   public getAllChannels(): Promise<ConversationsListResponse> {
@@ -119,22 +114,18 @@ export class WebService {
   }
 
   public uploadFile(channel: string, content: string, title: string, userId: string): void {
-    const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
-    const uploadRequest: FilesUploadArguments = {
-      channels: channel,
+    this.web.filesUploadV2({
+      channel_id: channel,
       content,
-      filetype: 'auto',
       title,
+      filename: `${title}.txt`,
       initial_comment: title,
-      token: muzzleToken,
-    };
-
-    this.web.files.upload(uploadRequest).catch((e: unknown) => {
+    }).catch((e: unknown) => {
       this.logger.error(e);
       const options: ChatPostEphemeralArguments = {
         channel,
         text:
-          (e as Record<string, Record<string, string>>).data.error === 'not_in_channel'
+          (e as Record<string, Record<string, string>>).data?.error === 'not_in_channel'
             ? `Oops! I tried to post the stats you requested but it looks like I haven't been added to that channel yet. Can you please add me? Just type \`@muzzle\` in the channel!`
             : `Oops! I tried to post the stats you requested but it looks like something went wrong. Please try again later.`,
         user: userId,
