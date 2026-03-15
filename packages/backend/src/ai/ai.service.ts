@@ -9,13 +9,15 @@ import { KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
 import {
   CORPO_SPEAK_INSTRUCTIONS,
-  GENERAL_TEXT_INSTRUCTIONS,
+  getGeneralTextInstructions,
   MOONBEAM_SYSTEM_INSTRUCTIONS,
-  getHistoryInstructions,
+  PROMPT_WITH_HISTORY_INSTRUCTIONS,
+  buildPromptWithHistoryInput,
   MAX_AI_REQUESTS_PER_DAY,
   REDPLOY_MOONBEAM_IMAGE_PROMPT,
   REDPLOY_MOONBEAM_TEXT_PROMPT,
 } from './ai.constants';
+import { resolveUserMentions, truncateToTokenBudget } from '../shared/util/contextUtils';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
@@ -54,9 +56,12 @@ export class AIService {
   ): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
+    const channelName = await this.slackService.getChannelName(channelId, teamId);
+    const userName = await this.slackService.getUserNameById(userId, teamId);
+    const instructions = getGeneralTextInstructions(channelName || undefined, userName || undefined);
     const textPromise = isGemini
-      ? this.geminiService.generateText(text, GENERAL_TEXT_INSTRUCTIONS)
-      : this.openAiService.generateText(text, userId, GENERAL_TEXT_INSTRUCTIONS);
+      ? this.geminiService.generateText(text, instructions)
+      : this.openAiService.generateText(text, userId, instructions);
     return textPromise
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
@@ -174,13 +179,20 @@ export class AIService {
     });
   }
 
-  public formatHistory(history: MessageWithName[]): string {
+  private getUserNameLookup(teamId: string): (userId: string) => Promise<string | undefined> {
+    return (userId: string) => this.slackService.getUserNameById(userId, teamId);
+  }
+
+  public async formatHistory(history: MessageWithName[], teamId: string, maxTokens = 8000): Promise<string> {
     if (!history || history.length === 0) {
       return '[No recent messages in channel]';
     }
 
-    return history
-      .map((x) => {
+    const truncated = truncateToTokenBudget(history, maxTokens);
+    const lookupFn = this.getUserNameLookup(teamId);
+
+    const lines = await Promise.all(
+      truncated.map(async (x) => {
         const timestamp = x.createdAt
           ? new Date(x.createdAt).toLocaleTimeString('en-US', {
               hour: '2-digit',
@@ -188,9 +200,12 @@ export class AIService {
             })
           : '';
         const prefix = timestamp ? `[${timestamp}] ` : '';
-        return `${prefix}${x.name}: ${x.message}`;
-      })
-      .join('\n');
+        const resolvedMessage = await resolveUserMentions(x.message, lookupFn);
+        return `${prefix}${x.name}: ${resolvedMessage}`;
+      }),
+    );
+
+    return lines.join('\n');
   }
 
   public async promptWithHistory(request: SlashCommandRequest, isGemini = false): Promise<void> {
@@ -198,11 +213,12 @@ export class AIService {
     await this.redis.setInflight(user_id, team_id);
     await this.redis.setDailyRequests(user_id, team_id);
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
-    const formattedHistory: string = this.formatHistory(history);
-    const systemInstructions = getHistoryInstructions(formattedHistory);
+    const channelName = await this.slackService.getChannelName(request.channel_id, team_id);
+    const formattedHistory = await this.formatHistory(history, team_id);
+    const input = buildPromptWithHistoryInput(formattedHistory, prompt, channelName || undefined);
     const textGenPromise = isGemini
-      ? this.geminiService.generateText(prompt, systemInstructions)
-      : this.openAiService.generateText(prompt, user_id, systemInstructions);
+      ? this.geminiService.generateText(input, PROMPT_WITH_HISTORY_INSTRUCTIONS)
+      : this.openAiService.generateText(input, user_id, PROMPT_WITH_HISTORY_INSTRUCTIONS);
     return textGenPromise
       .then(async (result) => {
         await this.redis.removeInflight(user_id, team_id);
@@ -246,26 +262,27 @@ export class AIService {
       });
   }
 
-  public async participate(teamId: string, channelId: string, taggedMessage: string): Promise<void> {
+  public async participate(teamId: string, channelId: string, _taggedMessage?: string): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
     // Use getHistoryWithOptions to include Moonbeam's own messages and use larger context window
-    const history = await this.historyService
-      .getHistoryWithOptions({
-        teamId,
-        channelId,
-        maxMessages: 200,
-        timeWindowMinutes: 120,
-        // No excludeUserId - include all messages including Moonbeam's for conversational continuity
-      })
-      .then((x) => this.formatHistory(x));
+    const rawHistory = await this.historyService.getHistoryWithOptions({
+      teamId,
+      channelId,
+      maxMessages: 200,
+      timeWindowMinutes: 120,
+      // No excludeUserId - include all messages including Moonbeam's for conversational continuity
+    });
 
-    // Append tagged message to history as user input (not in system instructions)
-    // This prevents prompt injection and follows best practices
-    const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
+    const history = await this.formatHistory(rawHistory, teamId);
+    const channelName = await this.slackService.getChannelName(channelId, teamId);
+    const channelContext = channelName ? `\nyou are responding in #${channelName}.` : '';
+    const instructions = MOONBEAM_SYSTEM_INSTRUCTIONS + channelContext;
 
+    // The tagged message is already the last entry in history (written to DB before participate runs).
+    // No need to append it again — just pass the history as input.
     return this.openAiService
-      .generateText(input, 'Moonbeam', MOONBEAM_SYSTEM_INSTRUCTIONS)
+      .generateText(history, 'Moonbeam', instructions)
       .then((result) => {
         if (result) {
           const blocks: KnownBlock[] = [

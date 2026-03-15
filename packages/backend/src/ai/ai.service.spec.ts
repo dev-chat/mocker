@@ -16,6 +16,7 @@ jest.mock('./openai/openai.service', () => ({
 jest.mock('./ai.persistence', () => mockAiPersistenceService);
 jest.mock('../shared/services/history.persistence.service');
 jest.mock('../shared/services/web/web.service');
+jest.mock('../shared/services/slack/slack.service');
 
 describe('AIService', () => {
   let aiService: AIService;
@@ -24,6 +25,9 @@ describe('AIService', () => {
     jest.clearAllMocks();
     aiService = new AIService();
     aiService.aiServiceLogger = mockLogger.Logger() as unknown as Logger;
+    // Default mocks for slack service lookups
+    jest.spyOn(aiService.slackService, 'getChannelName').mockResolvedValue('general');
+    jest.spyOn(aiService.slackService, 'getUserNameById').mockResolvedValue('testuser');
   });
 
   describe('decrementDaiyRequests', () => {
@@ -163,14 +167,14 @@ describe('AIService', () => {
   });
 
   describe('formatHistory', () => {
-    it('should format message history correctly with timestamps', () => {
+    it('should format message history correctly with timestamps', async () => {
       const history: MessageWithName[] = [
         { name: 'John', message: 'Hello there', createdAt: new Date('2024-01-15T10:30:00') },
         { name: 'Jane', message: 'How are you?', createdAt: new Date('2024-01-15T10:31:00') },
         { name: 'Bob', message: 'Good morning!', createdAt: new Date('2024-01-15T10:32:00') },
       ] as MessageWithName[];
 
-      const result = aiService.formatHistory(history);
+      const result = await aiService.formatHistory(history, 'team123');
 
       expect(result).toContain('John: Hello there');
       expect(result).toContain('Jane: How are you?');
@@ -179,20 +183,36 @@ describe('AIService', () => {
       expect(result).toMatch(/\[\d{2}:\d{2}\s[AP]M\]/);
     });
 
-    it('should handle messages without timestamps', () => {
+    it('should handle messages without timestamps', async () => {
       const history: MessageWithName[] = [
         { name: 'John', message: 'Hello there' },
         { name: 'Jane', message: 'How are you?' },
       ] as MessageWithName[];
 
-      const result = aiService.formatHistory(history);
+      const result = await aiService.formatHistory(history, 'team123');
 
       expect(result).toBe('John: Hello there\nJane: How are you?');
     });
 
-    it('should handle empty history', () => {
-      const result = aiService.formatHistory([]);
+    it('should handle empty history', async () => {
+      const result = await aiService.formatHistory([], 'team123');
       expect(result).toBe('[No recent messages in channel]');
+    });
+
+    it('should resolve user mentions to display names', async () => {
+      const history: MessageWithName[] = [
+        { name: 'John', message: 'Hey <@U123ABC> check this out' },
+      ] as MessageWithName[];
+
+      jest.spyOn(aiService.slackService, 'getUserNameById').mockImplementation(async (userId) => {
+        if (userId === 'U123ABC') return 'steve';
+        return undefined;
+      });
+
+      const result = await aiService.formatHistory(history, 'team123');
+
+      expect(result).toContain('@steve');
+      expect(result).not.toContain('<@U123ABC>');
     });
   });
 
@@ -222,10 +242,11 @@ describe('AIService', () => {
 
       expect(setInflightMock).toHaveBeenCalledWith('user123', 'team123');
       expect(setDailyRequestsMock).toHaveBeenCalledWith('user123', 'team123');
+      // History is now in user input (not system instructions), with channel context
       expect(generateTextMock).toHaveBeenCalledWith(
-        'Prompt',
+        expect.stringContaining('Conversation history:'),
         'user123',
-        `Use this conversation history to respond to the user's prompt:\nJohn: Hello\nJane: Hi`,
+        expect.stringContaining('You are Moonbeam'),
       );
       expect(removeInflightMock).toHaveBeenCalledWith('user123', 'team123');
       expect(getHistoryMock).toHaveBeenCalledWith(
@@ -267,9 +288,10 @@ describe('AIService', () => {
         maxMessages: 200,
         timeWindowMinutes: 120,
       });
-      // Should pass tagged message in input (not instructions) and use static system instructions
+      // Tagged message is already in history (written to DB before participate runs), no duplicate append
+      // System instructions include channel context
       expect(generateTextMock).toHaveBeenCalledWith(
-        expect.stringContaining('---\n[Tagged message to respond to]:\ntagged message'),
+        expect.stringContaining('John: Hello'),
         'Moonbeam',
         expect.stringContaining('you are moonbeam'),
       );
@@ -403,6 +425,8 @@ describe('AIService', () => {
       const isUserMuzzledMock = jest
         .spyOn(aiService.muzzlePersistenceService, 'isUserMuzzled')
         .mockResolvedValue(false);
+      jest.spyOn(aiService.slackService, 'containsTag').mockReturnValue(true);
+      jest.spyOn(aiService.slackService, 'isUserMentioned').mockReturnValue(true);
       const participateMock = jest.spyOn(aiService, 'participate').mockResolvedValue();
 
       await aiService.handle(request);

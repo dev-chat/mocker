@@ -3,6 +3,13 @@ export const GPT_IMAGE_MODEL = 'dall-e-3';
 
 export const MAX_AI_REQUESTS_PER_DAY = 5;
 export const GENERAL_TEXT_INSTRUCTIONS = 'Generate a response with a focus on being helpful and succinct.';
+
+export const getGeneralTextInstructions = (channelName?: string, userName?: string): string => {
+  const parts = ['Generate a response with a focus on being helpful and succinct.'];
+  if (channelName) parts.push(`You are responding in #${channelName}.`);
+  if (userName) parts.push(`The user asking is ${userName}.`);
+  return parts.join(' ');
+};
 export const CORPO_SPEAK_INSTRUCTIONS = `Translate the following text into a Corporate Jargon that still maintains the general meaning of the text. Be sure to respond with only the translated text.`;
 // Deprecated... for now.
 // export const PARTICIPATION_INSTRUCTIONS = `
@@ -61,8 +68,17 @@ export const GET_TAGGED_MESSAGE_INSTRUCTIONS = (message: string) => {
   return MOONBEAM_SYSTEM_INSTRUCTIONS + `\n\nrespond to this message: ${message}`;
 };
 
+/** @deprecated Use PROMPT_WITH_HISTORY_INSTRUCTIONS + buildPromptWithHistoryInput instead */
 export const getHistoryInstructions = (history: string): string => {
   return `Use this conversation history to respond to the user's prompt:\n${history}`;
+};
+
+export const PROMPT_WITH_HISTORY_INSTRUCTIONS =
+  'You are Moonbeam, a helpful Slack assistant. You receive conversation history from the channel followed by a user\'s question. Use the conversation context to inform your answer. Be thorough but concise.';
+
+export const buildPromptWithHistoryInput = (history: string, prompt: string, channelName?: string): string => {
+  const channelContext = channelName ? `You are responding in #${channelName}.\n\n` : '';
+  return `${channelContext}Conversation history:\n${history}\n\n---\nUser's question: ${prompt}`;
 };
 
 export const REDPLOY_MOONBEAM_TEXT_PROMPT = `Provide a cryptic message about the future and humanity's role in it.`;

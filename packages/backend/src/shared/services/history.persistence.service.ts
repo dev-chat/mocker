@@ -13,6 +13,20 @@ export interface HistoryOptions {
 }
 
 export class HistoryPersistenceService {
+  private moonbeamDbId: number | null = null;
+
+  private async getMoonbeamDbId(teamId: string): Promise<number | null> {
+    if (this.moonbeamDbId !== null) {
+      return this.moonbeamDbId;
+    }
+    const moonbeam = await getRepository(SlackUser).findOne({
+      where: { slackId: 'ULG8SJRFF', teamId },
+    });
+    if (moonbeam) {
+      this.moonbeamDbId = moonbeam.id;
+    }
+    return this.moonbeamDbId;
+  }
   async logHistory(request: EventRequest): Promise<InsertResult | undefined> {
     // This is a bandaid to stop workflows from breaking the service.
     if (typeof request.event.user !== 'string' || request.event.type === 'user_profile_changed') {
@@ -47,12 +61,16 @@ export class HistoryPersistenceService {
     const teamId = request.team_id;
     const channel = request.channel_id;
     const interval = isDaily ? 'INTERVAL 1 DAY' : 'INTERVAL 1 HOUR';
+    const moonbeamId = await this.getMoonbeamDbId(teamId);
+    const userFilter = moonbeamId !== null ? 'AND message.userIdId != ?' : '';
+    const baseParams = moonbeamId !== null ? [teamId, channel, moonbeamId] : [teamId, channel];
+
     const query = `
     (
     SELECT message.*, slack_user.name
     FROM message
     INNER JOIN slack_user ON slack_user.id=message.userIdId
-    WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != ''
+    WHERE message.teamId=? AND message.channel=? AND message.message != '' ${userFilter}
     ORDER BY message.createdAt DESC
     LIMIT 100
   )
@@ -61,11 +79,11 @@ export class HistoryPersistenceService {
     SELECT message.*, slack_user.name
     FROM message
     INNER JOIN slack_user ON slack_user.id=message.userIdId
-    WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != '' AND createdAt >= DATE_SUB(NOW(), ${interval})
+    WHERE message.teamId=? AND message.channel=? AND message.message != '' ${userFilter} AND createdAt >= DATE_SUB(NOW(), ${interval})
     ORDER BY createdAt DESC
   ) ORDER BY createdAt ASC;`;
 
-    return getRepository(Message).query(query, [teamId, channel, teamId, channel]);
+    return getRepository(Message).query(query, [...baseParams, ...baseParams]);
   }
 
   /**
