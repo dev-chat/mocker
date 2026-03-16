@@ -26,7 +26,8 @@ export class GeminiService {
           candidateCount: 1,
           responseModalities: ['IMAGE'],
           imageConfig: {
-            imageSize: '1024x1024',
+            aspectRatio: '16:9',
+            imageSize: '1K',
           },
         },
       })
