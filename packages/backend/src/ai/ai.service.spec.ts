@@ -7,11 +7,16 @@ import { MessageWithName } from '../shared/models/message/message-with-name';
 import { Event, EventRequest, SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { WebAPICallResult } from '@slack/web-api';
 
-jest.mock('./openai/openai.service', () => ({
-  OpenAIService: jest.fn().mockImplementation(() => ({
+jest.mock('./openai/openai.provider', () => ({
+  OpenAIProvider: jest.fn().mockImplementation(() => ({
     generateText: jest.fn(),
     generateImage: jest.fn(),
-    convertAsterisks: jest.fn(),
+  })),
+}));
+jest.mock('./gemini/gemini.provider', () => ({
+  GeminiProvider: jest.fn().mockImplementation(() => ({
+    generateText: jest.fn(),
+    generateImage: jest.fn(),
   })),
 }));
 jest.mock('./ai.persistence', () => mockAiPersistenceService);
@@ -79,7 +84,7 @@ describe('AIService', () => {
       const setInflightMock = jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
       const setDailyRequestsMock = jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
       const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
-      const generateTextMock = jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Generated text');
+      const generateTextMock = jest.spyOn(aiService.primaryProvider, 'generateText').mockResolvedValue('Generated text');
       const sendGptTextMock = jest.spyOn(aiService, 'sendGptText').mockImplementation();
 
       await aiService.generateText('user123', 'team123', 'channel123', 'Hello AI');
@@ -96,7 +101,7 @@ describe('AIService', () => {
       jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
       const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
       const decrementMock = jest.spyOn(aiService.redis, 'decrementDailyRequests').mockResolvedValue('4');
-      jest.spyOn(aiService.openAiService, 'generateText').mockRejectedValue(new Error('API Error'));
+      jest.spyOn(aiService.primaryProvider, 'generateText').mockRejectedValue(new Error('API Error'));
 
       await expect(aiService.generateText('user123', 'team123', 'channel123', 'Hello AI')).rejects.toThrow('API Error');
 
@@ -110,7 +115,7 @@ describe('AIService', () => {
       const setInflightMock = jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
       const setDailyRequestsMock = jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
       const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
-      const generateImageMock = jest.spyOn(aiService.openAiService, 'generateImage').mockResolvedValue('base64data');
+      const generateImageMock = jest.spyOn(aiService.imageProvider, 'generateImage').mockResolvedValue('base64data');
       const writeToDiskMock = jest
         .spyOn(aiService, 'writeToDiskAndReturnUrl')
         .mockResolvedValue('https://muzzle.lol/image.png');
@@ -136,10 +141,10 @@ describe('AIService', () => {
       jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
       jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
       const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
-      jest.spyOn(aiService.openAiService, 'generateImage').mockResolvedValue(undefined);
+      jest.spyOn(aiService.imageProvider, 'generateImage').mockResolvedValue(undefined);
 
       await expect(aiService.generateImage('user123', 'team123', 'channel123', 'Draw a cat')).rejects.toThrow(
-        'No b64_json was returned by OpenAI',
+        'No b64_json was returned',
       );
 
       expect(removeInflightMock).toHaveBeenCalledWith('user123', 'team123');
@@ -148,7 +153,9 @@ describe('AIService', () => {
 
   describe('generateCorpoSpeak', () => {
     it('should generate corpo speak text', async () => {
-      const generateTextMock = jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Corporate text');
+      const generateTextMock = jest
+        .spyOn(aiService.primaryProvider, 'generateText')
+        .mockResolvedValue('Corporate text');
 
       const result = await aiService.generateCorpoSpeak('Make this corporate');
 
@@ -157,7 +164,7 @@ describe('AIService', () => {
     });
 
     it('should handle errors in generation', async () => {
-      jest.spyOn(aiService.openAiService, 'generateText').mockRejectedValue(new Error('Generation failed'));
+      jest.spyOn(aiService.primaryProvider, 'generateText').mockRejectedValue(new Error('Generation failed'));
 
       await expect(aiService.generateCorpoSpeak('Make this corporate')).rejects.toThrow('Generation failed');
     });
@@ -207,7 +214,7 @@ describe('AIService', () => {
       const setDailyRequestsMock = jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
       const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
       const generateTextMock = jest
-        .spyOn(aiService.openAiService, 'generateText')
+        .spyOn(aiService.primaryProvider, 'generateText')
         .mockResolvedValue('Response with context');
       const getHistoryMock = jest.spyOn(aiService.historyService, 'getHistory').mockResolvedValue(history);
       const sendMessageMock = jest
@@ -256,7 +263,7 @@ describe('AIService', () => {
         .mockResolvedValue([{ name: 'John', message: 'Hello' }] as MessageWithName[]);
       jest.spyOn(aiService.webService, 'sendMessage').mockImplementation(() => Promise.resolve({} as WebAPICallResult));
       const generateTextMock = jest
-        .spyOn(aiService.openAiService, 'generateText')
+        .spyOn(aiService.primaryProvider, 'generateText')
         .mockResolvedValue('Participated response');
 
       await aiService.participate('team123', 'channel123', 'tagged message');
@@ -314,8 +321,13 @@ describe('AIService', () => {
 
   describe('redeployMoonbeam', () => {
     it('should generate quote and image and send to muzzlefeedback channel', async () => {
-      const generateTextMock = jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Cryptic quote');
-      const generateImageMock = jest.spyOn(aiService.geminiService, 'generateImage').mockResolvedValue('base64image');
+      // redeployMoonbeam uses openAiProvider for text and geminiProvider for image directly
+      const generateTextMock = jest
+        .spyOn(aiService.openAiProvider, 'generateText')
+        .mockResolvedValue('Cryptic quote');
+      const generateImageMock = jest
+        .spyOn(aiService.geminiProvider, 'generateImage')
+        .mockResolvedValue('base64image');
       const writeToDiskMock = jest
         .spyOn(aiService, 'writeToDiskAndReturnUrl')
         .mockResolvedValue('https://muzzle.lol/moonbeam.png');
@@ -326,7 +338,7 @@ describe('AIService', () => {
       await aiService.redeployMoonbeam();
 
       expect(generateTextMock).toHaveBeenCalledWith(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam');
-      expect(generateImageMock).toHaveBeenCalledWith(REDPLOY_MOONBEAM_IMAGE_PROMPT);
+      expect(generateImageMock).toHaveBeenCalledWith(REDPLOY_MOONBEAM_IMAGE_PROMPT, 'Moonbeam');
       expect(writeToDiskMock).toHaveBeenCalledWith('base64image');
       expect(sendMessageMock).toHaveBeenCalledWith(
         '#muzzlefeedback',
@@ -340,8 +352,8 @@ describe('AIService', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      jest.spyOn(aiService.openAiService, 'generateText').mockRejectedValue(new Error('Text generation failed'));
-      jest.spyOn(aiService.openAiService, 'generateImage').mockRejectedValue(new Error('Image generation failed'));
+      jest.spyOn(aiService.openAiProvider, 'generateText').mockRejectedValue(new Error('Text generation failed'));
+      jest.spyOn(aiService.geminiProvider, 'generateImage').mockRejectedValue(new Error('Image generation failed'));
       const errorSpy = jest.spyOn(aiService.aiServiceLogger, 'error');
 
       await aiService.redeployMoonbeam();
