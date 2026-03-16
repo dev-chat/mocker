@@ -14,6 +14,12 @@ jest.mock('./openai/openai.service', () => ({
     convertAsterisks: jest.fn(),
   })),
 }));
+jest.mock('./gemini/gemini.service', () => ({
+  GeminiService: jest.fn().mockImplementation(() => ({
+    generateText: jest.fn(),
+    generateImage: jest.fn(),
+  })),
+}));
 jest.mock('./ai.persistence', () => mockAiPersistenceService);
 jest.mock('../shared/services/history.persistence.service');
 jest.mock('../shared/services/web/web.service');
@@ -110,7 +116,7 @@ describe('AIService', () => {
       const setInflightMock = jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
       const setDailyRequestsMock = jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
       const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
-      const generateImageMock = jest.spyOn(aiService.openAiService, 'generateImage').mockResolvedValue('base64data');
+      const generateImageMock = jest.spyOn(aiService.geminiService, 'generateImage').mockResolvedValue('base64data');
       const writeToDiskMock = jest
         .spyOn(aiService, 'writeToDiskAndReturnUrl')
         .mockResolvedValue('https://muzzle.lol/image.png');
@@ -120,7 +126,7 @@ describe('AIService', () => {
 
       expect(setInflightMock).toHaveBeenCalledWith('user123', 'team123');
       expect(setDailyRequestsMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(generateImageMock).toHaveBeenCalledWith('Draw a cat', 'user123');
+      expect(generateImageMock).toHaveBeenCalledWith('Draw a cat');
       expect(removeInflightMock).toHaveBeenCalledWith('user123', 'team123');
       expect(writeToDiskMock).toHaveBeenCalledWith('base64data');
       expect(sendImageMock).toHaveBeenCalledWith(
@@ -136,10 +142,10 @@ describe('AIService', () => {
       jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
       jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
       const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
-      jest.spyOn(aiService.openAiService, 'generateImage').mockResolvedValue(undefined);
+      jest.spyOn(aiService.geminiService, 'generateImage').mockResolvedValue(undefined);
 
       await expect(aiService.generateImage('user123', 'team123', 'channel123', 'Draw a cat')).rejects.toThrow(
-        'No b64_json was returned by OpenAI',
+        'No b64_json was returned',
       );
 
       expect(removeInflightMock).toHaveBeenCalledWith('user123', 'team123');
@@ -341,7 +347,7 @@ describe('AIService', () => {
 
     it('should handle errors gracefully', async () => {
       jest.spyOn(aiService.openAiService, 'generateText').mockRejectedValue(new Error('Text generation failed'));
-      jest.spyOn(aiService.openAiService, 'generateImage').mockRejectedValue(new Error('Image generation failed'));
+      jest.spyOn(aiService.geminiService, 'generateImage').mockRejectedValue(new Error('Image generation failed'));
       const errorSpy = jest.spyOn(aiService.aiServiceLogger, 'error');
 
       await aiService.redeployMoonbeam();
