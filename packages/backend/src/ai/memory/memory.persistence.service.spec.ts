@@ -98,24 +98,22 @@ describe('MemoryPersistenceService', () => {
     });
 
     it('should return memories grouped by slackId', async () => {
-      mockMemoryRepo.query.mockResolvedValue([
-        { ...mockMemory, slackId: 'U123' },
-        { ...mockMemory, id: 2, content: 'hates CSS', slackId: 'U123' },
-        { ...mockMemory, id: 3, content: 'Go expert', slackId: 'U789' },
-      ]);
+      const memoryU123 = [mockMemory, { ...mockMemory, id: 2, content: 'hates CSS' }];
+      const memoryU789 = [{ ...mockMemory, id: 3, content: 'Go expert' }];
+
+      mockMemoryRepo.query
+        .mockResolvedValueOnce(memoryU123)
+        .mockResolvedValueOnce(memoryU789);
 
       const result = await service.getMemoriesForUsers(['U123', 'U789'], 'T456');
 
-      expect(mockMemoryRepo.query).toHaveBeenCalledWith(
-        expect.stringContaining('INNER JOIN slack_user'),
-        ['T456', 'U123', 'U789'],
-      );
+      expect(mockMemoryRepo.query).toHaveBeenCalledTimes(2);
       expect(result.get('U123')?.length).toBe(2);
       expect(result.get('U789')?.length).toBe(1);
     });
 
-    it('should return empty map on query error', async () => {
-      mockMemoryRepo.query.mockRejectedValue(new Error('DB error'));
+    it('should not include users with no memories', async () => {
+      mockMemoryRepo.query.mockResolvedValue([]);
 
       const result = await service.getMemoriesForUsers(['U123'], 'T456');
 

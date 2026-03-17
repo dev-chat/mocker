@@ -24,35 +24,23 @@ export class MemoryPersistenceService {
       });
   }
 
+  /**
+   * Fetches memories for multiple users by querying each individually.
+   * Each query uses LIMIT to cap at MAX_MEMORIES_PER_USER so the DB
+   * handles filtering rather than pulling everything into JS memory.
+   * Fine for our scale — conversations have a handful of users at most.
+   */
   async getMemoriesForUsers(slackIds: string[], teamId: string): Promise<Map<string, Memory[]>> {
     const result = new Map<string, Memory[]>();
 
-    if (!slackIds.length) {
-      return result;
-    }
-
-    const placeholders = slackIds.map(() => '?').join(', ');
-    const rows: (Memory & { slackId: string })[] = await getRepository(Memory)
-      .query(
-        `SELECT m.*, u.slackId FROM memory m
-         INNER JOIN slack_user u ON m.userIdId = u.id
-         WHERE u.teamId = ? AND u.slackId IN (${placeholders})
-         ORDER BY m.updatedAt DESC`,
-        [teamId, ...slackIds],
-      )
-      .catch((e) => {
-        this.logger.error('Error fetching memories for users:', e);
-        return [];
-      });
-
-    for (const row of rows) {
-      const existing = result.get(row.slackId) || [];
-      if (existing.length < MAX_MEMORIES_PER_USER) {
-        existing.push(row);
-        result.set(row.slackId, existing);
+    const queries = slackIds.map(async (slackId) => {
+      const memories = await this.getMemoriesForUser(slackId, teamId);
+      if (memories.length) {
+        result.set(slackId, memories);
       }
-    }
+    });
 
+    await Promise.all(queries);
     return result;
   }
 
