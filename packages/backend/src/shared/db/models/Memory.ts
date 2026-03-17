@@ -15,9 +15,6 @@ export class Memory {
   @Column('text')
   public content!: string;
 
-  @Column({ default: 'extracted' })
-  public source!: string;
-
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   public createdAt!: Date;
 

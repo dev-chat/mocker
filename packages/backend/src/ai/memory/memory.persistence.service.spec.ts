@@ -44,7 +44,6 @@ describe('MemoryPersistenceService', () => {
     userId: mockUser as SlackUser,
     teamId: 'T456',
     content: 'loves TypeScript',
-    source: 'extracted',
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -58,11 +57,9 @@ describe('MemoryPersistenceService', () => {
     };
 
     mockMemoryRepo = {
-      find: jest.fn(),
+      query: jest.fn(),
       save: jest.fn(),
       delete: jest.fn(),
-      count: jest.fn(),
-      createQueryBuilder: jest.fn(),
     };
 
     (getRepository as jest.Mock).mockImplementation((entity) => {
@@ -73,28 +70,24 @@ describe('MemoryPersistenceService', () => {
   });
 
   describe('getMemoriesForUser', () => {
-    it('should return memories for a valid user', async () => {
-      mockSlackUserRepo.findOne.mockResolvedValue(mockUser);
-      mockMemoryRepo.find.mockResolvedValue([mockMemory]);
+    it('should return memories using a single JOIN query', async () => {
+      mockMemoryRepo.query.mockResolvedValue([mockMemory]);
 
       const result = await service.getMemoriesForUser('U123', 'T456');
 
-      expect(mockSlackUserRepo.findOne).toHaveBeenCalledWith({ where: { slackId: 'U123', teamId: 'T456' } });
-      expect(mockMemoryRepo.find).toHaveBeenCalledWith({
-        where: { userId: mockUser, teamId: 'T456' },
-        order: { updatedAt: 'DESC' },
-        take: 10,
-      });
+      expect(mockMemoryRepo.query).toHaveBeenCalledWith(
+        expect.stringContaining('INNER JOIN slack_user'),
+        ['U123', 'T456', 10],
+      );
       expect(result).toEqual([mockMemory]);
     });
 
-    it('should return empty array if user not found', async () => {
-      mockSlackUserRepo.findOne.mockResolvedValue(null);
+    it('should return empty array on query error', async () => {
+      mockMemoryRepo.query.mockRejectedValue(new Error('DB error'));
 
-      const result = await service.getMemoriesForUser('UNKNOWN', 'T456');
+      const result = await service.getMemoriesForUser('U123', 'T456');
 
       expect(result).toEqual([]);
-      expect(mockMemoryRepo.find).not.toHaveBeenCalled();
     });
   });
 
@@ -105,64 +98,46 @@ describe('MemoryPersistenceService', () => {
     });
 
     it('should return memories grouped by slackId', async () => {
-      const mockQueryBuilder = {
-        leftJoinAndSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([
-          { ...mockMemory, userId: { slackId: 'U123' } },
-          { ...mockMemory, id: 2, content: 'hates CSS', userId: { slackId: 'U123' } },
-          { ...mockMemory, id: 3, content: 'Go expert', userId: { slackId: 'U789' } },
-        ]),
-      };
-      mockMemoryRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+      mockMemoryRepo.query.mockResolvedValue([
+        { ...mockMemory, slackId: 'U123' },
+        { ...mockMemory, id: 2, content: 'hates CSS', slackId: 'U123' },
+        { ...mockMemory, id: 3, content: 'Go expert', slackId: 'U789' },
+      ]);
 
       const result = await service.getMemoriesForUsers(['U123', 'U789'], 'T456');
 
+      expect(mockMemoryRepo.query).toHaveBeenCalledWith(
+        expect.stringContaining('ROW_NUMBER()'),
+        ['T456', 'U123', 'U789', 10],
+      );
       expect(result.get('U123')?.length).toBe(2);
       expect(result.get('U789')?.length).toBe(1);
     });
-  });
 
-  describe('saveMemory', () => {
-    it('should save a memory for a valid user', async () => {
-      mockSlackUserRepo.findOne.mockResolvedValue(mockUser);
-      mockMemoryRepo.save.mockResolvedValue(mockMemory);
+    it('should return empty map on query error', async () => {
+      mockMemoryRepo.query.mockRejectedValue(new Error('DB error'));
 
-      const result = await service.saveMemory('U123', 'T456', 'loves TypeScript');
+      const result = await service.getMemoriesForUsers(['U123'], 'T456');
 
-      expect(mockMemoryRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: mockUser,
-          teamId: 'T456',
-          content: 'loves TypeScript',
-          source: 'extracted',
-        }),
-      );
-      expect(result).toEqual(mockMemory);
-    });
-
-    it('should return null if user not found', async () => {
-      mockSlackUserRepo.findOne.mockResolvedValue(null);
-
-      const result = await service.saveMemory('UNKNOWN', 'T456', 'some fact');
-
-      expect(result).toBeNull();
-      expect(mockMemoryRepo.save).not.toHaveBeenCalled();
-    });
-
-    it('should return null on save error', async () => {
-      mockSlackUserRepo.findOne.mockResolvedValue(mockUser);
-      mockMemoryRepo.save.mockRejectedValue(new Error('DB error'));
-
-      const result = await service.saveMemory('U123', 'T456', 'some fact');
-
-      expect(result).toBeNull();
+      expect(result.size).toBe(0);
     });
   });
 
   describe('saveMemories', () => {
+    it('should save a single memory when given one item', async () => {
+      mockSlackUserRepo.findOne.mockResolvedValue(mockUser);
+      mockMemoryRepo.save.mockResolvedValue([mockMemory]);
+
+      const result = await service.saveMemories('U123', 'T456', ['loves TypeScript']);
+
+      expect(mockMemoryRepo.save).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ content: 'loves TypeScript' }),
+        ]),
+      );
+      expect(result).toHaveLength(1);
+    });
+
     it('should save multiple memories for a valid user', async () => {
       mockSlackUserRepo.findOne.mockResolvedValue(mockUser);
       mockMemoryRepo.save.mockResolvedValue([mockMemory, { ...mockMemory, id: 2, content: 'hates CSS' }]);
@@ -194,6 +169,7 @@ describe('MemoryPersistenceService', () => {
 
       expect(result).toEqual([]);
     });
+
   });
 
   describe('deleteMemory', () => {
@@ -219,25 +195,6 @@ describe('MemoryPersistenceService', () => {
       const result = await service.deleteMemory(1);
 
       expect(result).toBe(false);
-    });
-  });
-
-  describe('getMemoryCount', () => {
-    it('should return count for a valid user', async () => {
-      mockSlackUserRepo.findOne.mockResolvedValue(mockUser);
-      mockMemoryRepo.count.mockResolvedValue(5);
-
-      const result = await service.getMemoryCount('U123', 'T456');
-
-      expect(result).toBe(5);
-    });
-
-    it('should return 0 if user not found', async () => {
-      mockSlackUserRepo.findOne.mockResolvedValue(null);
-
-      const result = await service.getMemoryCount('UNKNOWN', 'T456');
-
-      expect(result).toBe(0);
     });
   });
 });
