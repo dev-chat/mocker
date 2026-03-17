@@ -4,7 +4,6 @@ export const GPT_IMAGE_MODEL = 'dall-e-3';
 export const MAX_AI_REQUESTS_PER_DAY = 5;
 export const GENERAL_TEXT_INSTRUCTIONS = 'Generate a response with a focus on being helpful and succinct.';
 export const CORPO_SPEAK_INSTRUCTIONS = `Translate the following text into a Corporate Jargon that still maintains the general meaning of the text. Be sure to respond with only the translated text.`;
-
 /**
  * Static system instructions for Moonbeam.
  * The tagged message should be appended to the user input, NOT embedded here.

@@ -1,4 +1,4 @@
-import { GoogleGenAI, HarmBlockThreshold, HarmCategory } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 export class GeminiService {
   client = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY });
@@ -18,25 +18,6 @@ export class GeminiService {
   }
 
   generateImage(prompt: string): Promise<string> {
-    const validSafetySettings = Object.values(HarmCategory).filter((x) => {
-      return (
-        x === HarmCategory.HARM_CATEGORY_UNSPECIFIED ||
-        x === HarmCategory.HARM_CATEGORY_HARASSMENT ||
-        x === HarmCategory.HARM_CATEGORY_HATE_SPEECH ||
-        x === HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT ||
-        x === HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT
-      );
-    });
-
-    const safetySettings = Object.values(validSafetySettings)
-      .filter((x) => {
-        return x !== HarmCategory.HARM_CATEGORY_UNSPECIFIED;
-      })
-      .map((category) => ({
-        category,
-        threshold: HarmBlockThreshold.OFF,
-      }));
-
     return this.client.models
       .generateContent({
         model: 'gemini-3-pro-image-preview',
@@ -45,9 +26,9 @@ export class GeminiService {
           candidateCount: 1,
           responseModalities: ['IMAGE'],
           imageConfig: {
-            imageSize: '1024x1024',
+            aspectRatio: '16:9',
+            imageSize: '1K',
           },
-          safetySettings,
         },
       })
       .then((response) => {

@@ -20,30 +20,19 @@ import {
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
-import { AIProvider } from './ai.provider';
-import { OpenAIProvider } from './openai/openai.provider';
-import { GeminiProvider } from './gemini/gemini.provider';
-import { MoonbeamConfig } from '../shared/config/moonbeam.config';
+import { OpenAIService } from './openai/openai.service';
+import { GeminiService } from './gemini/gemini.service';
 
 export class AIService {
   redis = new AIPersistenceService();
-  primaryProvider: AIProvider;
-  imageProvider: AIProvider;
-
-  // Direct provider refs for redeployMoonbeam (which specifically uses OpenAI for text, Gemini for image)
-  openAiProvider = new OpenAIProvider();
-  geminiProvider = new GeminiProvider();
+  openAiService = new OpenAIService();
+  geminiService = new GeminiService();
 
   muzzlePersistenceService = new MuzzlePersistenceService();
   historyService = new HistoryPersistenceService();
   webService = new WebService();
   slackService = new SlackService();
   aiServiceLogger = logger.child({ module: 'AIService' });
-
-  constructor() {
-    this.primaryProvider = MoonbeamConfig.primaryProvider === 'gemini' ? this.geminiProvider : this.openAiProvider;
-    this.imageProvider = this.geminiProvider;
-  }
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
     return this.redis.decrementDailyRequests(userId, teamId);
@@ -60,7 +49,7 @@ export class AIService {
   public async generateText(userId: string, teamId: string, channelId: string, text: string): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
-    return this.primaryProvider
+    return this.openAiService
       .generateText(text, userId, GENERAL_TEXT_INSTRUCTIONS)
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
@@ -96,11 +85,11 @@ export class AIService {
   }
 
   public async redeployMoonbeam(): Promise<void> {
-    const aiQuote = this.openAiProvider.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').catch((e) => {
+    const aiQuote = this.openAiService.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').catch((e) => {
       this.aiServiceLogger.error(e);
     });
 
-    const aiImage = this.geminiProvider.generateImage!(REDPLOY_MOONBEAM_IMAGE_PROMPT, 'Moonbeam').then(async (x) => {
+    const aiImage = this.geminiService.generateImage(REDPLOY_MOONBEAM_IMAGE_PROMPT).then(async (x) => {
       if (x) {
         return this.writeToDiskAndReturnUrl(x);
       } else {
@@ -143,8 +132,8 @@ export class AIService {
   public async generateImage(userId: string, teamId: string, channel: string, text: string): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
-    return this.imageProvider
-      .generateImage!(text, userId)
+    return this.geminiService
+      .generateImage(text)
       .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
 
@@ -167,7 +156,7 @@ export class AIService {
   }
 
   public generateCorpoSpeak(text: string): Promise<string | undefined> {
-    return this.primaryProvider.generateText(text, 'Moonbeam', CORPO_SPEAK_INSTRUCTIONS).catch(async (e) => {
+    return this.openAiService.generateText(text, 'Moonbeam', CORPO_SPEAK_INSTRUCTIONS).catch(async (e) => {
       this.aiServiceLogger.error(e);
       throw e;
     });
@@ -199,7 +188,7 @@ export class AIService {
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
     const formattedHistory: string = this.formatHistory(history);
     const systemInstructions = getHistoryInstructions(formattedHistory);
-    return this.primaryProvider
+    return this.openAiService
       .generateText(prompt, user_id, systemInstructions)
       .then(async (result) => {
         await this.redis.removeInflight(user_id, team_id);
@@ -272,7 +261,7 @@ export class AIService {
     // This prevents prompt injection and follows best practices
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
-    return this.primaryProvider
+    return this.openAiService
       .generateText(input, 'Moonbeam', MOONBEAM_SYSTEM_INSTRUCTIONS)
       .then((result) => {
         if (result) {
