@@ -34,15 +34,11 @@ export class MemoryPersistenceService {
     const placeholders = slackIds.map(() => '?').join(', ');
     const rows: (Memory & { slackId: string })[] = await getRepository(Memory)
       .query(
-        `SELECT ranked.* FROM (
-           SELECT m.*, u.slackId,
-             ROW_NUMBER() OVER (PARTITION BY u.slackId ORDER BY m.updatedAt DESC) as rn
-           FROM memory m
-           INNER JOIN slack_user u ON m.userIdId = u.id
-           WHERE u.teamId = ? AND u.slackId IN (${placeholders})
-         ) ranked
-         WHERE ranked.rn <= ?`,
-        [teamId, ...slackIds, MAX_MEMORIES_PER_USER],
+        `SELECT m.*, u.slackId FROM memory m
+         INNER JOIN slack_user u ON m.userIdId = u.id
+         WHERE u.teamId = ? AND u.slackId IN (${placeholders})
+         ORDER BY m.updatedAt DESC`,
+        [teamId, ...slackIds],
       )
       .catch((e) => {
         this.logger.error('Error fetching memories for users:', e);
@@ -51,8 +47,10 @@ export class MemoryPersistenceService {
 
     for (const row of rows) {
       const existing = result.get(row.slackId) || [];
-      existing.push(row);
-      result.set(row.slackId, existing);
+      if (existing.length < MAX_MEMORIES_PER_USER) {
+        existing.push(row);
+        result.set(row.slackId, existing);
+      }
     }
 
     return result;

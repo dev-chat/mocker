@@ -107,8 +107,8 @@ describe('MemoryPersistenceService', () => {
       const result = await service.getMemoriesForUsers(['U123', 'U789'], 'T456');
 
       expect(mockMemoryRepo.query).toHaveBeenCalledWith(
-        expect.stringContaining('ROW_NUMBER()'),
-        ['T456', 'U123', 'U789', 10],
+        expect.stringContaining('INNER JOIN slack_user'),
+        ['T456', 'U123', 'U789'],
       );
       expect(result.get('U123')?.length).toBe(2);
       expect(result.get('U789')?.length).toBe(1);
