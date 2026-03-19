@@ -16,7 +16,12 @@ import {
   MAX_AI_REQUESTS_PER_DAY,
   REDPLOY_MOONBEAM_IMAGE_PROMPT,
   REDPLOY_MOONBEAM_TEXT_PROMPT,
+  GATE_MODEL,
+  MEMORY_USAGE_INSTRUCTION,
+  MEMORY_SELECTION_PROMPT,
 } from './ai.constants';
+import { MemoryPersistenceService } from './memory/memory.persistence.service';
+import { Memory } from '../shared/db/models/Memory';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
@@ -32,6 +37,7 @@ export class AIService {
   historyService = new HistoryPersistenceService();
   webService = new WebService();
   slackService = new SlackService();
+  memoryPersistenceService = new MemoryPersistenceService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
@@ -286,6 +292,81 @@ export class AIService {
       .finally(() => {
         this.redis.removeParticipationInFlight(channelId, teamId);
       });
+  }
+
+  private async selectRelevantMemories(
+    conversation: string,
+    memoriesMap: Map<string, Memory[]>,
+  ): Promise<Memory[]> {
+    if (memoriesMap.size === 0) return [];
+
+    const formattedMemories = Array.from(memoriesMap.entries())
+      .map(([slackId, memories]) => {
+        const lines = memories.map((m) => `  [ID:${m.id}] "${m.content}"`).join('\n');
+        return `${slackId}:\n${lines}`;
+      })
+      .join('\n\n');
+
+    const prompt = MEMORY_SELECTION_PROMPT
+      .replace('{conversation}', conversation)
+      .replace('{all_memories_grouped_by_user}', formattedMemories);
+
+    try {
+      const response = await this.openAiService.openai.responses.create({
+        model: GATE_MODEL,
+        input: prompt,
+      });
+
+      const textBlock = response.output.find((block) => block.type === 'message') as
+        | { type: 'message'; content: Array<{ type: string; text?: string }> }
+        | undefined;
+      const outputText = textBlock?.content?.find((block) => block.type === 'output_text') as
+        | { type: 'output_text'; text: string }
+        | undefined;
+      const raw = outputText?.text?.trim();
+
+      if (!raw) return [];
+
+      const selectedIds: number[] = JSON.parse(raw);
+      if (!Array.isArray(selectedIds)) return [];
+
+      const allMemories = Array.from(memoriesMap.values()).flat();
+      return allMemories.filter((m) => selectedIds.includes(m.id));
+    } catch (e) {
+      this.aiServiceLogger.warn('Memory selection failed, proceeding without memories:', e);
+      return [];
+    }
+  }
+
+  private formatMemoryBlock(memories: Memory[], history: MessageWithName[]): string {
+    if (memories.length === 0) return '';
+
+    const nameMap = new Map<string, string>();
+    history.forEach((msg) => {
+      if (msg.slackId && msg.name) nameMap.set(msg.slackId, msg.name);
+    });
+
+    const grouped = new Map<string, Memory[]>();
+    for (const mem of memories) {
+      const slackId = (mem as Record<string, unknown>).slackId as string || 'unknown';
+      if (!grouped.has(slackId)) grouped.set(slackId, []);
+      grouped.get(slackId)!.push(mem);
+    }
+
+    const lines = Array.from(grouped.entries())
+      .map(([slackId, mems]) => {
+        const name = nameMap.get(slackId) || slackId;
+        const memLines = mems.map((m) => `"${m.content}"`).join(', ');
+        return `- ${name}: ${memLines}`;
+      })
+      .join('\n');
+
+    return `${MEMORY_USAGE_INSTRUCTION}\n\nthings you remember about the people in this conversation:\n${lines}`;
+  }
+
+  private buildInstructionsWithMemories(baseInstructions: string, memoryBlock: string): string {
+    if (!memoryBlock) return baseInstructions;
+    return `${baseInstructions}\n\n${memoryBlock}`;
   }
 
   sendImage(image: string | undefined, userId: string, teamId: string, channel: string, text: string): void {
