@@ -55,8 +55,15 @@ export class AIService {
   public async generateText(userId: string, teamId: string, channelId: string, text: string): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
+
+    // Fetch and select relevant memories for the requesting user
+    const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers([userId], teamId);
+    const selectedMemories = await this.selectRelevantMemories(`User prompt: ${text}`, memoriesMap);
+    const memoryBlock = this.formatMemoryBlock(selectedMemories, []);
+    const instructions = this.buildInstructionsWithMemories(GENERAL_TEXT_INSTRUCTIONS, memoryBlock);
+
     return this.openAiService
-      .generateText(text, userId, GENERAL_TEXT_INSTRUCTIONS)
+      .generateText(text, userId, instructions)
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
         if (result) {
