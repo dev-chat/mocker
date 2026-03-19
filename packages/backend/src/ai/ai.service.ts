@@ -259,23 +259,38 @@ export class AIService {
   public async participate(teamId: string, channelId: string, taggedMessage: string): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
-    // Use getHistoryWithOptions to include Moonbeam's own messages and use larger context window
-    const history = await this.historyService
-      .getHistoryWithOptions({
-        teamId,
-        channelId,
-        maxMessages: 200,
-        timeWindowMinutes: 120,
-        // No excludeUserId - include all messages including Moonbeam's for conversational continuity
-      })
-      .then((x) => this.formatHistory(x));
+    const historyMessages = await this.historyService.getHistoryWithOptions({
+      teamId,
+      channelId,
+      maxMessages: 200,
+      timeWindowMinutes: 120,
+    });
 
-    // Append tagged message to history as user input (not in system instructions)
-    // This prevents prompt injection and follows best practices
+    const history = this.formatHistory(historyMessages);
+
+    // Extract unique participant slackIds (exclude Moonbeam)
+    const participantSlackIds = [
+      ...new Set(
+        historyMessages
+          .filter((msg) => msg.slackId && msg.slackId !== 'ULG8SJRFF')
+          .map((msg) => msg.slackId),
+      ),
+    ];
+
+    // Fetch and select relevant memories
+    let memoryBlock = '';
+    if (participantSlackIds.length > 0) {
+      const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(participantSlackIds, teamId);
+      const selectedMemories = await this.selectRelevantMemories(history, memoriesMap);
+      memoryBlock = this.formatMemoryBlock(selectedMemories, historyMessages);
+    }
+
+    const systemInstructions = this.buildInstructionsWithMemories(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryBlock);
+
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
     return this.openAiService
-      .generateText(input, 'Moonbeam', MOONBEAM_SYSTEM_INSTRUCTIONS)
+      .generateText(input, 'Moonbeam', systemInstructions)
       .then((result) => {
         if (result) {
           const formatted = this.openAiService.markdownToSlackMrkdwn(result) || result;
