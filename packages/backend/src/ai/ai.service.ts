@@ -199,7 +199,33 @@ export class AIService {
     await this.redis.setDailyRequests(user_id, team_id);
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
     const formattedHistory: string = this.formatHistory(history);
-    const systemInstructions = getHistoryInstructions(formattedHistory);
+
+    // Extract participant slackIds from history, include requesting user
+    const participantSlackIds = [
+      ...new Set(
+        history.filter((msg) => msg.slackId).map((msg) => msg.slackId),
+      ),
+    ];
+    if (!participantSlackIds.includes(user_id)) {
+      participantSlackIds.push(user_id);
+    }
+
+    // Fetch and select relevant memories
+    let memoryBlock = '';
+    if (participantSlackIds.length > 0) {
+      const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(participantSlackIds, team_id);
+      const selectedMemories = await this.selectRelevantMemories(
+        `${formattedHistory}\n\nUser prompt: ${prompt}`,
+        memoriesMap,
+      );
+      memoryBlock = this.formatMemoryBlock(selectedMemories, history);
+    }
+
+    const systemInstructions = this.buildInstructionsWithMemories(
+      getHistoryInstructions(formattedHistory),
+      memoryBlock,
+    );
+
     return this.openAiService
       .generateText(prompt, user_id, systemInstructions)
       .then(async (result) => {
