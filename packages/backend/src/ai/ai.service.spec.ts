@@ -12,6 +12,7 @@ jest.mock('./openai/openai.service', () => ({
     generateText: jest.fn(),
     generateImage: jest.fn(),
     convertAsterisks: jest.fn(),
+    markdownToSlackMrkdwn: jest.fn((text) => text),
   })),
 }));
 jest.mock('./gemini/gemini.service', () => ({
@@ -170,23 +171,23 @@ describe('AIService', () => {
   });
 
   describe('formatHistory', () => {
-    it('should format message history correctly with timestamps', () => {
+    it('should format message history correctly with timestamps and slackIds', () => {
       const history: MessageWithName[] = [
-        { name: 'John', message: 'Hello there', createdAt: new Date('2024-01-15T10:30:00') },
-        { name: 'Jane', message: 'How are you?', createdAt: new Date('2024-01-15T10:31:00') },
-        { name: 'Bob', message: 'Good morning!', createdAt: new Date('2024-01-15T10:32:00') },
+        { name: 'John', slackId: 'U001', message: 'Hello there', createdAt: new Date('2024-01-15T10:30:00') },
+        { name: 'Jane', slackId: 'U002', message: 'How are you?', createdAt: new Date('2024-01-15T10:31:00') },
+        { name: 'Bob', slackId: 'U003', message: 'Good morning!', createdAt: new Date('2024-01-15T10:32:00') },
       ] as MessageWithName[];
 
       const result = aiService.formatHistory(history);
 
-      expect(result).toContain('John: Hello there');
-      expect(result).toContain('Jane: How are you?');
-      expect(result).toContain('Bob: Good morning!');
+      expect(result).toContain('John (U001): Hello there');
+      expect(result).toContain('Jane (U002): How are you?');
+      expect(result).toContain('Bob (U003): Good morning!');
       // Should include timestamps in format [HH:MM AM/PM]
       expect(result).toMatch(/\[\d{2}:\d{2}\s[AP]M\]/);
     });
 
-    it('should handle messages without timestamps', () => {
+    it('should handle messages without timestamps or slackIds', () => {
       const history: MessageWithName[] = [
         { name: 'John', message: 'Hello there' },
         { name: 'Jane', message: 'How are you?' },

@@ -49,7 +49,7 @@ export class HistoryPersistenceService {
     const interval = isDaily ? 'INTERVAL 1 DAY' : 'INTERVAL 1 HOUR';
     const query = `
     (
-    SELECT message.*, slack_user.name
+    SELECT message.*, slack_user.name, slack_user.slackId
     FROM message
     INNER JOIN slack_user ON slack_user.id=message.userIdId
     WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != ''
@@ -58,7 +58,7 @@ export class HistoryPersistenceService {
   )
   UNION
   (
-    SELECT message.*, slack_user.name
+    SELECT message.*, slack_user.name, slack_user.slackId
     FROM message
     INNER JOIN slack_user ON slack_user.id=message.userIdId
     WHERE message.userIdId != 39 AND message.teamId=? AND message.channel=? AND message.message != '' AND createdAt >= DATE_SUB(NOW(), ${interval})
@@ -80,7 +80,7 @@ export class HistoryPersistenceService {
 
     const query = `
     (
-      SELECT message.*, slack_user.name
+      SELECT message.*, slack_user.name, slack_user.slackId
       FROM message
       INNER JOIN slack_user ON slack_user.id=message.userIdId
       WHERE message.teamId=? AND message.channel=? AND message.message != '' ${userFilter}
@@ -89,7 +89,7 @@ export class HistoryPersistenceService {
     )
     UNION
     (
-      SELECT message.*, slack_user.name
+      SELECT message.*, slack_user.name, slack_user.slackId
       FROM message
       INNER JOIN slack_user ON slack_user.id=message.userIdId
       WHERE message.teamId=? AND message.channel=? AND message.message != '' ${userFilter}

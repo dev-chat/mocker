@@ -67,6 +67,45 @@ export class MemoryPersistenceService {
       });
   }
 
+  async getAllMemoriesForUser(slackId: string, teamId: string): Promise<Memory[]> {
+    return getRepository(Memory)
+      .query(
+        `SELECT m.*, u.slackId FROM memory m
+         INNER JOIN slack_user u ON m.userIdId = u.id
+         WHERE u.slackId = ? AND u.teamId = ?
+         ORDER BY m.updatedAt DESC`,
+        [slackId, teamId],
+      )
+      .catch((e) => {
+        this.logger.error('Error fetching all memories for user:', e);
+        return [];
+      });
+  }
+
+  async getAllMemoriesForUsers(slackIds: string[], teamId: string): Promise<Map<string, Memory[]>> {
+    const result = new Map<string, Memory[]>();
+
+    const queries = slackIds.map(async (slackId) => {
+      const memories = await this.getAllMemoriesForUser(slackId, teamId);
+      if (memories.length) {
+        result.set(slackId, memories);
+      }
+    });
+
+    await Promise.all(queries);
+    return result;
+  }
+
+  async reinforceMemory(memoryId: number): Promise<boolean> {
+    return getRepository(Memory)
+      .query('UPDATE memory SET updatedAt = CURRENT_TIMESTAMP WHERE id = ?', [memoryId])
+      .then(() => true)
+      .catch((e) => {
+        this.logger.error('Error reinforcing memory:', e);
+        return false;
+      });
+  }
+
   async deleteMemory(memoryId: number): Promise<boolean> {
     return getRepository(Memory)
       .delete({ id: memoryId })

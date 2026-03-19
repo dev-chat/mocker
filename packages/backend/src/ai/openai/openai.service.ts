@@ -30,7 +30,7 @@ export class OpenAIService {
             (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
           ) as ResponseOutputText
         )?.text;
-        return this.markdownToSlackMrkdwn(outputText?.trim());
+        return outputText?.trim();
       });
   };
 

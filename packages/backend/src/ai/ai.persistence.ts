@@ -6,6 +6,7 @@ enum AITypeEnum {
   Daily = 'daily',
   DailySummary = 'daily-summary',
   Participated = 'participated',
+  ExtractionLock = 'extraction-lock',
 }
 
 const FIVE_MINUTES_MS = 300000;
@@ -83,6 +84,19 @@ export class AIPersistenceService {
 
   public getHasParticipated(channelId: string, teamId: string): Promise<string | null> {
     return this.redis.getValue(this.getRedisKeyName(channelId, teamId, AITypeEnum.Participated));
+  }
+
+  public setExtractionLock(channelId: string, teamId: string): Promise<unknown | null> {
+    return this.redis.setValueWithExpire(
+      this.getRedisKeyName(channelId, teamId, AITypeEnum.ExtractionLock),
+      1,
+      'PX',
+      FIVE_MINUTES_MS,
+    );
+  }
+
+  public getExtractionLock(channelId: string, teamId: string): Promise<string | null> {
+    return this.redis.getValue(this.getRedisKeyName(channelId, teamId, AITypeEnum.ExtractionLock));
   }
 
   private getRedisKeyName(userOrChannelId: string, teamId: string, type: AITypeEnum): string {

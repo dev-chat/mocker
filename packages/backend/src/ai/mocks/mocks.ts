@@ -20,5 +20,7 @@ export const mockAiPersistenceService = {
     getHasParticipated: jest.fn(),
     setParticipationInFlight: jest.fn(),
     removeParticipationInFlight: jest.fn(),
+    setExtractionLock: jest.fn(),
+    getExtractionLock: jest.fn(),
   })),
 };

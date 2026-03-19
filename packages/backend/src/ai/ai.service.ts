@@ -54,7 +54,8 @@ export class AIService {
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
         if (result) {
-          this.sendGptText(result, userId, teamId, channelId, text);
+          const formatted = this.openAiService.markdownToSlackMrkdwn(result);
+          this.sendGptText(formatted, userId, teamId, channelId, text);
         } else {
           this.aiServiceLogger.warn(`No result returned for prompt: ${text}`);
           throw new Error(`No result returned for prompt: ${text}`);
@@ -85,7 +86,9 @@ export class AIService {
   }
 
   public async redeployMoonbeam(): Promise<void> {
-    const aiQuote = this.openAiService.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').catch((e) => {
+    const aiQuote = this.openAiService.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').then((result) => {
+      return this.openAiService.markdownToSlackMrkdwn(result) || result;
+    }).catch((e) => {
       this.aiServiceLogger.error(e);
     });
 
@@ -156,7 +159,9 @@ export class AIService {
   }
 
   public generateCorpoSpeak(text: string): Promise<string | undefined> {
-    return this.openAiService.generateText(text, 'Moonbeam', CORPO_SPEAK_INSTRUCTIONS).catch(async (e) => {
+    return this.openAiService.generateText(text, 'Moonbeam', CORPO_SPEAK_INSTRUCTIONS).then((result) => {
+      return this.openAiService.markdownToSlackMrkdwn(result) || result;
+    }).catch(async (e) => {
       this.aiServiceLogger.error(e);
       throw e;
     });
@@ -176,7 +181,8 @@ export class AIService {
             })
           : '';
         const prefix = timestamp ? `[${timestamp}] ` : '';
-        return `${prefix}${x.name}: ${x.message}`;
+        const slackIdTag = x.slackId ? ` (${x.slackId})` : '';
+        return `${prefix}${x.name}${slackIdTag}: ${x.message}`;
       })
       .join('\n');
   }
@@ -197,9 +203,10 @@ export class AIService {
           return;
         }
 
+        const formatted = this.openAiService.markdownToSlackMrkdwn(result) || result;
         const blocks: KnownBlock[] = [];
 
-        const chunks = getChunks(result);
+        const chunks = getChunks(formatted);
 
         if (chunks) {
           chunks.forEach((chunk) => {
@@ -265,8 +272,9 @@ export class AIService {
       .generateText(input, 'Moonbeam', MOONBEAM_SYSTEM_INSTRUCTIONS)
       .then((result) => {
         if (result) {
+          const formatted = this.openAiService.markdownToSlackMrkdwn(result) || result;
           this.webService
-            .sendMessage(channelId, result)
+            .sendMessage(channelId, formatted)
             .then(() => this.redis.setHasParticipated(teamId, channelId))
             .catch((e) => this.aiServiceLogger.error('Error sending AI Participation message:', e));
         }
