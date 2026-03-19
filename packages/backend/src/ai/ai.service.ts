@@ -396,7 +396,7 @@ export class AIService {
 
     const grouped = new Map<string, Memory[]>();
     for (const mem of memories) {
-      const slackId = (mem as Record<string, unknown>).slackId as string || 'unknown';
+      const slackId = (mem as unknown as Record<string, unknown>).slackId as string || 'unknown';
       if (!grouped.has(slackId)) grouped.set(slackId, []);
       grouped.get(slackId)!.push(mem);
     }
