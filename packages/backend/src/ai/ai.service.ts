@@ -469,7 +469,10 @@ export class AIService {
 
       const result = await this.openAiService.generateText(extractionInput, 'extraction', prompt);
 
-      if (!result) return;
+      if (!result) {
+        this.aiServiceLogger.warn('Extraction returned no result from generateText');
+        return;
+      }
 
       const trimmed = result.trim();
       if (trimmed === 'NONE' || trimmed === '"NONE"') return;
@@ -479,7 +482,7 @@ export class AIService {
         const parsed = JSON.parse(trimmed);
         extractions = Array.isArray(parsed) ? parsed : [parsed];
       } catch {
-        this.aiServiceLogger.warn(`Extraction returned malformed JSON: ${trimmed.substring(0, 200)}`);
+        this.aiServiceLogger.warn(`Extraction returned malformed JSON: ${trimmed}`);
         return;
       }
 
@@ -508,6 +511,9 @@ export class AIService {
             break;
 
           case 'EVOLVE':
+            if (extraction.existingMemoryId) {
+              await this.memoryPersistenceService.deleteMemory(extraction.existingMemoryId);
+            }
             await this.memoryPersistenceService.saveMemories(extraction.slackId, teamId, [extraction.content]);
             break;
 

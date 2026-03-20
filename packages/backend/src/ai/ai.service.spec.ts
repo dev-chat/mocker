@@ -6,6 +6,7 @@ import { Logger } from 'winston';
 import { MessageWithName } from '../shared/models/message/message-with-name';
 import { Event, EventRequest, SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { WebAPICallResult } from '@slack/web-api';
+import { Response } from 'openai/resources/responses/responses';
 
 jest.mock('./openai/openai.service', () => ({
   OpenAIService: jest.fn().mockImplementation(() => ({
@@ -317,7 +318,6 @@ describe('AIService', () => {
     });
   });
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
   describe('extraction after participate', () => {
     it('should fire extraction after successful participate response', async () => {
       const historyMessages = [
@@ -336,7 +336,7 @@ describe('AIService', () => {
 
       jest.spyOn(aiService.openAiService.openai.responses, 'create').mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
-      } as any);
+      } as unknown as Response);
 
       await aiService.participate('team123', 'channel123', 'tagged message');
 
@@ -361,7 +361,7 @@ describe('AIService', () => {
       jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Response');
       jest.spyOn(aiService.openAiService.openai.responses, 'create').mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
-      } as any);
+      } as unknown as Response);
 
       await aiService.participate('team123', 'channel123', 'tagged message');
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -388,7 +388,7 @@ describe('AIService', () => {
 
       jest.spyOn(aiService.openAiService.openai.responses, 'create').mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
-      } as any);
+      } as unknown as Response);
 
       await aiService.participate('team123', 'channel123', 'tagged message');
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -415,7 +415,7 @@ describe('AIService', () => {
 
       jest.spyOn(aiService.openAiService.openai.responses, 'create').mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
-      } as any);
+      } as unknown as Response);
 
       await aiService.participate('team123', 'channel123', 'tagged message');
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -423,7 +423,6 @@ describe('AIService', () => {
       expect(aiService.memoryPersistenceService.reinforceMemory).toHaveBeenCalledWith(42);
     });
   });
-  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   describe('sendGptText', () => {
     it('should send formatted text message to channel', () => {
