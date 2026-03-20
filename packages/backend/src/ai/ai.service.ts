@@ -467,10 +467,22 @@ export class AIService {
       const extractionInput = `${conversationHistory}\n\nMoonbeam: ${moonbeamResponse}`;
       const prompt = MEMORY_EXTRACTION_PROMPT.replace('{existing_memories}', existingMemoriesText);
 
-      const result = await this.openAiService.generateText(extractionInput, 'extraction', prompt);
+      const response = await this.openAiService.openai.responses.create({
+        model: GATE_MODEL,
+        instructions: prompt,
+        input: extractionInput,
+      });
+
+      const textBlock = response.output.find(
+        (block): block is ResponseOutputMessage => block.type === 'message',
+      );
+      const outputText = textBlock?.content?.find(
+        (block): block is ResponseOutputText => block.type === 'output_text',
+      );
+      const result = outputText?.text?.trim();
 
       if (!result) {
-        this.aiServiceLogger.warn('Extraction returned no result from generateText');
+        this.aiServiceLogger.warn('Extraction returned no result');
         return;
       }
 
