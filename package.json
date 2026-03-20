@@ -15,8 +15,8 @@
     "start:prod": "npm run start:prod -w @mocker/backend",
     "test": "npm run test --workspaces --if-present",
     "test:backend": "npm run test -w @mocker/backend",
-    "lint": "eslint 'packages/**/*.{js,ts}'",
-    "lint:fix": "eslint 'packages/**/*.{js,ts}' --quiet --fix",
+    "lint": "eslint packages/**/*.{js,ts}",
+    "lint:fix": "eslint packages/**/*.{js,ts} --quiet --fix",
     "format:check": "prettier --check 'packages/**/*.ts'",
     "format:fix": "prettier --write 'packages/**/*.ts'"
   },

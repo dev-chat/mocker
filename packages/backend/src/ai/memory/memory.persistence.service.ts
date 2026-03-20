@@ -1,5 +1,5 @@
 import { getRepository } from 'typeorm';
-import { Memory } from '../../shared/db/models/Memory';
+import { Memory, MemoryWithSlackId } from '../../shared/db/models/Memory';
 import { SlackUser } from '../../shared/db/models/SlackUser';
 import { logger } from '../../shared/logger/logger';
 
@@ -29,7 +29,7 @@ export class MemoryPersistenceService {
       });
   }
 
-  async getAllMemoriesForUser(slackId: string, teamId: string): Promise<Memory[]> {
+  async getAllMemoriesForUser(slackId: string, teamId: string): Promise<MemoryWithSlackId[]> {
     return getRepository(Memory)
       .query(
         `SELECT m.*, u.slackId FROM memory m
@@ -44,8 +44,8 @@ export class MemoryPersistenceService {
       });
   }
 
-  async getAllMemoriesForUsers(slackIds: string[], teamId: string): Promise<Map<string, Memory[]>> {
-    const result = new Map<string, Memory[]>();
+  async getAllMemoriesForUsers(slackIds: string[], teamId: string): Promise<Map<string, MemoryWithSlackId[]>> {
+    const result = new Map<string, MemoryWithSlackId[]>();
 
     const queries = slackIds.map(async (slackId) => {
       const memories = await this.getAllMemoriesForUser(slackId, teamId);

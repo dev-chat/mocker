@@ -21,8 +21,14 @@ import {
   MEMORY_SELECTION_PROMPT,
 } from './ai.constants';
 import { MemoryPersistenceService } from './memory/memory.persistence.service';
-import { Memory } from '../shared/db/models/Memory';
+import { MemoryWithSlackId } from '../shared/db/models/Memory';
 import { logger } from '../shared/logger/logger';
+import {
+  ResponseOutputMessage,
+  ResponseOutputItem,
+  ResponseOutputText,
+  ResponseOutputRefusal,
+} from 'openai/resources/responses/responses';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { OpenAIService } from './openai/openai.service';
@@ -57,8 +63,8 @@ export class AIService {
     await this.redis.setDailyRequests(userId, teamId);
 
     // Fetch and select relevant memories for the requesting user
-    const memoryBlock = await this.fetchMemoryBlock([userId], teamId, `User prompt: ${text}`, []);
-    const instructions = this.buildInstructionsWithMemories(GENERAL_TEXT_INSTRUCTIONS, memoryBlock);
+    const memoryContext = await this.fetchMemoryContext([userId], teamId, `User prompt: ${text}`, []);
+    const instructions = this.appendMemoryContext(GENERAL_TEXT_INSTRUCTIONS, memoryContext);
 
     return this.openAiService
       .generateText(text, userId, instructions)
@@ -205,23 +211,14 @@ export class AIService {
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
     const formattedHistory: string = this.formatHistory(history);
 
-    // Extract participant slackIds from history, include requesting user
-    const participantSlackIds = [
-      ...new Set(
-        history.filter((msg) => msg.slackId).map((msg) => msg.slackId),
-      ),
-    ];
-    if (!participantSlackIds.includes(user_id)) {
-      participantSlackIds.push(user_id);
-    }
-
     // Fetch and select relevant memories
-    const memoryBlock = await this.fetchMemoryBlock(
-      participantSlackIds, team_id, `${formattedHistory}\n\nUser prompt: ${prompt}`, history,
+    const memoryContext = await this.fetchMemoryContext(
+      this.extractParticipantSlackIds(history, { includeSlackId: user_id }),
+      team_id, `${formattedHistory}\n\nUser prompt: ${prompt}`, history,
     );
-    const systemInstructions = this.buildInstructionsWithMemories(
+    const systemInstructions = this.appendMemoryContext(
       getHistoryInstructions(formattedHistory),
-      memoryBlock,
+      memoryContext,
     );
 
     return this.openAiService
@@ -292,18 +289,12 @@ export class AIService {
 
     const history = this.formatHistory(historyMessages);
 
-    // Extract unique participant slackIds (exclude Moonbeam)
-    const participantSlackIds = [
-      ...new Set(
-        historyMessages
-          .filter((msg) => msg.slackId && msg.slackId !== 'ULG8SJRFF')
-          .map((msg) => msg.slackId),
-      ),
-    ];
-
     // Fetch and select relevant memories
-    const memoryBlock = await this.fetchMemoryBlock(participantSlackIds, teamId, history, historyMessages);
-    const systemInstructions = this.buildInstructionsWithMemories(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryBlock);
+    const memoryContext = await this.fetchMemoryContext(
+      this.extractParticipantSlackIds(historyMessages, { excludeSlackIds: ['ULG8SJRFF'] }),
+      teamId, history, historyMessages,
+    );
+    const systemInstructions = this.appendMemoryContext(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryContext);
 
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
@@ -329,8 +320,8 @@ export class AIService {
 
   private async selectRelevantMemories(
     conversation: string,
-    memoriesMap: Map<string, Memory[]>,
-  ): Promise<Memory[]> {
+    memoriesMap: Map<string, MemoryWithSlackId[]>,
+  ): Promise<MemoryWithSlackId[]> {
     if (memoriesMap.size === 0) return [];
 
     const formattedMemories = Array.from(memoriesMap.entries())
@@ -350,38 +341,38 @@ export class AIService {
         input: prompt,
       });
 
-      const textBlock = response.output.find((block) => block.type === 'message') as
-        | { type: 'message'; content: Array<{ type: string; text?: string }> }
-        | undefined;
-      const outputText = textBlock?.content?.find((block) => block.type === 'output_text') as
-        | { type: 'output_text'; text: string }
-        | undefined;
+      const textBlock: ResponseOutputMessage | undefined = response.output.find(
+        (block: ResponseOutputItem) => block.type === 'message',
+      ) as ResponseOutputMessage;
+      const outputText = textBlock?.content?.find(
+        (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
+      ) as ResponseOutputText | undefined;
       const raw = outputText?.text?.trim();
 
       if (!raw) return [];
 
-      const selectedIds: number[] = JSON.parse(raw);
-      if (!Array.isArray(selectedIds)) return [];
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      const selectedIds = parsed.map(Number).filter((n) => !isNaN(n));
 
-      const allMemories = Array.from(memoriesMap.values()).flat();
-      return allMemories.filter((m) => selectedIds.includes(m.id));
+      return Array.from(memoriesMap.values()).flat().filter((m) => selectedIds.includes(m.id));
     } catch (e) {
       this.aiServiceLogger.warn('Memory selection failed, proceeding without memories:', e);
       return [];
     }
   }
 
-  private formatMemoryBlock(memories: Memory[], history: MessageWithName[]): string {
-    if (memories.length === 0) return '';
+  private formatMemoryContext(memories: MemoryWithSlackId[], history: MessageWithName[]): string {
+    if (!memories?.length) return '';
 
     const nameMap = new Map<string, string>();
     history.forEach((msg) => {
       if (msg.slackId && msg.name) nameMap.set(msg.slackId, msg.name);
     });
 
-    const grouped = new Map<string, Memory[]>();
+    const grouped = new Map<string, MemoryWithSlackId[]>();
     for (const mem of memories) {
-      const slackId = (mem as unknown as Record<string, unknown>).slackId as string || 'unknown';
+      const slackId = mem.slackId || 'unknown';
       if (!grouped.has(slackId)) grouped.set(slackId, []);
       grouped.get(slackId)!.push(mem);
     }
@@ -397,7 +388,25 @@ export class AIService {
     return `${MEMORY_USAGE_INSTRUCTION}\n\nthings you remember about the people in this conversation:\n${lines}`;
   }
 
-  private async fetchMemoryBlock(
+  private extractParticipantSlackIds(
+    history: MessageWithName[],
+    options?: { includeSlackId?: string; excludeSlackIds?: string[] },
+  ): string[] {
+    const excludeSet = new Set(options?.excludeSlackIds || []);
+    const ids = [
+      ...new Set(
+        history
+          .filter((msg) => msg.slackId && !excludeSet.has(msg.slackId!))
+          .map((msg) => msg.slackId!),
+      ),
+    ];
+    if (options?.includeSlackId && !ids.includes(options.includeSlackId)) {
+      ids.push(options.includeSlackId);
+    }
+    return ids;
+  }
+
+  private async fetchMemoryContext(
     participantSlackIds: string[],
     teamId: string,
     conversation: string,
@@ -406,12 +415,12 @@ export class AIService {
     if (participantSlackIds.length === 0) return '';
     const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(participantSlackIds, teamId);
     const selectedMemories = await this.selectRelevantMemories(conversation, memoriesMap);
-    return this.formatMemoryBlock(selectedMemories, history);
+    return this.formatMemoryContext(selectedMemories, history);
   }
 
-  private buildInstructionsWithMemories(baseInstructions: string, memoryBlock: string): string {
-    if (!memoryBlock) return baseInstructions;
-    return `${baseInstructions}\n\n${memoryBlock}`;
+  private appendMemoryContext(baseInstructions: string, memoryContext: string): string {
+    if (!memoryContext) return baseInstructions;
+    return `${baseInstructions}\n\n${memoryContext}`;
   }
 
   sendImage(image: string | undefined, userId: string, teamId: string, channel: string, text: string): void {

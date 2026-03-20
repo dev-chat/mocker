@@ -21,3 +21,8 @@ export class Memory {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   public updatedAt!: Date;
 }
+
+/** Raw SQL result shape when JOINing memory with slack_user (includes slackId from the JOIN). */
+export interface MemoryWithSlackId extends Memory {
+  slackId: string;
+}
