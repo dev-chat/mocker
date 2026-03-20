@@ -16,12 +16,30 @@ import {
   MAX_AI_REQUESTS_PER_DAY,
   REDPLOY_MOONBEAM_IMAGE_PROMPT,
   REDPLOY_MOONBEAM_TEXT_PROMPT,
+  GATE_MODEL,
+  MOONBEAM_SLACK_ID,
+  MEMORY_USAGE_INSTRUCTION,
+  MEMORY_SELECTION_PROMPT,
+  MEMORY_EXTRACTION_PROMPT,
 } from './ai.constants';
+import { MemoryPersistenceService } from './memory/memory.persistence.service';
+import { MemoryWithSlackId } from '../shared/db/models/Memory';
 import { logger } from '../shared/logger/logger';
+import {
+  ResponseOutputMessage,
+  ResponseOutputText,
+} from 'openai/resources/responses/responses';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { OpenAIService } from './openai/openai.service';
 import { GeminiService } from './gemini/gemini.service';
+
+interface ExtractionResult {
+  slackId: string;
+  content: string;
+  mode: 'NEW' | 'REINFORCE' | 'EVOLVE';
+  existingMemoryId: number | null;
+}
 
 export class AIService {
   redis = new AIPersistenceService();
@@ -32,6 +50,7 @@ export class AIService {
   historyService = new HistoryPersistenceService();
   webService = new WebService();
   slackService = new SlackService();
+  memoryPersistenceService = new MemoryPersistenceService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
@@ -49,12 +68,18 @@ export class AIService {
   public async generateText(userId: string, teamId: string, channelId: string, text: string): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
+
+    // Fetch and select relevant memories for the requesting user
+    const memoryContext = await this.fetchMemoryContext([userId], teamId, `User prompt: ${text}`, []);
+    const instructions = this.appendMemoryContext(GENERAL_TEXT_INSTRUCTIONS, memoryContext);
+
     return this.openAiService
-      .generateText(text, userId, GENERAL_TEXT_INSTRUCTIONS)
+      .generateText(text, userId, instructions)
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
         if (result) {
-          this.sendGptText(result, userId, teamId, channelId, text);
+          const formatted = this.openAiService.markdownToSlackMrkdwn(result);
+          this.sendGptText(formatted, userId, teamId, channelId, text);
         } else {
           this.aiServiceLogger.warn(`No result returned for prompt: ${text}`);
           throw new Error(`No result returned for prompt: ${text}`);
@@ -85,7 +110,9 @@ export class AIService {
   }
 
   public async redeployMoonbeam(): Promise<void> {
-    const aiQuote = this.openAiService.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').catch((e) => {
+    const aiQuote = this.openAiService.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').then((result) => {
+      return this.openAiService.markdownToSlackMrkdwn(result) || result;
+    }).catch((e) => {
       this.aiServiceLogger.error(e);
     });
 
@@ -156,7 +183,9 @@ export class AIService {
   }
 
   public generateCorpoSpeak(text: string): Promise<string | undefined> {
-    return this.openAiService.generateText(text, 'Moonbeam', CORPO_SPEAK_INSTRUCTIONS).catch(async (e) => {
+    return this.openAiService.generateText(text, 'Moonbeam', CORPO_SPEAK_INSTRUCTIONS).then((result) => {
+      return this.openAiService.markdownToSlackMrkdwn(result) || result;
+    }).catch(async (e) => {
       this.aiServiceLogger.error(e);
       throw e;
     });
@@ -176,7 +205,8 @@ export class AIService {
             })
           : '';
         const prefix = timestamp ? `[${timestamp}] ` : '';
-        return `${prefix}${x.name}: ${x.message}`;
+        const slackIdTag = x.slackId ? ` (${x.slackId})` : '';
+        return `${prefix}${x.name}${slackIdTag}: ${x.message}`;
       })
       .join('\n');
   }
@@ -187,7 +217,17 @@ export class AIService {
     await this.redis.setDailyRequests(user_id, team_id);
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
     const formattedHistory: string = this.formatHistory(history);
-    const systemInstructions = getHistoryInstructions(formattedHistory);
+
+    // Fetch and select relevant memories
+    const memoryContext = await this.fetchMemoryContext(
+      this.extractParticipantSlackIds(history, { includeSlackId: user_id }),
+      team_id, `${formattedHistory}\n\nUser prompt: ${prompt}`, history,
+    );
+    const systemInstructions = this.appendMemoryContext(
+      getHistoryInstructions(formattedHistory),
+      memoryContext,
+    );
+
     return this.openAiService
       .generateText(prompt, user_id, systemInstructions)
       .then(async (result) => {
@@ -197,9 +237,10 @@ export class AIService {
           return;
         }
 
+        const formatted = this.openAiService.markdownToSlackMrkdwn(result) || result;
         const blocks: KnownBlock[] = [];
 
-        const chunks = getChunks(result);
+        const chunks = getChunks(formatted);
 
         if (chunks) {
           chunks.forEach((chunk) => {
@@ -246,29 +287,38 @@ export class AIService {
   public async participate(teamId: string, channelId: string, taggedMessage: string): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
-    // Use getHistoryWithOptions to include Moonbeam's own messages and use larger context window
-    const history = await this.historyService
-      .getHistoryWithOptions({
-        teamId,
-        channelId,
-        maxMessages: 200,
-        timeWindowMinutes: 120,
-        // No excludeUserId - include all messages including Moonbeam's for conversational continuity
-      })
-      .then((x) => this.formatHistory(x));
+    const historyMessages = await this.historyService.getHistoryWithOptions({
+      teamId,
+      channelId,
+      maxMessages: 200,
+      timeWindowMinutes: 120,
+    });
 
-    // Append tagged message to history as user input (not in system instructions)
-    // This prevents prompt injection and follows best practices
+    const history = this.formatHistory(historyMessages);
+
+    // Fetch and select relevant memories
+    const participantSlackIds = this.extractParticipantSlackIds(historyMessages, { excludeSlackIds: [MOONBEAM_SLACK_ID] });
+    const memoryContext = await this.fetchMemoryContext(
+      participantSlackIds, teamId, history, historyMessages,
+    );
+    const systemInstructions = this.appendMemoryContext(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryContext);
+
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
     return this.openAiService
-      .generateText(input, 'Moonbeam', MOONBEAM_SYSTEM_INSTRUCTIONS)
+      .generateText(input, 'Moonbeam', systemInstructions)
       .then((result) => {
         if (result) {
+          const formatted = this.openAiService.markdownToSlackMrkdwn(result) || result;
           this.webService
-            .sendMessage(channelId, result)
+            .sendMessage(channelId, formatted)
             .then(() => this.redis.setHasParticipated(teamId, channelId))
             .catch((e) => this.aiServiceLogger.error('Error sending AI Participation message:', e));
+
+          // Fire-and-forget: extract memories from this conversation
+          this.extractMemories(teamId, channelId, history, result, participantSlackIds).catch((e) =>
+            this.aiServiceLogger.warn('Background extraction failed:', e),
+          );
         }
       })
       .catch(async (e) => {
@@ -278,6 +328,206 @@ export class AIService {
       .finally(() => {
         this.redis.removeParticipationInFlight(channelId, teamId);
       });
+  }
+
+  private async selectRelevantMemories(
+    conversation: string,
+    memoriesMap: Map<string, MemoryWithSlackId[]>,
+  ): Promise<MemoryWithSlackId[]> {
+    if (memoriesMap.size === 0) return [];
+
+    const formattedMemories = Array.from(memoriesMap.entries())
+      .map(([slackId, memories]) => {
+        const lines = memories.map((m) => `  [ID:${m.id}] "${m.content}"`).join('\n');
+        return `${slackId}:\n${lines}`;
+      })
+      .join('\n\n');
+
+    const prompt = MEMORY_SELECTION_PROMPT
+      .replace('{conversation}', conversation)
+      .replace('{all_memories_grouped_by_user}', formattedMemories);
+
+    try {
+      const response = await this.openAiService.openai.responses.create({
+        model: GATE_MODEL,
+        input: prompt,
+      });
+
+      const textBlock = response.output.find(
+        (block): block is ResponseOutputMessage => block.type === 'message',
+      );
+      const outputText = textBlock?.content?.find(
+        (block): block is ResponseOutputText => block.type === 'output_text',
+      );
+      const raw = outputText?.text?.trim();
+
+      if (!raw) return [];
+
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      const selectedIds = parsed.map(Number).filter((n) => !isNaN(n));
+
+      return Array.from(memoriesMap.values()).flat().filter((m) => selectedIds.includes(m.id));
+    } catch (e) {
+      this.aiServiceLogger.warn('Memory selection failed, proceeding without memories:', e);
+      return [];
+    }
+  }
+
+  private formatMemoryContext(memories: MemoryWithSlackId[], history: MessageWithName[]): string {
+    if (!memories?.length) return '';
+
+    const nameMap = new Map<string, string>();
+    history.forEach((msg) => {
+      if (msg.slackId && msg.name) nameMap.set(msg.slackId, msg.name);
+    });
+
+    const grouped = new Map<string, MemoryWithSlackId[]>();
+    for (const mem of memories) {
+      const slackId = mem.slackId || 'unknown';
+      if (!grouped.has(slackId)) grouped.set(slackId, []);
+      grouped.get(slackId)!.push(mem);
+    }
+
+    const lines = Array.from(grouped.entries())
+      .map(([slackId, mems]) => {
+        const name = nameMap.get(slackId) || slackId;
+        const memLines = mems.map((m) => `"${m.content}"`).join(', ');
+        return `- ${name}: ${memLines}`;
+      })
+      .join('\n');
+
+    return `${MEMORY_USAGE_INSTRUCTION}\n\nthings you remember about the people in this conversation:\n${lines}`;
+  }
+
+  private extractParticipantSlackIds(
+    history: MessageWithName[],
+    options?: { includeSlackId?: string; excludeSlackIds?: string[] },
+  ): string[] {
+    const excludeSet = new Set(options?.excludeSlackIds || []);
+    const ids = [
+      ...new Set(
+        history
+          .filter((msg) => msg.slackId && !excludeSet.has(msg.slackId!))
+          .map((msg) => msg.slackId!),
+      ),
+    ];
+    if (options?.includeSlackId && !ids.includes(options.includeSlackId)) {
+      ids.push(options.includeSlackId);
+    }
+    return ids;
+  }
+
+  private async fetchMemoryContext(
+    participantSlackIds: string[],
+    teamId: string,
+    conversation: string,
+    history: MessageWithName[],
+  ): Promise<string> {
+    if (participantSlackIds.length === 0) return '';
+    const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(participantSlackIds, teamId);
+    const selectedMemories = await this.selectRelevantMemories(conversation, memoriesMap);
+    return this.formatMemoryContext(selectedMemories, history);
+  }
+
+  private appendMemoryContext(baseInstructions: string, memoryContext: string): string {
+    if (!memoryContext) return baseInstructions;
+    return `${baseInstructions}\n\n${memoryContext}`;
+  }
+
+  private async extractMemories(
+    teamId: string,
+    channelId: string,
+    conversationHistory: string,
+    moonbeamResponse: string,
+    participantSlackIds: string[],
+  ): Promise<void> {
+    const locked = await this.redis.getExtractionLock(channelId, teamId);
+    if (locked) {
+      this.aiServiceLogger.info(`Extraction lock active for ${channelId}-${teamId}, skipping`);
+      return;
+    }
+    await this.redis.setExtractionLock(channelId, teamId);
+
+    try {
+      const existingMemoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(
+        participantSlackIds,
+        teamId,
+      );
+
+      const existingMemoriesText = existingMemoriesMap.size > 0
+        ? Array.from(existingMemoriesMap.entries())
+            .map(([slackId, memories]) => {
+              const lines = memories.map((m) => `  [ID:${m.id}] "${m.content}"`).join('\n');
+              return `${slackId}:\n${lines}`;
+            })
+            .join('\n\n')
+        : '(no existing memories)';
+
+      const extractionInput = `${conversationHistory}\n\nMoonbeam: ${moonbeamResponse}`;
+      const prompt = MEMORY_EXTRACTION_PROMPT.replace('{existing_memories}', existingMemoriesText);
+
+      const result = await this.openAiService.generateText(extractionInput, 'extraction', prompt);
+
+      if (!result) {
+        this.aiServiceLogger.warn('Extraction returned no result from generateText');
+        return;
+      }
+
+      const trimmed = result.trim();
+      if (trimmed === 'NONE' || trimmed === '"NONE"') return;
+
+      let extractions: ExtractionResult[];
+      try {
+        const parsed = JSON.parse(trimmed);
+        extractions = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        this.aiServiceLogger.warn(`Extraction returned malformed JSON: ${trimmed}`);
+        return;
+      }
+
+      for (const extraction of extractions) {
+        if (!extraction.slackId || !extraction.content || !extraction.mode) {
+          this.aiServiceLogger.warn('Extraction missing required fields, skipping:', extraction);
+          continue;
+        }
+
+        if (!/^U[A-Z0-9]+$/.test(extraction.slackId)) {
+          this.aiServiceLogger.warn(`Invalid slackId format: ${extraction.slackId}`);
+          continue;
+        }
+
+        switch (extraction.mode) {
+          case 'NEW':
+            await this.memoryPersistenceService.saveMemories(extraction.slackId, teamId, [extraction.content]);
+            break;
+
+          case 'REINFORCE':
+            if (extraction.existingMemoryId) {
+              await this.memoryPersistenceService.reinforceMemory(extraction.existingMemoryId);
+            } else {
+              this.aiServiceLogger.warn('REINFORCE extraction missing existingMemoryId, skipping');
+            }
+            break;
+
+          case 'EVOLVE':
+            if (extraction.existingMemoryId) {
+              await this.memoryPersistenceService.deleteMemory(extraction.existingMemoryId);
+            }
+            await this.memoryPersistenceService.saveMemories(extraction.slackId, teamId, [extraction.content]);
+            break;
+
+          default:
+            this.aiServiceLogger.warn(`Unknown extraction mode: ${(extraction as ExtractionResult).mode}`);
+        }
+      }
+
+      this.aiServiceLogger.info(
+        `Extraction complete for ${channelId}: ${extractions.length} observations processed`,
+      );
+    } catch (e) {
+      this.aiServiceLogger.warn('Memory extraction failed:', e);
+    }
   }
 
   sendImage(image: string | undefined, userId: string, teamId: string, channel: string, text: string): void {
@@ -356,8 +606,8 @@ export class AIService {
     const isUserMuzzled = await this.muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id);
     if (this.slackService.containsTag(request.event.text) && !isUserMuzzled) {
       // Check if Moonbeam is mentioned ANYWHERE in the message (not just first mention)
-      const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, 'ULG8SJRFF');
-      const isPosterMoonbeam = request.event.user === 'ULG8SJRFF';
+      const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, MOONBEAM_SLACK_ID);
+      const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
         this.participate(request.team_id, request.event.channel, request.event.text);
       }

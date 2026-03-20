@@ -49,7 +49,7 @@ describe('OpenAIService', () => {
       });
     });
 
-    it('should return formatted text when output_text is found', async () => {
+    it('should return raw text when output_text is found', async () => {
       const mockResponse = {
         output: [
           {
@@ -62,7 +62,7 @@ describe('OpenAIService', () => {
 
       const result = await service.generateText('Say hello', 'user123');
 
-      expect(result).toBe('Hello *world*! This is _italic_.');
+      expect(result).toBe('Hello **world**! This is *italic*.');
     });
 
     it('should return undefined when no output_text is found', async () => {
