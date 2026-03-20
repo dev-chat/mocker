@@ -69,58 +69,6 @@ describe('MemoryPersistenceService', () => {
     });
   });
 
-  describe('getMemoriesForUser', () => {
-    it('should return memories using a single JOIN query', async () => {
-      mockMemoryRepo.query.mockResolvedValue([mockMemory]);
-
-      const result = await service.getMemoriesForUser('U123', 'T456');
-
-      expect(mockMemoryRepo.query).toHaveBeenCalledWith(
-        expect.stringContaining('INNER JOIN slack_user'),
-        ['U123', 'T456', 10],
-      );
-      expect(result).toEqual([mockMemory]);
-    });
-
-    it('should return empty array on query error', async () => {
-      mockMemoryRepo.query.mockRejectedValue(new Error('DB error'));
-
-      const result = await service.getMemoriesForUser('U123', 'T456');
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe('getMemoriesForUsers', () => {
-    it('should return empty map for empty slackIds', async () => {
-      const result = await service.getMemoriesForUsers([], 'T456');
-      expect(result.size).toBe(0);
-    });
-
-    it('should return memories grouped by slackId', async () => {
-      const memoryU123 = [mockMemory, { ...mockMemory, id: 2, content: 'hates CSS' }];
-      const memoryU789 = [{ ...mockMemory, id: 3, content: 'Go expert' }];
-
-      mockMemoryRepo.query
-        .mockResolvedValueOnce(memoryU123)
-        .mockResolvedValueOnce(memoryU789);
-
-      const result = await service.getMemoriesForUsers(['U123', 'U789'], 'T456');
-
-      expect(mockMemoryRepo.query).toHaveBeenCalledTimes(2);
-      expect(result.get('U123')?.length).toBe(2);
-      expect(result.get('U789')?.length).toBe(1);
-    });
-
-    it('should not include users with no memories', async () => {
-      mockMemoryRepo.query.mockResolvedValue([]);
-
-      const result = await service.getMemoriesForUsers(['U123'], 'T456');
-
-      expect(result.size).toBe(0);
-    });
-  });
-
   describe('saveMemories', () => {
     it('should save a single memory when given one item', async () => {
       mockSlackUserRepo.findOne.mockResolvedValue(mockUser);

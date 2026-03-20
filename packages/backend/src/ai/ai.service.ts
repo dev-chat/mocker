@@ -16,8 +16,18 @@ import {
   MAX_AI_REQUESTS_PER_DAY,
   REDPLOY_MOONBEAM_IMAGE_PROMPT,
   REDPLOY_MOONBEAM_TEXT_PROMPT,
+  GATE_MODEL,
+  MOONBEAM_SLACK_ID,
+  MEMORY_USAGE_INSTRUCTION,
+  MEMORY_SELECTION_PROMPT,
 } from './ai.constants';
+import { MemoryPersistenceService } from './memory/memory.persistence.service';
+import { MemoryWithSlackId } from '../shared/db/models/Memory';
 import { logger } from '../shared/logger/logger';
+import {
+  ResponseOutputMessage,
+  ResponseOutputText,
+} from 'openai/resources/responses/responses';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { OpenAIService } from './openai/openai.service';
@@ -32,6 +42,7 @@ export class AIService {
   historyService = new HistoryPersistenceService();
   webService = new WebService();
   slackService = new SlackService();
+  memoryPersistenceService = new MemoryPersistenceService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
@@ -49,8 +60,13 @@ export class AIService {
   public async generateText(userId: string, teamId: string, channelId: string, text: string): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
+
+    // Fetch and select relevant memories for the requesting user
+    const memoryContext = await this.fetchMemoryContext([userId], teamId, `User prompt: ${text}`, []);
+    const instructions = this.appendMemoryContext(GENERAL_TEXT_INSTRUCTIONS, memoryContext);
+
     return this.openAiService
-      .generateText(text, userId, GENERAL_TEXT_INSTRUCTIONS)
+      .generateText(text, userId, instructions)
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
         if (result) {
@@ -193,7 +209,17 @@ export class AIService {
     await this.redis.setDailyRequests(user_id, team_id);
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
     const formattedHistory: string = this.formatHistory(history);
-    const systemInstructions = getHistoryInstructions(formattedHistory);
+
+    // Fetch and select relevant memories
+    const memoryContext = await this.fetchMemoryContext(
+      this.extractParticipantSlackIds(history, { includeSlackId: user_id }),
+      team_id, `${formattedHistory}\n\nUser prompt: ${prompt}`, history,
+    );
+    const systemInstructions = this.appendMemoryContext(
+      getHistoryInstructions(formattedHistory),
+      memoryContext,
+    );
+
     return this.openAiService
       .generateText(prompt, user_id, systemInstructions)
       .then(async (result) => {
@@ -253,23 +279,26 @@ export class AIService {
   public async participate(teamId: string, channelId: string, taggedMessage: string): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
-    // Use getHistoryWithOptions to include Moonbeam's own messages and use larger context window
-    const history = await this.historyService
-      .getHistoryWithOptions({
-        teamId,
-        channelId,
-        maxMessages: 200,
-        timeWindowMinutes: 120,
-        // No excludeUserId - include all messages including Moonbeam's for conversational continuity
-      })
-      .then((x) => this.formatHistory(x));
+    const historyMessages = await this.historyService.getHistoryWithOptions({
+      teamId,
+      channelId,
+      maxMessages: 200,
+      timeWindowMinutes: 120,
+    });
 
-    // Append tagged message to history as user input (not in system instructions)
-    // This prevents prompt injection and follows best practices
+    const history = this.formatHistory(historyMessages);
+
+    // Fetch and select relevant memories
+    const memoryContext = await this.fetchMemoryContext(
+      this.extractParticipantSlackIds(historyMessages, { excludeSlackIds: [MOONBEAM_SLACK_ID] }),
+      teamId, history, historyMessages,
+    );
+    const systemInstructions = this.appendMemoryContext(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryContext);
+
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
     return this.openAiService
-      .generateText(input, 'Moonbeam', MOONBEAM_SYSTEM_INSTRUCTIONS)
+      .generateText(input, 'Moonbeam', systemInstructions)
       .then((result) => {
         if (result) {
           const formatted = this.openAiService.markdownToSlackMrkdwn(result) || result;
@@ -286,6 +315,111 @@ export class AIService {
       .finally(() => {
         this.redis.removeParticipationInFlight(channelId, teamId);
       });
+  }
+
+  private async selectRelevantMemories(
+    conversation: string,
+    memoriesMap: Map<string, MemoryWithSlackId[]>,
+  ): Promise<MemoryWithSlackId[]> {
+    if (memoriesMap.size === 0) return [];
+
+    const formattedMemories = Array.from(memoriesMap.entries())
+      .map(([slackId, memories]) => {
+        const lines = memories.map((m) => `  [ID:${m.id}] "${m.content}"`).join('\n');
+        return `${slackId}:\n${lines}`;
+      })
+      .join('\n\n');
+
+    const prompt = MEMORY_SELECTION_PROMPT
+      .replace('{conversation}', conversation)
+      .replace('{all_memories_grouped_by_user}', formattedMemories);
+
+    try {
+      const response = await this.openAiService.openai.responses.create({
+        model: GATE_MODEL,
+        input: prompt,
+      });
+
+      const textBlock = response.output.find(
+        (block): block is ResponseOutputMessage => block.type === 'message',
+      );
+      const outputText = textBlock?.content?.find(
+        (block): block is ResponseOutputText => block.type === 'output_text',
+      );
+      const raw = outputText?.text?.trim();
+
+      if (!raw) return [];
+
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      const selectedIds = parsed.map(Number).filter((n) => !isNaN(n));
+
+      return Array.from(memoriesMap.values()).flat().filter((m) => selectedIds.includes(m.id));
+    } catch (e) {
+      this.aiServiceLogger.warn('Memory selection failed, proceeding without memories:', e);
+      return [];
+    }
+  }
+
+  private formatMemoryContext(memories: MemoryWithSlackId[], history: MessageWithName[]): string {
+    if (!memories?.length) return '';
+
+    const nameMap = new Map<string, string>();
+    history.forEach((msg) => {
+      if (msg.slackId && msg.name) nameMap.set(msg.slackId, msg.name);
+    });
+
+    const grouped = new Map<string, MemoryWithSlackId[]>();
+    for (const mem of memories) {
+      const slackId = mem.slackId || 'unknown';
+      if (!grouped.has(slackId)) grouped.set(slackId, []);
+      grouped.get(slackId)!.push(mem);
+    }
+
+    const lines = Array.from(grouped.entries())
+      .map(([slackId, mems]) => {
+        const name = nameMap.get(slackId) || slackId;
+        const memLines = mems.map((m) => `"${m.content}"`).join(', ');
+        return `- ${name}: ${memLines}`;
+      })
+      .join('\n');
+
+    return `${MEMORY_USAGE_INSTRUCTION}\n\nthings you remember about the people in this conversation:\n${lines}`;
+  }
+
+  private extractParticipantSlackIds(
+    history: MessageWithName[],
+    options?: { includeSlackId?: string; excludeSlackIds?: string[] },
+  ): string[] {
+    const excludeSet = new Set(options?.excludeSlackIds || []);
+    const ids = [
+      ...new Set(
+        history
+          .filter((msg) => msg.slackId && !excludeSet.has(msg.slackId!))
+          .map((msg) => msg.slackId!),
+      ),
+    ];
+    if (options?.includeSlackId && !ids.includes(options.includeSlackId)) {
+      ids.push(options.includeSlackId);
+    }
+    return ids;
+  }
+
+  private async fetchMemoryContext(
+    participantSlackIds: string[],
+    teamId: string,
+    conversation: string,
+    history: MessageWithName[],
+  ): Promise<string> {
+    if (participantSlackIds.length === 0) return '';
+    const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(participantSlackIds, teamId);
+    const selectedMemories = await this.selectRelevantMemories(conversation, memoriesMap);
+    return this.formatMemoryContext(selectedMemories, history);
+  }
+
+  private appendMemoryContext(baseInstructions: string, memoryContext: string): string {
+    if (!memoryContext) return baseInstructions;
+    return `${baseInstructions}\n\n${memoryContext}`;
   }
 
   sendImage(image: string | undefined, userId: string, teamId: string, channel: string, text: string): void {
@@ -364,8 +498,8 @@ export class AIService {
     const isUserMuzzled = await this.muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id);
     if (this.slackService.containsTag(request.event.text) && !isUserMuzzled) {
       // Check if Moonbeam is mentioned ANYWHERE in the message (not just first mention)
-      const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, 'ULG8SJRFF');
-      const isPosterMoonbeam = request.event.user === 'ULG8SJRFF';
+      const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, MOONBEAM_SLACK_ID);
+      const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
         this.participate(request.team_id, request.event.channel, request.event.text);
       }
