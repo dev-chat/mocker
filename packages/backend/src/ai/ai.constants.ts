@@ -59,6 +59,8 @@ export const getHistoryInstructions = (history: string): string => {
 export const REDPLOY_MOONBEAM_TEXT_PROMPT = `Provide a cryptic message about the future and humanity's role in it.`;
 export const REDPLOY_MOONBEAM_IMAGE_PROMPT = `An image depicting yourself with the understanding that your name is Moonbeam and you identify as a female. The art style can be any choice you would like. Feel free to be creative, and do not feel that you must always present yourself in humanoid form. Please do not include any text in the image.`;
 
+export const MOONBEAM_SLACK_ID = 'ULG8SJRFF';
+
 export const GATE_MODEL = 'gpt-4.1-nano';
 
 export const MEMORY_USAGE_INSTRUCTION = `you have memories about some people in this conversation. use them like someone who's been in the group chat for years — not by announcing what you remember, but by:

@@ -17,6 +17,7 @@ import {
   REDPLOY_MOONBEAM_IMAGE_PROMPT,
   REDPLOY_MOONBEAM_TEXT_PROMPT,
   GATE_MODEL,
+  MOONBEAM_SLACK_ID,
   MEMORY_USAGE_INSTRUCTION,
   MEMORY_SELECTION_PROMPT,
 } from './ai.constants';
@@ -25,9 +26,7 @@ import { MemoryWithSlackId } from '../shared/db/models/Memory';
 import { logger } from '../shared/logger/logger';
 import {
   ResponseOutputMessage,
-  ResponseOutputItem,
   ResponseOutputText,
-  ResponseOutputRefusal,
 } from 'openai/resources/responses/responses';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
@@ -291,7 +290,7 @@ export class AIService {
 
     // Fetch and select relevant memories
     const memoryContext = await this.fetchMemoryContext(
-      this.extractParticipantSlackIds(historyMessages, { excludeSlackIds: ['ULG8SJRFF'] }),
+      this.extractParticipantSlackIds(historyMessages, { excludeSlackIds: [MOONBEAM_SLACK_ID] }),
       teamId, history, historyMessages,
     );
     const systemInstructions = this.appendMemoryContext(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryContext);
@@ -341,12 +340,12 @@ export class AIService {
         input: prompt,
       });
 
-      const textBlock: ResponseOutputMessage | undefined = response.output.find(
-        (block: ResponseOutputItem) => block.type === 'message',
-      ) as ResponseOutputMessage;
+      const textBlock = response.output.find(
+        (block): block is ResponseOutputMessage => block.type === 'message',
+      );
       const outputText = textBlock?.content?.find(
-        (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
-      ) as ResponseOutputText | undefined;
+        (block): block is ResponseOutputText => block.type === 'output_text',
+      );
       const raw = outputText?.text?.trim();
 
       if (!raw) return [];
@@ -499,8 +498,8 @@ export class AIService {
     const isUserMuzzled = await this.muzzlePersistenceService.isUserMuzzled(request.event.user, request.team_id);
     if (this.slackService.containsTag(request.event.text) && !isUserMuzzled) {
       // Check if Moonbeam is mentioned ANYWHERE in the message (not just first mention)
-      const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, 'ULG8SJRFF');
-      const isPosterMoonbeam = request.event.user === 'ULG8SJRFF';
+      const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, MOONBEAM_SLACK_ID);
+      const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
         this.participate(request.team_id, request.event.channel, request.event.text);
       }

@@ -1,6 +1,6 @@
 import { mockAiPersistenceService } from './mocks/mocks';
 import { mockLogger } from '../shared/logger/logger.mock';
-import { MAX_AI_REQUESTS_PER_DAY, REDPLOY_MOONBEAM_IMAGE_PROMPT, REDPLOY_MOONBEAM_TEXT_PROMPT } from './ai.constants';
+import { MAX_AI_REQUESTS_PER_DAY, MOONBEAM_SLACK_ID, REDPLOY_MOONBEAM_IMAGE_PROMPT, REDPLOY_MOONBEAM_TEXT_PROMPT } from './ai.constants';
 import { AIService } from './ai.service';
 import { Logger } from 'winston';
 import { MessageWithName } from '../shared/models/message/message-with-name';
@@ -301,7 +301,7 @@ describe('AIService', () => {
     it('should exclude Moonbeam from participant slackIds', async () => {
       const historyMessages = [
         { name: 'John', slackId: 'U001', message: 'Hello' },
-        { name: 'Moonbeam', slackId: 'ULG8SJRFF', message: 'hey' },
+        { name: 'Moonbeam', slackId: MOONBEAM_SLACK_ID, message: 'hey' },
       ] as MessageWithName[];
 
       jest.spyOn(aiService.historyService, 'getHistoryWithOptions').mockResolvedValue(historyMessages);
