@@ -57,9 +57,7 @@ export class AIService {
     await this.redis.setDailyRequests(userId, teamId);
 
     // Fetch and select relevant memories for the requesting user
-    const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers([userId], teamId);
-    const selectedMemories = await this.selectRelevantMemories(`User prompt: ${text}`, memoriesMap);
-    const memoryBlock = this.formatMemoryBlock(selectedMemories, []);
+    const memoryBlock = await this.fetchMemoryBlock([userId], teamId, `User prompt: ${text}`, []);
     const instructions = this.buildInstructionsWithMemories(GENERAL_TEXT_INSTRUCTIONS, memoryBlock);
 
     return this.openAiService
@@ -218,16 +216,9 @@ export class AIService {
     }
 
     // Fetch and select relevant memories
-    let memoryBlock = '';
-    if (participantSlackIds.length > 0) {
-      const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(participantSlackIds, team_id);
-      const selectedMemories = await this.selectRelevantMemories(
-        `${formattedHistory}\n\nUser prompt: ${prompt}`,
-        memoriesMap,
-      );
-      memoryBlock = this.formatMemoryBlock(selectedMemories, history);
-    }
-
+    const memoryBlock = await this.fetchMemoryBlock(
+      participantSlackIds, team_id, `${formattedHistory}\n\nUser prompt: ${prompt}`, history,
+    );
     const systemInstructions = this.buildInstructionsWithMemories(
       getHistoryInstructions(formattedHistory),
       memoryBlock,
@@ -311,13 +302,7 @@ export class AIService {
     ];
 
     // Fetch and select relevant memories
-    let memoryBlock = '';
-    if (participantSlackIds.length > 0) {
-      const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(participantSlackIds, teamId);
-      const selectedMemories = await this.selectRelevantMemories(history, memoriesMap);
-      memoryBlock = this.formatMemoryBlock(selectedMemories, historyMessages);
-    }
-
+    const memoryBlock = await this.fetchMemoryBlock(participantSlackIds, teamId, history, historyMessages);
     const systemInstructions = this.buildInstructionsWithMemories(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryBlock);
 
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
@@ -410,6 +395,18 @@ export class AIService {
       .join('\n');
 
     return `${MEMORY_USAGE_INSTRUCTION}\n\nthings you remember about the people in this conversation:\n${lines}`;
+  }
+
+  private async fetchMemoryBlock(
+    participantSlackIds: string[],
+    teamId: string,
+    conversation: string,
+    history: MessageWithName[],
+  ): Promise<string> {
+    if (participantSlackIds.length === 0) return '';
+    const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(participantSlackIds, teamId);
+    const selectedMemories = await this.selectRelevantMemories(conversation, memoriesMap);
+    return this.formatMemoryBlock(selectedMemories, history);
   }
 
   private buildInstructionsWithMemories(baseInstructions: string, memoryBlock: string): string {
