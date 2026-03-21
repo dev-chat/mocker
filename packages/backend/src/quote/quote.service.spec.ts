@@ -1,6 +1,6 @@
 import Axios from 'axios';
 import { QuoteService } from './quote.service';
-import { CompanyProfile, MetricResponse, QuoteResponse } from './quote.models';
+import type { CompanyProfile, MetricResponse, QuoteResponse } from './quote.models';
 
 type QuoteServiceDependencies = QuoteService & {
   webService: { sendMessage: jest.Mock };

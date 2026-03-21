@@ -46,6 +46,6 @@ describe('ListPersistenceService', () => {
   it('rejects when item is not found', async () => {
     findOne.mockResolvedValue(undefined);
 
-    await expect(service.remove('missing')).rejects.toContain('Unable to find `missing`');
+    await expect(service.remove('missing')).rejects.toThrow('Unable to find `missing`');
   });
 });

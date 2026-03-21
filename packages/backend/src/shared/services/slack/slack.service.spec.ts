@@ -1,6 +1,6 @@
 import { SlackService } from './slack.service';
 import * as axios from 'axios';
-import { EventRequest } from '../../models/slack/slack-models';
+import type { EventRequest } from '../../models/slack/slack-models';
 
 type SlackServicePrivate = SlackService & {
   web: {
@@ -403,9 +403,7 @@ describe('SlackService', () => {
       mockWebService.getAllUsers.mockResolvedValue({ members: webUsers });
       mockPersistenceService.saveUsers.mockRejectedValue(new Error('DB Error'));
 
-      const result = await slackService.getAllUsers();
-
-      expect(result).toEqual(new Error('DB Error'));
+      await expect(slackService.getAllUsers()).rejects.toThrow('DB Error');
     });
   });
 

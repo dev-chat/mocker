@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js';
 import { MessageHandlerEnum, PortfolioService } from './portfolio.service';
-import { PortfolioSummaryItem, TransactionType } from './portfolio.persistence.service';
+import type { PortfolioSummaryItem} from './portfolio.persistence.service';
+import { TransactionType } from './portfolio.persistence.service';
 
 describe('PortfolioService', () => {
   let service: PortfolioService;

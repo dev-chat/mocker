@@ -1,6 +1,6 @@
 import { getRepository } from 'typeorm';
 import { EventPersistenceService } from './event.persistence.service';
-import { EventRequest } from '../shared/models/slack/slack-models';
+import type { EventRequest } from '../shared/models/slack/slack-models';
 
 type EventPersistencePrivate = EventPersistenceService & {
   analyzeSentimentAndStore: (userId: string, teamId: string, channelId: string, text: string) => Promise<unknown>;

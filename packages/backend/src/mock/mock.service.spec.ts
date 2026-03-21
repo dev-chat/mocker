@@ -1,4 +1,4 @@
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { MockService } from './mock.service';
 
 describe('MockService', () => {

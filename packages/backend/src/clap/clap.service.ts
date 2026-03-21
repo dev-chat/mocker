@@ -1,4 +1,4 @@
-import { ChannelResponse } from '../shared/models/slack/slack-models';
+import type { ChannelResponse } from '../shared/models/slack/slack-models';
 import { SlackService } from '../shared/services/slack/slack.service';
 
 export class ClapService {

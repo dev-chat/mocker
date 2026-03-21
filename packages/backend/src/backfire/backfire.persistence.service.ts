@@ -1,4 +1,5 @@
-import { UpdateResult, getRepository } from 'typeorm';
+import type { UpdateResult} from 'typeorm';
+import { getRepository } from 'typeorm';
 import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 import { Backfire } from '../shared/db/models/Backfire';
 
@@ -17,13 +18,18 @@ export class BackFirePersistenceService {
     return getRepository(Backfire)
       .save(backfire)
       .then((backfireFromDb) => {
-        this.redis.setValueWithExpire(
+        void this.redis.setValueWithExpire(
           this.getRedisKeyName(userId, teamId),
           backfireFromDb.id,
           'EX',
           Math.floor(time / 1000),
         );
-        this.redis.setValueWithExpire(this.getRedisKeyName(userId, teamId, true), 0, 'EX', Math.floor(time / 1000));
+        void this.redis.setValueWithExpire(
+          this.getRedisKeyName(userId, teamId, true),
+          0,
+          'EX',
+          Math.floor(time / 1000),
+        );
       });
   }
 
@@ -43,7 +49,7 @@ export class BackFirePersistenceService {
   public async addSuppression(userId: string, teamId: string): Promise<void> {
     const suppressions = await this.getSuppressions(userId, teamId);
     const number = suppressions ? +suppressions : 0;
-    this.redis.setValue(this.getRedisKeyName(userId, teamId, true), number + 1);
+    void this.redis.setValue(this.getRedisKeyName(userId, teamId, true), number + 1);
   }
 
   public async addBackfireTime(userId: string, teamId: string, timeToAdd: number): Promise<void> {
@@ -57,7 +63,7 @@ export class BackFirePersistenceService {
         .getValue(this.getRedisKeyName(userId, teamId))
         .then((id) => (id ? +id : undefined));
       if (backfireId) {
-        this.incrementBackfireTime(backfireId, timeToAdd);
+        void this.incrementBackfireTime(backfireId, timeToAdd);
       }
     }
   }
@@ -76,9 +82,9 @@ export class BackFirePersistenceService {
     }
     const words = text.split(' ').length;
     const characters = text.split('').length;
-    this.incrementMessageSuppressions(backfireId);
-    this.incrementWordSuppressions(backfireId, words);
-    this.incrementCharacterSuppressions(backfireId, characters);
+    void this.incrementMessageSuppressions(backfireId);
+    void this.incrementWordSuppressions(backfireId, words);
+    void this.incrementCharacterSuppressions(backfireId, characters);
   }
 
   public incrementBackfireTime(id: number, ms: number): Promise<UpdateResult> {

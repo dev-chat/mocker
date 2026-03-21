@@ -1,6 +1,7 @@
-import express, { Router } from 'express';
+import type { Router } from 'express';
+import express from 'express';
 import { MockService } from './mock.service';
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 import { textMiddleware } from '../shared/middleware/textMiddleware';
 
@@ -11,7 +12,7 @@ mockController.use(textMiddleware);
 
 const mockService = new MockService();
 
-mockController.post('/', async (req, res) => {
+mockController.post('/', (req, res) => {
   const request: SlashCommandRequest = req.body;
   mockService.mock(request);
   res.status(200).send();

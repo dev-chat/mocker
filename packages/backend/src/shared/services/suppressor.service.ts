@@ -1,10 +1,10 @@
-import { EventRequest } from '../models/slack/slack-models';
+import type { EventRequest } from '../models/slack/slack-models';
 import { USER_ID_REGEX } from '../../counter/constants';
 import { CounterPersistenceService } from '../../counter/counter.persistence.service';
 import { WebService } from './web/web.service';
 import { TranslationService } from './translation.service';
 import moment from 'moment';
-import { SlackUser } from '../db/models/SlackUser';
+import type { SlackUser } from '../db/models/SlackUser';
 import { AIService } from '../../ai/ai.service';
 import { BackFirePersistenceService } from '../../backfire/backfire.persistence.service';
 import { MAX_WORD_LENGTH, REPLACEMENT_TEXT } from '../../muzzle/constants';
@@ -52,7 +52,7 @@ export class SuppressorService {
     if (firstBlock) {
       Object.keys(firstBlock).forEach((key) => {
         if (typeof firstBlock[key] === 'string') {
-          allUsers?.forEach((user) => {
+          allUsers.forEach((user) => {
             if (firstBlock[key].includes(user.name)) {
               id = user.id;
             }
@@ -112,9 +112,12 @@ export class SuppressorService {
     let userIdByBlocks;
     let userIdByBlocksSpoiler;
 
-    if (request?.event?.blocks?.length) {
-      const userId = this.findUserIdInBlocks(request.event.blocks, USER_ID_REGEX);
-      const userName = await this.findUserInBlocks(request.event.blocks);
+    const blocks = Array.isArray(request.event.blocks) ? request.event.blocks : [];
+    const attachments = Array.isArray(request.event.attachments) ? request.event.attachments : [];
+
+    if (blocks.length) {
+      const userId = this.findUserIdInBlocks(blocks, USER_ID_REGEX);
+      const userName = await this.findUserInBlocks(blocks);
 
       if (userId) {
         userIdByBlocks = this.slackService.getUserId(userId);
@@ -129,12 +132,12 @@ export class SuppressorService {
       userIdByEventText = this.slackService.getUserId(request.event.text);
     }
 
-    if (request.event.attachments && request.event.attachments.length) {
-      userIdByAttachmentText = this.slackService.getUserId(request.event.attachments[0].text);
-      userIdByAttachmentPretext = this.slackService.getUserId(request.event.attachments[0].pretext);
+    if (attachments.length) {
+      userIdByAttachmentText = this.slackService.getUserId(attachments[0].text);
+      userIdByAttachmentPretext = this.slackService.getUserId(attachments[0].pretext);
 
-      if (request.event.attachments[0].callback_id) {
-        userIdByCallbackId = this.slackService.getUserIdByCallbackId(request.event.attachments[0].callback_id);
+      if (attachments[0].callback_id) {
+        userIdByCallbackId = this.slackService.getUserIdByCallbackId(attachments[0].callback_id);
       }
     }
 
@@ -147,12 +150,10 @@ export class SuppressorService {
       userIdByBlocksSpoiler,
     );
     if (
-      !!(
-        finalUserId &&
-        ((await this.muzzlePersistenceService.isUserMuzzled(finalUserId, request.team_id)) ||
-          (await this.backfirePersistenceService.isBackfire(finalUserId, request.team_id)) ||
-          (await this.counterPersistenceService.isCounterMuzzled(finalUserId)))
-      )
+      finalUserId &&
+      ((await this.muzzlePersistenceService.isUserMuzzled(finalUserId, request.team_id)) ||
+        (await this.backfirePersistenceService.isBackfire(finalUserId, request.team_id)) ||
+        (await this.counterPersistenceService.isCounterMuzzled(finalUserId)))
     ) {
       return finalUserId;
     }
@@ -193,9 +194,9 @@ export class SuppressorService {
 
     try {
       if (persistenceService) {
-        persistenceService.incrementMessageSuppressions(id);
-        persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
-        persistenceService.incrementWordSuppressions(id, wordsSuppressed);
+        void persistenceService.incrementMessageSuppressions(id);
+        void persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
+        void persistenceService.incrementWordSuppressions(id, wordsSuppressed);
       }
     } catch (e) {
       this.logger.error(e);
@@ -212,9 +213,9 @@ export class SuppressorService {
   ): Promise<void> {
     await this.webService.deleteMessage(channel, timestamp, userId);
 
-    const words = text?.split(' ');
+    const words = text.split(' ');
 
-    const shouldMuzzle = words?.length > 0 && words?.length <= 250;
+    const shouldMuzzle = words.length > 0 && words.length <= 250;
 
     if (shouldMuzzle) {
       const textWithFallbackReplacments = words
@@ -292,9 +293,9 @@ export class SuppressorService {
     }
 
     if (persistenceService) {
-      persistenceService.incrementMessageSuppressions(id);
-      persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
-      persistenceService.incrementWordSuppressions(id, wordsSuppressed);
+      void persistenceService.incrementMessageSuppressions(id);
+      void persistenceService.incrementCharacterSuppressions(id, charactersSuppressed);
+      void persistenceService.incrementWordSuppressions(id, wordsSuppressed);
     }
 
     return returnText;
@@ -313,7 +314,7 @@ export class SuppressorService {
     const isReaction = request.event.type === 'reaction_added' || request.event.type === 'reaction_removed';
     const botUser = await this.shouldBotMessageBeMuzzled(request);
     if (botUser && !isReaction) {
-      this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
+      void this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
       const muzzleId = await this.muzzlePersistenceService.getMuzzle(botUser, request.team_id);
       if (muzzleId) {
         this.muzzlePersistenceService.trackDeletedMessage(muzzleId, 'A bot message');
@@ -329,7 +330,7 @@ export class SuppressorService {
       const counter = await this.counterPersistenceService.getCounterMuzzle(botUser);
 
       if (counter?.counterId) {
-        this.counterPersistenceService.incrementMessageSuppressions(counter.counterId);
+        void this.counterPersistenceService.incrementMessageSuppressions(counter.counterId);
         return;
       }
     }

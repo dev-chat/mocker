@@ -4,7 +4,7 @@ import { CounterService } from '../counter/counter.service';
 import { MuzzleService } from '../muzzle/muzzle.service';
 import { ReactionService } from '../reaction/reaction.service';
 import { logger } from '../shared/logger/logger';
-import { EventRequest } from '../shared/models/slack/slack-models';
+import type { EventRequest } from '../shared/models/slack/slack-models';
 import { HistoryPersistenceService } from '../shared/services/history.persistence.service';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { SuppressorService } from '../shared/services/suppressor.service';
@@ -38,7 +38,7 @@ export class EventService {
       // Await history logging to ensure message is in DB before AI queries it
       await this.historyPersistenceService.logHistory(request);
     } else if (isAnyEventOtherThanUserProfileChanged) {
-      this.eventPersistenceService.logActivity(request);
+      void this.eventPersistenceService.logActivity(request);
     }
   }
 

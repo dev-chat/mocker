@@ -1,6 +1,6 @@
 import { getRepository } from 'typeorm';
 import { HistoryPersistenceService } from './history.persistence.service';
-import { EventRequest, SlashCommandRequest } from '../models/slack/slack-models';
+import type { EventRequest, SlashCommandRequest } from '../models/slack/slack-models';
 
 jest.mock('typeorm', () => {
   const actual = jest.requireActual('typeorm');

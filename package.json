@@ -16,22 +16,25 @@
     "test": "npm run test --workspaces --if-present",
     "test:backend": "npm run test -w @mocker/backend",
     "test:coverage": "npm run test:coverage -w @mocker/backend",
-    "lint": "eslint packages/**/*.{js,ts}",
-    "lint:fix": "eslint packages/**/*.{js,ts} --quiet --fix",
+    "lint": "eslint packages/**/*.ts",
+    "lint:fix": "eslint packages/**/*.ts --quiet --fix",
     "format:check": "prettier --check 'packages/**/*.ts'",
     "format:fix": "prettier --write 'packages/**/*.ts'"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.19.0",
-    "@typescript-eslint/parser": "^6.19.0",
-    "eslint": "^8.56.0",
-    "eslint-config-prettier": "^9.1.0",
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.4.0",
     "husky": "^2.3.0",
     "lint-staged": "^8.1.7",
     "prettier": "^3.2.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.1"
   },
   "husky": {
     "hooks": {
@@ -39,7 +42,7 @@
     }
   },
   "lint-staged": {
-    "*.{ts,js}": [
+    "*.ts": [
       "npm run lint",
       "git add"
     ]

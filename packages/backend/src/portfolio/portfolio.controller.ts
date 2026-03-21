@@ -1,5 +1,6 @@
-import express, { Router } from 'express';
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { Router } from 'express';
+import express from 'express';
+import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 import { textMiddleware } from '../shared/middleware/textMiddleware';
 import { PortfolioService } from './portfolio.service';
@@ -18,7 +19,7 @@ const webService = new WebService();
 portfolioController.post('/buy', suppressedMiddleware, textMiddleware, (req, res) => {
   const request: SlashCommandRequest = req.body;
   res.status(200).send();
-  portfolioService
+  void portfolioService
     .transact(
       request.user_id,
       request.team_id,
@@ -28,9 +29,9 @@ portfolioController.post('/buy', suppressedMiddleware, textMiddleware, (req, res
     )
     .then((response) => {
       if (response.classification === 'PUBLIC') {
-        webService.sendMessage(request.channel_id, response.message);
+        void webService.sendMessage(request.channel_id, response.message);
       } else {
-        webService.sendEphemeral(request.channel_id, response.message, request.user_id);
+        void webService.sendEphemeral(request.channel_id, response.message, request.user_id);
       }
     });
 });
@@ -38,7 +39,7 @@ portfolioController.post('/buy', suppressedMiddleware, textMiddleware, (req, res
 portfolioController.post('/sell', suppressedMiddleware, textMiddleware, (req, res) => {
   const request: SlashCommandRequest = req.body;
   res.status(200).send();
-  portfolioService
+  void portfolioService
     .transact(
       request.user_id,
       request.team_id,
@@ -48,9 +49,9 @@ portfolioController.post('/sell', suppressedMiddleware, textMiddleware, (req, re
     )
     .then((response) => {
       if (response.classification === 'PUBLIC') {
-        webService.sendMessage(request.channel_id, response.message);
+        void webService.sendMessage(request.channel_id, response.message);
       } else {
-        webService.sendEphemeral(request.channel_id, response.message, request.user_id);
+        void webService.sendEphemeral(request.channel_id, response.message, request.user_id);
       }
     });
 });
@@ -58,7 +59,7 @@ portfolioController.post('/sell', suppressedMiddleware, textMiddleware, (req, re
 portfolioController.post('/summary', (req, res) => {
   const request: SlashCommandRequest = req.body;
   res.status(200).send();
-  portfolioService.getPortfolioSummaryWithQuotes(request.user_id, request.team_id).then((summary) => {
+  void portfolioService.getPortfolioSummaryWithQuotes(request.user_id, request.team_id).then((summary) => {
     let message = `*<@${request.user_id}>'s Portfolio Summary:*\n`;
     logger.info('Portfolio Summary:', summary);
     summary.summary.forEach((item) => {
@@ -74,7 +75,7 @@ portfolioController.post('/summary', (req, res) => {
     });
 
     const unrealizedGains = summary.summary.reduce((total, item) => {
-      const currentValue = item.quantity.mul(item?.currentPrice || 0);
+      const currentValue = item.quantity.mul(item.currentPrice);
       return total.plus(currentValue.minus(item.costBasis || 0));
     }, new Decimal(0));
 
@@ -85,6 +86,6 @@ portfolioController.post('/summary', (req, res) => {
       .toFixed(2)}\n`;
     message += `*Unrealized Gains:* $${unrealizedGains.toFixed(2)}\n`;
     message += `*Total Dollars Available:* $${summary.rep.totalRepAvailable.toFixed(2)}\n`;
-    webService.sendEphemeral(request.channel_id, message, request.user_id);
+    void webService.sendEphemeral(request.channel_id, message, request.user_id);
   });
 });

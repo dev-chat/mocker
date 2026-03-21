@@ -1,10 +1,11 @@
+import type {
+  Timeout} from './muzzle-utilities';
 import {
   getMsForSpecifiedRange,
   getRemainingTime,
   getTimeString,
   getTimeToMuzzle,
-  isRandomEven,
-  Timeout,
+  isRandomEven
 } from './muzzle-utilities';
 
 describe('muzzle-utilities', () => {

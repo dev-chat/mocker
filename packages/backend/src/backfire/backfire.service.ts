@@ -1,14 +1,14 @@
 import { ABUSE_PENALTY_TIME, MAX_SUPPRESSIONS } from '../muzzle/constants';
 import { getTimeString } from '../muzzle/muzzle-utilities';
 import { logger } from '../shared/logger/logger';
-import { EventRequest } from '../shared/models/slack/slack-models';
+import type { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
 
 export class BackfireService extends SuppressorService {
   logger = logger.child({ module: 'BackfireService' });
 
   public addBackfireTime(userId: string, teamId: string, time: number): void {
-    this.backfirePersistenceService.addBackfireTime(userId, teamId, time);
+    void this.backfirePersistenceService.addBackfireTime(userId, teamId, time);
   }
 
   public async sendBackfiredMessage(
@@ -18,14 +18,12 @@ export class BackfireService extends SuppressorService {
     timestamp: string,
     teamId: string,
   ): Promise<void> {
-    const backfireId: number | undefined = await this.backfirePersistenceService
-      .getBackfireByUserId(userId, teamId)
-      .then((id) => (id ? +id : undefined));
-    if (backfireId) {
+    const backfireId = await this.backfirePersistenceService.getBackfireByUserId(userId, teamId);
+    if (backfireId !== undefined) {
       const suppressions = await this.backfirePersistenceService.getSuppressions(userId, teamId);
       if (suppressions && +suppressions < MAX_SUPPRESSIONS) {
-        this.backfirePersistenceService.addSuppression(userId, teamId);
-        this.sendSuppressedMessage(channel, userId, text, timestamp, +backfireId, this.backfirePersistenceService);
+        void this.backfirePersistenceService.addSuppression(userId, teamId);
+        void this.sendSuppressedMessage(channel, userId, text, timestamp, +backfireId, this.backfirePersistenceService);
       } else {
         this.webService.deleteMessage(channel, timestamp, userId);
         this.backfirePersistenceService.trackDeletedMessage(backfireId, text);
@@ -53,30 +51,31 @@ export class BackfireService extends SuppressorService {
         const containsTag = this.slackService.containsTag(request.event.text);
         if (!containsTag) {
           this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
-          this.sendBackfiredMessage(
+          void this.sendBackfiredMessage(
             request.event.channel,
             request.event.user,
             request.event.text,
             request.event.ts,
             request.team_id,
           );
-        } else if (containsTag && isTopicChange) {
+        } else if (isTopicChange) {
           const backfireId = await this.getBackfire(request.event.user, request.team_id);
-          if (backfireId) {
-            this.addBackfireTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
-            this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
-            this.trackDeletedMessage(backfireId, request.event.text);
-            this.webService
-              .sendMessage(
-                request.event.channel,
-                `:rotating_light: <@${request.event.user}> attempted to @ while muzzled! Muzzle increased by ${getTimeString(
-                  ABUSE_PENALTY_TIME,
-                )} :rotating_light:`,
-              )
-              .catch((e) => this.logger.error(e));
-          } else {
+          if (backfireId === undefined) {
             this.logger.warn(`Unable to find backfireId for ${request.event.user}`);
+            return;
           }
+
+          this.addBackfireTime(request.event.user, request.team_id, ABUSE_PENALTY_TIME);
+          this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
+          this.trackDeletedMessage(backfireId, request.event.text);
+          this.webService
+            .sendMessage(
+              request.event.channel,
+              `:rotating_light: <@${request.event.user}> attempted to @ while muzzled! Muzzle increased by ${getTimeString(
+                ABUSE_PENALTY_TIME,
+              )} :rotating_light:`,
+            )
+            .catch((e) => this.logger.error(e));
         }
       }
     }

@@ -1,4 +1,5 @@
-import { UpdateResult, getRepository } from 'typeorm';
+import type { UpdateResult } from 'typeorm';
+import { getRepository } from 'typeorm';
 import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 import { SINGLE_DAY_MS } from '../counter/constants';
 import { Muzzle } from '../shared/db/models/Muzzle';
@@ -42,59 +43,55 @@ export class MuzzlePersistenceService {
     return false;
   }
 
-  public addMuzzle(
+  public async addMuzzle(
     requestorId: string,
     muzzledId: string,
     teamId: string,
     time: number,
     defensiveItemId?: string,
   ): Promise<Muzzle> {
-    return new Promise(async (resolve, reject) => {
-      const activeItems = await this.storePersistenceService.getActiveItems(requestorId, teamId);
-      const muzzle = new Muzzle();
-      muzzle.requestorId = requestorId;
-      muzzle.muzzledId = muzzledId;
-      muzzle.teamId = teamId;
-      muzzle.messagesSuppressed = 0;
-      muzzle.wordsSuppressed = 0;
-      muzzle.charactersSuppressed = 0;
-      muzzle.milliseconds = time;
-      await getRepository(Muzzle)
-        .save(muzzle)
-        .then((muzzleFromDb) => {
-          const expireTime = Math.floor(time / 1000);
-          this.redis.setValueWithExpire(
-            this.getRedisKeyName(muzzledId, teamId, MuzzleRedisTypeEnum.Muzzled),
-            muzzleFromDb.id.toString(),
-            'EX',
-            expireTime,
-          );
-          this.redis.setValueWithExpire(
-            this.getRedisKeyName(muzzledId, teamId, MuzzleRedisTypeEnum.Muzzled, true),
-            '0',
-            'EX',
-            expireTime,
-          );
-          if (!defensiveItemId) {
-            this.setRequestorCount(requestorId, teamId);
-          }
+    const activeItems = await this.storePersistenceService.getActiveItems(requestorId, teamId);
+    const muzzle = new Muzzle();
+    muzzle.requestorId = requestorId;
+    muzzle.muzzledId = muzzledId;
+    muzzle.teamId = teamId;
+    muzzle.messagesSuppressed = 0;
+    muzzle.wordsSuppressed = 0;
+    muzzle.charactersSuppressed = 0;
+    muzzle.milliseconds = time;
 
-          this.storePersistenceService.setItemKill(muzzleFromDb.id, activeItems);
-          if (defensiveItemId) {
-            this.storePersistenceService.setItemKill(muzzleFromDb.id, [defensiveItemId]);
-          }
-          resolve(muzzleFromDb);
-        })
-        .catch((e) => reject(e));
-    });
+    const muzzleFromDb = await getRepository(Muzzle).save(muzzle);
+    const expireTime = Math.floor(time / 1000);
+    await this.redis.setValueWithExpire(
+      this.getRedisKeyName(muzzledId, teamId, MuzzleRedisTypeEnum.Muzzled),
+      muzzleFromDb.id.toString(),
+      'EX',
+      expireTime,
+    );
+    await this.redis.setValueWithExpire(
+      this.getRedisKeyName(muzzledId, teamId, MuzzleRedisTypeEnum.Muzzled, true),
+      '0',
+      'EX',
+      expireTime,
+    );
+    if (!defensiveItemId) {
+      await this.setRequestorCount(requestorId, teamId);
+    }
+
+    await this.storePersistenceService.setItemKill(muzzleFromDb.id, activeItems);
+    if (defensiveItemId) {
+      await this.storePersistenceService.setItemKill(muzzleFromDb.id, [defensiveItemId]);
+    }
+
+    return muzzleFromDb;
   }
 
   public async removeMuzzle(userId: string, teamId: string): Promise<void> {
-    this.redis.removeKey(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled));
+    await this.redis.removeKey(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled));
   }
 
   public removeMuzzlePrivileges(requestorId: string, teamId: string): void {
-    this.redis.setValueWithExpire(
+    void this.redis.setValueWithExpire(
       this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor),
       '2',
       'PX',
@@ -109,14 +106,14 @@ export class MuzzlePersistenceService {
     const requests: number = numberOfRequests ? +numberOfRequests : 0;
     const newRequests = requests + 1;
     if (!numberOfRequests) {
-      this.redis.setValueWithExpire(
+      await this.redis.setValueWithExpire(
         this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor),
         newRequests.toString(),
         'EX',
         MAX_TIME_BETWEEN_MUZZLES,
       );
     } else if (requests < MAX_MUZZLES) {
-      this.redis.setValue(this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor), newRequests);
+      await this.redis.setValue(this.getRedisKeyName(requestorId, teamId, MuzzleRedisTypeEnum.Requestor), newRequests);
     }
   }
 
@@ -127,7 +124,7 @@ export class MuzzlePersistenceService {
     const muzzles: string | null = await this.redis.getValue(
       this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Requestor),
     );
-    return !!(muzzles && +muzzles === MAX_MUZZLES);
+    return Boolean(muzzles && +muzzles === MAX_MUZZLES);
   }
 
   /**
@@ -142,8 +139,8 @@ export class MuzzlePersistenceService {
         this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled),
       );
       const newTime = Math.floor(remainingTime + timeToAdd / 1000);
-      this.incrementMuzzleTime(+muzzledId, ABUSE_PENALTY_TIME);
-      this.redis.expire(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled), newTime);
+      await this.incrementMuzzleTime(+muzzledId, ABUSE_PENALTY_TIME);
+      await this.redis.expire(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled), newTime);
     }
   }
 
@@ -202,11 +199,11 @@ export class MuzzlePersistenceService {
     if (!text) {
       return;
     }
-    const words = text?.split(' ').length;
-    const characters = text?.split('').length;
-    this.incrementMessageSuppressions(muzzleId);
-    this.incrementWordSuppressions(muzzleId, words);
-    this.incrementCharacterSuppressions(muzzleId, characters);
+    const words = text.split(' ').length;
+    const characters = text.split('').length;
+    void this.incrementMessageSuppressions(muzzleId);
+    void this.incrementWordSuppressions(muzzleId, words);
+    void this.incrementCharacterSuppressions(muzzleId, characters);
   }
 
   private getRedisKeyName(userId: string, teamId: string, userType: MuzzleRedisTypeEnum, withSuppressions = false) {

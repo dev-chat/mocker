@@ -4,7 +4,7 @@ import { Rep } from '../shared/db/models/Rep';
 import { SlackUser } from '../shared/db/models/SlackUser';
 import { PortfolioTransactions } from '../shared/db/models/PortfolioTransaction';
 import { Reaction } from '../shared/db/models/Reaction';
-import { Event } from '../shared/models/slack/slack-models';
+import type { Event } from '../shared/models/slack/slack-models';
 import { ReactionPersistenceService } from './reaction.persistence.service';
 
 jest.mock('typeorm', () => {

@@ -1,5 +1,5 @@
 import { logger } from '../shared/logger/logger';
-import { Event, EventRequest } from '../shared/models/slack/slack-models';
+import type { Event, EventRequest } from '../shared/models/slack/slack-models';
 import { reactionValues } from './constants';
 import { ReactionPersistenceService } from './reaction.persistence.service';
 
@@ -11,7 +11,7 @@ export class ReactionService {
     if (event.user && event.item_user && event.user !== event.item_user) {
       if (isAdded) {
         this.handleAddedReaction(event, teamId);
-      } else if (!isAdded) {
+      } else {
         this.handleRemovedReaction(event, teamId);
       }
     }
@@ -32,7 +32,7 @@ export class ReactionService {
   private handleRemovedReaction(event: Event, teamId: string): void {
     const reactionValue = reactionValues[event.reaction];
     if (this.shouldReactionBeLogged(reactionValue)) {
-      this.reactionPersistenceService.removeReaction(event, teamId);
+      void this.reactionPersistenceService.removeReaction(event, teamId);
     }
   }
 

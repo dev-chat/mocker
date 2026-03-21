@@ -1,5 +1,6 @@
-import express, { Router } from 'express';
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { Router } from 'express';
+import express from 'express';
+import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { StoreService } from './store.service';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { ItemService } from './item.service';
@@ -15,80 +16,97 @@ const storeLogger = logger.child({ module: 'StoreController' });
 
 storeController.use(suppressedMiddleware);
 
-storeController.post('/', async (req, res) => {
+storeController.post('/', (req, res) => {
   const request: SlashCommandRequest = req.body;
-  const storeItems: string = await storeService.listItems(request.user_id, request.team_id);
-  res.status(200).send(storeItems);
+  storeService
+    .listItems(request.user_id, request.team_id)
+    .then((storeItems) => res.status(200).send(storeItems))
+    .catch((e) => {
+      storeLogger.error(e);
+      res.status(500).send();
+    });
 });
 
-storeController.post('/use', async (req, res) => {
-  const request: SlashCommandRequest = req.body;
-  const textArgs = request.text.split(' ');
-  let itemId: string | undefined;
-  let userIdForItem: string | undefined;
+storeController.post('/use', (req, res) => {
+  void (async () => {
+    const request: SlashCommandRequest = req.body;
+    const textArgs = request.text.split(' ');
+    let itemId: string | undefined;
+    let userIdForItem: string | undefined;
 
-  if (textArgs.length >= 2) {
-    itemId = textArgs[0];
-    userIdForItem = await suppressorService.slackService.getUserId(textArgs[1]);
-  } else {
-    itemId = textArgs[0];
-  }
+    if (textArgs.length >= 2) {
+      itemId = textArgs[0];
+      userIdForItem = await suppressorService.slackService.getUserId(textArgs[1]);
+    } else {
+      itemId = textArgs[0];
+    }
 
-  const isValidItem = await storeService.isValidItem(itemId, request.team_id);
+    const isValidItem = await storeService.isValidItem(itemId, request.team_id);
 
-  if (!isValidItem) {
-    res.send('Invalid item. Please use `/use item_id`.');
-    return;
-  }
-
-  const canAffordItem = await storeService.canAfford(itemId, request.user_id, request.team_id);
-  const isUserRequired = await storeService.isUserRequired(itemId);
-
-  if (!itemId) {
-    res.send('You must provide an item_id in order to use an item');
-  } else if (!canAffordItem) {
-    res.send(`Sorry, you can't afford that item.`);
-  } else if (!isUserRequired && userIdForItem) {
-    res.send(
-      'Sorry, this item cannot be used on other people. Try `/use item_id`. You do not need to specify a user you wish to use this on.',
-    );
-  } else if (isUserRequired && (!userIdForItem || userIdForItem === request.user_id)) {
-    res.send('Sorry, this item can only be used on other people. Try `/use item_id @user` in order to use this item.');
-  } else {
-    const useReceipt = await itemService
-      .useItem(itemId, request.user_id, request.team_id, userIdForItem as string, request.channel_name)
-      .catch((e) => {
-        storeLogger.error(e, {
-          item: itemId,
-          userId: request.user_id,
-          teamId: request.team_id,
-          userIdForItem,
-          channel: request.channel_name,
-        });
-        res.status(500).send(e);
-        return undefined;
-      });
-
-    if (!useReceipt) {
+    if (!isValidItem) {
+      res.send('Invalid item. Please use `/use item_id`.');
       return;
     }
 
-    const purchaseReceipt: string | undefined = await storeService
-      .buyItem(itemId, request.user_id, request.team_id)
-      .catch((e) => {
-        storeLogger.error(e, {
-          item: itemId,
-          userId: request.user_id,
-          teamId: request.team_id,
+    const canAffordItem = await storeService.canAfford(itemId, request.user_id, request.team_id);
+    const isUserRequired = await storeService.isUserRequired(itemId);
+
+    if (!itemId) {
+      res.send('You must provide an item_id in order to use an item');
+    } else if (!canAffordItem) {
+      res.send(`Sorry, you can't afford that item.`);
+    } else if (!isUserRequired && userIdForItem) {
+      res.send(
+        'Sorry, this item cannot be used on other people. Try `/use item_id`. You do not need to specify a user you wish to use this on.',
+      );
+    } else if (isUserRequired && (!userIdForItem || userIdForItem === request.user_id)) {
+      res.send(
+        'Sorry, this item can only be used on other people. Try `/use item_id @user` in order to use this item.',
+      );
+    } else {
+      const targetUserId = userIdForItem;
+      if (!targetUserId) {
+        res.send(
+          'Sorry, this item can only be used on other people. Try `/use item_id @user` in order to use this item.',
+        );
+        return;
+      }
+
+      const useReceipt = await itemService
+        .useItem(itemId, request.user_id, request.team_id, targetUserId, request.channel_name)
+        .catch((e) => {
+          storeLogger.error(e, {
+            item: itemId,
+            userId: request.user_id,
+            teamId: request.team_id,
+            userIdForItem,
+            channel: request.channel_name,
+          });
+          res.status(500).send(e);
+          return undefined;
         });
-        res.status(500).send(`Failure occurred when trying to buy ${itemId}`);
-        return undefined;
-      });
 
-    if (!purchaseReceipt) {
-      return;
+      if (!useReceipt) {
+        return;
+      }
+
+      const purchaseReceipt: string | undefined = await storeService
+        .buyItem(itemId, request.user_id, request.team_id)
+        .catch((e) => {
+          storeLogger.error(e, {
+            item: itemId,
+            userId: request.user_id,
+            teamId: request.team_id,
+          });
+          res.status(500).send(`Failure occurred when trying to buy ${itemId}`);
+          return undefined;
+        });
+
+      if (!purchaseReceipt) {
+        return;
+      }
+
+      res.status(200).send(useReceipt);
     }
-
-    res.status(200).send(useReceipt);
-  }
+  })();
 });

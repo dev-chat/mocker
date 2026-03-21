@@ -1,5 +1,5 @@
 import { EventService } from './event.service';
-import { EventRequest } from '../shared/models/slack/slack-models';
+import type { EventRequest } from '../shared/models/slack/slack-models';
 
 type EventServiceDependencies = EventService & {
   eventPersistenceService: typeof eventPersistenceService;

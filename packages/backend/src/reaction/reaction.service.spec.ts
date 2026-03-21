@@ -1,5 +1,5 @@
 import { ReactionService } from './reaction.service';
-import { EventRequest } from '../shared/models/slack/slack-models';
+import type { EventRequest } from '../shared/models/slack/slack-models';
 
 type ReactionDependencies = ReactionService & {
   reactionPersistenceService: {

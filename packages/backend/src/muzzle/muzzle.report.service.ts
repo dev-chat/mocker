@@ -1,10 +1,9 @@
 import Table from 'easy-table';
 import moment from 'moment';
 import { getRepository, getManager } from 'typeorm';
-import { FormattedMuzzleReport } from './constants';
+import type { FormattedMuzzleReport } from './constants';
 import { Muzzle } from '../shared/db/models/Muzzle';
-import {
-  ReportType,
+import type {
   MuzzleReport,
   ReportRange,
   ReportCount,
@@ -12,7 +11,9 @@ import {
   KDR,
   Backfires,
   RawNemesis,
-  SuccessNemesis,
+  SuccessNemesis} from '../shared/models/report/report.model';
+import {
+  ReportType
 } from '../shared/models/report/report.model';
 import { ReportService } from '../shared/services/report.service';
 
@@ -70,7 +71,7 @@ ${this.getReportTitle(reportType)}
   Top Nemesis by Kills
   ${Table.print(formattedReport.successNemesis)}
 
-  Top Backfires by \%
+  Top Backfires by %
   ${Table.print(formattedReport.backfires)}
 `;
   }

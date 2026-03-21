@@ -2,9 +2,67 @@ import axios from 'axios';
 import { WebService } from '../web/web.service';
 import { USER_ID_REGEX } from './constants';
 import { SlackPersistenceService } from './slack.persistence.service';
-import { ChannelResponse, EventRequest, SlackUser } from '../../models/slack/slack-models';
-import { SlackUser as SlackUserFromDB } from '../../db/models/SlackUser';
+import type { ChannelResponse, EventRequest } from '../../models/slack/slack-models';
+import type { SlackUser as SlackUserFromDB } from '../../db/models/SlackUser';
 import { logger } from '../../logger/logger';
+
+interface ImpersonationCandidate {
+  id: string;
+  profile: {
+    display_name?: string;
+    real_name?: string;
+  };
+}
+
+interface SlackUserForStorage {
+  id: string;
+  name: string;
+  team_id?: string;
+  is_bot?: boolean;
+  profile?: {
+    bot_id: string;
+    display_name: string;
+    real_name: string;
+  };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
+
+const getOptionalString = (record: Record<string, unknown>, key: string): string | undefined => {
+  const value = record[key];
+  return typeof value === 'string' ? value : undefined;
+};
+
+const isImpersonationCandidate = (value: unknown): value is ImpersonationCandidate => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  if (!getOptionalString(value, 'id')) {
+    return false;
+  }
+
+  const profile = value.profile;
+  if (!isRecord(profile)) {
+    return false;
+  }
+
+  const displayName = profile.display_name;
+  const realName = profile.real_name;
+
+  return (
+    (typeof displayName === 'string' || typeof displayName === 'undefined') &&
+    (typeof realName === 'string' || typeof realName === 'undefined')
+  );
+};
+
+const isSlackUserForStorage = (value: unknown): value is SlackUserForStorage => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return !!getOptionalString(value, 'id') && !!getOptionalString(value, 'name');
+};
 
 export class SlackService {
   private web: WebService = new WebService();
@@ -94,7 +152,7 @@ export class SlackService {
   }
 
   public getAndSaveAllChannels(): void {
-    this.web.getAllChannels().then((result) => this.persistenceService.saveChannels(result.channels));
+    void this.web.getAllChannels().then((result) => this.persistenceService.saveChannels(result.channels));
   }
 
   public async getChannelName(channelId: string, teamId: string): Promise<string> {
@@ -102,18 +160,28 @@ export class SlackService {
     return channel?.name || '';
   }
 
-  public getImpersonatedUser(userId: string): Promise<SlackUser | undefined> {
+  public getImpersonatedUser(userId: string): Promise<ImpersonationCandidate | undefined> {
     return this.web.getAllUsers().then((resp) => {
-      const potentialImpersonator = (resp.members as SlackUser[]).find((user: SlackUser) => user.id === userId);
-      return (resp.members as SlackUser[]).find((victim: SlackUser) => {
-        const hasSameDisplayName =
-          !!victim?.profile?.display_name &&
-          victim?.profile?.display_name?.toLowerCase() === potentialImpersonator?.profile?.display_name?.toLowerCase();
-        const hasSameRealName =
-          !!victim?.profile?.real_name &&
-          victim?.profile?.real_name?.toLowerCase() === potentialImpersonator?.profile.real_name?.toLowerCase();
+      const members = (resp.members ?? []).filter(isImpersonationCandidate);
+      const potentialImpersonator = members.find((user) => user.id === userId);
+      if (!potentialImpersonator) {
+        return undefined;
+      }
 
-        return (hasSameDisplayName || hasSameRealName) && victim.id !== potentialImpersonator?.id;
+      const impersonatorDisplayName = potentialImpersonator.profile.display_name?.toLowerCase();
+      const impersonatorRealName = potentialImpersonator.profile.real_name?.toLowerCase();
+
+      return members.find((victim) => {
+        const hasSameDisplayName =
+          !!victim.profile.display_name &&
+          !!impersonatorDisplayName &&
+          victim.profile.display_name.toLowerCase() === impersonatorDisplayName;
+        const hasSameRealName =
+          !!victim.profile.real_name &&
+          !!impersonatorRealName &&
+          victim.profile.real_name.toLowerCase() === impersonatorRealName;
+
+        return (hasSameDisplayName || hasSameRealName) && victim.id !== potentialImpersonator.id;
       });
     });
   }
@@ -124,21 +192,26 @@ export class SlackService {
   public async getAllUsers(): Promise<SlackUserFromDB[]> {
     this.logger.info('Retrieving new user list...');
     const cached = await this.persistenceService.getCachedUsers();
-    if (!!cached) {
-      return cached as SlackUserFromDB[];
+    if (cached) {
+      return cached;
     }
-    return this.web
-      .getAllUsers()
-      .then((resp) => {
-        this.logger.info('New user list has been retrieved!');
-        return this.persistenceService.saveUsers(resp.members as SlackUser[]).catch((e) => e);
-      })
-      .catch((e) => {
-        this.logger.error('Failed to retrieve users', e);
-        this.logger.warn('Retrying in 60 seconds...');
-        setTimeout(() => this.getAllUsers(), 60000);
-        throw new Error('Unable to retrieve users');
-      });
+
+    let response;
+    try {
+      response = await this.web.getAllUsers();
+    } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e));
+      this.logger.error('Failed to retrieve users', e);
+      this.logger.warn('Retrying in 60 seconds...');
+      setTimeout(() => {
+        void this.getAllUsers();
+      }, 60000);
+      throw Object.assign(new Error('Unable to retrieve users'), { cause: error });
+    }
+
+    this.logger.info('New user list has been retrieved!');
+    const members = (response.members ?? []).filter(isSlackUserForStorage);
+    return this.persistenceService.saveUsers(members);
   }
 
   public getBotByBotId(botId: string, teamId: string): Promise<SlackUserFromDB | null> {

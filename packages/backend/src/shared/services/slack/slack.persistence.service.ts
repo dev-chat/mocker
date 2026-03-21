@@ -1,10 +1,21 @@
 import { getRepository } from 'typeorm';
 import { SlackChannel } from '../../../shared/db/models/SlackChannel';
-import { SlackUser as SlackUserModel } from '../../../shared/models/slack/slack-models';
+import type { SlackUser as SlackUserModel } from '../../../shared/models/slack/slack-models';
 import { SlackUser as SlackUserFromDB } from '../../../shared/db/models/SlackUser';
 import { RedisPersistenceService } from '../../../shared/services/redis.persistence.service';
-import { ConversationsListResponse } from '@slack/web-api';
+import type { ConversationsListResponse } from '@slack/web-api';
 import { logger } from '../../logger/logger';
+
+type SlackUserForStorage = Pick<SlackUserModel, 'id' | 'name'> &
+  Partial<Pick<SlackUserModel, 'team_id' | 'is_bot' | 'profile'>>;
+
+const isSlackUserFromDb = (value: unknown): value is SlackUserFromDB => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  return typeof Reflect.get(value, 'slackId') === 'string';
+};
 
 export class SlackPersistenceService {
   private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
@@ -19,7 +30,7 @@ export class SlackPersistenceService {
         return {
           channelId: channel.id,
           name: channel.name,
-          teamId: channel?.shared_team_ids?.[0],
+          teamId: channel.shared_team_ids?.[0],
         };
       });
 
@@ -32,9 +43,9 @@ export class SlackPersistenceService {
             },
           });
           if (existingChannel) {
-            getRepository(SlackChannel).update(existingChannel, channel);
+            void getRepository(SlackChannel).update(existingChannel, channel);
           } else {
-            getRepository(SlackChannel).save(channel);
+            void getRepository(SlackChannel).save(channel);
           }
         }
         this.logger.info('Updated channel list');
@@ -45,21 +56,28 @@ export class SlackPersistenceService {
   }
 
   getCachedUsers(): Promise<SlackUserFromDB[] | null> {
-    return this.redis
-      .getValue(this.getRedisKeyName())
-      .then((users: string | null) => (users ? (JSON.parse(users) as SlackUserFromDB[]) : null));
+    return this.redis.getValue(this.getRedisKeyName()).then((users: string | null) => {
+      if (!users) {
+        return null;
+      }
+
+      const parsed: unknown = JSON.parse(users);
+      return Array.isArray(parsed) ? parsed.filter(isSlackUserFromDb) : null;
+    });
   }
 
   // This sucks because TypeORM sucks. Time to consider removing this ORM.
-  async saveUsers(users: SlackUserModel[]): Promise<SlackUserFromDB[]> {
+  async saveUsers(users: SlackUserForStorage[]): Promise<SlackUserFromDB[]> {
     const dbUsers: SlackUserFromDB[] = users.map((user) => {
-      return {
+      const dbUser: SlackUserFromDB = {
         slackId: user.id,
         name: user.profile.display_name || user.name,
-        teamId: user.team_id,
-        botId: user?.profile?.bot_id ? user.profile.bot_id : '',
+        teamId: user.team_id || '',
+        botId: user.profile.bot_id || '',
         isBot: !!user.is_bot,
-      } as SlackUserFromDB;
+      };
+
+      return dbUser;
     });
 
     try {

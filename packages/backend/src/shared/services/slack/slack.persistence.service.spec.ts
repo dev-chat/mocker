@@ -2,7 +2,7 @@ import { getRepository } from 'typeorm';
 import { SlackPersistenceService } from './slack.persistence.service';
 import { SlackChannel } from '../../../shared/db/models/SlackChannel';
 import { SlackUser } from '../../../shared/db/models/SlackUser';
-import {
+import type {
   SlackChannel as SlackChannelResponse,
   SlackUser as SlackUserResponse,
 } from '../../../shared/models/slack/slack-models';

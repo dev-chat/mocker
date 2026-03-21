@@ -1,12 +1,12 @@
 import { getRepository } from 'typeorm';
 
-import { TotalRep } from './reaction.interface';
+import type { TotalRep } from './reaction.interface';
 import { Purchase } from '../shared/db/models/Purchase';
 import { Reaction } from '../shared/db/models/Reaction';
 import { Rep } from '../shared/db/models/Rep';
 import { SlackUser } from '../shared/db/models/SlackUser';
-import { ReactionByUser } from '../shared/models/reaction/ReactionByUser.model';
-import { Event } from '../shared/models/slack/slack-models';
+import type { ReactionByUser } from '../shared/models/reaction/ReactionByUser.model';
+import type { Event } from '../shared/models/slack/slack-models';
 import { PortfolioTransactions } from '../shared/db/models/PortfolioTransaction';
 import { logger } from '../shared/logger/logger';
 

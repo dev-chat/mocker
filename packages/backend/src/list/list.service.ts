@@ -1,9 +1,9 @@
 import Table from 'easy-table';
 import { ReportService } from '../shared/services/report.service';
 import { getManager } from 'typeorm';
-import { ListUser } from './ListUser.model';
+import type { ListUser } from './ListUser.model';
 import { WebService } from '../shared/services/web/web.service';
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ListPersistenceService } from './list.persistence.service';
 import { logger } from '../shared/logger/logger';
 
@@ -32,7 +32,7 @@ ${Table.print(reportWithoutDate)}
   }
 
   list(request: SlashCommandRequest): void {
-    this.listPersistenceService.store(request.user_id, request.text, request.team_id, request.channel_id);
+    void this.listPersistenceService.store(request.user_id, request.text, request.team_id, request.channel_id);
     const response = {
       response_type: 'in_channel',
       text: `\`${request.text}\` has been \`listed\``,

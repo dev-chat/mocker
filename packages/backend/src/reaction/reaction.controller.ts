@@ -1,5 +1,6 @@
-import express, { Router } from 'express';
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { Router } from 'express';
+import express from 'express';
+import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ReactionReportService } from './reaction.report.service';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 
@@ -8,8 +9,10 @@ reactionController.use(suppressedMiddleware);
 
 const reportService = new ReactionReportService();
 
-reactionController.post('/get', async (req, res) => {
+reactionController.post('/get', (req, res) => {
   const request: SlashCommandRequest = req.body;
-  const repValue = await reportService.getRep(request.user_id, request.team_id);
-  res.send(repValue);
+  reportService
+    .getRep(request.user_id, request.team_id)
+    .then((repValue) => res.send(repValue))
+    .catch((e) => res.status(500).send(e));
 });

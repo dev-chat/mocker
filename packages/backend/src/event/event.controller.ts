@@ -1,5 +1,6 @@
-import express, { Request, Response, Router } from 'express';
-import { EventRequest } from '../shared/models/slack/slack-models';
+import type { Request, Response, Router } from 'express';
+import express from 'express';
+import type { EventRequest } from '../shared/models/slack/slack-models';
 import { EventService } from './event.service';
 import { logger } from '../shared/logger/logger';
 

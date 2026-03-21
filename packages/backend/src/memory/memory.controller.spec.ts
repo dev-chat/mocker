@@ -23,7 +23,7 @@ jest.mock('../shared/logger/logger', () => ({
 }));
 
 import http from 'http';
-import { AddressInfo } from 'net';
+import type { AddressInfo } from 'net';
 import express from 'express';
 import { memoryController } from './memory.controller';
 

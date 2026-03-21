@@ -1,8 +1,10 @@
-import { getRepository, InsertResult } from 'typeorm';
+import type { InsertResult } from 'typeorm';
+import { getRepository } from 'typeorm';
 import { Activity } from '../shared/db/models/Activity';
 import { SlackUser } from '../shared/db/models/SlackUser';
-import { EventRequest } from '../shared/models/slack/slack-models';
-import Sentiment, { AnalysisOptions, AnalysisResult } from 'sentiment';
+import type { EventRequest } from '../shared/models/slack/slack-models';
+import type { AnalysisOptions, AnalysisResult } from 'sentiment';
+import Sentiment from 'sentiment';
 import { Sentiment as SentimentDB } from '../shared/db/models/Sentiment';
 
 export class EventPersistenceService {
@@ -16,21 +18,24 @@ export class EventPersistenceService {
 
     const user: SlackUser | null = await getRepository(SlackUser).findOne({
       where: {
-        slackId: request?.event?.user,
-        teamId: request?.team_id,
+        slackId: request.event.user,
+        teamId: request.team_id,
       },
     });
+    if (!user) {
+      return;
+    }
     const activity = new Activity();
     activity.channel = request.event.channel || request.event.item.channel;
     activity.channelType = request.event.channel_type;
     activity.teamId = request.team_id;
-    activity.userId = user as SlackUser;
+    activity.userId = user;
     activity.eventType = request.event.type;
-    getRepository(Activity).insert(activity);
+    void getRepository(Activity).insert(activity);
   }
 
   public performSentimentAnalysis(userId: string, teamId: string, channelId: string, text: string): void {
-    this.analyzeSentimentAndStore(userId, teamId, channelId, text);
+    void this.analyzeSentimentAndStore(userId, teamId, channelId, text);
   }
 
   private async analyzeSentimentAndStore(

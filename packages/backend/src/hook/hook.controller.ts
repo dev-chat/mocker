@@ -1,11 +1,12 @@
-import express, { Router } from 'express';
+import type { Router } from 'express';
+import express from 'express';
 import { WebService } from '../shared/services/web/web.service';
 
 export const hookController: Router = express.Router();
 const webService = new WebService();
 const hookLogger = webService.logger.child({ module: 'HookController' });
 
-hookController.post('/', async (req, res) => {
+hookController.post('/', (req, res) => {
   const { message } = req.body;
   if (!message?.length) {
     hookLogger.info(`Invalid request: missing message.`);

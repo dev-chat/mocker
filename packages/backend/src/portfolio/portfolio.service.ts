@@ -1,13 +1,9 @@
 import Decimal from 'decimal.js';
-import { QuoteResponse } from '../quote/quote.models';
+import type { QuoteResponse } from '../quote/quote.models';
 import { QuoteService } from '../quote/quote.service';
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
-import {
-  PortfolioPersistenceService,
-  PortfolioSummary,
-  PortfolioSummaryItem,
-  TransactionType,
-} from './portfolio.persistence.service';
+import type { PortfolioSummary, PortfolioSummaryItem } from './portfolio.persistence.service';
+import { PortfolioPersistenceService, TransactionType } from './portfolio.persistence.service';
 import { logger } from '../shared/logger/logger';
 
 export enum MessageHandlerEnum {
@@ -41,7 +37,7 @@ export class PortfolioService {
   public getQuotesWithTicker(portfolioSummaryItem: PortfolioSummaryItem[]): Promise<QuoteWithTicker[]> {
     return Promise.all(
       portfolioSummaryItem.map((item) =>
-        this.quoteService.getQuote(item.symbol).then((quote) => ({ ...quote, ticker: item.symbol }) as QuoteWithTicker),
+        this.quoteService.getQuote(item.symbol).then<QuoteWithTicker>((quote) => ({ ...quote, ticker: item.symbol })),
       ),
     );
   }
@@ -50,7 +46,7 @@ export class PortfolioService {
     return this.portfolioPersistenceService.getPortfolioSummary(userId, teamId).then((summary) => {
       return this.getQuotesWithTicker(summary.summary).then((quotes) => {
         const summaryWithQuotes: PortfolioSummaryWithQuotesItem[] = summary.summary.map((item) => {
-          const price = quotes.find((q) => q && q.ticker === item.symbol)?.c || 0;
+          const price = quotes.find((q) => q.ticker === item.symbol)?.c || 0;
           this.logger.info(`Quote for ${item.symbol}: ${price}`);
           this.logger.info(JSON.stringify({ ...item, currentPrice: new Decimal(price) }));
           return {
@@ -126,7 +122,7 @@ export class PortfolioService {
     teamId: string,
     stockSymbol: string,
     quantity: number,
-    action: TransactionType,
+    action: TransactionType | string,
   ): Promise<MessageHandler> {
     if (typeof stockSymbol !== 'string') {
       return {
@@ -176,20 +172,29 @@ export class PortfolioService {
       };
     }
 
-    if (action === TransactionType.BUY) {
-      const { totalRepAvailable } = await this.repPersistenceService.getTotalRep(userId, teamId);
-      const totalCost = price * quantity;
-      if (totalRepAvailable < totalCost) {
-        return {
-          message: `Insufficient rep to complete purchase of \`${quantity}\` shares of \`${stockSymbol}\`. You only have \`${totalRepAvailable}\` rep available.`,
-          classification: MessageHandlerEnum.PRIVATE,
-        };
-      } else if (!price) {
-        return {
-          message: `Unable to retrieve price for \`${stockSymbol}\`. Transaction aborted.`,
-          classification: MessageHandlerEnum.PRIVATE,
-        };
-      } else {
+    if (action !== TransactionType.BUY && action !== TransactionType.SELL) {
+      return {
+        message: `Invalid transaction type: ${action}. Transaction aborted.`,
+        classification: MessageHandlerEnum.PRIVATE,
+      };
+    }
+
+    switch (action) {
+      case TransactionType.BUY: {
+        const { totalRepAvailable } = await this.repPersistenceService.getTotalRep(userId, teamId);
+        const totalCost = price * quantity;
+        if (totalRepAvailable < totalCost) {
+          return {
+            message: `Insufficient rep to complete purchase of \`${quantity}\` shares of \`${stockSymbol}\`. You only have \`${totalRepAvailable}\` rep available.`,
+            classification: MessageHandlerEnum.PRIVATE,
+          };
+        } else if (!price) {
+          return {
+            message: `Unable to retrieve price for \`${stockSymbol}\`. Transaction aborted.`,
+            classification: MessageHandlerEnum.PRIVATE,
+          };
+        }
+
         return this.portfolioPersistenceService
           .transact(userId, teamId, action, stockSymbol, quantity, price)
           .then(() => {
@@ -205,45 +210,42 @@ export class PortfolioService {
             };
           });
       }
-    } else if (action === TransactionType.SELL) {
-      const portfolio = await this.portfolioPersistenceService.getPortfolioSummary(userId, teamId);
+      case TransactionType.SELL: {
+        const portfolio = await this.portfolioPersistenceService.getPortfolioSummary(userId, teamId);
 
-      let ownedShares = new Decimal(0);
-      let totalCost = new Decimal(0);
+        let ownedShares = new Decimal(0);
+        let totalCost = new Decimal(0);
 
-      if (portfolio.transactions && portfolio.transactions.length > 0) {
-        const txs = portfolio.transactions.filter((tx) => tx.assetSymbol === stockSymbol);
+        if (portfolio.transactions.length > 0) {
+          const txs = portfolio.transactions.filter((tx) => tx.assetSymbol === stockSymbol);
 
-        ownedShares = txs.reduce((total, tx) => {
-          if (tx.type === TransactionType.BUY) {
-            return total.plus(new Decimal(tx.quantity));
-          } else if (tx.type === TransactionType.SELL) {
+          ownedShares = txs.reduce((total, tx) => {
+            if (tx.type === TransactionType.BUY) {
+              return total.plus(new Decimal(tx.quantity));
+            }
             return total.minus(new Decimal(tx.quantity));
-          }
-          return total;
-        }, new Decimal(0));
+          }, new Decimal(0));
 
-        totalCost = txs.reduce((acc, tx) => {
-          if (tx.type === TransactionType.BUY) {
-            return acc.plus(new Decimal(tx.quantity).mul(tx.price));
-          } else if (tx.type === TransactionType.SELL) {
+          totalCost = txs.reduce((acc, tx) => {
+            if (tx.type === TransactionType.BUY) {
+              return acc.plus(new Decimal(tx.quantity).mul(tx.price));
+            }
             return acc.minus(new Decimal(tx.quantity).mul(tx.price));
-          }
-          return acc;
-        }, new Decimal(0));
-      }
+          }, new Decimal(0));
+        }
 
-      if (ownedShares.lt(new Decimal(quantity))) {
-        return {
-          message: `Insufficient shares to complete sale of \`${quantity}\` shares of \`${stockSymbol}\`. You only own \`${ownedShares}\` shares.`,
-          classification: MessageHandlerEnum.PRIVATE,
-        };
-      } else if (!price) {
-        return {
-          message: `Unable to retrieve price for \`${stockSymbol}\`. Transaction aborted.`,
-          classification: MessageHandlerEnum.PRIVATE,
-        };
-      } else {
+        if (ownedShares.lt(new Decimal(quantity))) {
+          return {
+            message: `Insufficient shares to complete sale of \`${quantity}\` shares of \`${stockSymbol}\`. You only own \`${ownedShares}\` shares.`,
+            classification: MessageHandlerEnum.PRIVATE,
+          };
+        } else if (!price) {
+          return {
+            message: `Unable to retrieve price for \`${stockSymbol}\`. Transaction aborted.`,
+            classification: MessageHandlerEnum.PRIVATE,
+          };
+        }
+
         return this.portfolioPersistenceService
           .transact(userId, teamId, action, stockSymbol, quantity, price)
           .then(() => {
@@ -271,11 +273,6 @@ export class PortfolioService {
             };
           });
       }
-    } else {
-      return {
-        message: `Invalid transaction type: ${action}. Transaction aborted.`,
-        classification: MessageHandlerEnum.PRIVATE,
-      };
     }
   }
 }
