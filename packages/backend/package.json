@@ -42,7 +42,7 @@
     "@types/jest": "^24.0.15",
     "@types/jest-when": "^2.7.0",
     "@types/lolex": "^3.1.1",
-    "@types/node": "^12.12.56",
+    "@types/node": "^20.19.37",
     "@types/sentiment": "^5.0.1",
     "@types/uuid": "^9.0.6",
     "dotenv": "^16.3.1",

@@ -1,9 +1,11 @@
 import { UpdateResult } from 'typeorm';
 import { SuppressorService } from './suppressor.service';
 import { EventRequest } from '../models/slack/slack-models';
-import { MuzzlePersistenceService } from '../../services/muzzle/muzzle.persistence.service';
-import { MAX_WORD_LENGTH } from '../../services/muzzle/constants';
-import { SlackService } from '../../services/slack/slack.service';
+import { MAX_WORD_LENGTH } from '../../muzzle/constants';
+import { MuzzlePersistenceService } from '../../muzzle/muzzle.persistence.service';
+import { SlackService } from './slack/slack.service';
+
+jest.mock('./slack/slack.service');
 
 describe('SuppressorService', () => {
   let suppressorService: SuppressorService;

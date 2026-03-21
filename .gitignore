@@ -9,3 +9,6 @@ packages/backend/src/ormconfig.ts
 
 # Legacy
 history-upload-job/data
+
+# macOS
+.DS_Store

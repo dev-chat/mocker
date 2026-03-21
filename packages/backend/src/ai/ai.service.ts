@@ -7,7 +7,6 @@ import { EventRequest, SlashCommandRequest } from '../shared/models/slack/slack-
 import { AIPersistenceService } from './ai.persistence';
 import { KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
-import { getChunks } from '../shared/util/getChunks';
 import {
   CORPO_SPEAK_INSTRUCTIONS,
   GENERAL_TEXT_INSTRUCTIONS,
@@ -21,14 +20,21 @@ import {
   MEMORY_USAGE_INSTRUCTION,
   MEMORY_SELECTION_PROMPT,
   MEMORY_EXTRACTION_PROMPT,
+  GPT_MODEL,
 } from './ai.constants';
 import { MemoryPersistenceService } from './memory/memory.persistence.service';
 import { MemoryWithSlackId } from '../shared/db/models/Memory';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
-import { OpenAIService } from './openai/openai.service';
-import { GeminiService } from './gemini/gemini.service';
+import OpenAI from 'openai';
+import {
+  ResponseOutputMessage,
+  ResponseOutputItem,
+  ResponseOutputText,
+  ResponseOutputRefusal,
+} from 'openai/resources/responses/responses';
+import { GoogleGenAI } from '@google/genai';
 
 interface ExtractionResult {
   slackId: string;
@@ -37,10 +43,24 @@ interface ExtractionResult {
   existingMemoryId: number | null;
 }
 
+const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): string | undefined => {
+  const textBlock: ResponseOutputMessage | undefined = response.output.find(
+    (block: ResponseOutputItem) => block.type === 'message',
+  ) as ResponseOutputMessage;
+  const outputText = (
+    textBlock?.content?.find(
+      (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
+    ) as ResponseOutputText
+  )?.text;
+  return outputText?.trim();
+};
+
 export class AIService {
   redis = new AIPersistenceService();
-  openAiService = new OpenAIService();
-  geminiService = new GeminiService();
+  openAi = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  gemini = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY });
 
   muzzlePersistenceService = new MuzzlePersistenceService();
   historyService = new HistoryPersistenceService();
@@ -69,13 +89,21 @@ export class AIService {
     const memoryContext = await this.fetchMemoryContext([userId], teamId, `User prompt: ${text}`, []);
     const instructions = this.appendMemoryContext(GENERAL_TEXT_INSTRUCTIONS, memoryContext);
 
-    return this.openAiService
-      .generateText(text, userId, instructions)
+    return this.openAi.responses
+      .create({
+        model: GPT_MODEL,
+        tools: [{ type: 'web_search_preview' }],
+        instructions,
+        input: text,
+        user: `${userId}-DaBros2016`,
+      })
+      .then((x) => {
+        return extractAndParseOpenAiResponse(x);
+      })
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
         if (result) {
-          const formatted = this.openAiService.markdownToSlackMrkdwn(result);
-          this.sendGptText(formatted, userId, teamId, channelId, text);
+          this.sendGptText(result, userId, teamId, channelId, text);
         } else {
           this.aiServiceLogger.warn(`No result returned for prompt: ${text}`);
           throw new Error(`No result returned for prompt: ${text}`);
@@ -106,20 +134,45 @@ export class AIService {
   }
 
   public async redeployMoonbeam(): Promise<void> {
-    const aiQuote = this.openAiService.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').then((result) => {
-      return this.openAiService.markdownToSlackMrkdwn(result) || result;
-    }).catch((e) => {
-      this.aiServiceLogger.error(e);
-    });
+    const aiQuote = this.openAi.responses
+      .create({
+        model: GPT_MODEL,
+        input: REDPLOY_MOONBEAM_TEXT_PROMPT,
+        user: 'Moonbeam',
+      })
+      .then((x) => extractAndParseOpenAiResponse(x));
 
-    const aiImage = this.geminiService.generateImage(REDPLOY_MOONBEAM_IMAGE_PROMPT).then(async (x) => {
-      if (x) {
-        return this.writeToDiskAndReturnUrl(x);
-      } else {
-        this.aiServiceLogger.error(`No b64_json was returned for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
-        throw new Error(`No b64_json was returned for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
-      }
-    });
+    const aiImage = this.gemini.models
+      .generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: REDPLOY_MOONBEAM_IMAGE_PROMPT,
+        config: {
+          candidateCount: 1,
+          responseModalities: ['IMAGE'],
+          imageConfig: {
+            aspectRatio: '16:9',
+            imageSize: '1K',
+          },
+        },
+      })
+      .then((response) => {
+        let imageBytes = Buffer.from([]);
+        response.candidates?.[0].content?.parts?.forEach((part) => {
+          if (part?.inlineData?.data) {
+            imageBytes = Buffer.concat([imageBytes, Buffer.from(part?.inlineData?.data, 'base64')]);
+          }
+        });
+
+        return imageBytes.toString('base64');
+      })
+      .then(async (x) => {
+        if (x) {
+          return this.writeToDiskAndReturnUrl(x);
+        } else {
+          this.aiServiceLogger.error(`No b64_json was returned for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
+          throw new Error(`No b64_json was returned for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
+        }
+      });
 
     return Promise.all([aiImage, aiQuote])
       .then((results) => {
@@ -137,13 +190,7 @@ export class AIService {
               text: 'Moonbeam has been deployed.',
             },
           },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `"${quote}"`,
-            },
-          },
+          { type: 'markdown', text: quote ? `"${quote}"` : '' },
         ];
         this.webService.sendMessage('#muzzlefeedback', 'Moonbeam has been deployed.', blocks);
       })
@@ -155,8 +202,29 @@ export class AIService {
   public async generateImage(userId: string, teamId: string, channel: string, text: string): Promise<void> {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
-    return this.geminiService
-      .generateImage(text)
+    return this.gemini.models
+      .generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: text,
+        config: {
+          candidateCount: 1,
+          responseModalities: ['IMAGE'],
+          imageConfig: {
+            aspectRatio: '16:9',
+            imageSize: '1K',
+          },
+        },
+      })
+      .then((response) => {
+        let imageBytes = Buffer.from([]);
+        response.candidates?.[0].content?.parts?.forEach((part) => {
+          if (part?.inlineData?.data) {
+            imageBytes = Buffer.concat([imageBytes, Buffer.from(part?.inlineData?.data, 'base64')]);
+          }
+        });
+
+        return imageBytes.toString('base64');
+      })
       .then(async (x) => {
         await this.redis.removeInflight(userId, teamId);
 
@@ -179,12 +247,15 @@ export class AIService {
   }
 
   public generateCorpoSpeak(text: string): Promise<string | undefined> {
-    return this.openAiService.generateText(text, 'Moonbeam', CORPO_SPEAK_INSTRUCTIONS).then((result) => {
-      return this.openAiService.markdownToSlackMrkdwn(result) || result;
-    }).catch(async (e) => {
-      this.aiServiceLogger.error(e);
-      throw e;
-    });
+    return this.openAi.responses
+      .create({ model: GPT_MODEL, input: text, user: 'Moonbeam', instructions: CORPO_SPEAK_INSTRUCTIONS })
+      .then((x) => {
+        return extractAndParseOpenAiResponse(x);
+      })
+      .catch(async (e) => {
+        this.aiServiceLogger.error(e);
+        throw e;
+      });
   }
 
   public formatHistory(history: MessageWithName[]): string {
@@ -217,15 +288,21 @@ export class AIService {
     // Fetch and select relevant memories
     const memoryContext = await this.fetchMemoryContext(
       this.extractParticipantSlackIds(history, { includeSlackId: user_id }),
-      team_id, `${formattedHistory}\n\nUser prompt: ${prompt}`, history,
+      team_id,
+      `${formattedHistory}\n\nUser prompt: ${prompt}`,
+      history,
     );
-    const systemInstructions = this.appendMemoryContext(
-      getHistoryInstructions(formattedHistory),
-      memoryContext,
-    );
+    const systemInstructions = this.appendMemoryContext(getHistoryInstructions(formattedHistory), memoryContext);
 
-    return this.openAiService
-      .generateText(prompt, user_id, systemInstructions)
+    return this.openAi.responses
+      .create({
+        model: GPT_MODEL,
+        tools: [{ type: 'web_search_preview' }],
+        instructions: systemInstructions,
+        input: prompt,
+        user: `${user_id}-DaBros2016`,
+      })
+      .then((x) => extractAndParseOpenAiResponse(x))
       .then(async (result) => {
         await this.redis.removeInflight(user_id, team_id);
         if (!result) {
@@ -233,22 +310,9 @@ export class AIService {
           return;
         }
 
-        const formatted = this.openAiService.markdownToSlackMrkdwn(result) || result;
         const blocks: KnownBlock[] = [];
 
-        const chunks = getChunks(formatted);
-
-        if (chunks) {
-          chunks.forEach((chunk) => {
-            blocks.push({
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: `${chunk}`,
-              },
-            });
-          });
-        }
+        blocks.push({ type: 'markdown', text: result });
 
         blocks.push({
           type: 'divider',
@@ -293,21 +357,27 @@ export class AIService {
     const history = this.formatHistory(historyMessages);
 
     // Fetch and select relevant memories
-    const participantSlackIds = this.extractParticipantSlackIds(historyMessages, { excludeSlackIds: [MOONBEAM_SLACK_ID] });
-    const memoryContext = await this.fetchMemoryContext(
-      participantSlackIds, teamId, history, historyMessages,
-    );
+    const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
+      excludeSlackIds: [MOONBEAM_SLACK_ID],
+    });
+    const memoryContext = await this.fetchMemoryContext(participantSlackIds, teamId, history, historyMessages);
     const systemInstructions = this.appendMemoryContext(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryContext);
 
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
-    return this.openAiService
-      .generateText(input, 'Moonbeam', systemInstructions)
+    return this.openAi.responses
+      .create({
+        model: GPT_MODEL,
+        tools: [{ type: 'web_search_preview' }],
+        instructions: systemInstructions,
+        input,
+        user: `participation-${channelId}-${teamId}-DaBros2016`,
+      })
+      .then((x) => extractAndParseOpenAiResponse(x))
       .then((result) => {
         if (result) {
-          const formatted = this.openAiService.markdownToSlackMrkdwn(result) || result;
           this.webService
-            .sendMessage(channelId, formatted)
+            .sendMessage(channelId, result, [{ type: 'markdown', text: result }])
             .then(() => this.redis.setHasParticipated(teamId, channelId))
             .catch((e) => this.aiServiceLogger.error('Error sending AI Participation message:', e));
 
@@ -339,12 +409,19 @@ export class AIService {
       })
       .join('\n\n');
 
-    const prompt = MEMORY_SELECTION_PROMPT
-      .replace('{conversation}', conversation)
-      .replace('{all_memories_grouped_by_user}', formattedMemories);
+    const prompt = MEMORY_SELECTION_PROMPT.replace('{conversation}', conversation).replace(
+      '{all_memories_grouped_by_user}',
+      formattedMemories,
+    );
 
     try {
-      const raw = await this.openAiService.generateText(prompt, 'selection', undefined, GATE_MODEL);
+      const raw = await this.openAi.responses
+        .create({
+          model: GATE_MODEL,
+          instructions: prompt,
+          input: prompt,
+        })
+        .then((x) => extractAndParseOpenAiResponse(x));
 
       if (!raw) return [];
 
@@ -352,7 +429,9 @@ export class AIService {
       if (!Array.isArray(parsed)) return [];
       const selectedIds = parsed.map(Number).filter((n) => !isNaN(n));
 
-      return Array.from(memoriesMap.values()).flat().filter((m) => selectedIds.includes(m.id));
+      return Array.from(memoriesMap.values())
+        .flat()
+        .filter((m) => selectedIds.includes(m.id));
     } catch (e) {
       this.aiServiceLogger.warn('Memory selection failed, proceeding without memories:', e);
       return [];
@@ -391,11 +470,7 @@ export class AIService {
   ): string[] {
     const excludeSet = new Set(options?.excludeSlackIds || []);
     const ids = [
-      ...new Set(
-        history
-          .filter((msg) => msg.slackId && !excludeSet.has(msg.slackId!))
-          .map((msg) => msg.slackId!),
-      ),
+      ...new Set(history.filter((msg) => msg.slackId && !excludeSet.has(msg.slackId!)).map((msg) => msg.slackId!)),
     ];
     if (options?.includeSlackId && !ids.includes(options.includeSlackId)) {
       ids.push(options.includeSlackId);
@@ -440,19 +515,26 @@ export class AIService {
         teamId,
       );
 
-      const existingMemoriesText = existingMemoriesMap.size > 0
-        ? Array.from(existingMemoriesMap.entries())
-            .map(([slackId, memories]) => {
-              const lines = memories.map((m) => `  [ID:${m.id}] "${m.content}"`).join('\n');
-              return `${slackId}:\n${lines}`;
-            })
-            .join('\n\n')
-        : '(no existing memories)';
+      const existingMemoriesText =
+        existingMemoriesMap.size > 0
+          ? Array.from(existingMemoriesMap.entries())
+              .map(([slackId, memories]) => {
+                const lines = memories.map((m) => `  [ID:${m.id}] "${m.content}"`).join('\n');
+                return `${slackId}:\n${lines}`;
+              })
+              .join('\n\n')
+          : '(no existing memories)';
 
       const extractionInput = `${conversationHistory}\n\nMoonbeam: ${moonbeamResponse}`;
       const prompt = MEMORY_EXTRACTION_PROMPT.replace('{existing_memories}', existingMemoriesText);
 
-      const result = await this.openAiService.generateText(extractionInput, 'extraction', prompt, GATE_MODEL);
+      const result = await this.openAi.responses
+        .create({
+          model: GATE_MODEL,
+          instructions: prompt,
+          input: extractionInput,
+        })
+        .then((x) => extractAndParseOpenAiResponse(x));
 
       if (!result) {
         this.aiServiceLogger.warn('Extraction returned no result');
@@ -507,9 +589,7 @@ export class AIService {
         }
       }
 
-      this.aiServiceLogger.info(
-        `Extraction complete for ${channelId}: ${extractions.length} observations processed`,
-      );
+      this.aiServiceLogger.info(`Extraction complete for ${channelId}: ${extractions.length} observations processed`);
     } catch (e) {
       this.aiServiceLogger.warn('Memory extraction failed:', e);
     }
@@ -548,19 +628,7 @@ export class AIService {
     if (text) {
       const blocks: KnownBlock[] = [];
 
-      const chunks = getChunks(text);
-
-      if (chunks) {
-        chunks.forEach((chunk) => {
-          blocks.push({
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `${chunk}`,
-            },
-          });
-        });
-      }
+      blocks.push({ type: 'markdown', text });
 
       blocks.push({
         type: 'divider',
