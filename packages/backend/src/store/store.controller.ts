@@ -82,7 +82,7 @@ storeController.post('/use', (req, res) => {
             userIdForItem,
             channel: request.channel_name,
           });
-          res.status(500).send(e);
+          res.status(500).send(e instanceof Error ? e.message : String(e));
           return undefined;
         });
 
