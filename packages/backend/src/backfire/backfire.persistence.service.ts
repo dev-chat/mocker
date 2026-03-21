@@ -1,4 +1,4 @@
-import type { UpdateResult} from 'typeorm';
+import type { UpdateResult } from 'typeorm';
 import { getRepository } from 'typeorm';
 import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 import { Backfire } from '../shared/db/models/Backfire';

@@ -49,7 +49,13 @@ function postMemory(body: Record<string, string>): Promise<number> {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
     const req = http.request(
-      { hostname: '127.0.0.1', port, path: '/memory', method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } },
+      {
+        hostname: '127.0.0.1',
+        port,
+        path: '/memory',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
+      },
       (res) => {
         res.resume();
         resolve(res.statusCode!);
@@ -81,16 +87,8 @@ describe('MemoryController', () => {
     await new Promise((r) => setTimeout(r, 100));
 
     expect(mockGetAllMemoriesForUser).toHaveBeenCalledWith('U001', 'T001');
-    expect(mockSendEphemeral).toHaveBeenCalledWith(
-      'C001',
-      expect.stringContaining('loves TypeScript'),
-      'U001',
-    );
-    expect(mockSendEphemeral).toHaveBeenCalledWith(
-      'C001',
-      expect.stringContaining('works at Acme'),
-      'U001',
-    );
+    expect(mockSendEphemeral).toHaveBeenCalledWith('C001', expect.stringContaining('loves TypeScript'), 'U001');
+    expect(mockSendEphemeral).toHaveBeenCalledWith('C001', expect.stringContaining('works at Acme'), 'U001');
   });
 
   it('should send "no memories" ephemeral when user has none', async () => {
@@ -100,11 +98,7 @@ describe('MemoryController', () => {
     await new Promise((r) => setTimeout(r, 100));
 
     expect(status).toBe(200);
-    expect(mockSendEphemeral).toHaveBeenCalledWith(
-      'C001',
-      "Moonbeam doesn't remember anything about you yet.",
-      'U002',
-    );
+    expect(mockSendEphemeral).toHaveBeenCalledWith('C001', "Moonbeam doesn't remember anything about you yet.", 'U002');
   });
 
   it('should send error ephemeral when persistence throws', async () => {

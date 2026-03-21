@@ -18,12 +18,7 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
   const timestamp = req.headers['x-slack-request-timestamp'];
   const slackSignature = req.headers['x-slack-signature'];
   const base = 'v0:' + timestamp + ':' + body;
-  const hashed: string =
-    'v0=' +
-    crypto
-      .createHmac('sha256', signingSecret)
-      .update(base)
-      .digest('hex');
+  const hashed: string = 'v0=' + crypto.createHmac('sha256', signingSecret).update(base).digest('hex');
 
   if (
     hashed === slackSignature ||
