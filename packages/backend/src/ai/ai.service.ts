@@ -25,10 +25,6 @@ import {
 import { MemoryPersistenceService } from './memory/memory.persistence.service';
 import { MemoryWithSlackId } from '../shared/db/models/Memory';
 import { logger } from '../shared/logger/logger';
-import {
-  ResponseOutputMessage,
-  ResponseOutputText,
-} from 'openai/resources/responses/responses';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { OpenAIService } from './openai/openai.service';
@@ -348,18 +344,7 @@ export class AIService {
       .replace('{all_memories_grouped_by_user}', formattedMemories);
 
     try {
-      const response = await this.openAiService.openai.responses.create({
-        model: GATE_MODEL,
-        input: prompt,
-      });
-
-      const textBlock = response.output.find(
-        (block): block is ResponseOutputMessage => block.type === 'message',
-      );
-      const outputText = textBlock?.content?.find(
-        (block): block is ResponseOutputText => block.type === 'output_text',
-      );
-      const raw = outputText?.text?.trim();
+      const raw = await this.openAiService.generateText(prompt, 'selection', undefined, GATE_MODEL);
 
       if (!raw) return [];
 
@@ -467,10 +452,10 @@ export class AIService {
       const extractionInput = `${conversationHistory}\n\nMoonbeam: ${moonbeamResponse}`;
       const prompt = MEMORY_EXTRACTION_PROMPT.replace('{existing_memories}', existingMemoriesText);
 
-      const result = await this.openAiService.generateText(extractionInput, 'extraction', prompt);
+      const result = await this.openAiService.generateText(extractionInput, 'extraction', prompt, GATE_MODEL);
 
       if (!result) {
-        this.aiServiceLogger.warn('Extraction returned no result from generateText');
+        this.aiServiceLogger.warn('Extraction returned no result');
         return;
       }
 

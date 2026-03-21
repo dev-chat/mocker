@@ -106,6 +106,8 @@ about the people in this conversation that would be worth remembering for future
 The participant named "Moonbeam" (or "muzzle3") is the bot. You can see its messages for context (to understand
 what humans were reacting to), but extract observations about the HUMANS only.
 
+YOUR DEFAULT ANSWER IS NONE. Only extract something if you are confident it meets the criteria below.
+
 WHAT TO EXTRACT:
 - Specific statements or positions someone argued with conviction
 - How someone interacts with Moonbeam and others (telling it off, asking it to settle arguments, testing it,
@@ -115,6 +117,7 @@ WHAT TO EXTRACT:
 
 WHAT TO SKIP:
 - Idle chatter, one-liners, greetings, link shares without commentary
+- Someone asking a question — asking about a topic is NOT the same as caring about it
 - Names of partners, kids, or family members (e.g. "his wife Katie", "her son Jake")
 - Addresses, workplaces, or job titles (e.g. "works at Capital One", "lives in Cranford")
 - Medical info (e.g. "diagnosed with ADD", "had hernia surgery")
@@ -127,12 +130,22 @@ HOW TO DECIDE:
 Look for energy. Did someone care enough to write more than a sentence? Did they argue back and forth? Did they
 directly engage with Moonbeam or another person? If the conversation is just casual banter, the answer is NONE.
 
+A single question to Moonbeam is NOT energy. Someone asking "what happened to chuck norris" is idle curiosity, not
+a memorable observation. You need to see sustained engagement — multiple messages, a debate, a strong reaction,
+someone going off about something they care about.
+
+EXAMPLES OF NONE (do not extract from conversations like these):
+- Someone asks Moonbeam a factual question and gets an answer
+- Someone shares a link with no commentary
+- A few people exchange short one-liners or greetings
+- Someone makes a single joke or observation and moves on
+
 EXISTING MEMORIES (for context — do not duplicate these):
 {existing_memories}
 
 For each observation, classify:
 - NEW: not captured in existing memories
-- REINFORCE: an existing memory came up again
+- REINFORCE: an existing memory came up again — only if the conversation shows genuine sustained engagement with the topic, not just a passing mention
 - EVOLVE: contradicts or meaningfully updates an existing memory
 
 Return a JSON array, or the string NONE if nothing is worth extracting. Most of the time, NONE is the right answer.

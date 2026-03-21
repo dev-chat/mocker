@@ -12,11 +12,11 @@ export class OpenAIService {
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  generateText = (text: string, userId: string, instructions?: string) => {
+  generateText = (text: string, userId: string, instructions?: string, model?: string) => {
     return this.openai.responses
       .create({
-        model: GPT_MODEL,
-        tools: [{ type: 'web_search_preview' }],
+        model: model || GPT_MODEL,
+        ...(model ? {} : { tools: [{ type: 'web_search_preview' }] }),
         instructions: instructions,
         input: text,
         user: `${userId}-DaBros2016`,
