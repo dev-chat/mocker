@@ -74,8 +74,7 @@ export class AIService {
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
         if (result) {
-          const formatted = this.openAiService.markdownToSlackMrkdwn(result);
-          this.sendGptText(formatted, userId, teamId, channelId, text);
+          this.sendGptText(result, userId, teamId, channelId, text);
         } else {
           this.aiServiceLogger.warn(`No result returned for prompt: ${text}`);
           throw new Error(`No result returned for prompt: ${text}`);
@@ -106,9 +105,7 @@ export class AIService {
   }
 
   public async redeployMoonbeam(): Promise<void> {
-    const aiQuote = this.openAiService.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').then((result) => {
-      return this.openAiService.markdownToSlackMrkdwn(result) || result;
-    }).catch((e) => {
+    const aiQuote = this.openAiService.generateText(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam').catch((e) => {
       this.aiServiceLogger.error(e);
     });
 
@@ -137,13 +134,7 @@ export class AIService {
               text: 'Moonbeam has been deployed.',
             },
           },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `"${quote}"`,
-            },
-          },
+          this.createMarkdownBlock(quote ? `"${quote}"` : ''),
         ];
         this.webService.sendMessage('#muzzlefeedback', 'Moonbeam has been deployed.', blocks);
       })
@@ -179,12 +170,15 @@ export class AIService {
   }
 
   public generateCorpoSpeak(text: string): Promise<string | undefined> {
-    return this.openAiService.generateText(text, 'Moonbeam', CORPO_SPEAK_INSTRUCTIONS).then((result) => {
-      return this.openAiService.markdownToSlackMrkdwn(result) || result;
-    }).catch(async (e) => {
-      this.aiServiceLogger.error(e);
-      throw e;
-    });
+    return this.openAiService
+      .generateText(text, 'Moonbeam', CORPO_SPEAK_INSTRUCTIONS)
+      .then((result) => {
+        return result;
+      })
+      .catch(async (e) => {
+        this.aiServiceLogger.error(e);
+        throw e;
+      });
   }
 
   public formatHistory(history: MessageWithName[]): string {
@@ -217,12 +211,11 @@ export class AIService {
     // Fetch and select relevant memories
     const memoryContext = await this.fetchMemoryContext(
       this.extractParticipantSlackIds(history, { includeSlackId: user_id }),
-      team_id, `${formattedHistory}\n\nUser prompt: ${prompt}`, history,
+      team_id,
+      `${formattedHistory}\n\nUser prompt: ${prompt}`,
+      history,
     );
-    const systemInstructions = this.appendMemoryContext(
-      getHistoryInstructions(formattedHistory),
-      memoryContext,
-    );
+    const systemInstructions = this.appendMemoryContext(getHistoryInstructions(formattedHistory), memoryContext);
 
     return this.openAiService
       .generateText(prompt, user_id, systemInstructions)
@@ -233,20 +226,13 @@ export class AIService {
           return;
         }
 
-        const formatted = this.openAiService.markdownToSlackMrkdwn(result) || result;
         const blocks: KnownBlock[] = [];
 
-        const chunks = getChunks(formatted);
+        const chunks = getChunks(result);
 
         if (chunks) {
           chunks.forEach((chunk) => {
-            blocks.push({
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: `${chunk}`,
-              },
-            });
+            blocks.push(this.createMarkdownBlock(chunk));
           });
         }
 
@@ -293,10 +279,10 @@ export class AIService {
     const history = this.formatHistory(historyMessages);
 
     // Fetch and select relevant memories
-    const participantSlackIds = this.extractParticipantSlackIds(historyMessages, { excludeSlackIds: [MOONBEAM_SLACK_ID] });
-    const memoryContext = await this.fetchMemoryContext(
-      participantSlackIds, teamId, history, historyMessages,
-    );
+    const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
+      excludeSlackIds: [MOONBEAM_SLACK_ID],
+    });
+    const memoryContext = await this.fetchMemoryContext(participantSlackIds, teamId, history, historyMessages);
     const systemInstructions = this.appendMemoryContext(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryContext);
 
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
@@ -305,9 +291,8 @@ export class AIService {
       .generateText(input, 'Moonbeam', systemInstructions)
       .then((result) => {
         if (result) {
-          const formatted = this.openAiService.markdownToSlackMrkdwn(result) || result;
           this.webService
-            .sendMessage(channelId, formatted)
+            .sendMessage(channelId, result, [this.createMarkdownBlock(result)])
             .then(() => this.redis.setHasParticipated(teamId, channelId))
             .catch((e) => this.aiServiceLogger.error('Error sending AI Participation message:', e));
 
@@ -339,9 +324,10 @@ export class AIService {
       })
       .join('\n\n');
 
-    const prompt = MEMORY_SELECTION_PROMPT
-      .replace('{conversation}', conversation)
-      .replace('{all_memories_grouped_by_user}', formattedMemories);
+    const prompt = MEMORY_SELECTION_PROMPT.replace('{conversation}', conversation).replace(
+      '{all_memories_grouped_by_user}',
+      formattedMemories,
+    );
 
     try {
       const raw = await this.openAiService.generateText(prompt, 'selection', undefined, GATE_MODEL);
@@ -352,7 +338,9 @@ export class AIService {
       if (!Array.isArray(parsed)) return [];
       const selectedIds = parsed.map(Number).filter((n) => !isNaN(n));
 
-      return Array.from(memoriesMap.values()).flat().filter((m) => selectedIds.includes(m.id));
+      return Array.from(memoriesMap.values())
+        .flat()
+        .filter((m) => selectedIds.includes(m.id));
     } catch (e) {
       this.aiServiceLogger.warn('Memory selection failed, proceeding without memories:', e);
       return [];
@@ -391,11 +379,7 @@ export class AIService {
   ): string[] {
     const excludeSet = new Set(options?.excludeSlackIds || []);
     const ids = [
-      ...new Set(
-        history
-          .filter((msg) => msg.slackId && !excludeSet.has(msg.slackId!))
-          .map((msg) => msg.slackId!),
-      ),
+      ...new Set(history.filter((msg) => msg.slackId && !excludeSet.has(msg.slackId!)).map((msg) => msg.slackId!)),
     ];
     if (options?.includeSlackId && !ids.includes(options.includeSlackId)) {
       ids.push(options.includeSlackId);
@@ -440,14 +424,15 @@ export class AIService {
         teamId,
       );
 
-      const existingMemoriesText = existingMemoriesMap.size > 0
-        ? Array.from(existingMemoriesMap.entries())
-            .map(([slackId, memories]) => {
-              const lines = memories.map((m) => `  [ID:${m.id}] "${m.content}"`).join('\n');
-              return `${slackId}:\n${lines}`;
-            })
-            .join('\n\n')
-        : '(no existing memories)';
+      const existingMemoriesText =
+        existingMemoriesMap.size > 0
+          ? Array.from(existingMemoriesMap.entries())
+              .map(([slackId, memories]) => {
+                const lines = memories.map((m) => `  [ID:${m.id}] "${m.content}"`).join('\n');
+                return `${slackId}:\n${lines}`;
+              })
+              .join('\n\n')
+          : '(no existing memories)';
 
       const extractionInput = `${conversationHistory}\n\nMoonbeam: ${moonbeamResponse}`;
       const prompt = MEMORY_EXTRACTION_PROMPT.replace('{existing_memories}', existingMemoriesText);
@@ -507,9 +492,7 @@ export class AIService {
         }
       }
 
-      this.aiServiceLogger.info(
-        `Extraction complete for ${channelId}: ${extractions.length} observations processed`,
-      );
+      this.aiServiceLogger.info(`Extraction complete for ${channelId}: ${extractions.length} observations processed`);
     } catch (e) {
       this.aiServiceLogger.warn('Memory extraction failed:', e);
     }
@@ -552,13 +535,7 @@ export class AIService {
 
       if (chunks) {
         chunks.forEach((chunk) => {
-          blocks.push({
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `${chunk}`,
-            },
-          });
+          blocks.push(this.createMarkdownBlock(chunk));
         });
       }
 
@@ -585,6 +562,11 @@ export class AIService {
         );
       });
     }
+  }
+
+  private createMarkdownBlock(text: string): KnownBlock {
+    // Block Kit supports top-level markdown blocks, but older Slack SDK typings may not include them yet.
+    return { type: 'markdown', text } as unknown as KnownBlock;
   }
 
   async handle(request: EventRequest): Promise<void> {
