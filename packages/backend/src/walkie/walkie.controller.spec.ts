@@ -10,7 +10,7 @@ jest.mock('./walkie.service', () => ({
 }));
 
 jest.mock('../shared/middleware/suppression', () => ({
-  suppressedMiddleware: (_req: unknown, _res: unknown, next: unknown) => next(),
+  suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 import { walkieController } from './walkie.controller';

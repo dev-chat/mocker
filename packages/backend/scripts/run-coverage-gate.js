@@ -65,7 +65,7 @@ function runJestCoverage(collectCoverageFrom) {
     shell: false,
   });
 
-  return result.status || 0;
+  return result.status ?? 1;
 }
 
 function main() {
