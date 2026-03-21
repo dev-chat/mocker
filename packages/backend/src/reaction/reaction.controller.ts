@@ -18,6 +18,6 @@ reactionController.post('/get', (req, res) => {
     .then((repValue) => res.send(repValue))
     .catch((e: unknown) => {
       reactionLogger.error(e);
-      res.status(500).send(e instanceof Error ? e.message : String(e));
+      res.status(500).send('Internal server error');
     });
 });
