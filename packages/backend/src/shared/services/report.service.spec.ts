@@ -75,4 +75,43 @@ describe('ReportService', () => {
       expect(mockService.isValidReportType('test sentence that should fail day')).toBe(false);
     });
   });
+
+  describe('getRange()', () => {
+    it('returns all-time range without dates', () => {
+      const range = mockService.getRange(ReportType.AllTime);
+      expect(range.reportType).toBe(ReportType.AllTime);
+      expect(range.start).toBeUndefined();
+      expect(range.end).toBeUndefined();
+    });
+
+    it('returns previous week range', () => {
+      const range = mockService.getRange(ReportType.Week);
+      expect(range.start).toBeDefined();
+      expect(range.end).toBeDefined();
+    });
+
+    it('returns previous month range', () => {
+      const range = mockService.getRange(ReportType.Month);
+      expect(range.start).toBeDefined();
+      expect(range.end).toBeDefined();
+    });
+
+    it('returns trailing 30 day range', () => {
+      const range = mockService.getRange(ReportType.Trailing30);
+      expect(range.start).toBeDefined();
+      expect(range.end).toBeDefined();
+    });
+
+    it('returns trailing 7 day range', () => {
+      const range = mockService.getRange(ReportType.Trailing7);
+      expect(range.start).toBeDefined();
+      expect(range.end).toBeDefined();
+    });
+
+    it('returns year range', () => {
+      const range = mockService.getRange(ReportType.Year);
+      expect(range.start).toBeDefined();
+      expect(range.end).toBeDefined();
+    });
+  });
 });
