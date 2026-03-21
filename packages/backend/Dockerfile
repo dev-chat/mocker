@@ -13,7 +13,7 @@ COPY packages/backend/tsconfig.prod.json packages/backend/
 COPY packages/backend/src packages/backend/src
 
 # Copy config files for linting
-COPY .eslintrc.js .prettierrc.js ./
+COPY eslint.config.js .prettierrc.js ./
 
 # Install dependencies and build
 RUN npm ci

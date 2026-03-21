@@ -2,7 +2,7 @@ import type { AxiosResponse } from 'axios';
 import Axios from 'axios';
 
 export class TranslationService {
-  public translate(text: string): Promise<string | undefined> {
+  public translate(text: string): Promise<string> {
     const lang = this.getRandomLanguage();
     return Axios.post(
       encodeURI(`https://translation.googleapis.com/language/translate/v2?key=${process.env.GOOGLE_TRANSLATE_API_KEY}`),
@@ -15,17 +15,17 @@ export class TranslationService {
     ).then((res: AxiosResponse) => {
       const data = res.data;
       if (!data || typeof data !== 'object') {
-        return undefined;
+        return text;
       }
 
       const payload = Reflect.get(data, 'data');
       if (!payload || typeof payload !== 'object') {
-        return undefined;
+        return text;
       }
 
       const translations = Reflect.get(payload, 'translations');
       if (!Array.isArray(translations) || translations.length === 0) {
-        return undefined;
+        return text;
       }
 
       const firstTranslation = translations[0];
@@ -34,7 +34,7 @@ export class TranslationService {
           ? Reflect.get(firstTranslation, 'translatedText')
           : undefined;
 
-      return typeof translatedText === 'string' ? translatedText : undefined;
+      return typeof translatedText === 'string' ? translatedText : text;
     });
   }
 

@@ -20,7 +20,7 @@ interface SlackUserForStorage {
   team_id?: string;
   is_bot?: boolean;
   profile?: {
-    bot_id: string;
+    bot_id?: string;
     display_name: string;
     real_name: string;
   };
@@ -61,7 +61,24 @@ const isSlackUserForStorage = (value: unknown): value is SlackUserForStorage => 
     return false;
   }
 
-  return !!getOptionalString(value, 'id') && !!getOptionalString(value, 'name');
+  if (!getOptionalString(value, 'id') || !getOptionalString(value, 'name')) {
+    return false;
+  }
+
+  const profile = value.profile;
+  if (profile !== undefined) {
+    if (!isRecord(profile)) {
+      return false;
+    }
+    if (typeof profile.display_name !== 'string') {
+      return false;
+    }
+    if (profile.bot_id !== undefined && typeof profile.bot_id !== 'string') {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 export class SlackService {

@@ -8,10 +8,9 @@ import type {
   KnownBlock,
   Block,
   ConversationsListResponse,
-  UsersListResponse} from '@slack/web-api';
-import {
-  WebClient
+  UsersListResponse,
 } from '@slack/web-api';
+import { WebClient } from '@slack/web-api';
 import { logger } from '../../logger/logger';
 
 const MAX_RETRIES = 5;

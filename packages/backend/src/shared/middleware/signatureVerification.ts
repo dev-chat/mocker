@@ -4,6 +4,13 @@ import { logger } from '../logger/logger';
 
 const midLogger = logger.child({ module: 'SignatureVerificationMiddleware' });
 export const signatureVerificationMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  const signingSecret = process.env.MUZZLE_BOT_SIGNING_SECRET;
+  if (!signingSecret) {
+    midLogger.error('MUZZLE_BOT_SIGNING_SECRET is not set. Rejecting request.');
+    res.status(500).send('Server misconfiguration: signing secret is not set.');
+    return;
+  }
+
   const body =
     'rawBody' in req && (Buffer.isBuffer(req.rawBody) || typeof req.rawBody === 'string')
       ? String(req.rawBody)
@@ -14,7 +21,7 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
   const hashed: string =
     'v0=' +
     crypto
-      .createHmac('sha256', process.env.MUZZLE_BOT_SIGNING_SECRET ?? '')
+      .createHmac('sha256', signingSecret)
       .update(base)
       .digest('hex');
 
