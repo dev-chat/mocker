@@ -9,6 +9,7 @@ import {
   KnownBlock,
   Block,
   ConversationsListResponse,
+  UsersListResponse,
 } from '@slack/web-api';
 import { logger } from '../../logger/logger';
 
@@ -81,12 +82,9 @@ export class WebService {
       token,
       channel,
       text,
+      blocks,
       unfurl_links: false,
     };
-
-    if (blocks) {
-      postRequest.blocks = blocks;
-    }
 
     return this.web.chat
       .postMessage(postRequest)
@@ -110,12 +108,18 @@ export class WebService {
     this.web.chat.update(update).catch((e) => this.logger.error(e));
   }
 
-  public getAllUsers(): Promise<WebAPICallResult> {
-    return this.web.users.list();
+  public getAllUsers(): Promise<UsersListResponse> {
+    return this.web.users.list({
+      token: process.env.MUZZLE_BOT_USER_TOKEN,
+    });
   }
 
   public getAllChannels(): Promise<ConversationsListResponse> {
-    return this.web.conversations.list();
+    return this.web.conversations.list({
+      token: process.env.MUZZLE_BOT_USER_TOKEN,
+      exclude_archived: true,
+      types: 'public_channel,private_channel',
+    });
   }
 
   public uploadFile(channel: string, content: string, title: string, userId: string): void {
