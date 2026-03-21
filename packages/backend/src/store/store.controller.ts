@@ -108,5 +108,8 @@ storeController.post('/use', (req, res) => {
 
       res.status(200).send(useReceipt);
     }
-  })();
+  })().catch((e: unknown) => {
+    storeLogger.error(e);
+    res.status(500).send('An unexpected error occurred.');
+  });
 });

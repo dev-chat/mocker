@@ -11,10 +11,9 @@ import type {
   KDR,
   Backfires,
   RawNemesis,
-  SuccessNemesis} from '../shared/models/report/report.model';
-import {
-  ReportType
+  SuccessNemesis,
 } from '../shared/models/report/report.model';
+import { ReportType } from '../shared/models/report/report.model';
 import { ReportService } from '../shared/services/report.service';
 
 export class MuzzleReportService extends ReportService {

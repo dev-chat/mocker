@@ -64,12 +64,12 @@ describe('TranslationService', () => {
     expect((Axios.post as jest.Mock).mock.calls[0][1].target).toBe('de');
   });
 
-  it('returns undefined when translation payload is missing', async () => {
+  it('returns original text when translation payload is missing', async () => {
     jest.spyOn(Math, 'random').mockReturnValue(0.5);
     (Axios.post as jest.Mock).mockResolvedValue({ data: {} });
 
     const out = await service.translate('hello');
 
-    expect(out).toBeUndefined();
+    expect(out).toBe('hello');
   });
 });
