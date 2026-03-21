@@ -15,6 +15,6 @@ module.exports = {
   moduleNameMapper: {
     '^ioredis$': '<rootDir>/src/test/mocks/ioredis.mock.ts',
     '^@slack/web-api$': '<rootDir>/src/test/mocks/slack-web-api.mock.ts',
-    'logger/logger$': '<rootDir>/src/test/mocks/logger.mock.ts',
+    '^(.*/)?logger/logger$': '<rootDir>/src/test/mocks/logger.mock.ts',
   },
 };

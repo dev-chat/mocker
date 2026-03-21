@@ -285,31 +285,28 @@ describe('SlackService', () => {
   });
 
   describe('sendResponse()', () => {
-    it('should post response to responseUrl', (done) => {
+    it('should post response to responseUrl', async () => {
       const mockPost = jest.spyOn(axios.default, 'post').mockResolvedValue({ data: { ok: true } });
 
       slackService.sendResponse('https://hooks.slack.com/test', { response_type: 'in_channel', text: 'test' });
 
-      setTimeout(() => {
-        expect(mockPost).toHaveBeenCalledWith('https://hooks.slack.com/test', {
-          response_type: 'in_channel',
-          text: 'test',
-        });
-        done();
-      }, 50);
+      await Promise.resolve();
+      expect(mockPost).toHaveBeenCalledWith('https://hooks.slack.com/test', {
+        response_type: 'in_channel',
+        text: 'test',
+      });
     });
 
-    it('should handle errors silently', (done) => {
+    it('should handle errors silently', async () => {
       const mockPost = jest.spyOn(axios.default, 'post').mockRejectedValue(new Error('Network error'));
       const loggerSpy = jest.spyOn(slackService.logger, 'error');
 
       slackService.sendResponse('https://hooks.slack.com/test', { response_type: 'in_channel', text: 'test' });
 
-      setTimeout(() => {
-        expect(mockPost).toHaveBeenCalled();
-        expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('Error responding'));
-        done();
-      }, 50);
+      const postPromise = mockPost.mock.results[0]?.value as Promise<unknown>;
+      await postPromise.catch(() => undefined);
+      expect(mockPost).toHaveBeenCalled();
+      expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('Error responding'));
     });
   });
 
@@ -459,7 +456,7 @@ describe('SlackService', () => {
         event: { type: 'team_join', user: { id: 'U123' } },
       } as unknown as EventRequest);
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await Promise.resolve();
       expect(getAllUsersSpy).toHaveBeenCalled();
     });
 
