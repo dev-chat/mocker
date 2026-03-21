@@ -303,6 +303,7 @@ describe('SlackService', () => {
 
       slackService.sendResponse('https://hooks.slack.com/test', { response_type: 'in_channel', text: 'test' });
 
+      // Two microtask flushes needed: first resolves the rejection, second runs the .catch() handler.
       await Promise.resolve();
       await Promise.resolve();
       expect(mockPost).toHaveBeenCalled();
