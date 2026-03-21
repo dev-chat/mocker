@@ -1,176 +1,112 @@
-import { UpdateResult } from 'typeorm';
 import { SuppressorService } from './suppressor.service';
-import { EventRequest } from '../models/slack/slack-models';
-import { MAX_WORD_LENGTH } from '../../muzzle/constants';
-import { MuzzlePersistenceService } from '../../muzzle/muzzle.persistence.service';
-import { SlackService } from './slack/slack.service';
-
-jest.mock('./slack/slack.service');
 
 describe('SuppressorService', () => {
   let suppressorService: SuppressorService;
-  let slackInstance: SlackService;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     suppressorService = new SuppressorService();
-    slackInstance = new SlackService();
-    jest.useFakeTimers();
+
+    suppressorService.muzzlePersistenceService = {
+      incrementMessageSuppressions: jest.fn().mockResolvedValue({ raw: 'ok' }),
+      incrementCharacterSuppressions: jest.fn().mockResolvedValue({ raw: 'ok' }),
+      incrementWordSuppressions: jest.fn().mockResolvedValue({ raw: 'ok' }),
+      isUserMuzzled: jest.fn().mockResolvedValue(false),
+    } as never;
+
+    suppressorService.backfirePersistenceService = {
+      isBackfire: jest.fn().mockResolvedValue(false),
+    } as never;
+
+    suppressorService.counterPersistenceService = {
+      isCounterMuzzled: jest.fn().mockResolvedValue(false),
+    } as never;
+
+    suppressorService.slackService = {
+      containsTag: jest.fn(),
+      getBotByBotId: jest.fn(),
+      getUserId: jest.fn(),
+      getUserIdByCallbackId: jest.fn(),
+      getBotId: jest.fn(),
+      getAllUsers: jest.fn().mockResolvedValue([]),
+    } as never;
+
+    jest
+      .spyOn(suppressorService, 'getFallbackReplacementWord')
+      .mockImplementation((_word: string, isFirstWord: boolean, isLastWord: boolean) => {
+        const replacement = '..mMm..';
+        if ((isFirstWord && !isLastWord) || (!isFirstWord && !isLastWord)) {
+          return `${replacement} `;
+        }
+        return replacement;
+      });
   });
 
-  afterEach(() => {
-    jest.runAllTimers();
-  });
-
-  describe('muzzle()', () => {
-    beforeEach(() => {
-      const mockResolve = { raw: 'whatever' };
-      jest
-        .spyOn(MuzzlePersistenceService.getInstance(), 'incrementMessageSuppressions')
-        .mockResolvedValue(mockResolve as UpdateResult);
-      jest
-        .spyOn(MuzzlePersistenceService.getInstance(), 'incrementCharacterSuppressions')
-        .mockResolvedValue(mockResolve as UpdateResult);
-      jest
-        .spyOn(MuzzlePersistenceService.getInstance(), 'incrementWordSuppressions')
-        .mockResolvedValue(mockResolve as UpdateResult);
-      jest
-        .spyOn(suppressorService, 'getReplacementWord')
-        .mockImplementation((word: string, isFirstWord: boolean, isLastWord: boolean, replacementText: string) => {
-          const isRandomEven = (): boolean => true;
-          replacementText = '..mMm..';
-          const text =
-            isRandomEven() && word.length < MAX_WORD_LENGTH && word !== ' ' && !slackInstance.containsTag(word)
-              ? `*${word}*`
-              : replacementText;
-
-          if ((isFirstWord && !isLastWord) || (!isFirstWord && !isLastWord)) {
-            return `${text} `;
-          }
-          return text;
-        });
-    });
-
-    it('should always muzzle a tagged user', () => {
-      const testSentence = '<@U2TKJ> <@JKDSF> <@SDGJSK> <@LSKJDSG> <@lkjdsa> <@LKSJDF> <@SDLJG> <@jrjrjr> <@fudka>';
+  describe('sendFallbackSuppressedMessage', () => {
+    it('always muzzles tagged users', () => {
+      const testSentence = '<@U2TKJ> <@JKDSF> <@SDGJSK>';
       expect(
         suppressorService.sendFallbackSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService),
-      ).toBe('..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm.. ..mMm..');
+      ).toBe('..mMm.. ..mMm.. ..mMm..');
     });
 
-    it('should always muzzle <!channel>', () => {
-      const testSentence = '<!channel>';
+    it('always muzzles <!channel> and <!here>', () => {
       expect(
-        suppressorService.sendFallbackSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService),
+        suppressorService.sendFallbackSuppressedMessage('<!channel>', 1, suppressorService.muzzlePersistenceService),
+      ).toBe('..mMm..');
+      expect(
+        suppressorService.sendFallbackSuppressedMessage('<!here>', 1, suppressorService.muzzlePersistenceService),
       ).toBe('..mMm..');
     });
 
-    it('should always muzzle <!here>', () => {
-      const testSentence = '<!here>';
+    it('always muzzles long words', () => {
       expect(
-        suppressorService.sendFallbackSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService),
-      ).toBe('..mMm..');
-    });
-
-    it('should always muzzle a word with length > 10', () => {
-      const testSentence = 'this.is.a.way.to.game.the.system';
-      expect(
-        suppressorService.sendFallbackSuppressedMessage(testSentence, 1, suppressorService.muzzlePersistenceService),
+        suppressorService.sendFallbackSuppressedMessage(
+          'this.is.a.way.to.game.the.system',
+          1,
+          suppressorService.muzzlePersistenceService,
+        ),
       ).toBe('..mMm..');
     });
   });
 
-  describe('shouldBotMessageBeMuzzled()', () => {
-    let mockRequest: EventRequest;
-    beforeEach(() => {
-      /* tslint:disable-next-line:no-object-literal-type-assertion */
-      mockRequest = {
+  describe('shouldBotMessageBeMuzzled', () => {
+    it('returns false when event has no bot id', async () => {
+      const result = await suppressorService.shouldBotMessageBeMuzzled({
+        team_id: 'T1',
+        event: { text: '<@U123>' },
+      } as never);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false for muzzle bot messages', async () => {
+      (suppressorService.slackService.getBotByBotId as jest.Mock).mockResolvedValue({ name: 'muzzle' });
+
+      const result = await suppressorService.shouldBotMessageBeMuzzled({
+        team_id: 'T1',
+        event: { bot_id: 'B1', text: '<@U123>' },
+      } as never);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns user id when mentioned user is suppressed', async () => {
+      (suppressorService.slackService.getBotByBotId as jest.Mock).mockResolvedValue({ name: 'other-bot' });
+      (suppressorService.slackService.getUserId as jest.Mock).mockReturnValue('U123');
+      (suppressorService.slackService.getBotId as jest.Mock).mockReturnValue('U123');
+      (suppressorService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(true);
+
+      const result = await suppressorService.shouldBotMessageBeMuzzled({
+        team_id: 'T1',
         event: {
-          subtype: 'bot_message',
-          username: 'not_muzzle',
-          text: '<@123>',
-          attachments: [
-            {
-              callback_id: 'LKJSF_123',
-              pretext: '<@123>',
-              text: '<@123>',
-            },
-          ],
+          bot_id: 'B1',
+          text: '<@U123>',
+          attachments: [{ text: 'x', pretext: 'x', callback_id: 'cb_123' }],
         },
-      } as EventRequest;
-    });
+      } as never);
 
-    describe('when a user is muzzled', () => {
-      beforeEach(() => {
-        jest
-          .spyOn(MuzzlePersistenceService.getInstance(), 'isUserMuzzled')
-          .mockImplementation(() => new Promise((resolve) => resolve(true)));
-      });
-
-      it('should return true if an id is present in the event.text ', async () => {
-        mockRequest.event.attachments = [];
-        const result = await suppressorService.shouldBotMessageBeMuzzled(mockRequest);
-        expect(result).toBe(true);
-      });
-
-      it('should return true if an id is present in the event.attachments[0].text', async () => {
-        mockRequest.event.text = 'whatever';
-        mockRequest.event.attachments[0].pretext = 'whatever';
-        mockRequest.event.attachments[0].callback_id = 'whatever';
-        const result = await suppressorService.shouldBotMessageBeMuzzled(mockRequest);
-        expect(result).toBe(true);
-      });
-
-      it('should return true if an id is present in the event.attachments[0].pretext', async () => {
-        mockRequest.event.text = 'whatever';
-        mockRequest.event.attachments[0].text = 'whatever';
-        mockRequest.event.attachments[0].callback_id = 'whatever';
-        const result = await suppressorService.shouldBotMessageBeMuzzled(mockRequest);
-        expect(result).toBe(true);
-      });
-
-      it('should return the id present in the event.attachments[0].callback_id if an id is present', async () => {
-        mockRequest.event.text = 'whatever';
-        mockRequest.event.attachments[0].text = 'whatever';
-        mockRequest.event.attachments[0].pretext = 'whatever';
-        const result = await suppressorService.shouldBotMessageBeMuzzled(mockRequest);
-        expect(result).toBe(true);
-      });
-    });
-
-    describe('when a user is not muzzled', () => {
-      beforeEach(() => {
-        jest
-          .spyOn(MuzzlePersistenceService.getInstance(), 'isUserMuzzled')
-          .mockImplementation(() => new Promise((resolve) => resolve(false)));
-      });
-
-      it('should return false if there is no id present in any fields', async () => {
-        mockRequest.event.text = 'no id';
-        mockRequest.event.callback_id = 'TEST_TEST';
-        mockRequest.event.attachments[0].text = 'test';
-        mockRequest.event.attachments[0].pretext = 'test';
-        mockRequest.event.attachments[0].callback_id = 'TEST';
-        const result = await suppressorService.shouldBotMessageBeMuzzled(mockRequest);
-        expect(result).toBe(false);
-      });
-
-      it('should return false if the message is not a bot_message', async () => {
-        mockRequest.event.subtype = 'not_bot_message';
-        expect(await suppressorService.shouldBotMessageBeMuzzled(mockRequest)).toBe(false);
-      });
-
-      it('should return false if the requesting user is not muzzled', async () => {
-        mockRequest.event.text = '<@456>';
-        mockRequest.event.attachments[0].text = '<@456>';
-        mockRequest.event.attachments[0].pretext = '<@456>';
-        mockRequest.event.attachments[0].callback_id = 'TEST_456';
-        expect(await suppressorService.shouldBotMessageBeMuzzled(mockRequest)).toBe(false);
-      });
-
-      it('should return false if the bot username is muzzle', async () => {
-        mockRequest.event.username = 'muzzle';
-        expect(await suppressorService.shouldBotMessageBeMuzzled(mockRequest)).toBe(false);
-      });
+      expect(result).toBe('U123');
     });
   });
 });

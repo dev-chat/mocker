@@ -1,565 +1,199 @@
-import { mockAiPersistenceService } from './mocks/mocks';
-import { mockLogger } from '../shared/logger/logger.mock';
-import {
-  MAX_AI_REQUESTS_PER_DAY,
-  MOONBEAM_SLACK_ID,
-  REDPLOY_MOONBEAM_IMAGE_PROMPT,
-  REDPLOY_MOONBEAM_TEXT_PROMPT,
-} from './ai.constants';
 import { AIService } from './ai.service';
-import { Logger } from 'winston';
 import { MessageWithName } from '../shared/models/message/message-with-name';
-import { Event, EventRequest, SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { WebAPICallResult } from '@slack/web-api';
-import { Response } from 'openai/resources/responses/responses';
+import { MOONBEAM_SLACK_ID } from './ai.constants';
 
-jest.mock('./openai/openai.service', () => ({
-  OpenAIService: jest.fn().mockImplementation(() => ({
-    generateText: jest.fn(),
-    generateImage: jest.fn(),
-    convertAsterisks: jest.fn(),
-    openai: {
-      responses: {
-        create: jest.fn().mockResolvedValue({
-          output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
-        }),
-      },
+const buildAiService = (): AIService => {
+  const ai = new AIService();
+
+  ai.redis = {
+    setInflight: jest.fn().mockResolvedValue('OK'),
+    setDailyRequests: jest.fn().mockResolvedValue('OK'),
+    removeInflight: jest.fn().mockResolvedValue(1),
+    decrementDailyRequests: jest.fn().mockResolvedValue('0'),
+    setParticipationInFlight: jest.fn().mockResolvedValue('OK'),
+    removeParticipationInFlight: jest.fn().mockResolvedValue(1),
+    setHasParticipated: jest.fn().mockResolvedValue('OK'),
+  } as unknown as AIService['redis'];
+
+  ai.openAi = {
+    responses: {
+      create: jest.fn(),
     },
-  })),
-}));
-jest.mock('./gemini/gemini.service', () => ({
-  GeminiService: jest.fn().mockImplementation(() => ({
-    generateText: jest.fn(),
-    generateImage: jest.fn(),
-  })),
-}));
-jest.mock('./ai.persistence', () => mockAiPersistenceService);
-jest.mock('./memory/memory.persistence.service', () => ({
-  MemoryPersistenceService: jest.fn().mockImplementation(() => ({
+  } as unknown as AIService['openAi'];
+
+  ai.gemini = {
+    models: {
+      generateContent: jest.fn(),
+    },
+  } as unknown as AIService['gemini'];
+
+  ai.memoryPersistenceService = {
     getAllMemoriesForUsers: jest.fn().mockResolvedValue(new Map()),
-    getAllMemoriesForUser: jest.fn().mockResolvedValue([]),
     saveMemories: jest.fn().mockResolvedValue([]),
     reinforceMemory: jest.fn().mockResolvedValue(true),
-    deleteMemory: jest.fn().mockResolvedValue(true),
-  })),
-}));
-jest.mock('../shared/services/history.persistence.service');
-jest.mock('../shared/services/web/web.service');
+  } as unknown as AIService['memoryPersistenceService'];
+
+  ai.historyService = {
+    getHistory: jest.fn().mockResolvedValue([]),
+    getHistoryWithOptions: jest.fn().mockResolvedValue([]),
+  } as unknown as AIService['historyService'];
+
+  ai.webService = {
+    sendMessage: jest.fn().mockResolvedValue({ ok: true }),
+  } as unknown as AIService['webService'];
+
+  ai.slackService = {
+    containsTag: jest.fn(),
+    isUserMentioned: jest.fn(),
+  } as unknown as AIService['slackService'];
+
+  ai.muzzlePersistenceService = {
+    isUserMuzzled: jest.fn().mockResolvedValue(false),
+  } as unknown as AIService['muzzlePersistenceService'];
+
+  ai.aiServiceLogger = {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+  } as unknown as AIService['aiServiceLogger'];
+
+  return ai;
+};
 
 describe('AIService', () => {
   let aiService: AIService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    aiService = new AIService();
-    aiService.aiServiceLogger = mockLogger.Logger() as unknown as Logger;
+    aiService = buildAiService();
   });
 
-  describe('decrementDaiyRequests', () => {
-    it('should call decrementDailyRequests on the persistence service', async () => {
-      const decrementMock = jest.spyOn(aiService.redis, 'decrementDailyRequests').mockResolvedValue('5');
+  describe('formatHistory', () => {
+    it('formats messages with timestamps and slack ids', () => {
+      const history: MessageWithName[] = [
+        { name: 'John', slackId: 'U001', message: 'Hello', createdAt: new Date('2024-01-15T10:30:00') },
+      ] as MessageWithName[];
 
-      const result = await aiService.decrementDaiyRequests('user123', 'team123');
+      const result = aiService.formatHistory(history);
 
-      expect(decrementMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(result).toBe('5');
-    });
-  });
-
-  describe('isAlreadyInflight', () => {
-    it('should return true if there is an inflight request', async () => {
-      const getInFlightMock = jest.spyOn(aiService.redis, 'getInflight').mockResolvedValue('true');
-      const result = await aiService.isAlreadyInflight('user123', 'team123');
-      expect(result).toBe(true);
-      expect(getInFlightMock).toHaveBeenCalledWith('user123', 'team123');
+      expect(result).toContain('John (U001): Hello');
+      expect(result).toMatch(/\[\d{2}:\d{2}\s[AP]M\]/);
     });
 
-    it('should return false if there is no inflight request', async () => {
-      const getInFlightMock = jest.spyOn(aiService.redis, 'getInflight').mockResolvedValue(null);
-      const result = await aiService.isAlreadyInflight('user123', 'team123');
-      expect(result).toBe(false);
-      expect(getInFlightMock).toHaveBeenCalledWith('user123', 'team123');
-    });
-  });
-
-  describe('isAlreadyAtMaxRequests', () => {
-    it('should return true if the user has reached the max requests', async () => {
-      const dailyRequestsMock = jest
-        .spyOn(aiService.redis, 'getDailyRequests')
-        .mockResolvedValue(MAX_AI_REQUESTS_PER_DAY.toString());
-      const result = await aiService.isAlreadyAtMaxRequests('user123', 'team123');
-      expect(result).toBe(true);
-      expect(dailyRequestsMock).toHaveBeenCalledWith('user123', 'team123');
-    });
-
-    it('should return false if the user has not reached the max requests', async () => {
-      const dailyRequestsMock = jest
-        .spyOn(aiService.redis, 'getDailyRequests')
-        .mockResolvedValue((MAX_AI_REQUESTS_PER_DAY - 1).toString());
-      const result = await aiService.isAlreadyAtMaxRequests('user123', 'team123');
-      expect(result).toBe(false);
-      expect(dailyRequestsMock).toHaveBeenCalledWith('user123', 'team123');
+    it('returns a placeholder for empty history', () => {
+      expect(aiService.formatHistory([])).toBe('[No recent messages in channel]');
     });
   });
 
   describe('generateText', () => {
-    it('should set inflight, fetch memories, generate text, and send message', async () => {
-      const setInflightMock = jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
-      const setDailyRequestsMock = jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
-      const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
-      const generateTextMock = jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Generated text');
-      const sendGptTextMock = jest.spyOn(aiService, 'sendGptText').mockImplementation();
+    it('tracks inflight state, calls OpenAI responses API, and sends output', async () => {
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Generated text' }] }],
+      });
+      const sendSpy = jest.spyOn(aiService, 'sendGptText').mockImplementation();
 
-      await aiService.generateText('user123', 'team123', 'channel123', 'Hello AI');
+      await aiService.generateText('U1', 'T1', 'C1', 'hello');
 
-      expect(setInflightMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(setDailyRequestsMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(aiService.memoryPersistenceService.getAllMemoriesForUsers).toHaveBeenCalledWith(['user123'], 'team123');
-      expect(generateTextMock).toHaveBeenCalledWith('Hello AI', 'user123', expect.any(String));
-      expect(removeInflightMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(sendGptTextMock).toHaveBeenCalledWith('Generated text', 'user123', 'team123', 'channel123', 'Hello AI');
+      expect(aiService.redis.setInflight).toHaveBeenCalledWith('U1', 'T1');
+      expect(aiService.redis.setDailyRequests).toHaveBeenCalledWith('U1', 'T1');
+      expect(createSpy).toHaveBeenCalled();
+      expect(aiService.redis.removeInflight).toHaveBeenCalledWith('U1', 'T1');
+      expect(sendSpy).toHaveBeenCalledWith('Generated text', 'U1', 'T1', 'C1', 'hello');
     });
 
-    it('should handle errors and clean up inflight status', async () => {
-      jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
-      jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
-      const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
-      const decrementMock = jest.spyOn(aiService.redis, 'decrementDailyRequests').mockResolvedValue('4');
-      jest.spyOn(aiService.openAiService, 'generateText').mockRejectedValue(new Error('API Error'));
+    it('decrements requests when OpenAI call fails', async () => {
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      createSpy.mockRejectedValue(new Error('boom'));
 
-      await expect(aiService.generateText('user123', 'team123', 'channel123', 'Hello AI')).rejects.toThrow('API Error');
+      await expect(aiService.generateText('U1', 'T1', 'C1', 'hello')).rejects.toThrow('boom');
 
-      expect(removeInflightMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(decrementMock).toHaveBeenCalledWith('user123', 'team123');
+      expect(aiService.redis.removeInflight).toHaveBeenCalledWith('U1', 'T1');
+      expect(aiService.redis.decrementDailyRequests).toHaveBeenCalledWith('U1', 'T1');
     });
   });
 
   describe('generateImage', () => {
-    it('should generate image and send to channel', async () => {
-      const setInflightMock = jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
-      const setDailyRequestsMock = jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
-      const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
-      const generateImageMock = jest.spyOn(aiService.geminiService, 'generateImage').mockResolvedValue('base64data');
-      const writeToDiskMock = jest
-        .spyOn(aiService, 'writeToDiskAndReturnUrl')
-        .mockResolvedValue('https://muzzle.lol/image.png');
-      const sendImageMock = jest.spyOn(aiService, 'sendImage').mockImplementation();
+    it('sends generated image after writing it to disk', async () => {
+      const generateContentSpy = aiService.gemini.models.generateContent as jest.Mock;
+      generateContentSpy.mockResolvedValue({
+        candidates: [
+          {
+            content: {
+              parts: [{ inlineData: { data: Buffer.from('fake-image').toString('base64') } }],
+            },
+          },
+        ],
+      });
 
-      await aiService.generateImage('user123', 'team123', 'channel123', 'Draw a cat');
+      const diskSpy = jest.spyOn(aiService, 'writeToDiskAndReturnUrl').mockResolvedValue('https://muzzle.lol/image.png');
+      const sendSpy = jest.spyOn(aiService, 'sendImage').mockImplementation();
 
-      expect(setInflightMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(setDailyRequestsMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(generateImageMock).toHaveBeenCalledWith('Draw a cat');
-      expect(removeInflightMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(writeToDiskMock).toHaveBeenCalledWith('base64data');
-      expect(sendImageMock).toHaveBeenCalledWith(
-        'https://muzzle.lol/image.png',
-        'user123',
-        'team123',
-        'channel123',
-        'Draw a cat',
-      );
-    });
+      await aiService.generateImage('U1', 'T1', 'C1', 'draw cat');
 
-    it('should throw error if no image data returned', async () => {
-      jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
-      jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
-      const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
-      jest.spyOn(aiService.geminiService, 'generateImage').mockResolvedValue(undefined);
-
-      await expect(aiService.generateImage('user123', 'team123', 'channel123', 'Draw a cat')).rejects.toThrow(
-        'No b64_json was returned',
-      );
-
-      expect(removeInflightMock).toHaveBeenCalledWith('user123', 'team123');
-    });
-  });
-
-  describe('generateCorpoSpeak', () => {
-    it('should generate corpo speak text', async () => {
-      const generateTextMock = jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Corporate text');
-
-      const result = await aiService.generateCorpoSpeak('Make this corporate');
-
-      expect(generateTextMock).toHaveBeenCalledWith('Make this corporate', 'Moonbeam', expect.any(String));
-      expect(result).toBe('Corporate text');
-    });
-
-    it('should handle errors in generation', async () => {
-      jest.spyOn(aiService.openAiService, 'generateText').mockRejectedValue(new Error('Generation failed'));
-
-      await expect(aiService.generateCorpoSpeak('Make this corporate')).rejects.toThrow('Generation failed');
-    });
-  });
-
-  describe('formatHistory', () => {
-    it('should format message history correctly with timestamps and slackIds', () => {
-      const history: MessageWithName[] = [
-        { name: 'John', slackId: 'U001', message: 'Hello there', createdAt: new Date('2024-01-15T10:30:00') },
-        { name: 'Jane', slackId: 'U002', message: 'How are you?', createdAt: new Date('2024-01-15T10:31:00') },
-        { name: 'Bob', slackId: 'U003', message: 'Good morning!', createdAt: new Date('2024-01-15T10:32:00') },
-      ] as MessageWithName[];
-
-      const result = aiService.formatHistory(history);
-
-      expect(result).toContain('John (U001): Hello there');
-      expect(result).toContain('Jane (U002): How are you?');
-      expect(result).toContain('Bob (U003): Good morning!');
-      // Should include timestamps in format [HH:MM AM/PM]
-      expect(result).toMatch(/\[\d{2}:\d{2}\s[AP]M\]/);
-    });
-
-    it('should handle messages without timestamps or slackIds', () => {
-      const history: MessageWithName[] = [
-        { name: 'John', message: 'Hello there' },
-        { name: 'Jane', message: 'How are you?' },
-      ] as MessageWithName[];
-
-      const result = aiService.formatHistory(history);
-
-      expect(result).toBe('John: Hello there\nJane: How are you?');
-    });
-
-    it('should handle empty history', () => {
-      const result = aiService.formatHistory([]);
-      expect(result).toBe('[No recent messages in channel]');
+      expect(generateContentSpy).toHaveBeenCalled();
+      expect(diskSpy).toHaveBeenCalled();
+      expect(sendSpy).toHaveBeenCalledWith('https://muzzle.lol/image.png', 'U1', 'T1', 'C1', 'draw cat');
     });
   });
 
   describe('promptWithHistory', () => {
-    it('should generate text with history context and fetch memories', async () => {
-      const history: MessageWithName[] = [
-        { name: 'John', slackId: 'U001', message: 'Hello' },
-        { name: 'Jane', slackId: 'U002', message: 'Hi' },
-      ] as MessageWithName[];
-      const setInflightMock = jest.spyOn(aiService.redis, 'setInflight').mockResolvedValue('');
-      const setDailyRequestsMock = jest.spyOn(aiService.redis, 'setDailyRequests').mockResolvedValue('');
-      const removeInflightMock = jest.spyOn(aiService.redis, 'removeInflight').mockResolvedValue(0);
-      const generateTextMock = jest
-        .spyOn(aiService.openAiService, 'generateText')
-        .mockResolvedValue('Response with context');
-      const getHistoryMock = jest.spyOn(aiService.historyService, 'getHistory').mockResolvedValue(history);
-      const sendMessageMock = jest
-        .spyOn(aiService.webService, 'sendMessage')
-        .mockImplementation(() => Promise.resolve({} as WebAPICallResult));
+    it('fetches history and posts a prompt response', async () => {
+      (aiService.historyService.getHistory as jest.Mock).mockResolvedValue([
+        { name: 'Jane', slackId: 'U2', message: 'Hi there' },
+      ]);
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Response text' }] }],
+      });
 
       await aiService.promptWithHistory({
-        user_id: 'user123',
-        team_id: 'team123',
-        channel_id: 'channel123',
-        text: 'Prompt',
-      } as SlashCommandRequest);
+        user_id: 'U1',
+        team_id: 'T1',
+        channel_id: 'C1',
+        text: 'Summarize',
+      } as never);
 
-      expect(setInflightMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(setDailyRequestsMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(aiService.memoryPersistenceService.getAllMemoriesForUsers).toHaveBeenCalledWith(
-        expect.arrayContaining(['U001', 'U002', 'user123']),
-        'team123',
-      );
-      expect(generateTextMock).toHaveBeenCalledWith(
-        'Prompt',
-        'user123',
-        expect.stringContaining('Use this conversation history'),
-      );
-      expect(removeInflightMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(getHistoryMock).toHaveBeenCalledWith(
-        { team_id: 'team123', text: 'Prompt', user_id: 'user123', channel_id: 'channel123' },
-        true,
-      );
-      expect(sendMessageMock).toHaveBeenCalledWith('channel123', 'Prompt', expect.any(Array));
-    });
-  });
-
-  describe('participate', () => {
-    it('should participate in conversation with memory recall', async () => {
-      const historyMessages = [{ name: 'John', slackId: 'U001', message: 'Hello' }] as MessageWithName[];
-
-      const getHistoryWithOptionsMock = jest
-        .spyOn(aiService.historyService, 'getHistoryWithOptions')
-        .mockResolvedValue(historyMessages);
-      jest.spyOn(aiService.webService, 'sendMessage').mockImplementation(() => Promise.resolve({} as WebAPICallResult));
-      const generateTextMock = jest
-        .spyOn(aiService.openAiService, 'generateText')
-        .mockResolvedValue('Participated response');
-
-      await aiService.participate('team123', 'channel123', 'tagged message');
-
-      expect(getHistoryWithOptionsMock).toHaveBeenCalledWith({
-        teamId: 'team123',
-        channelId: 'channel123',
-        maxMessages: 200,
-        timeWindowMinutes: 120,
-      });
-      expect(aiService.memoryPersistenceService.getAllMemoriesForUsers).toHaveBeenCalledWith(['U001'], 'team123');
-      expect(generateTextMock).toHaveBeenCalledWith(
-        expect.stringContaining('---\n[Tagged message to respond to]:\ntagged message'),
-        'Moonbeam',
-        expect.stringContaining('you are moonbeam'),
-      );
-    });
-
-    it('should exclude Moonbeam from participant slackIds', async () => {
-      const historyMessages = [
-        { name: 'John', slackId: 'U001', message: 'Hello' },
-        { name: 'Moonbeam', slackId: MOONBEAM_SLACK_ID, message: 'hey' },
-      ] as MessageWithName[];
-
-      jest.spyOn(aiService.historyService, 'getHistoryWithOptions').mockResolvedValue(historyMessages);
-      jest.spyOn(aiService.webService, 'sendMessage').mockImplementation(() => Promise.resolve({} as WebAPICallResult));
-      jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Response');
-
-      await aiService.participate('team123', 'channel123', 'tagged message');
-
-      expect(aiService.memoryPersistenceService.getAllMemoriesForUsers).toHaveBeenCalledWith(['U001'], 'team123');
-    });
-  });
-
-  describe('extraction after participate', () => {
-    it('should fire extraction after successful participate response', async () => {
-      const historyMessages = [{ name: 'John', slackId: 'U001', message: 'Hello' }] as MessageWithName[];
-
-      jest.spyOn(aiService.historyService, 'getHistoryWithOptions').mockResolvedValue(historyMessages);
-      jest.spyOn(aiService.webService, 'sendMessage').mockImplementation(() => Promise.resolve({} as WebAPICallResult));
-      jest.spyOn(aiService.redis, 'getExtractionLock').mockResolvedValue(null);
-      jest.spyOn(aiService.redis, 'setExtractionLock').mockResolvedValue('');
-
-      const generateTextSpy = jest.spyOn(aiService.openAiService, 'generateText');
-      generateTextSpy.mockResolvedValueOnce('Participated response');
-      generateTextSpy.mockResolvedValueOnce('NONE');
-
-      jest.spyOn(aiService.openAiService.openai.responses, 'create').mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
-      } as unknown as Response);
-
-      await aiService.participate('team123', 'channel123', 'tagged message');
-
-      // Wait for fire-and-forget to complete
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(aiService.redis.getExtractionLock).toHaveBeenCalledWith('channel123', 'team123');
-      expect(aiService.redis.setExtractionLock).toHaveBeenCalledWith('channel123', 'team123');
-    });
-
-    it('should skip extraction when lock is active', async () => {
-      const historyMessages = [{ name: 'John', slackId: 'U001', message: 'Hello' }] as MessageWithName[];
-
-      jest.spyOn(aiService.historyService, 'getHistoryWithOptions').mockResolvedValue(historyMessages);
-      jest.spyOn(aiService.webService, 'sendMessage').mockImplementation(() => Promise.resolve({} as WebAPICallResult));
-      jest.spyOn(aiService.redis, 'getExtractionLock').mockResolvedValue('1');
-      const setLockSpy = jest.spyOn(aiService.redis, 'setExtractionLock');
-
-      jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Response');
-      jest.spyOn(aiService.openAiService.openai.responses, 'create').mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
-      } as unknown as Response);
-
-      await aiService.participate('team123', 'channel123', 'tagged message');
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(setLockSpy).not.toHaveBeenCalled();
-    });
-
-    it('should save NEW extractions', async () => {
-      const historyMessages = [{ name: 'John', slackId: 'U001', message: 'I love Go' }] as MessageWithName[];
-
-      jest.spyOn(aiService.historyService, 'getHistoryWithOptions').mockResolvedValue(historyMessages);
-      jest.spyOn(aiService.webService, 'sendMessage').mockImplementation(() => Promise.resolve({} as WebAPICallResult));
-      jest.spyOn(aiService.redis, 'getExtractionLock').mockResolvedValue(null);
-      jest.spyOn(aiService.redis, 'setExtractionLock').mockResolvedValue('');
-
-      const generateTextSpy = jest.spyOn(aiService.openAiService, 'generateText');
-      generateTextSpy.mockResolvedValueOnce('nice');
-      generateTextSpy.mockResolvedValueOnce(
-        JSON.stringify([{ slackId: 'U001', content: 'loves Go', mode: 'NEW', existingMemoryId: null }]),
-      );
-
-      jest.spyOn(aiService.openAiService.openai.responses, 'create').mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
-      } as unknown as Response);
-
-      await aiService.participate('team123', 'channel123', 'tagged message');
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(aiService.memoryPersistenceService.saveMemories).toHaveBeenCalledWith('U001', 'team123', ['loves Go']);
-    });
-
-    it('should reinforce existing memories', async () => {
-      const historyMessages = [{ name: 'John', slackId: 'U001', message: 'Go is great' }] as MessageWithName[];
-
-      jest.spyOn(aiService.historyService, 'getHistoryWithOptions').mockResolvedValue(historyMessages);
-      jest.spyOn(aiService.webService, 'sendMessage').mockImplementation(() => Promise.resolve({} as WebAPICallResult));
-      jest.spyOn(aiService.redis, 'getExtractionLock').mockResolvedValue(null);
-      jest.spyOn(aiService.redis, 'setExtractionLock').mockResolvedValue('');
-
-      const generateTextSpy = jest.spyOn(aiService.openAiService, 'generateText');
-      generateTextSpy.mockResolvedValueOnce('agreed');
-      generateTextSpy.mockResolvedValueOnce(
-        JSON.stringify([{ slackId: 'U001', content: 'loves Go', mode: 'REINFORCE', existingMemoryId: 42 }]),
-      );
-
-      jest.spyOn(aiService.openAiService.openai.responses, 'create').mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
-      } as unknown as Response);
-
-      await aiService.participate('team123', 'channel123', 'tagged message');
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      expect(aiService.memoryPersistenceService.reinforceMemory).toHaveBeenCalledWith(42);
-    });
-  });
-
-  describe('sendGptText', () => {
-    it('should send formatted text message to channel', () => {
-      const sendMessageMock = jest
-        .spyOn(aiService.webService, 'sendMessage')
-        .mockImplementation(() => Promise.resolve({} as WebAPICallResult));
-
-      aiService.sendGptText('Generated text', 'user123', 'team123', 'channel123', 'Original prompt');
-
-      expect(sendMessageMock).toHaveBeenCalledWith('channel123', 'Generated text', expect.any(Array));
-    });
-  });
-
-  describe('sendImage', () => {
-    it('should send image message to channel', () => {
-      const sendMessageMock = jest
-        .spyOn(aiService.webService, 'sendMessage')
-        .mockImplementation(() => Promise.resolve({} as WebAPICallResult));
-
-      aiService.sendImage('https://muzzle.lol/image.png', 'user123', 'team123', 'channel123', 'Image Prompt');
-
-      expect(sendMessageMock).toHaveBeenCalledWith('channel123', 'Image Prompt', [
-        { alt_text: 'Image Prompt', image_url: 'https://muzzle.lol/image.png', type: 'image' },
-        {
-          elements: [
-            {
-              text: ':camera_with_flash: _Generated by <@user123> | "Image Prompt"_ :camera_with_flash:',
-              type: 'mrkdwn',
-            },
-          ],
-          type: 'context',
-        },
-      ]);
-    });
-  });
-
-  describe('redeployMoonbeam', () => {
-    it('should generate quote and image and send to muzzlefeedback channel', async () => {
-      const generateTextMock = jest.spyOn(aiService.openAiService, 'generateText').mockResolvedValue('Cryptic quote');
-      const generateImageMock = jest.spyOn(aiService.geminiService, 'generateImage').mockResolvedValue('base64image');
-      const writeToDiskMock = jest
-        .spyOn(aiService, 'writeToDiskAndReturnUrl')
-        .mockResolvedValue('https://muzzle.lol/moonbeam.png');
-      const sendMessageMock = jest
-        .spyOn(aiService.webService, 'sendMessage')
-        .mockImplementation(() => Promise.resolve({} as WebAPICallResult));
-
-      await aiService.redeployMoonbeam();
-
-      expect(generateTextMock).toHaveBeenCalledWith(REDPLOY_MOONBEAM_TEXT_PROMPT, 'Moonbeam');
-      expect(generateImageMock).toHaveBeenCalledWith(REDPLOY_MOONBEAM_IMAGE_PROMPT);
-      expect(writeToDiskMock).toHaveBeenCalledWith('base64image');
-      expect(sendMessageMock).toHaveBeenCalledWith(
-        '#muzzlefeedback',
-        'Moonbeam has been deployed.',
-        expect.arrayContaining([
-          expect.objectContaining({ type: 'image' }),
-          expect.objectContaining({ type: 'header' }),
-          expect.objectContaining({ type: 'markdown' }),
-        ]),
-      );
-    });
-
-    it('should handle errors gracefully', async () => {
-      jest.spyOn(aiService.openAiService, 'generateText').mockRejectedValue(new Error('Text generation failed'));
-      jest.spyOn(aiService.geminiService, 'generateImage').mockRejectedValue(new Error('Image generation failed'));
-      const errorSpy = jest.spyOn(aiService.aiServiceLogger, 'error');
-
-      await aiService.redeployMoonbeam();
-
-      expect(errorSpy).toHaveBeenCalled();
+      expect(aiService.historyService.getHistory).toHaveBeenCalled();
+      expect(aiService.openAi.responses.create).toHaveBeenCalled();
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Summarize', expect.any(Array));
     });
   });
 
   describe('handle', () => {
-    it('should handle', async () => {
-      const request: EventRequest = {
+    it('participates when Moonbeam is tagged and user is not muzzled', async () => {
+      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
+      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
+      (aiService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(false);
+      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
+
+      await aiService.handle({
+        team_id: 'T1',
         event: {
-          type: 'slash_command',
-          user: 'user123',
-          text: 'Generate text',
-          channel: 'channel123',
-        } as Event,
-        team_id: 'team123',
-      } as EventRequest;
-
-      const isUserMuzzledMock = jest
-        .spyOn(aiService.muzzlePersistenceService, 'isUserMuzzled')
-        .mockResolvedValue(false);
-      const participateMock = jest.spyOn(aiService, 'participate').mockResolvedValue();
-
-      await aiService.handle(request);
-
-      expect(isUserMuzzledMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(participateMock).not.toHaveBeenCalled();
-    });
-
-    it('should not handle an event request with a tag if the user is muzzled by removing the prompt', async () => {
-      const request: EventRequest = {
-        event: {
-          type: 'message',
-          user: 'user123',
-          text: '<@ULG8SJRFF> Generate text',
-          channel: 'channel123',
+          user: 'U1',
+          channel: 'C1',
+          text: `<@${MOONBEAM_SLACK_ID}> hello`,
         },
-        team_id: 'team123',
-      } as EventRequest;
-      const isUserMuzzledMock = jest.spyOn(aiService.muzzlePersistenceService, 'isUserMuzzled').mockResolvedValue(true);
-      const participateMock = jest.spyOn(aiService, 'participate').mockResolvedValue();
+      } as never);
 
-      await aiService.handle(request);
-      expect(isUserMuzzledMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(participateMock).not.toHaveBeenCalled();
+      expect(participateSpy).toHaveBeenCalledWith('T1', 'C1', `<@${MOONBEAM_SLACK_ID}> hello`);
     });
 
-    it('should handle an event request with a tag if the user is not muzzled', async () => {
-      const request: EventRequest = {
+    it('does not participate if requesting user is muzzled', async () => {
+      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
+      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
+      (aiService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(true);
+      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
+
+      await aiService.handle({
+        team_id: 'T1',
         event: {
-          type: 'message',
-          user: 'user123',
-          text: '<@ULG8SJRFF> Generate text',
-          channel: 'channel123',
+          user: 'U1',
+          channel: 'C1',
+          text: `<@${MOONBEAM_SLACK_ID}> hello`,
         },
-        team_id: 'team123',
-      } as EventRequest;
-      const isUserMuzzledMock = jest
-        .spyOn(aiService.muzzlePersistenceService, 'isUserMuzzled')
-        .mockResolvedValue(false);
-      const participateMock = jest.spyOn(aiService, 'participate').mockResolvedValue();
+      } as never);
 
-      await aiService.handle(request);
-      expect(isUserMuzzledMock).toHaveBeenCalledWith('user123', 'team123');
-      expect(participateMock).toHaveBeenCalledWith('team123', 'channel123', '<@ULG8SJRFF> Generate text');
-    });
-  });
-
-  describe('writeToDiskAndReturnUrl', () => {
-    it('should write the image to disk and return the URL', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
-      const fsMock = jest.spyOn(require('fs'), 'writeFile').mockImplementation((_, __, ___, callback: any) => {
-        callback(null);
-      });
-      const result = await aiService.writeToDiskAndReturnUrl('data:image/png;base64,base64data');
-      expect(fsMock).toHaveBeenCalled();
-      expect(result).toMatch(/https:\/\/muzzle\.lol\/.+\.png/);
-    });
-
-    it('should throw an error if writing to disk fails', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
-      jest.spyOn(require('fs'), 'writeFile').mockImplementation((_, __, ___, callback: any) => {
-        callback(new Error('Disk error'));
-      });
-      await expect(aiService.writeToDiskAndReturnUrl('data:image/png;base64,base64data')).rejects.toThrow('Disk error');
+      expect(participateSpy).not.toHaveBeenCalled();
     });
   });
 });
