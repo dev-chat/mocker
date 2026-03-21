@@ -19,7 +19,7 @@ jest.mock('./counter.service', () => ({
 }));
 
 jest.mock('../shared/middleware/suppression', () => ({
-  suppressedMiddleware: (_req: unknown, _res: unknown, next: unknown) => next(),
+  suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 import { counterController } from './counter.controller';

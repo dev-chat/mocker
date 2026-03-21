@@ -32,7 +32,7 @@ jest.mock('../shared/services/suppressor.service', () => ({
 }));
 
 jest.mock('../shared/middleware/suppression', () => ({
-  suppressedMiddleware: (_req: unknown, _res: unknown, next: unknown) => next(),
+  suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 import { storeController } from './store.controller';

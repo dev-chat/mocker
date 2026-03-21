@@ -22,11 +22,11 @@ jest.mock('../shared/services/web/web.service', () => ({
 }));
 
 jest.mock('../shared/middleware/suppression', () => ({
-  suppressedMiddleware: (_req: unknown, _res: unknown, next: unknown) => next(),
+  suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 jest.mock('../shared/middleware/textMiddleware', () => ({
-  textMiddleware: (_req: unknown, _res: unknown, next: unknown) => next(),
+  textMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 import { portfolioController } from './portfolio.controller';
