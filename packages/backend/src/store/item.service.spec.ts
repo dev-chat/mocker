@@ -31,15 +31,6 @@ describe('ItemService', () => {
       useItem: storeUseItem,
       isItemActive,
     };
-
-    // Rebind interactions so they use mocked dependencies above.
-    service = new ItemService();
-    (service as unknown as ItemServiceDependencies).webService = { sendMessage };
-    (service as unknown as ItemServiceDependencies).suppressorService = { isSuppressed, removeSuppression };
-    (service as unknown as ItemServiceDependencies).storeService = {
-      useItem: storeUseItem,
-      isItemActive,
-    };
   });
 
   it('uses item 1 successfully', async () => {
