@@ -63,6 +63,12 @@ module.exports = tseslint.config(
   },
   {
     files: ['**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+      },
+    },
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
     },
