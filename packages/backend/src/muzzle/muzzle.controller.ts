@@ -32,7 +32,7 @@ muzzleController.post('/', (req: Request, res: Response) => {
       .then((results) => res.send(results))
       .catch((e: unknown) => {
         muzzleLogger.error(e);
-        res.status(500).send(e instanceof Error ? e.message : String(e));
+        res.status(500).send('An unexpected error occurred. Please try again later.');
       });
   } else {
     muzzleLogger.warn(`Invalid user specified: ${request.text}`);
