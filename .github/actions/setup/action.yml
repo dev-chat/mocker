@@ -11,3 +11,5 @@ runs:
       with:
         name: node-modules
         path: node_modules
+    - run: chmod -R +x node_modules/.bin
+      shell: bash
