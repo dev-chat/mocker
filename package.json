@@ -17,8 +17,8 @@
     "test": "npm run test --workspaces --if-present",
     "test:backend": "npm run test -w @mocker/backend",
     "test:coverage": "npm run test:coverage -w @mocker/backend",
-    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/**/*.ts && npm run format:check",
-    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/**/*.ts --quiet --fix && npm run format:fix",
+    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/**/*.ts",
+    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/**/*.ts --quiet --fix",
     "format:check": "prettier --cache --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:fix": "prettier --cache --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\""
   },
