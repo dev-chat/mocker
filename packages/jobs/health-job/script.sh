@@ -103,6 +103,7 @@ main() {
 	require_command mktemp
 
 	if check_health; then
+		echo 'Health check passed.'
 		exit 0
 	fi
 

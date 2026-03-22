@@ -381,6 +381,7 @@ main() {
 	blocks_json=$(build_blocks "${quote_json}" "${facts_array_json}" "${on_this_day_json}" "${joke_text}")
 
 	send_slack_message "${blocks_json}"
+	echo 'Fun fact job completed successfully.'
 }
 
 main "$@"
