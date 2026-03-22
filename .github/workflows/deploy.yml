@@ -1,0 +1,68 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+
+# GITHUB_TOKEN needs write access to push the image to GHCR.
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    name: Build, Push & Deploy
+    runs-on: ubuntu-latest
+    # Scoping to a GitHub environment lets you add approval gates and
+    # view deployment history in the GitHub UI (Settings > Environments).
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: packages/backend/Dockerfile
+          push: true
+          # Always push :latest so the Linode deploy script can reference a stable tag.
+          # The SHA tag gives you an immutable rollback point.
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/muzzle:latest
+            ghcr.io/${{ github.repository_owner }}/muzzle:${{ github.sha }}
+
+      - name: Deploy to Linode
+        uses: appleboy/ssh-action@v1
+        # The env block sets these variables on the runner, and `envs` passes
+        # them through to the remote shell — keeping the token off the command
+        # line and out of the remote process list.
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_PAT }}
+          GHCR_USER: ${{ github.actor }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/muzzle:latest
+        with:
+          host: ${{ secrets.LINODE_HOST }}
+          username: ${{ secrets.LINODE_USER }}
+          password: ${{ secrets.LINODE_PASSWORD }}
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE
+          script: |
+            # Authenticate and pull the freshly built image.
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            docker pull "$IMAGE"
+
+            # Tear down the currently running container (if any).
+            docker stop muzzle 2>/dev/null || true
+            docker rm   muzzle 2>/dev/null || true
+
+            # Hand off to your existing startup script which handles volume
+            # mounts and env var injection.
+            # Update this path to wherever the script lives on your Linode.
+            /home/muzzle.lol/start-muzzle.sh

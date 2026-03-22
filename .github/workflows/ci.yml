@@ -85,4 +85,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker image
-        run: docker build -f packages/backend/Dockerfile -t mocker-backend:ci .
+        run: docker build -f packages/backend/Dockerfile -t muzzle:ci .
