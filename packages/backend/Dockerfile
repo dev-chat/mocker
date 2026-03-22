@@ -10,10 +10,9 @@ COPY packages/backend/tsconfig.json ./packages/backend/
 COPY packages/backend/tsconfig.prod.json ./packages/backend/
 COPY packages/backend/src ./packages/backend/src
 
-# Build and minify backend artifact inside Docker.
+# Build backend artifact inside Docker.
 RUN npm ci \
 	&& npm run build:prod -w @mocker/backend \
-	&& npm run minify -w @mocker/backend \
 	&& npm prune --omit=dev \
 	&& mkdir -p /usr/src/app/images
 
@@ -23,11 +22,11 @@ ENV NODE_ENV=production \
 
 WORKDIR /usr/src/app
 
-# Copy bundled runtime artifact and writable path from build stage.
-COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/dist/index.js ./runtime.cjs
+# Copy backend build artifacts and writable path from build stage.
+COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/dist ./dist
 COPY --from=build --chown=65532:65532 /usr/src/app/node_modules ./node_modules
 COPY --from=build --chown=65532:65532 /usr/src/app/images ./images
 
 EXPOSE 80
 
-CMD ["/usr/src/app/runtime.cjs"]
+CMD ["/usr/src/app/dist/index.js"]
