@@ -15,9 +15,7 @@ module.exports = tseslint.config(
       ecmaVersion: 'latest',
       sourceType: 'module',
       parserOptions: {
-        projectService: {
-          allowDefaultProject: ['packages/**/*.spec.ts'],
-        },
+        projectService: true,
         tsconfigRootDir: __dirname,
       },
       globals: {
