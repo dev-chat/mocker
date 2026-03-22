@@ -10,6 +10,15 @@ fi
 
 PATH=/usr/local/bin:/usr/bin:/bin:${PATH:-}
 
+require_command() {
+	local command_name="$1"
+
+	if ! command -v "${command_name}" >/dev/null 2>&1; then
+		echo "Missing required command: ${command_name}" >&2
+		exit 1
+	fi
+}
+
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3000/health}"
 SLACK_CHANNEL="${SLACK_CHANNEL:-#muzzlefeedback}"
 SLACK_MESSAGE=':this-is-fine: `Moonbeam is experiencing some technical difficulties at the moment.` :this-is-fine:'
@@ -89,6 +98,10 @@ check_health() {
 }
 
 main() {
+	require_command curl
+	require_command grep
+	require_command mktemp
+
 	if check_health; then
 		exit 0
 	fi

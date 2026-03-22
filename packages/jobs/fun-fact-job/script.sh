@@ -337,7 +337,13 @@ send_slack_message() {
 		--header "Authorization: Bearer ${MUZZLE_BOT_TOKEN}" \
 		--header 'Content-Type: application/json; charset=utf-8' \
 		--data "${payload}" \
-		https://slack.com/api/chat.postMessage)
+		https://slack.com/api/chat.postMessage || true)
+
+	if [[ -z "${response_code:-}" ]]; then
+		echo "Slack API request failed: curl did not complete successfully" >&2
+		rm -f "${response_file}"
+		return 1
+	fi
 
 	if [[ "${response_code}" != '200' ]] || ! jq -e '.ok == true' "${response_file}" >/dev/null 2>&1; then
 		cat "${response_file}" >&2
