@@ -59,8 +59,8 @@ jobs:
             docker pull "$IMAGE"
 
             # Tear down any running containers from this image.
-            docker stop $(docker ps -q --filter ancestor="$IMAGE") 2>/dev/null || true
-            docker rm $(docker ps -aq --filter ancestor="$IMAGE") 2>/dev/null || true
+            # Tear down the named container (if any)
+            docker rm -f muzzle 2>/dev/null || true
 
             # Hand off to your existing startup script which handles volume
             # mounts and env var injection.
