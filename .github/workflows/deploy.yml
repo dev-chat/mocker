@@ -65,4 +65,13 @@ jobs:
             # Hand off to your existing startup script which handles volume
             # mounts and env var injection.
             # Update this path to wherever the script lives on your Linode.
-            /home/muzzle.lol/start-muzzle.sh
+            bash -lc '/home/muzzle.lol/start-muzzle.sh'
+
+            # Validate that the service stayed up; if not, print diagnostics.
+            sleep 3
+            if ! docker ps --format '{{.Names}}' | grep -qx 'muzzle'; then
+              echo "Container 'muzzle' is not running after startup"
+              docker ps -a --filter name=^/muzzle$
+              docker logs --tail 200 muzzle 2>/dev/null || true
+              exit 1
+            fi
