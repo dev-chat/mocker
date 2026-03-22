@@ -6,8 +6,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "build:prod": "tsc -p tsconfig.prod.json",
-    "lint": "eslint --cache --cache-location ../../node_modules/.cache/eslint/backend/.eslintcache './**/*.{js,ts}' && npm run format:check",
-    "lint:fix": "eslint --cache --cache-location ../../node_modules/.cache/eslint/backend/.eslintcache './**/*.{js,ts}' --quiet --fix && npm run format:fix",
+    "lint": "eslint --cache --cache-location ../../node_modules/.cache/eslint/backend/.eslintcache './**/*.{js,ts}'",
+    "lint:fix": "eslint --cache --cache-location ../../node_modules/.cache/eslint/backend/.eslintcache './**/*.{js,ts}' --quiet --fix",
     "format:check": "prettier --cache --ignore-path ../../.prettierignore --check \"**/*.{ts,js,json,md,yml,yaml}\"",
     "format:fix": "prettier --cache --ignore-path ../../.prettierignore --write \"**/*.{ts,js,json,md,yml,yaml}\"",
     "minify": "esbuild dist/**.js dist/**/*.js --bundle --minify --target=node18 --platform=node --outdir=dist --allow-overwrite --packages=external --external:dist/shared/db/models/*",
