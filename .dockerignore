@@ -1,3 +1,10 @@
 node_modules
 npm-debug.log
 images
+.git
+.github
+coverage
+packages/**/coverage
+packages/frontend
+packages/jobs
+**/*.log
