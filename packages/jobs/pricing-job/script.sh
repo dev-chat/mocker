@@ -96,6 +96,7 @@ main() {
 	local price_pct
 	local price
 	local median_rep
+	local sql_batch
 	local -a teams
 	local -a items
 	local row
@@ -125,17 +126,24 @@ main() {
 
 	median_rep=$(calculate_median_rep)
 
+	sql_batch=""
 	for team_id in "${teams[@]}"; do
 		[[ -n "${team_id}" ]] || continue
 
 		for item_row in "${items[@]}"; do
 			IFS=$'\t' read -r item_id price_pct <<<"${item_row}"
 			price=$(awk -v median="${median_rep}" -v pct="${price_pct}" 'BEGIN { printf "%.15f", median * pct }')
-			mysql_query "INSERT INTO price(itemId, teamId, price, itemIdId) VALUES(${item_id}, '$(sql_escape "${team_id}")', ${price}, ${item_id});" >/dev/null
+			sql_batch+="INSERT INTO price(itemId, teamId, price, itemIdId) VALUES(${item_id}, '$(sql_escape "${team_id}")', ${price}, ${item_id});"$'\n'
 		done
 
-		echo "Completed update for ${team_id}"
+		echo "Queued update for ${team_id}"
 	done
+
+	if [[ -n "${sql_batch}" ]]; then
+		echo 'Executing batch price inserts...'
+		mysql_query "START TRANSACTION;
+${sql_batch}COMMIT;" || { echo 'Batch insert failed; transaction has been rolled back' >&2; return 1; }
+	fi
 
 	echo "Completed job in $(( $(date +%s) - start_time )) seconds!"
 }
