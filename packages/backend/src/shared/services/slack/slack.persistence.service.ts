@@ -4,6 +4,7 @@ import type { SlackUser as SlackUserModel } from '../../../shared/models/slack/s
 import { SlackUser as SlackUserFromDB } from '../../../shared/db/models/SlackUser';
 import { RedisPersistenceService } from '../../../shared/services/redis.persistence.service';
 import type { ConversationsListResponse } from '@slack/web-api';
+import { logError } from '../../logger/error-logging';
 import { logger } from '../../logger/logger';
 
 type SlackUserForStorage = Pick<SlackUserModel, 'id' | 'name'> &
@@ -50,7 +51,9 @@ export class SlackPersistenceService {
         }
         this.logger.info('Updated channel list');
       } catch (e) {
-        this.logger.error('Error on updating channels: ', e);
+        logError(this.logger, 'Error updating channels', e, {
+          channelCount: dbChannels.length,
+        });
       }
     }
   }
@@ -92,20 +95,28 @@ export class SlackPersistenceService {
           await getRepository(SlackUserFromDB)
             .save({ ...existingUser, user })
             .catch((e) => {
-              this.logger.error('Error updating user: ', e);
+              logError(this.logger, 'Error updating user', e, {
+                slackId: user.slackId,
+                teamId: user.teamId,
+              });
             });
         } else {
           await getRepository(SlackUserFromDB)
             .save({ ...user, activity: [], messages: [] })
             .catch((e) => {
-              this.logger.error('Error saving user: ', e);
+              logError(this.logger, 'Error saving user', e, {
+                slackId: user.slackId,
+                teamId: user.teamId,
+              });
             });
         }
       }
       this.logger.info('Updated latest users in DB.');
       return dbUsers;
     } catch (e) {
-      this.logger.error('Error on updating users: ', e);
+      logError(this.logger, 'Error updating users', e, {
+        userCount: dbUsers.length,
+      });
       throw e;
     }
   }

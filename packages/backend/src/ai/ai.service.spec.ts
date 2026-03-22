@@ -1,3 +1,6 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { AIService } from './ai.service';
 import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { MOONBEAM_SLACK_ID } from './ai.constants';
@@ -152,6 +155,33 @@ describe('AIService', () => {
 
       await expect(aiService.generateImage('U1', 'T1', 'C1', 'draw cat')).rejects.toThrow();
       expect(errSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('writeToDiskAndReturnUrl', () => {
+    it('creates the image directory before writing the file', async () => {
+      const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-service-'));
+      const imageDir = path.join(tempRoot, 'nested', 'images');
+      const originalImageDir = process.env.IMAGE_DIR;
+
+      process.env.IMAGE_DIR = imageDir;
+
+      try {
+        const imageUrl = await aiService.writeToDiskAndReturnUrl(Buffer.from('png-bytes').toString('base64'));
+        const filename = imageUrl.split('/').pop();
+
+        expect(filename).toBeDefined();
+        expect(fs.existsSync(imageDir)).toBe(true);
+        expect(fs.readFileSync(path.join(imageDir, filename as string))).toEqual(Buffer.from('png-bytes'));
+      } finally {
+        if (originalImageDir === undefined) {
+          delete process.env.IMAGE_DIR;
+        } else {
+          process.env.IMAGE_DIR = originalImageDir;
+        }
+
+        fs.rmSync(tempRoot, { recursive: true, force: true });
+      }
     });
   });
 

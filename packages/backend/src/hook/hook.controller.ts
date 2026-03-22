@@ -1,5 +1,6 @@
 import type { Router } from 'express';
 import express from 'express';
+import { logError } from '../shared/logger/error-logging';
 import { WebService } from '../shared/services/web/web.service';
 
 export const hookController: Router = express.Router();
@@ -20,6 +21,10 @@ hookController.post('/', (req, res) => {
       res.status(200).send();
     })
     .catch((e) => {
+      logError(hookLogger, 'Failed to send hook message', e, {
+        message,
+        destination: '#products',
+      });
       res.status(500).send(`Error sending message: ${e.message}`);
     });
 });

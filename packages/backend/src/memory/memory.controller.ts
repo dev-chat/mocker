@@ -3,6 +3,7 @@ import express from 'express';
 import { MemoryPersistenceService } from '../ai/memory/memory.persistence.service';
 import { WebService } from '../shared/services/web/web.service';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 export const memoryController: Router = express.Router();
@@ -40,7 +41,11 @@ memoryController.post('/', (req, res) => {
       const message = `What Moonbeam remembers about you:\n${formattedMemories}`;
       void webService.sendEphemeral(channel_id, message, user_id);
     } catch (e) {
-      memoryLogger.error('Error fetching memories for /memory command:', e);
+      logError(memoryLogger, 'Failed to fetch memories for /memory command', e, {
+        userId: user_id,
+        teamId: team_id,
+        channelId: channel_id,
+      });
       void webService.sendEphemeral(channel_id, 'Sorry, something went wrong fetching your memories.', user_id);
     }
   })();

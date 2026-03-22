@@ -1,5 +1,6 @@
 import { WebService } from '../shared/services/web/web.service';
 import { SuppressorService } from '../shared/services/suppressor.service';
+import { logError } from '../shared/logger/error-logging';
 import { StoreService } from './store.service';
 import { logger } from '../shared/logger/logger';
 
@@ -19,7 +20,12 @@ export class ItemService {
       id: 1,
       interaction: (userId, teamId, usedOnUser): Promise<string> => {
         return this.storeService.useItem('1', userId, teamId, usedOnUser).catch((e) => {
-          this.logger.error(e);
+          logError(this.logger, 'Failed to activate 50 Cal item', e, {
+            userId,
+            teamId,
+            usedOnUser,
+            itemId: '1',
+          });
           throw new Error(`Sorry, unable to set 50 Cal at this time. Please try again later.`);
         });
       },
@@ -28,7 +34,12 @@ export class ItemService {
       id: 2,
       interaction: (userId, teamId, usedOnUser): Promise<string> => {
         return this.storeService.useItem('2', userId, teamId, usedOnUser).catch((e) => {
-          this.logger.error(e);
+          logError(this.logger, 'Failed to activate Guardian Angel item', e, {
+            userId,
+            teamId,
+            usedOnUser,
+            itemId: '2',
+          });
           throw new Error(
             `Sorry, unable to set Guardian Angel on <@${usedOnUser}> at this time. Please try again later.`,
           );
@@ -47,7 +58,13 @@ export class ItemService {
           await this.webService
             .sendMessage(channel, `:zombie: <@${usedOnUser}> has been resurrected by <@${userId}>! :zombie:`)
             .catch((e) => {
-              this.logger.error(e);
+              logError(this.logger, 'Failed to send resurrection message', e, {
+                userId,
+                teamId,
+                usedOnUser,
+                channel,
+                itemId: '3',
+              });
               throw new Error(`Unable to resurrect <@${usedOnUser}>. Please try again.`);
             });
           return this.storeService.useItem('3', userId, teamId, usedOnUser);
@@ -64,7 +81,12 @@ export class ItemService {
           throw new Error(`Sorry, unable to purchase Moon Token at this time. You already have one active.`);
         }
         return this.storeService.useItem('4', userId, teamId, usedOnUser).catch((e) => {
-          this.logger.error(e);
+          logError(this.logger, 'Failed to activate Moon Token item', e, {
+            userId,
+            teamId,
+            usedOnUser,
+            itemId: '4',
+          });
           throw new Error(`Sorry, unable to purchase Moon Token at this time. Please try again later.`);
         });
       },

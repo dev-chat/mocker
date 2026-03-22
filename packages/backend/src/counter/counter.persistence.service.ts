@@ -6,6 +6,7 @@ import { WebService } from '../shared/services/web/web.service';
 import { COUNTER_TIME, SINGLE_DAY_MS } from './constants';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import { getRemainingTime } from '../muzzle/muzzle-utilities';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 export class CounterPersistenceService {
   public static getInstance(): CounterPersistenceService {
@@ -34,7 +35,10 @@ export class CounterPersistenceService {
       this.setCounterState(requestorId, counterFromDb.id, teamId);
     } catch (e) {
       const error = e instanceof Error ? e : new Error(String(e));
-      this.logger.error(`Error on saving counter to DB: ${error}`);
+      logError(this.logger, 'Error saving counter to DB', error, {
+        requestorId,
+        teamId,
+      });
       throw Object.assign(new Error(`Error on saving counter to DB: ${error.message}`), { cause: error });
     }
   }
@@ -134,9 +138,12 @@ export class CounterPersistenceService {
     clearTimeout(counter!.removalFn);
     if (isUsed && channel) {
       this.counters.delete(id);
-      await this.setCounteredToTrue(id, requestorId).catch((e) =>
-        this.logger.error('Error during setCounteredToTrue', e),
-      );
+      await this.setCounteredToTrue(id, requestorId).catch((e) => {
+        logError(this.logger, 'Failed to mark counter as used', e, {
+          counterId: id,
+          requestorId,
+        });
+      });
     } else {
       // This whole section is an anti-pattern. Fix this.
       this.counters.delete(id);
@@ -150,7 +157,13 @@ export class CounterPersistenceService {
             counter!.requestorId
           }> lives in fear and is now muzzled, has lost muzzle privileges for 24 hours and cannot use counter again for 24 hours. :flesh:`,
         )
-        .catch((e) => this.logger.error(e));
+        .catch((e) =>
+          logError(this.logger, 'Failed to send counter timeout message', e, {
+            counterId: id,
+            requestorId: counter!.requestorId,
+            teamId,
+          }),
+        );
     }
   }
 

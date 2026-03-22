@@ -6,6 +6,7 @@ import { SlackUser } from '../shared/db/models/SlackUser';
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
 import type { TotalRep } from '../reaction/reaction.interface';
 import Decimal from 'decimal.js';
+import { logError } from '../shared/logger/error-logging';
 import { logger as loglib } from '../shared/logger/logger';
 
 export interface PortfolioSummaryItem {
@@ -27,7 +28,7 @@ export enum TransactionType {
 
 export class PortfolioPersistenceService {
   reactionPersistenceService = new ReactionPersistenceService();
-  logger = loglib.child('PortfolioPersistenceService');
+  logger = loglib.child({ module: 'PortfolioPersistenceService' });
 
   public async getPortfolio(userId: string, teamId: string): Promise<Portfolio> {
     const userRepo = getRepository(SlackUser);
@@ -122,6 +123,15 @@ export class PortfolioPersistenceService {
       } catch (error) {
         // Make sure to release the lock in case of error
         await transactionalEntityManager.query('SELECT RELEASE_LOCK(?)', [lockName]);
+        logError(this.logger, 'Portfolio transaction failed inside database transaction', error, {
+          userId,
+          teamId,
+          type,
+          stockSymbol,
+          quantity,
+          price,
+          lockName,
+        });
         throw error;
       }
     });

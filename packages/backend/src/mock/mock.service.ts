@@ -1,10 +1,12 @@
 import type { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
+import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 
 export class MockService {
   slackService = new SlackService();
+  logger = logger.child({ module: 'MockService' });
 
-  public mock(request: SlashCommandRequest): void {
+  public async mock(request: SlashCommandRequest): Promise<void> {
     if (request.text) {
       let mocked = '';
       let shouldChangeCase = true;

@@ -65,11 +65,23 @@ describe('ReactionService', () => {
     saveReaction.mockRejectedValue(err);
 
     service.handle({
-      event: { type: 'reaction_added', user: 'U1', item_user: 'U2', reaction: '+1' },
+      event: { type: 'reaction_added', user: 'U1', item_user: 'U2', reaction: '+1', item: { channel: 'C1' } },
       team_id: 'T1',
     } as EventRequest);
     await Promise.resolve();
 
-    expect(loggerSpy).toHaveBeenCalledWith(err);
+    expect(loggerSpy).toHaveBeenCalledWith(
+      'Failed to persist added reaction',
+      expect.objectContaining({
+        context: expect.objectContaining({
+          reaction: '+1',
+          reactingUser: 'U1',
+          affectedUser: 'U2',
+          teamId: 'T1',
+          channelId: 'C1',
+        }),
+        error: expect.objectContaining({ message: 'db error', name: 'Error' }),
+      }),
+    );
   });
 });

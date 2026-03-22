@@ -11,6 +11,7 @@ import type {
   UsersListResponse,
 } from '@slack/web-api';
 import { WebClient } from '@slack/web-api';
+import { logError } from '../../logger/error-logging';
 import { logger } from '../../logger/logger';
 
 const MAX_RETRIES = 5;
@@ -52,18 +53,25 @@ export class WebService {
       .delete(deleteRequest)
       .then((r) => {
         if (r.error) {
-          this.logger.error(r.error);
-          this.logger.error(deleteRequest);
-          this.logger.error(user);
+          logError(this.logger, 'Slack deleteMessage returned an API error', new Error(r.error), {
+            channel,
+            ts,
+            user,
+            deleteRequest,
+          });
         }
       })
       .catch((e) => {
-        this.logger.error(e);
-        if (e.data.error !== 'message_not_found') {
-          this.logger.error(e);
-          this.logger.error('delete request was : ');
-          this.logger.error(deleteRequest);
-          this.logger.error('Unable to delete message. Retrying in 5 seconds...');
+        const errorCode = getSlackErrorCode(e);
+        if (errorCode !== 'message_not_found') {
+          logError(this.logger, 'Failed to delete Slack message; scheduling retry', e, {
+            channel,
+            ts,
+            user,
+            times,
+            deleteRequest,
+            errorCode,
+          });
           setTimeout(() => this.deleteMessage(channel, ts, user, times + 1), 5000);
         }
       });
@@ -81,8 +89,12 @@ export class WebService {
       .postEphemeral(postRequest)
       .then((result) => result)
       .catch((e) => {
-        this.logger.error(e);
-        this.logger.error(postRequest);
+        logError(this.logger, 'Failed to send ephemeral Slack message', e, {
+          channel,
+          user,
+          text,
+          postRequest,
+        });
         return e;
       });
   }
@@ -104,9 +116,13 @@ export class WebService {
       .postMessage(postRequest)
       .then((result) => result)
       .catch((e) => {
-        this.logger.error(e);
-        this.logger.error(e.data);
-        this.logger.error(postRequest);
+        logError(this.logger, 'Failed to send Slack message', e, {
+          channel,
+          text,
+          hasBlocks: !!blocks?.length,
+          postRequest,
+          errorCode: getSlackErrorCode(e),
+        });
         throw e;
       });
   }
@@ -119,7 +135,13 @@ export class WebService {
       ts,
       token,
     };
-    this.web.chat.update(update).catch((e) => this.logger.error(e));
+    this.web.chat.update(update).catch((e) =>
+      logError(this.logger, 'Failed to edit Slack message', e, {
+        channel,
+        ts,
+        text,
+      }),
+    );
   }
 
   public getAllUsers(): Promise<UsersListResponse> {
@@ -148,8 +170,13 @@ export class WebService {
     };
 
     this.web.files.upload(uploadRequest).catch((e: unknown) => {
-      this.logger.error(e);
       const slackErrorCode = getSlackErrorCode(e);
+      logError(this.logger, 'Failed to upload Slack file', e, {
+        channel,
+        title,
+        userId,
+        errorCode: slackErrorCode,
+      });
       const options: ChatPostEphemeralArguments = {
         channel,
         text:
@@ -158,7 +185,13 @@ export class WebService {
             : `Oops! I tried to post the stats you requested but it looks like something went wrong. Please try again later.`,
         user: userId,
       };
-      this.web.chat.postEphemeral(options).catch((e) => this.logger.error(e));
+      this.web.chat.postEphemeral(options).catch((e) =>
+        logError(this.logger, 'Failed to send fallback ephemeral after upload failure', e, {
+          channel,
+          userId,
+          title,
+        }),
+      );
     });
   }
 }

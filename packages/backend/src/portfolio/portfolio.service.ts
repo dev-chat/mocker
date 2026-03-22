@@ -4,6 +4,7 @@ import { QuoteService } from '../quote/quote.service';
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
 import type { PortfolioSummary, PortfolioSummaryItem } from './portfolio.persistence.service';
 import { PortfolioPersistenceService, TransactionType } from './portfolio.persistence.service';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 export enum MessageHandlerEnum {
@@ -32,7 +33,7 @@ export class PortfolioService {
   quoteService = new QuoteService();
   repPersistenceService = new ReactionPersistenceService();
   portfolioPersistenceService = new PortfolioPersistenceService();
-  logger = logger.child('PortfolioService');
+  logger = logger.child({ module: 'PortfolioService' });
 
   public getQuotesWithTicker(portfolioSummaryItem: PortfolioSummaryItem[]): Promise<QuoteWithTicker[]> {
     return Promise.all(
@@ -166,6 +167,13 @@ export class PortfolioService {
       const { c } = await this.quoteService.getQuote(stockSymbol);
       price = c;
     } catch (e) {
+      logError(this.logger, 'Failed to retrieve quote before portfolio transaction', e, {
+        userId,
+        teamId,
+        stockSymbol,
+        quantity,
+        action,
+      });
       return {
         message: `Unable to retrieve price for \`${stockSymbol}\`. Transaction aborted.`,
         classification: MessageHandlerEnum.PRIVATE,
@@ -204,6 +212,13 @@ export class PortfolioService {
             };
           })
           .catch((e) => {
+            logError(this.logger, 'Portfolio buy transaction failed', e, {
+              userId,
+              teamId,
+              stockSymbol,
+              quantity,
+              price,
+            });
             return {
               message: `Transaction failed due to an error: ${e.message}`,
               classification: MessageHandlerEnum.PRIVATE,
@@ -267,6 +282,13 @@ export class PortfolioService {
             };
           })
           .catch((e) => {
+            logError(this.logger, 'Portfolio sell transaction failed', e, {
+              userId,
+              teamId,
+              stockSymbol,
+              quantity,
+              price,
+            });
             return {
               message: `Transaction failed due to an error: ${e.message}`,
               classification: MessageHandlerEnum.PRIVATE,

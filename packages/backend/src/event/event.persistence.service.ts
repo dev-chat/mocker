@@ -6,9 +6,12 @@ import type { EventRequest } from '../shared/models/slack/slack-models';
 import type { AnalysisOptions, AnalysisResult } from 'sentiment';
 import Sentiment from 'sentiment';
 import { Sentiment as SentimentDB } from '../shared/db/models/Sentiment';
+import { logError } from '../shared/logger/error-logging';
+import { logger } from '../shared/logger/logger';
 
 export class EventPersistenceService {
   sentiment = new Sentiment();
+  logger = logger.child({ module: 'EventPersistenceService' });
 
   async logActivity(request: EventRequest) {
     // This is a bandaid to stop workflows from breaking the service.
@@ -31,7 +34,16 @@ export class EventPersistenceService {
     activity.teamId = request.team_id;
     activity.userId = user;
     activity.eventType = request.event.type;
-    void getRepository(Activity).insert(activity);
+    void getRepository(Activity)
+      .insert(activity)
+      .catch((e) => {
+        logError(this.logger, 'Failed to persist Slack activity event', e, {
+          eventType: request.event.type,
+          teamId: request.team_id,
+          userId: request.event.user,
+          channelId: activity.channel,
+        });
+      });
   }
 
   public performSentimentAnalysis(userId: string, teamId: string, channelId: string, text: string): void {
@@ -56,6 +68,15 @@ export class EventPersistenceService {
     sentimentModel.teamId = teamId;
     sentimentModel.userId = userId;
     sentimentModel.channelId = channelId;
-    return getRepository(SentimentDB).insert(sentimentModel);
+    return getRepository(SentimentDB)
+      .insert(sentimentModel)
+      .catch((e) => {
+        logError(this.logger, 'Failed to persist sentiment analysis', e, {
+          userId,
+          teamId,
+          channelId,
+        });
+        throw e;
+      });
   }
 }

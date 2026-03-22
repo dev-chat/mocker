@@ -2,6 +2,7 @@ import type { KnownBlock } from '@slack/web-api';
 import type { AxiosResponse } from 'axios';
 import Axios from 'axios';
 import type { Definition, UrbanDictionaryResponse } from '../shared/models/define/define-models';
+import { logError } from '../shared/logger/error-logging';
 import { WebService } from '../shared/services/web/web.service';
 import { logger } from '../shared/logger/logger';
 
@@ -52,7 +53,21 @@ export class DefineService {
             },
           ],
         });
-        this.webService.sendMessage(channelId, formattedTitle, blocks).catch((e) => this.logger.error(e));
+        this.webService.sendMessage(channelId, formattedTitle, blocks).catch((e) =>
+          logError(this.logger, 'Failed to send definition response to Slack', e, {
+            userId,
+            channelId,
+            word,
+          }),
+        );
+      })
+      .catch((e) => {
+        logError(this.logger, 'Failed to fetch definition from Urban Dictionary', e, {
+          userId,
+          channelId,
+          word,
+        });
+        throw e;
       });
   }
 

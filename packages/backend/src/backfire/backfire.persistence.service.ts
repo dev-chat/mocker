@@ -2,9 +2,12 @@ import type { UpdateResult } from 'typeorm';
 import { getRepository } from 'typeorm';
 import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 import { Backfire } from '../shared/db/models/Backfire';
+import { logError } from '../shared/logger/error-logging';
+import { logger } from '../shared/logger/logger';
 
 export class BackFirePersistenceService {
   private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
+  private logger = logger.child({ module: 'BackfirePersistenceService' });
 
   public addBackfire(userId: string, time: number, teamId: string): Promise<void> {
     const backfire = new Backfire();
@@ -30,6 +33,14 @@ export class BackFirePersistenceService {
           'EX',
           Math.floor(time / 1000),
         );
+      })
+      .catch((e) => {
+        logError(this.logger, 'Failed to create backfire state', e, {
+          userId,
+          teamId,
+          time,
+        });
+        throw e;
       });
   }
 

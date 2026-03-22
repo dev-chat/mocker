@@ -1,10 +1,12 @@
 import type { ChannelResponse } from '../shared/models/slack/slack-models';
+import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 
 export class ClapService {
   slackService = new SlackService();
+  logger = logger.child({ module: 'ClapService' });
 
-  public clap(text: string, userId: string, responseUrl: string): void {
+  public async clap(text: string, userId: string, responseUrl: string): Promise<void> {
     if (text) {
       let output = '';
       const words = text.trim().split(' ');

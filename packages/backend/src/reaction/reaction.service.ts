@@ -1,5 +1,6 @@
 import { logger } from '../shared/logger/logger';
 import type { Event, EventRequest } from '../shared/models/slack/slack-models';
+import { logError } from '../shared/logger/error-logging';
 import { reactionValues } from './constants';
 import { ReactionPersistenceService } from './reaction.persistence.service';
 
@@ -25,7 +26,15 @@ export class ReactionService {
     const reactionValue = reactionValues[event.reaction];
     // Log event to DB.
     if (this.shouldReactionBeLogged(reactionValue)) {
-      this.reactionPersistenceService.saveReaction(event, reactionValue, teamId).catch((e) => this.logger.error(e));
+      this.reactionPersistenceService.saveReaction(event, reactionValue, teamId).catch((e) =>
+        logError(this.logger, 'Failed to persist added reaction', e, {
+          reaction: event.reaction,
+          reactingUser: event.user,
+          affectedUser: event.item_user,
+          teamId,
+          channelId: event.item.channel,
+        }),
+      );
     }
   }
 

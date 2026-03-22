@@ -1,6 +1,7 @@
 import Axios from 'axios';
 import type { CompanyProfile, MetricResponse, QuoteData, QuoteResponse } from './quote.models';
 import type { Block, KnownBlock } from '@slack/web-api';
+import { logError } from '../shared/logger/error-logging';
 import { WebService } from '../shared/services/web/web.service';
 import { logger } from '../shared/logger/logger';
 
@@ -42,7 +43,11 @@ export class QuoteService {
       })
       .then((quoteData) => {
         this.webService.sendMessage(channelId, '', this.createQuoteBlocks(quoteData, userId)).catch((e) => {
-          this.logger.error(e);
+          logError(this.logger, 'Failed to send quote response to Slack', e, {
+            ticker,
+            channelId,
+            userId,
+          });
           void this.webService.sendMessage(
             userId,
             'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
@@ -50,7 +55,11 @@ export class QuoteService {
         });
       })
       .catch((e) => {
-        this.logger.error(e);
+        logError(this.logger, 'Failed to fetch quote data', e, {
+          ticker,
+          channelId,
+          userId,
+        });
         void this.webService.sendMessage(
           userId,
           'Sorry, something went wrong while fetching the quote. Please try again later.',

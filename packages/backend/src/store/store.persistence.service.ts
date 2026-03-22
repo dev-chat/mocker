@@ -6,6 +6,7 @@ import { Purchase } from '../shared/db/models/Purchase';
 import { UsedItem } from '../shared/db/models/UsedItem';
 import { ItemKill } from '../shared/db/models/ItemKill';
 import { getMsForSpecifiedRange } from '../muzzle/muzzle-utilities';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 interface ItemWithPrice extends Item {
@@ -128,8 +129,12 @@ export class StorePersistenceService {
         .insert(purchase)
         .then(() => `Congratulations! You have purchased *_${itemById.name}!_*`)
         .catch((e) => {
-          this.logger.error('Error on updating purchase table');
-          this.logger.error(e);
+          logError(this.logger, 'Failed to record store purchase', e, {
+            itemId,
+            itemName: itemById.name,
+            userId,
+            teamId,
+          });
           return `Sorry, unable to buy ${itemById.name}. Please try again later.`;
         });
     }

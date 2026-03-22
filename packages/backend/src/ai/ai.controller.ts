@@ -6,6 +6,7 @@ import { suppressedMiddleware } from '../shared/middleware/suppression';
 import { textMiddleware } from '../shared/middleware/textMiddleware';
 import { aiMiddleware } from './middleware/aiMiddleware';
 import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 export const aiController: Router = express.Router();
@@ -21,7 +22,12 @@ aiController.post('/text', (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
   res.status(200).send('Processing your request. Please be patient...');
   void aiService.generateText(user_id, team_id, channel_id, text).catch((e) => {
-    aiLogger.error(e);
+    logError(aiLogger, 'Failed to generate AI text response', e, {
+      userId: user_id,
+      teamId: team_id,
+      channelId: channel_id,
+      prompt: text,
+    });
     const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
     void webService.sendEphemeral(channel_id, errorMessage, user_id);
     return undefined;
@@ -32,7 +38,12 @@ aiController.post('/image', (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
   res.status(200).send('Processing your request. Please be patient...');
   void aiService.generateImage(user_id, team_id, channel_id, text).catch((e) => {
-    aiLogger.error(e);
+    logError(aiLogger, 'Failed to generate AI image response', e, {
+      userId: user_id,
+      teamId: team_id,
+      channelId: channel_id,
+      prompt: text,
+    });
     const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
     void webService.sendEphemeral(channel_id, errorMessage, user_id);
     return undefined;
@@ -43,7 +54,12 @@ aiController.post('/prompt-with-history', (req, res) => {
   const request: SlashCommandRequest = req.body;
   res.status(200).send('Processing your request. Please be patient...');
   void aiService.promptWithHistory(request).catch((e) => {
-    aiLogger.error(e);
+    logError(aiLogger, 'Failed to process AI prompt with history', e, {
+      userId: request.user_id,
+      teamId: request.team_id,
+      channelId: request.channel_id,
+      prompt: request.text,
+    });
     const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
     void webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
     return undefined;

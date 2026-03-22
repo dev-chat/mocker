@@ -9,6 +9,7 @@ import { MuzzleReportService } from './muzzle.report.service';
 import { MuzzleService } from './muzzle.service';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 import { textMiddleware } from '../shared/middleware/textMiddleware';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 export const muzzleController: Router = express.Router();
@@ -31,7 +32,12 @@ muzzleController.post('/', (req: Request, res: Response) => {
       .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
       .then((results) => res.send(results))
       .catch((e: unknown) => {
-        muzzleLogger.error(e);
+        logError(muzzleLogger, 'Failed to add user to muzzle list', e, {
+          muzzledUserId: userId,
+          requestorId: request.user_id,
+          teamId: request.team_id,
+          channelName: request.channel_name,
+        });
         res.status(500).send('An unexpected error occurred. Please try again later.');
       });
   } else {
@@ -66,7 +72,12 @@ muzzleController.post('/stats', (req: Request, res: Response) => {
         res.status(200).send();
       })
       .catch((e) => {
-        muzzleLogger.error(e);
+        logError(muzzleLogger, 'Failed to generate muzzle report', e, {
+          reportType,
+          userId: request.user_id,
+          teamId: request.team_id,
+          channelId: request.channel_id,
+        });
         res.status(500).send();
       });
   }

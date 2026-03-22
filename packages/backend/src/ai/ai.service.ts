@@ -24,6 +24,7 @@ import {
 } from './ai.constants';
 import { MemoryPersistenceService } from './memory/memory.persistence.service';
 import type { MemoryWithSlackId } from '../shared/db/models/Memory';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
@@ -54,6 +55,8 @@ const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): str
   const outputText = textBlock?.content.find(isResponseOutputText)?.text;
   return outputText?.trim();
 };
+
+const DEFAULT_IMAGE_DIR = path.join('/tmp', 'mocker-images');
 
 export class AIService {
   redis = new AIPersistenceService();
@@ -110,7 +113,12 @@ export class AIService {
         }
       })
       .catch(async (e) => {
-        this.aiServiceLogger.error(e);
+        logError(this.aiServiceLogger, 'Failed to generate AI text response', e, {
+          userId,
+          teamId,
+          channelId,
+          prompt: text,
+        });
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
@@ -118,19 +126,22 @@ export class AIService {
   }
 
   public async writeToDiskAndReturnUrl(base64Image: string): Promise<string> {
-    const dir = process.env.IMAGE_DIR ? process.env.IMAGE_DIR : path.join(__dirname, '../../../images');
+    const dir = process.env.IMAGE_DIR ?? DEFAULT_IMAGE_DIR;
     const filename = `${uuidv4()}.png`;
     const filePath = path.join(dir, filename);
     const base64Data = base64Image.replace(/^data:image\/png;base64,/, '');
-    return new Promise((resolve, reject) =>
-      fs.writeFile(filePath, base64Data, 'base64', (err) => {
-        if (err) {
-          this.aiServiceLogger.error('Error writing image to disk:', err);
-          reject(err);
-        }
-        resolve(`https://muzzle.lol/${filename}`);
-      }),
-    );
+
+    try {
+      await fs.promises.mkdir(dir, { recursive: true });
+      await fs.promises.writeFile(filePath, base64Data, 'base64');
+      return `https://muzzle.lol/${filename}`;
+    } catch (error) {
+      logError(this.aiServiceLogger, 'Failed to write AI image to disk', error, {
+        imageDirectory: dir,
+        filePath,
+      });
+      throw error;
+    }
   }
 
   public async redeployMoonbeam(): Promise<void> {
@@ -191,8 +202,11 @@ export class AIService {
         if (x) {
           return this.writeToDiskAndReturnUrl(x);
         } else {
-          this.aiServiceLogger.error(`No b64_json was returned for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
-          throw new Error(`No b64_json was returned for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
+          const error = new Error(`No b64_json was returned for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
+          logError(this.aiServiceLogger, 'Gemini redeploy image generation returned no image data', error, {
+            prompt: REDPLOY_MOONBEAM_IMAGE_PROMPT,
+          });
+          throw error;
         }
       });
 
@@ -217,7 +231,7 @@ export class AIService {
         void this.webService.sendMessage('#muzzlefeedback', 'Moonbeam has been deployed.', blocks);
       })
       .catch((e) => {
-        this.aiServiceLogger.error(e);
+        logError(this.aiServiceLogger, 'Failed to redeploy Moonbeam assets', e);
       });
   }
 
@@ -274,15 +288,26 @@ export class AIService {
         if (x) {
           return this.writeToDiskAndReturnUrl(x);
         } else {
-          this.aiServiceLogger.error(`No b64_json was returned for prompt: ${text}`);
-          throw new Error(`No b64_json was returned for prompt: ${text}`);
+          const error = new Error(`No b64_json was returned for prompt: ${text}`);
+          logError(this.aiServiceLogger, 'Gemini image generation returned no image data', error, {
+            userId,
+            teamId,
+            channelId: channel,
+            prompt: text,
+          });
+          throw error;
         }
       })
       .then((imageUrl) => {
         this.sendImage(imageUrl, userId, teamId, channel, text);
       })
       .catch(async (e) => {
-        this.aiServiceLogger.error(e);
+        logError(this.aiServiceLogger, 'Failed to generate AI image response', e, {
+          userId,
+          teamId,
+          channelId: channel,
+          prompt: text,
+        });
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
@@ -296,7 +321,9 @@ export class AIService {
         return extractAndParseOpenAiResponse(x);
       })
       .catch(async (e) => {
-        this.aiServiceLogger.error(e);
+        logError(this.aiServiceLogger, 'Failed to generate corpo-speak response', e, {
+          prompt: text,
+        });
         throw e;
       });
   }
@@ -370,7 +397,12 @@ export class AIService {
         });
 
         this.webService.sendMessage(request.channel_id, request.text, blocks).catch((e) => {
-          this.aiServiceLogger.error(e);
+          logError(this.aiServiceLogger, 'Failed to send prompt-with-history response to Slack', e, {
+            userId: request.user_id,
+            teamId: request.team_id,
+            channelId: request.channel_id,
+            prompt: request.text,
+          });
           void this.webService.sendMessage(
             request.user_id,
             'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
@@ -378,7 +410,12 @@ export class AIService {
         });
       })
       .catch(async (e) => {
-        this.aiServiceLogger.error(e);
+        logError(this.aiServiceLogger, 'Failed to process prompt with history', e, {
+          userId: request.user_id,
+          teamId: request.team_id,
+          channelId: request.channel_id,
+          prompt: request.text,
+        });
         await this.redis.removeInflight(user_id, team_id);
         await this.redis.decrementDailyRequests(user_id, team_id);
         throw e;
@@ -420,7 +457,12 @@ export class AIService {
           this.webService
             .sendMessage(channelId, result, [{ type: 'markdown', text: result }])
             .then(() => this.redis.setHasParticipated(teamId, channelId))
-            .catch((e) => this.aiServiceLogger.error('Error sending AI Participation message:', e));
+            .catch((e) =>
+              logError(this.aiServiceLogger, 'Failed to send AI participation message', e, {
+                teamId,
+                channelId,
+              }),
+            );
 
           // Fire-and-forget: extract memories from this conversation
           this.extractMemories(teamId, channelId, history, result, participantSlackIds).catch((e) =>
@@ -429,7 +471,11 @@ export class AIService {
         }
       })
       .catch(async (e) => {
-        this.aiServiceLogger.error(e);
+        logError(this.aiServiceLogger, 'Failed to generate AI participation response', e, {
+          teamId,
+          channelId,
+          taggedMessage,
+        });
         throw e;
       })
       .finally(() => {
@@ -655,7 +701,12 @@ export class AIService {
         },
       ];
       this.webService.sendMessage(channel, text, blocks).catch((e) => {
-        this.aiServiceLogger.error(e);
+        logError(this.aiServiceLogger, 'Failed to send generated AI image to Slack', e, {
+          userId,
+          teamId,
+          channelId: channel,
+          prompt: text,
+        });
         void this.decrementDaiyRequests(userId, teamId);
         void this.webService.sendMessage(
           userId,
@@ -686,7 +737,12 @@ export class AIService {
       });
 
       this.webService.sendMessage(channelId, text, blocks).catch((e) => {
-        this.aiServiceLogger.error(e);
+        logError(this.aiServiceLogger, 'Failed to send generated AI text to Slack', e, {
+          userId,
+          teamId,
+          channelId,
+          prompt: query,
+        });
         void this.decrementDaiyRequests(userId, teamId);
         void this.webService.sendMessage(
           userId,

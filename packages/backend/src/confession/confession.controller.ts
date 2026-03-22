@@ -3,15 +3,24 @@ import express from 'express';
 import { ConfessionService } from './confession.service';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 import { textMiddleware } from '../shared/middleware/textMiddleware';
+import { logError } from '../shared/logger/error-logging';
+import { logger } from '../shared/logger/logger';
 
 export const confessionController: Router = express.Router();
 confessionController.use(suppressedMiddleware);
 confessionController.use(textMiddleware);
 
 const confessionService = new ConfessionService();
+const confessionLogger = logger.child({ module: 'ConfessionController' });
 
 confessionController.post('/', (req, res) => {
   res.status(200).send();
   const { user_id, channel_id, text } = req.body;
-  void confessionService.confess(user_id, channel_id, text);
+  void confessionService.confess(user_id, channel_id, text).catch((e) => {
+    logError(confessionLogger, 'Failed to handle /confession request', e, {
+      userId: user_id,
+      channelId: channel_id,
+      text,
+    });
+  });
 });

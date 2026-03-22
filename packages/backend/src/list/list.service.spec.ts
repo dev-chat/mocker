@@ -49,7 +49,7 @@ describe('ListService', () => {
     expect(uploadFile).toHaveBeenCalledWith('C1', expect.stringContaining('#general List'), "#general's List", 'U1');
   });
 
-  it('stores list item and sends in-channel response', () => {
+  it('stores list item and sends in-channel response', async () => {
     const req = {
       user_id: 'U1',
       text: 'buy milk',
@@ -58,7 +58,9 @@ describe('ListService', () => {
       response_url: 'https://resp',
     } as ListRequest;
 
-    service.list(req);
+    store.mockResolvedValue(undefined);
+
+    await service.list(req);
 
     expect(store).toHaveBeenCalledWith('U1', 'buy milk', 'T1', 'C1');
     expect(sendResponse).toHaveBeenCalledWith(
@@ -71,8 +73,7 @@ describe('ListService', () => {
     remove.mockResolvedValue(undefined);
     const req = { text: 'buy milk', response_url: 'https://resp' } as RemoveRequest;
 
-    service.remove(req);
-    await Promise.resolve();
+    await service.remove(req);
 
     expect(remove).toHaveBeenCalledWith('buy milk');
     expect(sendResponse).toHaveBeenCalledWith('https://resp', expect.objectContaining({ response_type: 'in_channel' }));
@@ -83,11 +84,15 @@ describe('ListService', () => {
     const loggerSpy = jest.spyOn(service.logger, 'error').mockImplementation(() => undefined);
     remove.mockRejectedValue(err);
 
-    service.remove({ text: 'x', response_url: 'https://resp' } as RemoveRequest);
-    await Promise.resolve();
-    await Promise.resolve();
+    await service.remove({ text: 'x', response_url: 'https://resp' } as RemoveRequest);
 
-    expect(loggerSpy).toHaveBeenCalledWith(err);
+    expect(loggerSpy).toHaveBeenCalledWith(
+      'Failed to remove list item',
+      expect.objectContaining({
+        context: expect.objectContaining({ text: 'x' }),
+        error: expect.objectContaining({ message: 'remove failed', name: 'Error' }),
+      }),
+    );
     expect(sendResponse).toHaveBeenCalledWith('https://resp', expect.objectContaining({ response_type: 'ephemeral' }));
   });
 });

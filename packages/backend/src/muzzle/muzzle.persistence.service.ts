@@ -3,12 +3,15 @@ import { getRepository } from 'typeorm';
 import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 import { SINGLE_DAY_MS } from '../counter/constants';
 import { Muzzle } from '../shared/db/models/Muzzle';
+import { logError } from '../shared/logger/error-logging';
+import { logger } from '../shared/logger/logger';
 import { StorePersistenceService } from '../store/store.persistence.service';
 import { MuzzleRedisTypeEnum, MAX_TIME_BETWEEN_MUZZLES, MAX_MUZZLES, ABUSE_PENALTY_TIME } from './constants';
 
 export class MuzzlePersistenceService {
   private redis: RedisPersistenceService = RedisPersistenceService.getInstance();
   private storePersistenceService = new StorePersistenceService();
+  private logger = logger.child({ module: 'MuzzlePersistenceService' });
 
   public addPermaMuzzle(userId: string, teamId: string): Promise<Muzzle> {
     const muzzle = new Muzzle();
@@ -28,6 +31,13 @@ export class MuzzlePersistenceService {
         );
         await this.redis.setValue(this.getRedisKeyName(userId, teamId, MuzzleRedisTypeEnum.Muzzled, true), '0');
         return muzzleFromDb;
+      })
+      .catch((e) => {
+        logError(this.logger, 'Failed to create permanent muzzle', e, {
+          userId,
+          teamId,
+        });
+        throw e;
       });
   }
 
@@ -60,7 +70,18 @@ export class MuzzlePersistenceService {
     muzzle.charactersSuppressed = 0;
     muzzle.milliseconds = time;
 
-    const muzzleFromDb = await getRepository(Muzzle).save(muzzle);
+    const muzzleFromDb = await getRepository(Muzzle)
+      .save(muzzle)
+      .catch((e) => {
+        logError(this.logger, 'Failed to create muzzle', e, {
+          requestorId,
+          muzzledId,
+          teamId,
+          time,
+          defensiveItemId,
+        });
+        throw e;
+      });
     const expireTime = Math.floor(time / 1000);
     await this.redis.setValueWithExpire(
       this.getRedisKeyName(muzzledId, teamId, MuzzleRedisTypeEnum.Muzzled),
