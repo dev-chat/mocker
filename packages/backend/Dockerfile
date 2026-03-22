@@ -14,7 +14,6 @@ COPY packages/backend/src ./packages/backend/src
 RUN npm ci \
 	&& npm run build:prod -w @mocker/backend \
 	&& npm run minify -w @mocker/backend \
-	&& npx esbuild /usr/src/app/packages/backend/dist/index.js --bundle --minify --platform=node --target=node20 --format=cjs --outfile=/usr/src/app/packages/backend/dist/runtime.cjs \
 	&& mkdir -p /usr/src/app/images
 
 FROM gcr.io/distroless/nodejs20-debian12:nonroot AS release
@@ -24,7 +23,7 @@ ENV NODE_ENV=production \
 WORKDIR /usr/src/app
 
 # Copy bundled runtime artifact and writable path from build stage.
-COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/dist/runtime.cjs ./runtime.cjs
+COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/dist/index.js ./runtime.cjs
 COPY --from=build --chown=65532:65532 /usr/src/app/images ./images
 
 EXPOSE 80
