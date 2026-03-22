@@ -15,7 +15,9 @@ module.exports = tseslint.config(
       ecmaVersion: 'latest',
       sourceType: 'module',
       parserOptions: {
-        projectService: true,
+        projectService: {
+          allowDefaultProject: ['packages/**/*.spec.ts'],
+        },
         tsconfigRootDir: __dirname,
       },
       globals: {
@@ -54,6 +56,7 @@ module.exports = tseslint.config(
       '@typescript-eslint/unbound-method': 'warn',
     },
   },
+
   {
     files: ['**/*.spec.ts'],
     rules: {
