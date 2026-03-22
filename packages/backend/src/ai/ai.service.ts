@@ -34,6 +34,7 @@ import type {
   ResponseOutputText,
   ResponseOutputRefusal,
 } from 'openai/resources/responses/responses';
+import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
 
 interface ExtractionResult {
@@ -155,10 +156,32 @@ export class AIService {
         },
       })
       .then((response) => {
+        this.aiServiceLogger.debug('Gemini response structure:', {
+          hasCandidates: !!response.candidates,
+          candidatesLength: response.candidates?.length,
+          firstCandidateKeys: response.candidates?.[0] ? Object.keys(response.candidates[0]) : null,
+          contentKeys: response.candidates?.[0]?.content ? Object.keys(response.candidates[0].content) : null,
+          partsLength: response.candidates?.[0]?.content?.parts?.length,
+          fullResponse: JSON.stringify(response, null, 2),
+        });
+
         let imageBytes = Buffer.from([]);
-        response.candidates?.[0].content?.parts?.forEach((part) => {
+        if (!response.candidates || response.candidates.length === 0) {
+          this.aiServiceLogger.warn('No candidates in Gemini response');
+          return '';
+        }
+
+        const parts = response.candidates[0].content?.parts;
+        if (!parts || parts.length === 0) {
+          this.aiServiceLogger.warn('No parts in first candidate');
+          return '';
+        }
+
+        parts.forEach((part: Part) => {
           if (part.inlineData?.data) {
             imageBytes = Buffer.concat([imageBytes, Buffer.from(part.inlineData.data, 'base64')]);
+          } else {
+            this.aiServiceLogger.debug('Part does not have inlineData.data:', Object.keys(part));
           }
         });
 
@@ -215,10 +238,31 @@ export class AIService {
         },
       })
       .then((response) => {
+        this.aiServiceLogger.debug('Gemini generateImage response structure:', {
+          hasCandidates: !!response.candidates,
+          candidatesLength: response.candidates?.length,
+          firstCandidateKeys: response.candidates?.[0] ? Object.keys(response.candidates[0]) : null,
+          contentKeys: response.candidates?.[0]?.content ? Object.keys(response.candidates[0].content) : null,
+          partsLength: response.candidates?.[0]?.content?.parts?.length,
+        });
+
         let imageBytes = Buffer.from([]);
-        response.candidates?.[0].content?.parts?.forEach((part) => {
+        if (!response.candidates || response.candidates.length === 0) {
+          this.aiServiceLogger.warn('No candidates in Gemini response for generateImage');
+          return '';
+        }
+
+        const parts = response.candidates[0].content?.parts;
+        if (!parts || parts.length === 0) {
+          this.aiServiceLogger.warn('No parts in first candidate for generateImage');
+          return '';
+        }
+
+        parts.forEach((part: Part) => {
           if (part.inlineData?.data) {
             imageBytes = Buffer.concat([imageBytes, Buffer.from(part.inlineData.data, 'base64')]);
+          } else {
+            this.aiServiceLogger.debug('GenerateImage part does not have inlineData.data:', Object.keys(part));
           }
         });
 
