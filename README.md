@@ -90,6 +90,14 @@ Each of the slash commands should have `Escape Channels, users and links sent to
 
 3. `npm run start` (starts the backend server)
 
+### Scheduled Jobs
+
+The scripts in `packages/jobs` are standalone bash jobs intended for cron-style execution. They no longer require Python or Pipenv.
+
+- `packages/jobs/health-job/script.sh` requires `bash` and `curl`
+- `packages/jobs/fun-fact-job/script.sh` requires `bash`, `curl`, `jq`, and `mysql`
+- `packages/jobs/pricing-job/script.sh` requires `bash`, `mysql`, `awk`, and `sort`
+
 ### Available Scripts
 
 From the root directory, you can run:
