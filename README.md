@@ -96,7 +96,7 @@ The scripts in `packages/jobs` are standalone bash jobs intended for cron-style 
 
 - `packages/jobs/health-job/script.sh` requires `bash` and `curl`
 - `packages/jobs/fun-fact-job/script.sh` requires `bash`, `curl`, `jq`, and `mysql`
-- `packages/jobs/pricing-job/script.sh` requires `bash`, `mysql`, `awk`, and `sort`
+- `packages/jobs/pricing-job/script.sh` requires `bash`, `mysql`, and `awk`
 
 ### Available Scripts
 

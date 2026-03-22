@@ -78,7 +78,7 @@ calculate_median_rep() {
 	')
 
 	median_index=$(( (count + 1) / 2 ))
-	target_line=$(( median_index + 1 ))
+	target_line=${median_index}
 	median_rep=$(awk -F $'\t' -v target="${target_line}" 'NR == target { print $2 }' <<<"${sorted_rows}")
 
 	if [[ -z "${median_rep}" ]]; then

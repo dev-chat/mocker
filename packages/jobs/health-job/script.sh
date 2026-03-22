@@ -39,8 +39,13 @@ send_slack_message() {
 		--header 'Content-Type: application/x-www-form-urlencoded' \
 		--data-urlencode "channel=${SLACK_CHANNEL}" \
 		--data-urlencode "text=${SLACK_MESSAGE}" \
-		https://slack.com/api/chat.postMessage)
+		https://slack.com/api/chat.postMessage || true)
 
+	if [[ -z "${response_code:-}" ]]; then
+		echo "Slack API request failed: curl did not complete successfully" >&2
+		rm -f "${response_body}"
+		return 1
+	fi
 	if [[ "${response_code}" != "200" ]]; then
 		echo "Slack API request failed with HTTP ${response_code}" >&2
 		rm -f "${response_body}"
