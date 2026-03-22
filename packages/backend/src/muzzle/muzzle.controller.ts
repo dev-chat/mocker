@@ -30,9 +30,9 @@ muzzleController.post('/', (req: Request, res: Response) => {
     muzzleService
       .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
       .then((results) => res.send(results))
-      .catch((e) => {
+      .catch((e: unknown) => {
         muzzleLogger.error(e);
-        res.send(e);
+        res.status(500).send('An unexpected error occurred. Please try again later.');
       });
   } else {
     muzzleLogger.warn(`Invalid user specified: ${request.text}`);

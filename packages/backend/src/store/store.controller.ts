@@ -82,7 +82,7 @@ storeController.post('/use', (req, res) => {
             userIdForItem,
             channel: request.channel_name,
           });
-          res.status(500).send(e);
+          res.status(500).send('An unexpected error occurred while using the item.');
           return undefined;
         });
 
