@@ -4,9 +4,12 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+
 jobs:
-  lint:
-    name: Lint
+  setup:
+    name: Install Dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,41 +18,45 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: node-modules
+          path: node_modules
+          retention-days: 1
+
+  lint:
+    name: Lint
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - run: npm run lint
 
   format-check:
     name: Format Check
+    needs: setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
+      - uses: ./.github/actions/setup
       - run: npm run format:check
 
   build:
     name: Build
+    needs: setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
+      - uses: ./.github/actions/setup
       - run: npm run build
 
   test:
     name: Test & Coverage
+    needs: setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
+      - uses: ./.github/actions/setup
       - name: Enforce 80% coverage
         run: npm run test:coverage
