@@ -58,8 +58,8 @@ jobs:
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             docker pull "$IMAGE"
 
-            # Tear down any running containers from this image.
             # Tear down the named container (if any)
+            docker stop muzzle 2>/dev/null || true
             docker rm -f muzzle 2>/dev/null || true
 
             # Hand off to your existing startup script which handles volume
