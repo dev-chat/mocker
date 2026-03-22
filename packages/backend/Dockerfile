@@ -14,6 +14,7 @@ COPY packages/backend/src ./packages/backend/src
 RUN npm ci \
 	&& npm run build:prod -w @mocker/backend \
 	&& npm run minify -w @mocker/backend \
+	&& npm prune --omit=dev \
 	&& mkdir -p /usr/src/app/images
 
 FROM gcr.io/distroless/nodejs20-debian12:nonroot AS release
@@ -24,6 +25,7 @@ WORKDIR /usr/src/app
 
 # Copy bundled runtime artifact and writable path from build stage.
 COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/dist/index.js ./runtime.cjs
+COPY --from=build --chown=65532:65532 /usr/src/app/node_modules ./node_modules
 COPY --from=build --chown=65532:65532 /usr/src/app/images ./images
 
 EXPOSE 80
