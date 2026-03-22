@@ -11,15 +11,16 @@
     "build:backend": "npm run build -w @mocker/backend",
     "build:prod": "npm run build:prod --workspaces --if-present",
     "build:prod:backend": "npm run build:prod -w @mocker/backend",
+    "prepare": "husky",
     "start": "npm run start -w @mocker/backend",
     "start:prod": "npm run start:prod -w @mocker/backend",
     "test": "npm run test --workspaces --if-present",
     "test:backend": "npm run test -w @mocker/backend",
     "test:coverage": "npm run test:coverage -w @mocker/backend",
-    "lint": "eslint packages/**/*.ts",
-    "lint:fix": "eslint packages/**/*.ts --quiet --fix",
-    "format:check": "prettier --check 'packages/**/*.ts'",
-    "format:fix": "prettier --write 'packages/**/*.ts'"
+    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/**/*.ts && npm run format:check",
+    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/**/*.ts --quiet --fix && npm run format:fix",
+    "format:check": "prettier --cache --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:fix": "prettier --cache --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\""
   },
   "author": "",
   "license": "ISC",
@@ -30,22 +31,19 @@
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.4.0",
-    "husky": "^2.3.0",
-    "lint-staged": "^8.1.7",
-    "prettier": "^3.2.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.1"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "lint-staged": {
-    "*.ts": [
-      "npm run lint",
-      "npm run format",
-      "git add"
+    "**/*.{ts,tsx,js,jsx}": [
+      "eslint --quiet --fix",
+      "prettier --write"
+    ],
+    "**/*.{json,md,yml,yaml}": [
+      "prettier --write"
     ]
   }
 }
