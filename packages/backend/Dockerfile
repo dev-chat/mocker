@@ -14,7 +14,8 @@ COPY packages/backend/src ./packages/backend/src
 RUN npm ci \
 	&& npm run build:prod -w @mocker/backend \
 	&& npm prune --omit=dev \
-	&& mkdir -p /usr/src/app/images
+	&& mkdir -p /usr/src/app/images \
+	&& chmod 700 /usr/src/app/images
 
 FROM gcr.io/distroless/nodejs20-debian12:nonroot AS release
 ENV NODE_ENV=production \
