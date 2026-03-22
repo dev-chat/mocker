@@ -12,13 +12,8 @@ COPY packages/backend/tsconfig.json packages/backend/
 COPY packages/backend/tsconfig.prod.json packages/backend/
 COPY packages/backend/src packages/backend/src
 
-# Copy config files for linting
-COPY eslint.config.js .prettierrc.js ./
-
 # Install dependencies and build
 RUN npm ci
-RUN npm run lint -w @mocker/backend
-RUN npm run test -w @mocker/backend
 RUN npm run build:prod -w @mocker/backend
 
 FROM node:20-alpine AS release
