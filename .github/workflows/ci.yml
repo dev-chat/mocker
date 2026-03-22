@@ -76,3 +76,13 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Enforce 80% coverage
         run: npm run test:coverage
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -f packages/backend/Dockerfile -t mocker-backend:ci .

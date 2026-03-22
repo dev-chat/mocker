@@ -25,7 +25,7 @@ WORKDIR /usr/src/app
 # Copy backend build artifacts and writable path from build stage.
 COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/dist ./dist
 COPY --from=build --chown=65532:65532 /usr/src/app/node_modules ./node_modules
-COPY --from=build --chown=65532:65532 /usr/src/app/images ./images
+COPY --from=build --chown=65532:65532 --chmod=700 /usr/src/app/images ./images
 
 EXPOSE 80
 
