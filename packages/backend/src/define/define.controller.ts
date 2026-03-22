@@ -1,4 +1,5 @@
-import express, { Request, Response, Router } from 'express';
+import type { Request, Response, Router } from 'express';
+import express from 'express';
 import { DefineService } from './define.service';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 import { textMiddleware } from '../shared/middleware/textMiddleware';
@@ -11,7 +12,7 @@ defineController.use(textMiddleware);
 const defineService = new DefineService();
 const defineLogger = logger.child({ module: 'DefineController' });
 
-defineController.post('/', async (req: Request, res: Response) => {
+defineController.post('/', (req: Request, res: Response) => {
   const { user_id, channel_id, text } = req.body;
   res.status(200).send();
   defineService.define(text, user_id, channel_id).catch((e) => {

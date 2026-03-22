@@ -1,9 +1,9 @@
-import { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { logger } from '../logger/logger';
 
 const textMiddlewareLogger = logger.child({ module: 'TextMiddleware' });
 
-export const textMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+export const textMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const { text } = req.body;
   if (!text || text.length > 800) {
     textMiddlewareLogger.info(

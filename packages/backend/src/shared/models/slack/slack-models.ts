@@ -86,7 +86,7 @@ export interface SlackUser {
   is_app_user: boolean;
   updated: number;
   profile: {
-    bot_id: string;
+    bot_id?: string;
     display_name: string;
     real_name: string;
   };

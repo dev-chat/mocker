@@ -1,11 +1,11 @@
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { MessageWithName } from '../shared/models/message/message-with-name';
+import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { HistoryPersistenceService } from '../shared/services/history.persistence.service';
-import { EventRequest, SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { EventRequest, SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { AIPersistenceService } from './ai.persistence';
-import { KnownBlock } from '@slack/web-api';
+import type { KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
 import {
   CORPO_SPEAK_INSTRUCTIONS,
@@ -23,12 +23,12 @@ import {
   GPT_MODEL,
 } from './ai.constants';
 import { MemoryPersistenceService } from './memory/memory.persistence.service';
-import { MemoryWithSlackId } from '../shared/db/models/Memory';
+import type { MemoryWithSlackId } from '../shared/db/models/Memory';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import OpenAI from 'openai';
-import {
+import type {
   ResponseOutputMessage,
   ResponseOutputItem,
   ResponseOutputText,
@@ -43,15 +43,14 @@ interface ExtractionResult {
   existingMemoryId: number | null;
 }
 
+const isResponseOutputMessage = (block: ResponseOutputItem): block is ResponseOutputMessage => block.type === 'message';
+
+const isResponseOutputText = (block: ResponseOutputText | ResponseOutputRefusal): block is ResponseOutputText =>
+  block.type === 'output_text';
+
 const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): string | undefined => {
-  const textBlock: ResponseOutputMessage | undefined = response.output.find(
-    (block: ResponseOutputItem) => block.type === 'message',
-  ) as ResponseOutputMessage;
-  const outputText = (
-    textBlock?.content?.find(
-      (block: ResponseOutputText | ResponseOutputRefusal) => block.type === 'output_text',
-    ) as ResponseOutputText
-  )?.text;
+  const textBlock = response.output.find(isResponseOutputMessage);
+  const outputText = textBlock?.content.find(isResponseOutputText)?.text;
   return outputText?.trim();
 };
 
@@ -158,8 +157,8 @@ export class AIService {
       .then((response) => {
         let imageBytes = Buffer.from([]);
         response.candidates?.[0].content?.parts?.forEach((part) => {
-          if (part?.inlineData?.data) {
-            imageBytes = Buffer.concat([imageBytes, Buffer.from(part?.inlineData?.data, 'base64')]);
+          if (part.inlineData?.data) {
+            imageBytes = Buffer.concat([imageBytes, Buffer.from(part.inlineData.data, 'base64')]);
           }
         });
 
@@ -192,7 +191,7 @@ export class AIService {
           },
           { type: 'markdown', text: quote ? `"${quote}"` : '' },
         ];
-        this.webService.sendMessage('#muzzlefeedback', 'Moonbeam has been deployed.', blocks);
+        void this.webService.sendMessage('#muzzlefeedback', 'Moonbeam has been deployed.', blocks);
       })
       .catch((e) => {
         this.aiServiceLogger.error(e);
@@ -218,8 +217,8 @@ export class AIService {
       .then((response) => {
         let imageBytes = Buffer.from([]);
         response.candidates?.[0].content?.parts?.forEach((part) => {
-          if (part?.inlineData?.data) {
-            imageBytes = Buffer.concat([imageBytes, Buffer.from(part?.inlineData?.data, 'base64')]);
+          if (part.inlineData?.data) {
+            imageBytes = Buffer.concat([imageBytes, Buffer.from(part.inlineData.data, 'base64')]);
           }
         });
 
@@ -259,20 +258,18 @@ export class AIService {
   }
 
   public formatHistory(history: MessageWithName[]): string {
-    if (!history || history.length === 0) {
+    if (history.length === 0) {
       return '[No recent messages in channel]';
     }
 
     return history
       .map((x) => {
-        const timestamp = x.createdAt
-          ? new Date(x.createdAt).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '';
-        const prefix = timestamp ? `[${timestamp}] ` : '';
-        const slackIdTag = x.slackId ? ` (${x.slackId})` : '';
+        const timestamp = new Date(x.createdAt).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        const prefix = `[${timestamp}] `;
+        const slackIdTag = ` (${x.slackId})`;
         return `${prefix}${x.name}${slackIdTag}: ${x.message}`;
       })
       .join('\n');
@@ -330,7 +327,7 @@ export class AIService {
 
         this.webService.sendMessage(request.channel_id, request.text, blocks).catch((e) => {
           this.aiServiceLogger.error(e);
-          this.webService.sendMessage(
+          void this.webService.sendMessage(
             request.user_id,
             'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
           );
@@ -392,7 +389,7 @@ export class AIService {
         throw e;
       })
       .finally(() => {
-        this.redis.removeParticipationInFlight(channelId, teamId);
+        void this.redis.removeParticipationInFlight(channelId, teamId);
       });
   }
 
@@ -439,7 +436,7 @@ export class AIService {
   }
 
   private formatMemoryContext(memories: MemoryWithSlackId[], history: MessageWithName[]): string {
-    if (!memories?.length) return '';
+    if (memories.length === 0) return '';
 
     const nameMap = new Map<string, string>();
     history.forEach((msg) => {
@@ -544,9 +541,9 @@ export class AIService {
       const trimmed = result.trim();
       if (trimmed === 'NONE' || trimmed === '"NONE"') return;
 
-      let extractions: ExtractionResult[];
+      let extractions: Array<Partial<ExtractionResult>>;
       try {
-        const parsed = JSON.parse(trimmed);
+        const parsed: unknown = JSON.parse(trimmed);
         extractions = Array.isArray(parsed) ? parsed : [parsed];
       } catch {
         this.aiServiceLogger.warn(`Extraction returned malformed JSON: ${trimmed}`);
@@ -585,7 +582,7 @@ export class AIService {
             break;
 
           default:
-            this.aiServiceLogger.warn(`Unknown extraction mode: ${(extraction as ExtractionResult).mode}`);
+            this.aiServiceLogger.warn(`Unknown extraction mode: ${String(extraction.mode)}`);
         }
       }
 
@@ -615,8 +612,8 @@ export class AIService {
       ];
       this.webService.sendMessage(channel, text, blocks).catch((e) => {
         this.aiServiceLogger.error(e);
-        this.decrementDaiyRequests(userId, teamId);
-        this.webService.sendMessage(
+        void this.decrementDaiyRequests(userId, teamId);
+        void this.webService.sendMessage(
           userId,
           'Sorry, unable to send the requested image to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
         );
@@ -646,8 +643,8 @@ export class AIService {
 
       this.webService.sendMessage(channelId, text, blocks).catch((e) => {
         this.aiServiceLogger.error(e);
-        this.decrementDaiyRequests(userId, teamId);
-        this.webService.sendMessage(
+        void this.decrementDaiyRequests(userId, teamId);
+        void this.webService.sendMessage(
           userId,
           'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
         );
@@ -662,7 +659,7 @@ export class AIService {
       const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, MOONBEAM_SLACK_ID);
       const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
-        this.participate(request.team_id, request.event.channel, request.event.text);
+        void this.participate(request.team_id, request.event.channel, request.event.text);
       }
     }
   }

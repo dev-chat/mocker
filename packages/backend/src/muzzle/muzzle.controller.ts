@@ -1,8 +1,9 @@
-import express, { Request, Response, Router } from 'express';
+import type { Request, Response, Router } from 'express';
+import express from 'express';
 
 import { WebService } from '../shared/services/web/web.service';
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
-import { ReportType } from '../shared/models/report/report.model';
+import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { ReportType } from '../shared/models/report/report.model';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { MuzzleReportService } from './muzzle.report.service';
 import { MuzzleService } from './muzzle.service';
@@ -20,28 +21,26 @@ const webService = new WebService();
 const reportService = new MuzzleReportService();
 const muzzleLogger = logger.child({ module: 'MuzzleController' });
 
-muzzleController.post('/', async (req: Request, res: Response) => {
+muzzleController.post('/', (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
   const userId = slackService.getUserId(request.text);
   if (userId && request.user_id === userId) {
     res.send('Sorry, you cannot muzzle yourself anymore. JP ruined it.');
   } else if (userId) {
-    const results = await muzzleService
+    muzzleService
       .addUserToMuzzled(userId, request.user_id, request.team_id, request.channel_name)
-      .catch((e) => {
+      .then((results) => res.send(results))
+      .catch((e: unknown) => {
         muzzleLogger.error(e);
-        res.send(e);
+        res.status(500).send('An unexpected error occurred. Please try again later.');
       });
-    if (results) {
-      res.send(results);
-    }
   } else {
     muzzleLogger.warn(`Invalid user specified: ${request.text}`);
     res.send('Sorry, you must specify a valid Slack user.');
   }
 });
 
-muzzleController.post('/stats', async (req: Request, res: Response) => {
+muzzleController.post('/stats', (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
   if (request.text.split(' ').length > 1) {
     muzzleLogger.warn(`Multiple parameters passed: ${request.text}`);
@@ -55,8 +54,20 @@ muzzleController.post('/stats', async (req: Request, res: Response) => {
     );
   } else {
     const reportType: ReportType = reportService.getReportType(request.text);
-    const report = await reportService.getMuzzleReport(reportType, request.team_id);
-    webService.uploadFile(req.body.channel_id, report, reportService.getReportTitle(reportType), request.user_id);
-    res.status(200).send();
+    reportService
+      .getMuzzleReport(reportType, request.team_id)
+      .then((report) => {
+        void webService.uploadFile(
+          req.body.channel_id,
+          report,
+          reportService.getReportTitle(reportType),
+          request.user_id,
+        );
+        res.status(200).send();
+      })
+      .catch((e) => {
+        muzzleLogger.error(e);
+        res.status(500).send();
+      });
   }
 });

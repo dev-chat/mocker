@@ -1,29 +1,25 @@
-import { CounterMuzzle } from '../shared/models/counter/counter-models';
+import type { CounterMuzzle } from '../shared/models/counter/counter-models';
 import { COUNTER_TIME } from './constants';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { ABUSE_PENALTY_TIME, MAX_SUPPRESSIONS } from '../muzzle/constants';
 import { getTimeString } from '../muzzle/muzzle-utilities';
-import { EventRequest } from '../shared/models/slack/slack-models';
+import type { EventRequest } from '../shared/models/slack/slack-models';
 import { logger } from '../shared/logger/logger';
 
 export class CounterService extends SuppressorService {
   logger = logger.child({ module: 'CounterService' });
 
-  public createCounter(requestorId: string, teamId: string): Promise<string> {
-    return new Promise(async (resolve, reject) => {
-      if (!requestorId) {
-        reject(`Invalid user. Only existing slack users can counter.`);
-      } else if (this.counterPersistenceService.getCounterByRequestorId(requestorId)) {
-        reject('You already have a counter for this user.');
-      } else {
-        await this.counterPersistenceService
-          .addCounter(requestorId, teamId)
-          .then(() => {
-            resolve(`Counter set for the next ${getTimeString(COUNTER_TIME)}`);
-          })
-          .catch((e) => reject(e));
-      }
-    });
+  public async createCounter(requestorId: string, teamId: string): Promise<string> {
+    if (!requestorId) {
+      throw new Error('Invalid user. Only existing slack users can counter.');
+    }
+
+    if (this.counterPersistenceService.getCounterByRequestorId(requestorId)) {
+      throw new Error('You already have a counter for this user.');
+    }
+
+    await this.counterPersistenceService.addCounter(requestorId, teamId);
+    return `Counter set for the next ${getTimeString(COUNTER_TIME)}`;
   }
 
   public getCounterByRequestorId(requestorId: string): number | undefined {
@@ -44,7 +40,7 @@ export class CounterService extends SuppressorService {
           counterId: counterMuzzle.counterId,
           removalFn: counterMuzzle.removalFn,
         });
-        this.sendSuppressedMessage(
+        void this.sendSuppressedMessage(
           channel,
           userId,
           text,
@@ -64,7 +60,7 @@ export class CounterService extends SuppressorService {
     channel: string,
     teamId: string,
   ): void {
-    this.counterPersistenceService.removeCounter(id, isUsed, channel, teamId, requestorId);
+    void this.counterPersistenceService.removeCounter(id, isUsed, channel, teamId, requestorId);
     if (isUsed && channel) {
       this.counterPersistenceService.counterMuzzle(requestorId, id);
       this.muzzlePersistenceService.removeMuzzlePrivileges(requestorId, teamId);
@@ -87,9 +83,14 @@ export class CounterService extends SuppressorService {
       const containsTag = this.slackService.containsTag(request.event.text);
       const isCountered = await this.counterPersistenceService.isCounterMuzzled(request.event.user);
       if (!containsTag && isCountered) {
-        this.sendCounterMuzzledMessage(request.event.channel, request.event.user, request.event.text, request.event.ts);
+        void this.sendCounterMuzzledMessage(
+          request.event.channel,
+          request.event.user,
+          request.event.text,
+          request.event.ts,
+        );
       } else if (containsTag && isTopicChange && isCountered) {
-        this.counterPersistenceService.addCounterMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
+        void this.counterPersistenceService.addCounterMuzzleTime(request.event.user, ABUSE_PENALTY_TIME);
         this.webService.deleteMessage(request.event.channel, request.event.ts, request.event.user);
         this.webService
           .sendMessage(

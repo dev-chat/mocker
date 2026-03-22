@@ -2,9 +2,10 @@ import 'reflect-metadata'; // Necessary for TypeORM entities.
 import 'dotenv/config';
 import bodyParser from 'body-parser';
 
-import express, { Application } from 'express';
+import type { Application } from 'express';
+import express from 'express';
 import { createConnection, getConnectionOptions } from 'typeorm';
-import { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
+import type { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
 import { aiController } from './ai/ai.controller';
 import { clapController } from './clap/clap.controller';
 import { confessionController } from './confession/confession.controller';
@@ -83,7 +84,7 @@ const connectToDb = async (): Promise<boolean> => {
     return createConnection(overrideOptions)
       .then((connection) => {
         if (connection.isConnected) {
-          slackService.getAllUsers();
+          void slackService.getAllUsers();
           slackService.getAndSaveAllChannels();
           indexLogger.info(`Connected to MySQL DB: ${options.database}`);
           return true;
@@ -133,25 +134,29 @@ const checkForEnvVariables = (): void => {
 };
 
 app.listen(PORT, (e?: Error) => {
-  e ? indexLogger.error(e) : indexLogger.info(`Listening on port ${PORT || 3000}`);
+  if (e) {
+    indexLogger.error(e);
+  } else {
+    indexLogger.info(`Listening on port ${PORT || 3000}`);
+  }
   checkForEnvVariables();
   connectToDb()
     .then((connected) => {
       if (!connected) {
         indexLogger.error('Failed to connect to the database. Exiting application.');
-        webService.sendMessage(
+        void webService.sendMessage(
           '#muzzlefeedback',
           ':siren-steves-a-moron: Failed to connect to the database. Moonbeam is not operational. :siren-steves-a-moron:',
         );
         process.exit(1);
       } else {
         indexLogger.info('Database connection established successfully.');
-        aiService.redeployMoonbeam();
+        void aiService.redeployMoonbeam();
       }
     })
     .catch((error) => {
       indexLogger.error('Error during database connection:', error);
-      webService.sendMessage(
+      void webService.sendMessage(
         '#muzzlefeedback',
         ':siren-steves-a-moron: Failed to connect to the database. Moonbeam is not operational. :siren-steves-a-moron:',
       );

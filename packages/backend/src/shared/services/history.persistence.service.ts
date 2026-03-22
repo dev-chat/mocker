@@ -1,8 +1,9 @@
-import { InsertResult, getRepository } from 'typeorm';
+import type { InsertResult } from 'typeorm';
+import { getRepository } from 'typeorm';
 import { SlackUser } from '../db/models/SlackUser';
-import { EventRequest, SlashCommandRequest } from '../models/slack/slack-models';
+import type { EventRequest, SlashCommandRequest } from '../models/slack/slack-models';
 import { Message } from '../db/models/Message';
-import { MessageWithName } from '../models/message/message-with-name';
+import type { MessageWithName } from '../models/message/message-with-name';
 
 export interface HistoryOptions {
   teamId: string;
@@ -21,14 +22,17 @@ export class HistoryPersistenceService {
 
     const user: SlackUser | null = await getRepository(SlackUser).findOne({
       where: {
-        slackId: request?.event?.user,
-        teamId: request?.team_id,
+        slackId: request.event.user,
+        teamId: request.team_id,
       },
     });
+    if (!user) {
+      return;
+    }
     const message = new Message();
     message.channel = request.event.channel || request.event.item.channel;
     message.teamId = request.team_id;
-    message.userId = user as SlackUser;
+    message.userId = user;
     message.message = request.event.text;
     return getRepository(Message).insert(message);
   }

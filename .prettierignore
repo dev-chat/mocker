@@ -1,0 +1,8 @@
+node_modules
+coverage
+packages/**/coverage
+packages/**/dist
+packages/backend/.eslint-warn-report.json
+combined.log
+error.log
+package-lock.json

@@ -1,28 +1,28 @@
 import moment from 'moment';
-import { ReportType, ReportRange } from '../models/report/report.model';
+import type { ReportRange } from '../models/report/report.model';
+import { ReportType } from '../models/report/report.model';
 import { SlackService } from './slack/slack.service';
+
+const REPORT_TYPE_LOOKUP: Record<string, ReportType> = {
+  [ReportType.Trailing7]: ReportType.Trailing7,
+  [ReportType.Trailing30]: ReportType.Trailing30,
+  [ReportType.Week]: ReportType.Week,
+  [ReportType.Month]: ReportType.Month,
+  [ReportType.Year]: ReportType.Year,
+  [ReportType.AllTime]: ReportType.AllTime,
+};
 
 export class ReportService {
   public slackService = new SlackService();
 
   public isValidReportType(type: string): boolean {
     const lowerCaseType = type.toLowerCase();
-    return (
-      lowerCaseType === ReportType.Trailing7 ||
-      lowerCaseType === ReportType.Trailing30 ||
-      lowerCaseType === ReportType.Week ||
-      lowerCaseType === ReportType.Month ||
-      lowerCaseType === ReportType.Year ||
-      lowerCaseType === ReportType.AllTime
-    );
+    return Object.prototype.hasOwnProperty.call(REPORT_TYPE_LOOKUP, lowerCaseType);
   }
 
   public getReportType(type: string): ReportType {
     const lowerCaseType: string = type.toLowerCase();
-    if (this.isValidReportType(type)) {
-      return lowerCaseType as ReportType;
-    }
-    return ReportType.AllTime;
+    return REPORT_TYPE_LOOKUP[lowerCaseType] ?? ReportType.AllTime;
   }
 
   public getRange(reportType: ReportType): ReportRange {
@@ -44,7 +44,7 @@ export class ReportService {
     } else if (reportType === ReportType.Trailing7) {
       range.start = moment().startOf('day').subtract(7, 'days').format('YYYY-MM-DD HH:mm:ss');
       range.end = moment().format('YYYY-MM-DD HH:mm:ss');
-    } else if (reportType === ReportType.Year) {
+    } else {
       range.start = moment().startOf('year').format('YYYY-MM-DD HH:mm:ss');
       range.end = moment().endOf('year').format('YYYY-MM-DD HH:mm:ss');
     }

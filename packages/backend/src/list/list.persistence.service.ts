@@ -11,13 +11,12 @@ export class ListPersistenceService {
     return getRepository(List).save(listItem);
   }
 
-  public remove(text: string): Promise<List> {
-    return new Promise(async (resolve, reject) => {
-      const item = await getRepository(List).findOne({ where: { text } });
-      if (item) {
-        return resolve(getRepository(List).remove(item));
-      }
-      reject(`Unable to find \`${text}\``);
-    });
+  public async remove(text: string): Promise<List> {
+    const item = await getRepository(List).findOne({ where: { text } });
+    if (item) {
+      return getRepository(List).remove(item);
+    }
+
+    throw new Error(`Unable to find \`${text}\``);
   }
 }

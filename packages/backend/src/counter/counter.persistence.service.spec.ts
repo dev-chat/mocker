@@ -67,7 +67,7 @@ describe('CounterPersistenceService', () => {
   it('rejects addCounter when save fails', async () => {
     repo.save.mockRejectedValue(new Error('db fail'));
 
-    await expect(service.addCounter('U1', 'T1')).rejects.toContain('Error on saving counter to DB');
+    await expect(service.addCounter('U1', 'T1')).rejects.toThrow('Error on saving counter to DB');
   });
 
   it('updates countered flag and optional requestor id', async () => {

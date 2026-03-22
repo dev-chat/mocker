@@ -1,6 +1,6 @@
 import { CounterService } from './counter.service';
 import { ABUSE_PENALTY_TIME, MAX_SUPPRESSIONS } from '../muzzle/constants';
-import { EventRequest } from '../shared/models/slack/slack-models';
+import type { EventRequest } from '../shared/models/slack/slack-models';
 
 describe('CounterService', () => {
   let service: CounterService;
@@ -61,13 +61,13 @@ describe('CounterService', () => {
     });
 
     it('should reject with invalid user', async () => {
-      await expect(service.createCounter('', 'T123')).rejects.toContain('Invalid user');
+      await expect(service.createCounter('', 'T123')).rejects.toThrow('Invalid user');
     });
 
     it('should reject if user already has counter', async () => {
       mockCounterPersistenceService.getCounterByRequestorId.mockReturnValue(123);
 
-      await expect(service.createCounter('U123', 'T123')).rejects.toContain('already have a counter');
+      await expect(service.createCounter('U123', 'T123')).rejects.toThrow('already have a counter');
     });
 
     it('should handle database errors', async () => {

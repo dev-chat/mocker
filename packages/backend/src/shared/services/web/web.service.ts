@@ -1,9 +1,8 @@
-import {
+import type {
   ChatDeleteArguments,
   ChatPostMessageArguments,
   FilesUploadArguments,
   WebAPICallResult,
-  WebClient,
   ChatPostEphemeralArguments,
   ChatUpdateArguments,
   KnownBlock,
@@ -11,9 +10,24 @@ import {
   ConversationsListResponse,
   UsersListResponse,
 } from '@slack/web-api';
+import { WebClient } from '@slack/web-api';
 import { logger } from '../../logger/logger';
 
 const MAX_RETRIES = 5;
+
+const getSlackErrorCode = (error: unknown): string | undefined => {
+  if (!error || typeof error !== 'object') {
+    return undefined;
+  }
+
+  const data = Reflect.get(error, 'data');
+  if (!data || typeof data !== 'object') {
+    return undefined;
+  }
+
+  const code = Reflect.get(data, 'error');
+  return typeof code === 'string' ? code : undefined;
+};
 
 export class WebService {
   private web: WebClient = new WebClient(process.env.MUZZLE_BOT_TOKEN);
@@ -135,10 +149,11 @@ export class WebService {
 
     this.web.files.upload(uploadRequest).catch((e: unknown) => {
       this.logger.error(e);
+      const slackErrorCode = getSlackErrorCode(e);
       const options: ChatPostEphemeralArguments = {
         channel,
         text:
-          (e as Record<string, Record<string, string>>).data.error === 'not_in_channel'
+          slackErrorCode === 'not_in_channel'
             ? `Oops! I tried to post the stats you requested but it looks like I haven't been added to that channel yet. Can you please add me? Just type \`@muzzle\` in the channel!`
             : `Oops! I tried to post the stats you requested but it looks like something went wrong. Please try again later.`,
         user: userId,

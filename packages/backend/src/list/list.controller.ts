@@ -1,5 +1,6 @@
-import express, { Router } from 'express';
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { Router } from 'express';
+import express from 'express';
+import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 import { textMiddleware } from '../shared/middleware/textMiddleware';
 import { ListService } from './list.service';
@@ -9,20 +10,20 @@ listController.use(suppressedMiddleware);
 
 const listService = new ListService();
 
-listController.post('/retrieve', async (req, res) => {
+listController.post('/retrieve', (req, res) => {
   const request: SlashCommandRequest = req.body;
-  listService.getListReport(request);
+  void listService.getListReport(request);
   res.status(200).send();
 });
 
-listController.post('/add', textMiddleware, async (req, res) => {
+listController.post('/add', textMiddleware, (req, res) => {
   const request: SlashCommandRequest = req.body;
-  listService.list(request);
+  void listService.list(request);
   res.status(200).send();
 });
 
-listController.post('/remove', textMiddleware, async (req, res) => {
+listController.post('/remove', textMiddleware, (req, res) => {
   const request: SlashCommandRequest = req.body;
-  listService.remove(request);
+  void listService.remove(request);
   res.status(200).send();
 });

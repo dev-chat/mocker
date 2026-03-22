@@ -1,9 +1,12 @@
 import { Redis } from 'ioredis';
 import { logger } from '../logger/logger';
 
+const redisContainerName = process.env.REDIS_CONTAINER_NAME;
+const hasRedisContainerName = typeof redisContainerName === 'string' && redisContainerName.length > 0;
+
 export class RedisPersistenceService {
   public static getInstance(): RedisPersistenceService {
-    if (!RedisPersistenceService.instance) {
+    if (RedisPersistenceService.instance === undefined) {
       RedisPersistenceService.instance = new RedisPersistenceService();
     }
     return RedisPersistenceService.instance;
@@ -14,9 +17,9 @@ export class RedisPersistenceService {
   constructor() {
     RedisPersistenceService.redis.on('connect', () => this.logger.info('Successfully connected to Redis'));
   }
-  private static instance: RedisPersistenceService;
-  private static redis: Redis = !!process.env.REDIS_CONTAINER_NAME
-    ? new Redis(process.env.REDIS_CONTAINER_NAME as string)
+  private static instance: RedisPersistenceService | undefined;
+  private static redis: Redis = hasRedisContainerName
+    ? new Redis(redisContainerName)
     : new Redis({ host: 'host.docker.internal' });
 
   getValue(key: string): Promise<string | null> {

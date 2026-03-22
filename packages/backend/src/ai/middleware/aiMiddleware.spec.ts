@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { aiMiddleware } from './aiMiddleware';
 import { StoreService } from '../../store/store.service';
 import { AIService } from '../ai.service';
@@ -23,6 +23,7 @@ describe('aiMiddleware', () => {
   let req: Partial<Request>;
   let res: Partial<Response>;
   let next: NextFunction;
+  const flushPromises = () => new Promise<void>((resolve) => setImmediate(resolve));
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -43,7 +44,8 @@ describe('aiMiddleware', () => {
     const isAlreadyAtMaxRequestsSpy = jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(true);
     const isAlreadyInFlightSpy = jest.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(false);
 
-    await aiMiddleware(req as Request, res as Response, next);
+    aiMiddleware(req as Request, res as Response, next);
+    await flushPromises();
 
     expect(isItemActiveSpy).toHaveBeenCalledWith('user123', 'team123', 4);
     expect(isAlreadyAtMaxRequestsSpy).toHaveBeenCalledWith('user123', 'team123');
@@ -59,7 +61,8 @@ describe('aiMiddleware', () => {
     jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(false);
     const isAlreadyInFlightSpy = jest.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(true);
 
-    await aiMiddleware(req as Request, res as Response, next);
+    aiMiddleware(req as Request, res as Response, next);
+    await flushPromises();
 
     expect(isAlreadyInFlightSpy).toHaveBeenCalledWith('user123', 'team123');
     expect(res.send).toHaveBeenCalledWith(
@@ -74,7 +77,8 @@ describe('aiMiddleware', () => {
     jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(true);
     jest.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(false);
 
-    await aiMiddleware(req as Request, res as Response, next);
+    aiMiddleware(req as Request, res as Response, next);
+    await flushPromises();
 
     expect(isItemActiveSpy).toHaveBeenCalledWith('user123', 'team123', 4);
     expect(removeEffectSpy).toHaveBeenCalledWith('user123', 'team123', 4);
@@ -86,7 +90,8 @@ describe('aiMiddleware', () => {
     jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(false);
     jest.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(false);
 
-    await aiMiddleware(req as Request, res as Response, next);
+    aiMiddleware(req as Request, res as Response, next);
+    await flushPromises();
 
     expect(next).toHaveBeenCalled();
     expect(res.send).not.toHaveBeenCalled();

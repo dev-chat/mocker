@@ -1,23 +1,38 @@
-import { Request, Response, NextFunction } from 'express';
-import { RequestWithRawBody } from '../models/express/RequestWithRawBody';
+import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { logger } from '../logger/logger';
 
 const midLogger = logger.child({ module: 'SignatureVerificationMiddleware' });
 export const signatureVerificationMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const body = (req as RequestWithRawBody).rawBody;
+  const signingSecret = process.env.MUZZLE_BOT_SIGNING_SECRET;
+  if (!signingSecret) {
+    midLogger.error('MUZZLE_BOT_SIGNING_SECRET is not set. Rejecting request.');
+    res.status(500).send('Server misconfiguration: signing secret is not set.');
+    return;
+  }
+
+  const body =
+    'rawBody' in req && (Buffer.isBuffer(req.rawBody) || typeof req.rawBody === 'string')
+      ? String(req.rawBody)
+      : JSON.stringify(req.body ?? '');
   const timestamp = req.headers['x-slack-request-timestamp'];
   const slackSignature = req.headers['x-slack-signature'];
   const base = 'v0:' + timestamp + ':' + body;
-  const hashed: string =
-    'v0=' +
-    crypto
-      .createHmac('sha256', process.env.MUZZLE_BOT_SIGNING_SECRET as string)
-      .update(base)
-      .digest('hex');
+  const hashed: string = 'v0=' + crypto.createHmac('sha256', signingSecret).update(base).digest('hex');
+
+  const isValidSlackSignature = (() => {
+    if (typeof slackSignature !== 'string') {
+      return false;
+    }
+    try {
+      return crypto.timingSafeEqual(Buffer.from(hashed), Buffer.from(slackSignature));
+    } catch {
+      return false;
+    }
+  })();
 
   if (
-    hashed === slackSignature ||
+    isValidSlackSignature ||
     req.body.token === process.env.CLAPPER_TOKEN ||
     req.body.token === process.env.MOCKER_TOKEN ||
     req.body.token === process.env.DEFINE_TOKEN ||

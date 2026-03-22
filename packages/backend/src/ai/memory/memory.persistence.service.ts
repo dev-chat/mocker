@@ -1,5 +1,6 @@
 import { getRepository } from 'typeorm';
-import { Memory, MemoryWithSlackId } from '../../shared/db/models/Memory';
+import type { MemoryWithSlackId } from '../../shared/db/models/Memory';
+import { Memory } from '../../shared/db/models/Memory';
 import { SlackUser } from '../../shared/db/models/SlackUser';
 import { logger } from '../../shared/logger/logger';
 

@@ -1,4 +1,4 @@
-import { Definition } from '../shared/models/define/define-models';
+import type { Definition } from '../shared/models/define/define-models';
 import { DefineService } from './define.service';
 import * as axios from 'axios';
 

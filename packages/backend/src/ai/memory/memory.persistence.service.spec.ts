@@ -77,9 +77,7 @@ describe('MemoryPersistenceService', () => {
       const result = await service.saveMemories('U123', 'T456', ['loves TypeScript']);
 
       expect(mockMemoryRepo.save).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ content: 'loves TypeScript' }),
-        ]),
+        expect.arrayContaining([expect.objectContaining({ content: 'loves TypeScript' })]),
       );
       expect(result).toHaveLength(1);
     });
@@ -115,7 +113,6 @@ describe('MemoryPersistenceService', () => {
 
       expect(result).toEqual([]);
     });
-
   });
 
   describe('getAllMemoriesForUser', () => {
@@ -124,10 +121,7 @@ describe('MemoryPersistenceService', () => {
 
       const result = await service.getAllMemoriesForUser('U123', 'T456');
 
-      expect(mockMemoryRepo.query).toHaveBeenCalledWith(
-        expect.not.stringContaining('LIMIT'),
-        ['U123', 'T456'],
-      );
+      expect(mockMemoryRepo.query).toHaveBeenCalledWith(expect.not.stringContaining('LIMIT'), ['U123', 'T456']);
       expect(result).toEqual([mockMemory]);
     });
 
@@ -145,9 +139,7 @@ describe('MemoryPersistenceService', () => {
       const memoryU123 = [mockMemory, { ...mockMemory, id: 2, content: 'hates CSS' }];
       const memoryU789 = [{ ...mockMemory, id: 3, content: 'Go expert' }];
 
-      mockMemoryRepo.query
-        .mockResolvedValueOnce(memoryU123)
-        .mockResolvedValueOnce(memoryU789);
+      mockMemoryRepo.query.mockResolvedValueOnce(memoryU123).mockResolvedValueOnce(memoryU789);
 
       const result = await service.getAllMemoriesForUsers(['U123', 'U789'], 'T456');
 
@@ -162,10 +154,7 @@ describe('MemoryPersistenceService', () => {
 
       const result = await service.reinforceMemory(1);
 
-      expect(mockMemoryRepo.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE memory SET updatedAt'),
-        [1],
-      );
+      expect(mockMemoryRepo.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE memory SET updatedAt'), [1]);
       expect(result).toBe(true);
     });
 

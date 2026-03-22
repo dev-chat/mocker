@@ -1,20 +1,21 @@
-import { getRepository, UpdateResult } from 'typeorm';
+import type { UpdateResult } from 'typeorm';
+import { getRepository } from 'typeorm';
 import { Counter } from '../shared/db/models/Counter';
-import { CounterItem, CounterMuzzle } from '../shared/models/counter/counter-models';
+import type { CounterItem, CounterMuzzle } from '../shared/models/counter/counter-models';
 import { WebService } from '../shared/services/web/web.service';
 import { COUNTER_TIME, SINGLE_DAY_MS } from './constants';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
-import { getRemainingTime, Timeout } from '../muzzle/muzzle-utilities';
+import { getRemainingTime } from '../muzzle/muzzle-utilities';
 import { logger } from '../shared/logger/logger';
 export class CounterPersistenceService {
   public static getInstance(): CounterPersistenceService {
-    if (!CounterPersistenceService.instance) {
+    if (CounterPersistenceService.instance === undefined) {
       CounterPersistenceService.instance = new CounterPersistenceService();
     }
     return CounterPersistenceService.instance;
   }
 
-  private static instance: CounterPersistenceService;
+  private static instance: CounterPersistenceService | undefined;
   private muzzlePersistenceService: MuzzlePersistenceService = new MuzzlePersistenceService();
   private webService: WebService = new WebService();
   private counters: Map<number, CounterItem> = new Map();
@@ -22,24 +23,20 @@ export class CounterPersistenceService {
   private onProbation: string[] = [];
   logger = logger.child({ module: 'CounterPersistenceService' });
 
-  public addCounter(requestorId: string, teamId: string): Promise<void> {
-    return new Promise(async (resolve, reject) => {
-      const counter = new Counter();
-      counter.requestorId = requestorId;
-      counter.teamId = teamId;
-      counter.countered = false;
+  public async addCounter(requestorId: string, teamId: string): Promise<void> {
+    const counter = new Counter();
+    counter.requestorId = requestorId;
+    counter.teamId = teamId;
+    counter.countered = false;
 
-      await getRepository(Counter)
-        .save(counter)
-        .then((counterFromDb) => {
-          this.setCounterState(requestorId, counterFromDb.id, teamId);
-          resolve();
-        })
-        .catch((e) => {
-          this.logger.error(`Error on saving counter to DB: ${e}`);
-          reject(`Error on saving counter to DB: ${e}`);
-        });
-    });
+    try {
+      const counterFromDb = await getRepository(Counter).save(counter);
+      this.setCounterState(requestorId, counterFromDb.id, teamId);
+    } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e));
+      this.logger.error(`Error on saving counter to DB: ${error}`);
+      throw Object.assign(new Error(`Error on saving counter to DB: ${error.message}`), { cause: error });
+    }
   }
 
   public addCounterMuzzleTime(userId: string, timeToAdd: number): void {
@@ -52,7 +49,7 @@ export class CounterPersistenceService {
       this.counterMuzzles.set(userId, {
         suppressionCount: counterMuzzle.suppressionCount,
         counterId: counterMuzzle.counterId,
-        removalFn: setTimeout(() => this.removeCounterMuzzle(userId), newTime) as Timeout,
+        removalFn: setTimeout(() => this.removeCounterMuzzle(userId), newTime),
       });
     }
   }
@@ -63,11 +60,14 @@ export class CounterPersistenceService {
 
   public async setCounteredToTrue(id: number, requestorId: string | undefined): Promise<Counter> {
     const counter = await getRepository(Counter).findOne({ where: { id } });
+    if (!counter) {
+      throw new Error(`Unable to find counter with id ${id}`);
+    }
     counter!.countered = true;
     if (requestorId) {
       counter!.counteredId = requestorId;
     }
-    return getRepository(Counter).save(counter as Counter);
+    return getRepository(Counter).save(counter);
   }
 
   public getCounter(counterId: number): CounterItem | undefined {
@@ -100,7 +100,7 @@ export class CounterPersistenceService {
     this.counterMuzzles.set(userId, {
       suppressionCount: 0,
       counterId,
-      removalFn: setTimeout(() => this.removeCounterMuzzle(userId), COUNTER_TIME) as Timeout,
+      removalFn: setTimeout(() => this.removeCounterMuzzle(userId), COUNTER_TIME),
     });
   }
 
@@ -161,7 +161,9 @@ export class CounterPersistenceService {
   private setCounterState(requestorId: string, counterId: number, teamId: string): void {
     this.counters.set(counterId, {
       requestorId,
-      removalFn: setTimeout(() => this.removeCounter(counterId, false, '#general', teamId), COUNTER_TIME) as Timeout,
+      removalFn: setTimeout(() => {
+        void this.removeCounter(counterId, false, '#general', teamId);
+      }, COUNTER_TIME),
     });
   }
 

@@ -1,5 +1,5 @@
 import { ABUSE_PENALTY_TIME } from '../muzzle/constants';
-import { EventRequest } from '../shared/models/slack/slack-models';
+import type { EventRequest } from '../shared/models/slack/slack-models';
 import { BackfireService } from './backfire.service';
 
 describe('BackfireService', () => {

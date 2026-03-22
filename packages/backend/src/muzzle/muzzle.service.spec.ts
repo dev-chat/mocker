@@ -86,7 +86,7 @@ describe('MuzzleService', () => {
       mockSlackService.getUserNameById.mockResolvedValue('TestUser');
 
       await expect(muzzleService.addUserToMuzzled('user123', 'requestor123', 'team123', 'channel123')).rejects.toEqual(
-        'Sorry, you cannot muzzle bots.',
+        new Error('Sorry, you cannot muzzle bots.'),
       );
     });
 
@@ -95,7 +95,7 @@ describe('MuzzleService', () => {
       jest.spyOn(muzzleService, 'isSuppressed').mockResolvedValueOnce(true);
 
       await expect(muzzleService.addUserToMuzzled('user123', 'requestor123', 'team123', 'channel123')).rejects.toEqual(
-        'TestUser is already muzzled!',
+        new Error('TestUser is already muzzled!'),
       );
     });
 
@@ -104,7 +104,7 @@ describe('MuzzleService', () => {
       jest.spyOn(muzzleService, 'isSuppressed').mockResolvedValue(false);
       jest.spyOn(muzzleService, 'isBot').mockResolvedValue(false);
 
-      await expect(muzzleService.addUserToMuzzled('', 'requestor123', 'team123', 'channel123')).rejects.toContain(
+      await expect(muzzleService.addUserToMuzzled('', 'requestor123', 'team123', 'channel123')).rejects.toThrow(
         'Invalid username',
       );
     });
@@ -115,7 +115,7 @@ describe('MuzzleService', () => {
       jest.spyOn(muzzleService, 'isSuppressed').mockResolvedValueOnce(false).mockResolvedValueOnce(true);
 
       await expect(muzzleService.addUserToMuzzled('user123', 'requestor123', 'team123', 'channel123')).rejects.toEqual(
-        `You can't muzzle someone if you are already muzzled!`,
+        new Error(`You can't muzzle someone if you are already muzzled!`),
       );
     });
 
@@ -127,7 +127,7 @@ describe('MuzzleService', () => {
       jest.spyOn(muzzleService.counterService, 'removeCounter');
 
       await expect(muzzleService.addUserToMuzzled('user123', 'requestor123', 'team123', 'channel123')).rejects.toEqual(
-        `You've been countered! Better luck next time...`,
+        new Error(`You've been countered! Better luck next time...`),
       );
 
       expect(muzzleService.counterService.removeCounter).toHaveBeenCalledWith(
@@ -186,7 +186,7 @@ describe('MuzzleService', () => {
       muzzleService.backfirePersistenceService.addBackfire.mockRejectedValue(new Error('backfire fail'));
 
       await expect(muzzleService.addUserToMuzzled('user123', 'requestor123', 'team123', 'channel123')).rejects.toEqual(
-        'Muzzle failed!',
+        new Error('Muzzle failed!'),
       );
     });
 
@@ -239,9 +239,9 @@ describe('MuzzleService', () => {
       muzzleService.storePersistenceService.isProtected.mockResolvedValue(undefined);
       mockMuzzlePersistenceService.isMaxMuzzlesReached.mockResolvedValue(true);
 
-      await expect(
-        muzzleService.addUserToMuzzled('user123', 'requestor123', 'team123', 'channel123'),
-      ).rejects.toContain('doing that too much');
+      await expect(muzzleService.addUserToMuzzled('user123', 'requestor123', 'team123', 'channel123')).rejects.toThrow(
+        'doing that too much',
+      );
     });
 
     it('successfully muzzles user when all checks pass', async () => {
@@ -273,7 +273,7 @@ describe('MuzzleService', () => {
       mockMuzzlePersistenceService.addMuzzle.mockRejectedValue(new Error('DB Error'));
 
       await expect(muzzleService.addUserToMuzzled('user123', 'requestor123', 'team123', 'channel123')).rejects.toEqual(
-        'Muzzle failed!',
+        new Error('Muzzle failed!'),
       );
     });
   });

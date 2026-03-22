@@ -152,26 +152,26 @@ export class StorePersistenceService {
       const keyName = this.getRedisKeyName(receivingUser ? receivingUser.slackId : userId, teamId, itemId);
       const existingKey = await this.redisService.getPattern(keyName);
       if (existingKey.length) {
-        if (itemById?.isStackable) {
-          this.redisService.setValueWithExpire(
+        if (itemById.isStackable) {
+          void this.redisService.setValueWithExpire(
             `${keyName}.${existingKey.length}`,
             `${userId}-${teamId}`,
             'PX',
             getMsForSpecifiedRange(itemById.min_active_ms, itemById.max_active_ms),
           );
-        } else if (!itemById?.isStackable) {
+        } else {
           throw new Error(`Unable to use your item. This item is not stackable.`);
         }
-      } else if (!existingKey.length && itemById) {
+      } else {
         if (itemById.min_active_ms !== 0 && itemById.max_active_ms !== 0) {
-          this.redisService.setValueWithExpire(
+          void this.redisService.setValueWithExpire(
             keyName,
             `${userId}-${teamId}`,
             'PX',
             getMsForSpecifiedRange(itemById.min_active_ms, itemById.max_active_ms),
           );
         } else {
-          this.redisService.setValue(keyName, 'true');
+          void this.redisService.setValue(keyName, 'true');
         }
       }
     }

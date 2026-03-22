@@ -1,9 +1,10 @@
-import { getRepository, InsertResult } from 'typeorm';
+import type { InsertResult } from 'typeorm';
+import { getRepository } from 'typeorm';
 import { PortfolioTransactions } from '../shared/db/models/PortfolioTransaction';
 import { Portfolio } from '../shared/db/models/Portfolio';
 import { SlackUser } from '../shared/db/models/SlackUser';
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
-import { TotalRep } from '../reaction/reaction.interface';
+import type { TotalRep } from '../reaction/reaction.interface';
 import Decimal from 'decimal.js';
 import { logger as loglib } from '../shared/logger/logger';
 
@@ -144,7 +145,7 @@ export class PortfolioPersistenceService {
       rep,
     };
 
-    if (!transactions || transactions.length === 0) {
+    if (transactions.length === 0) {
       return summary;
     }
 
@@ -160,18 +161,16 @@ export class PortfolioPersistenceService {
           costBasis: tx.type === 'BUY' ? new Decimal(tx.quantity).mul(tx.price) : new Decimal(0),
         };
         portfolioSummaryItems.push(newItem);
-      } else if (foundItem) {
-        if (tx.type === 'BUY') {
-          foundItem.quantity = new Decimal(foundItem.quantity).plus(new Decimal(tx.quantity));
-          foundItem.costBasis = (foundItem.costBasis || new Decimal(0)).plus(
-            new Decimal(tx.quantity).mul(new Decimal(tx.price)),
-          );
-        } else if (tx.type === 'SELL') {
-          foundItem.quantity = new Decimal(foundItem.quantity).minus(new Decimal(tx.quantity));
-          foundItem.costBasis = (foundItem.costBasis || new Decimal(0)).minus(
-            new Decimal(tx.quantity).mul(new Decimal(tx.price)),
-          );
-        }
+      } else if (tx.type === 'BUY') {
+        foundItem.quantity = new Decimal(foundItem.quantity).plus(new Decimal(tx.quantity));
+        foundItem.costBasis = (foundItem.costBasis || new Decimal(0)).plus(
+          new Decimal(tx.quantity).mul(new Decimal(tx.price)),
+        );
+      } else {
+        foundItem.quantity = new Decimal(foundItem.quantity).minus(new Decimal(tx.quantity));
+        foundItem.costBasis = (foundItem.costBasis || new Decimal(0)).minus(
+          new Decimal(tx.quantity).mul(new Decimal(tx.price)),
+        );
       }
     });
 

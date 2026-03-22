@@ -1,5 +1,5 @@
 import { AIService } from './ai.service';
-import { MessageWithName } from '../shared/models/message/message-with-name';
+import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { MOONBEAM_SLACK_ID } from './ai.constants';
 
 const buildAiService = (): AIService => {

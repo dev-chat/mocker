@@ -1,6 +1,7 @@
-import { KnownBlock } from '@slack/web-api';
-import Axios, { AxiosResponse } from 'axios';
-import { Definition, UrbanDictionaryResponse } from '../shared/models/define/define-models';
+import type { KnownBlock } from '@slack/web-api';
+import type { AxiosResponse } from 'axios';
+import Axios from 'axios';
+import type { Definition, UrbanDictionaryResponse } from '../shared/models/define/define-models';
 import { WebService } from '../shared/services/web/web.service';
 import { logger } from '../shared/logger/logger';
 
@@ -55,7 +56,7 @@ export class DefineService {
       });
   }
 
-  public formatDefs(defArr: Definition[], definedWord: string, maxDefs = 3): KnownBlock[] {
+  public formatDefs(defArr: Definition[] | null, definedWord: string, maxDefs = 3): KnownBlock[] {
     const noDefFound: KnownBlock[] = [
       {
         type: 'section',
@@ -75,7 +76,7 @@ export class DefineService {
     for (let i = 0; i < defArr.length; i++) {
       if (defArr[i].word.toLowerCase() === definedWord.toLowerCase()) {
         const carriageAndNewLine = /(\r\n)/g;
-        const replaceBracket = /[\[\]]/g;
+        const replaceBracket = /[[\]]/g;
         const newLineNewLine = /(\n\n)/g;
         const definition = defArr[i].definition
           .replace(newLineNewLine, '')

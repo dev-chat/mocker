@@ -39,10 +39,13 @@ export class ItemService {
       id: 3,
       interaction: async (userId, teamId, usedOnUser, channel): Promise<string> => {
         const isUserMuzzled = await this.suppressorService.isSuppressed(usedOnUser, teamId);
+        if (!channel) {
+          throw new Error('Unable to resurrect user without a target channel.');
+        }
         if (isUserMuzzled) {
           await this.suppressorService.removeSuppression(usedOnUser, teamId);
           await this.webService
-            .sendMessage(channel as string, `:zombie: <@${usedOnUser}> has been resurrected by <@${userId}>! :zombie:`)
+            .sendMessage(channel, `:zombie: <@${usedOnUser}> has been resurrected by <@${userId}>! :zombie:`)
             .catch((e) => {
               this.logger.error(e);
               throw new Error(`Unable to resurrect <@${usedOnUser}>. Please try again.`);

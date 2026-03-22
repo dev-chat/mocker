@@ -1,6 +1,7 @@
 import { getManager, getRepository } from 'typeorm';
 import { Muzzle } from '../shared/db/models/Muzzle';
-import { MuzzleReport, ReportRange, ReportType } from '../shared/models/report/report.model';
+import type { MuzzleReport, ReportRange } from '../shared/models/report/report.model';
+import { ReportType } from '../shared/models/report/report.model';
 import { MuzzleReportService } from './muzzle.report.service';
 
 type MuzzleReportPrivateMethods = MuzzleReportService & {

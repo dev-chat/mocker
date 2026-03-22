@@ -1,6 +1,6 @@
 import Axios from 'axios';
-import { CompanyProfile, MetricResponse, QuoteData, QuoteResponse } from './quote.models';
-import { Block, KnownBlock } from '@slack/web-api';
+import type { CompanyProfile, MetricResponse, QuoteData, QuoteResponse } from './quote.models';
+import type { Block, KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
 import { logger } from '../shared/logger/logger';
 
@@ -19,20 +19,19 @@ export class QuoteService {
 
   formatData(quote: QuoteResponse, metrics: MetricResponse, companyProfile: CompanyProfile, ticker: string): QuoteData {
     return {
-      high: quote?.h?.toFixed(2),
-      low: quote?.l?.toFixed(2),
-      close: quote?.c?.toFixed(2),
-      deltaPercent: quote?.dp?.toFixed(2) + '%',
-      delta: quote?.d?.toFixed(2),
-      prevClose: quote?.pc?.toFixed(2),
-      marketCap: this.getMarketCap(quote?.c, companyProfile?.shareOutstanding),
+      high: quote.h.toFixed(2),
+      low: quote.l.toFixed(2),
+      close: quote.c.toFixed(2),
+      deltaPercent: quote.dp.toFixed(2) + '%',
+      delta: quote.d.toFixed(2),
+      prevClose: quote.pc.toFixed(2),
+      marketCap: this.getMarketCap(quote.c, companyProfile.shareOutstanding),
       lastRefreshed: new Date(),
       '52WeekHigh':
-        quote?.h > metrics?.metric?.['52WeekHigh'] ? quote?.h?.toFixed(2) : metrics?.metric?.['52WeekHigh']?.toFixed(2),
-      '52WeekLow':
-        quote?.l < metrics?.metric?.['52WeekLow'] ? quote?.l?.toFixed(2) : metrics?.metric?.['52WeekLow']?.toFixed(2),
+        quote.h > metrics.metric['52WeekHigh'] ? quote.h.toFixed(2) : metrics.metric['52WeekHigh'].toFixed(2),
+      '52WeekLow': quote.l < metrics.metric['52WeekLow'] ? quote.l.toFixed(2) : metrics.metric['52WeekLow'].toFixed(2),
       ticker,
-      name: companyProfile?.name || '',
+      name: companyProfile.name || '',
     };
   }
 
@@ -44,7 +43,7 @@ export class QuoteService {
       .then((quoteData) => {
         this.webService.sendMessage(channelId, '', this.createQuoteBlocks(quoteData, userId)).catch((e) => {
           this.logger.error(e);
-          this.webService.sendMessage(
+          void this.webService.sendMessage(
             userId,
             'Sorry, unable to send the requested text to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
           );
@@ -52,7 +51,7 @@ export class QuoteService {
       })
       .catch((e) => {
         this.logger.error(e);
-        this.webService.sendMessage(
+        void this.webService.sendMessage(
           userId,
           'Sorry, something went wrong while fetching the quote. Please try again later.',
         );

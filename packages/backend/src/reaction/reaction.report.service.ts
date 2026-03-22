@@ -1,6 +1,6 @@
 import Table from 'easy-table';
 import { ReactionPersistenceService } from './reaction.persistence.service';
-import { ReactionByUser } from '../shared/models/reaction/ReactionByUser.model';
+import type { ReactionByUser } from '../shared/models/reaction/ReactionByUser.model';
 import { ReportService } from '../shared/services/report.service';
 
 export class ReactionReportService extends ReportService {

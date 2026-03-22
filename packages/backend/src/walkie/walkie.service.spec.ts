@@ -1,4 +1,4 @@
-import { SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { WalkieService } from './walkie.service';
 
 describe('slack-utils', () => {

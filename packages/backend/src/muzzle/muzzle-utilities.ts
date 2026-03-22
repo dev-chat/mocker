@@ -2,13 +2,17 @@
  * Gets the amount of time remaining on a NodeJS Timeout.
  */
 
-export interface Timeout extends NodeJS.Timeout {
-  _idleStart: number;
-  _idleTimeout: number;
+export type Timeout = ReturnType<typeof setTimeout>;
+
+function getTimeoutMetric(timeout: Timeout, key: '_idleStart' | '_idleTimeout'): number {
+  const value = Reflect.get(timeout, key);
+  return typeof value === 'number' ? value : 0;
 }
 
 export function getRemainingTime(timeout: Timeout): number {
-  return Math.ceil(timeout._idleStart + timeout._idleTimeout - process.uptime() * 1000);
+  return Math.ceil(
+    getTimeoutMetric(timeout, '_idleStart') + getTimeoutMetric(timeout, '_idleTimeout') - process.uptime() * 1000,
+  );
 }
 
 /**

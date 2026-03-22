@@ -1,4 +1,5 @@
-import Axios, { AxiosResponse } from 'axios';
+import type { AxiosResponse } from 'axios';
+import Axios from 'axios';
 
 export class TranslationService {
   public translate(text: string): Promise<string> {
@@ -12,7 +13,28 @@ export class TranslationService {
         format: 'text',
       },
     ).then((res: AxiosResponse) => {
-      return res?.data?.data?.translations?.[0].translatedText;
+      const data = res.data;
+      if (!data || typeof data !== 'object') {
+        return text;
+      }
+
+      const payload = Reflect.get(data, 'data');
+      if (!payload || typeof payload !== 'object') {
+        return text;
+      }
+
+      const translations = Reflect.get(payload, 'translations');
+      if (!Array.isArray(translations) || translations.length === 0) {
+        return text;
+      }
+
+      const firstTranslation = translations[0];
+      const translatedText =
+        firstTranslation && typeof firstTranslation === 'object'
+          ? Reflect.get(firstTranslation, 'translatedText')
+          : undefined;
+
+      return typeof translatedText === 'string' ? translatedText : text;
     });
   }
 
