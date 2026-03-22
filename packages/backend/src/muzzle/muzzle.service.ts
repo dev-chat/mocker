@@ -86,7 +86,7 @@ export class MuzzleService extends SuppressorService {
         return ':boom: Backfired! Better luck next time... :boom:';
       } catch (e: unknown) {
         this.logger.error(e);
-        throw new Error('Muzzle failed!', { cause: e });
+        throw Object.assign(new Error('Muzzle failed!'), { cause: e });
       }
     }
 
@@ -123,7 +123,7 @@ export class MuzzleService extends SuppressorService {
       return `Successfully muzzled ${userName} for ${getTimeString(timeToMuzzle)}`;
     } catch (e: unknown) {
       this.logger.error(e);
-      throw new Error('Muzzle failed!', { cause: e });
+      throw Object.assign(new Error('Muzzle failed!'), { cause: e });
     }
   }
 

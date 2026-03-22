@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspaces --if-present",
     "build:backend": "npm run build -w @mocker/backend",
     "build:prod": "npm run build:prod --workspaces --if-present",
     "build:prod:backend": "npm run build:prod -w @mocker/backend",

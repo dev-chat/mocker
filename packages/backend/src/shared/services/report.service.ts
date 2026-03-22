@@ -17,7 +17,7 @@ export class ReportService {
 
   public isValidReportType(type: string): boolean {
     const lowerCaseType = type.toLowerCase();
-    return Object.hasOwn(REPORT_TYPE_LOOKUP, lowerCaseType);
+    return Object.prototype.hasOwnProperty.call(REPORT_TYPE_LOOKUP, lowerCaseType);
   }
 
   public getReportType(type: string): ReportType {
