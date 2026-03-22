@@ -11,6 +11,9 @@ jobs:
   setup:
     name: Install Dependencies
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,6 +31,9 @@ jobs:
     name: Lint
     needs: setup
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -37,6 +43,9 @@ jobs:
     name: Format Check
     needs: setup
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -46,6 +55,9 @@ jobs:
     name: Build
     needs: setup
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -55,6 +67,9 @@ jobs:
     name: Test & Coverage
     needs: setup
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
