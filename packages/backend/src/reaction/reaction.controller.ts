@@ -3,6 +3,7 @@ import express from 'express';
 import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { ReactionReportService } from './reaction.report.service';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 export const reactionController: Router = express.Router();
@@ -17,7 +18,10 @@ reactionController.post('/get', (req, res) => {
     .getRep(request.user_id, request.team_id)
     .then((repValue) => res.send(repValue))
     .catch((e: unknown) => {
-      reactionLogger.error(e);
+      logError(reactionLogger, 'Failed to retrieve reaction report', e, {
+        userId: request.user_id,
+        teamId: request.team_id,
+      });
       res.status(500).send('Internal server error');
     });
 });

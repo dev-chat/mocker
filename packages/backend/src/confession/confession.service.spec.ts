@@ -30,6 +30,12 @@ describe('ConfessionService', () => {
     await service.confess('U1', 'C1', 'bad');
     await Promise.resolve();
 
-    expect(loggerSpy).toHaveBeenCalledWith(err);
+    expect(loggerSpy).toHaveBeenCalledWith(
+      'Failed to send confession message',
+      expect.objectContaining({
+        context: { channelId: 'C1', requestorId: 'U1' },
+        error: expect.objectContaining({ message: 'boom', name: 'Error' }),
+      }),
+    );
   });
 });

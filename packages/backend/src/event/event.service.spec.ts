@@ -108,6 +108,17 @@ describe('EventService', () => {
       } as EventRequest),
     ).rejects.toThrow('handler failed');
 
-    expect(loggerSpy).toHaveBeenCalledWith('Error handling event:', err);
+    expect(loggerSpy).toHaveBeenCalledWith(
+      'Error handling event',
+      expect.objectContaining({
+        context: {
+          eventType: 'message',
+          teamId: 'T1',
+          channelId: 'C1',
+          userId: 'U1',
+        },
+        error: expect.objectContaining({ message: 'handler failed', name: 'Error' }),
+      }),
+    );
   });
 });

@@ -4,6 +4,7 @@ import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { StoreService } from './store.service';
 import { SuppressorService } from '../shared/services/suppressor.service';
 import { ItemService } from './item.service';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
 
@@ -22,7 +23,10 @@ storeController.post('/', (req, res) => {
     .listItems(request.user_id, request.team_id)
     .then((storeItems) => res.status(200).send(storeItems))
     .catch((e) => {
-      storeLogger.error(e);
+      logError(storeLogger, 'Failed to list store items', e, {
+        userId: request.user_id,
+        teamId: request.team_id,
+      });
       res.status(500).send();
     });
 });
@@ -75,12 +79,12 @@ storeController.post('/use', (req, res) => {
       const useReceipt = await itemService
         .useItem(itemId, request.user_id, request.team_id, targetUserId, request.channel_name)
         .catch((e) => {
-          storeLogger.error(e, {
-            item: itemId,
+          logError(storeLogger, 'Failed to use store item', e, {
+            itemId,
             userId: request.user_id,
             teamId: request.team_id,
-            userIdForItem,
-            channel: request.channel_name,
+            targetUserId: userIdForItem,
+            channelName: request.channel_name,
           });
           res.status(500).send('An unexpected error occurred while using the item.');
           return undefined;
@@ -93,8 +97,8 @@ storeController.post('/use', (req, res) => {
       const purchaseReceipt: string | undefined = await storeService
         .buyItem(itemId, request.user_id, request.team_id)
         .catch((e) => {
-          storeLogger.error(e, {
-            item: itemId,
+          logError(storeLogger, 'Failed to purchase store item after use', e, {
+            itemId,
             userId: request.user_id,
             teamId: request.team_id,
           });
@@ -109,7 +113,11 @@ storeController.post('/use', (req, res) => {
       res.status(200).send(useReceipt);
     }
   })().catch((e: unknown) => {
-    storeLogger.error(e);
+    logError(storeLogger, 'Unhandled error in /store/use controller', e, {
+      requestText: req.body?.text,
+      userId: req.body?.user_id,
+      teamId: req.body?.team_id,
+    });
     res.status(500).send('An unexpected error occurred.');
   });
 });

@@ -1,9 +1,11 @@
 import type { ChannelResponse, SlashCommandRequest } from '../shared/models/slack/slack-models';
+import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
 import { NATO_MAPPINGS, USER_ID_REGEX } from './constants';
 
 export class WalkieService {
   slackService = new SlackService();
+  logger = logger.child({ module: 'WalkieService' });
 
   public getUserId(user: string): string {
     if (!user) {
@@ -18,7 +20,7 @@ export class WalkieService {
     return NATO_MAPPINGS[userId] || longUserId;
   }
 
-  public walkieTalkie(request: SlashCommandRequest): void {
+  public async walkieTalkie(request: SlashCommandRequest): Promise<void> {
     const { text } = request;
     if (!text || text.length === 0) {
       return;

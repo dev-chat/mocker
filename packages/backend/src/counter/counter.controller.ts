@@ -4,6 +4,7 @@ import { CounterPersistenceService } from './counter.persistence.service';
 import { CounterService } from './counter.service';
 import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { suppressedMiddleware } from '../shared/middleware/suppression';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 export const counterController: Router = express.Router();
@@ -22,7 +23,10 @@ counterController.post('/', (req, res) => {
       .createCounter(request.user_id, request.team_id)
       .then((value) => res.send(value))
       .catch((e) => {
-        counterLogger.error(e);
+        logError(counterLogger, 'Failed to create counter', e, {
+          requestorId: request.user_id,
+          teamId: request.team_id,
+        });
         res.send(e);
       });
   }

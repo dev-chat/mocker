@@ -4,6 +4,7 @@ import { USER_ID_REGEX } from './constants';
 import { SlackPersistenceService } from './slack.persistence.service';
 import type { ChannelResponse, EventRequest } from '../../models/slack/slack-models';
 import type { SlackUser as SlackUserFromDB } from '../../db/models/SlackUser';
+import { logError } from '../../logger/error-logging';
 import { logger } from '../../logger/logger';
 
 interface ImpersonationCandidate {
@@ -87,9 +88,13 @@ export class SlackService {
   logger = logger.child({ module: 'SlackService' });
 
   public sendResponse(responseUrl: string, response: ChannelResponse): void {
-    axios
-      .post(encodeURI(responseUrl), response)
-      .catch((e: Error) => this.logger.error(`Error responding: ${e.message} at ${responseUrl}`));
+    axios.post(encodeURI(responseUrl), response).catch((e: Error) =>
+      logError(this.logger, 'Failed to post Slack response URL callback', e, {
+        responseUrl,
+        responseType: response.response_type,
+        responseText: response.text,
+      }),
+    );
   }
 
   /**
@@ -218,7 +223,7 @@ export class SlackService {
       response = await this.web.getAllUsers();
     } catch (e) {
       const error = e instanceof Error ? e : new Error(String(e));
-      this.logger.error('Failed to retrieve users', e);
+      logError(this.logger, 'Failed to retrieve users', e);
       this.logger.warn('Retrying in 60 seconds...');
       setTimeout(() => {
         void this.getAllUsers();
@@ -241,7 +246,12 @@ export class SlackService {
 
   public handle(request: EventRequest): void {
     if (request.event.type === 'team_join') {
-      this.getAllUsers().catch((e) => this.logger.error('Error handling team join event:', e));
+      this.getAllUsers().catch((e) =>
+        logError(this.logger, 'Error handling team join event', e, {
+          eventType: request.event.type,
+          userId: typeof request.event.user === 'string' ? request.event.user : undefined,
+        }),
+      );
     } else if (request.event.type === 'channel_created') {
       this.getAndSaveAllChannels();
     }

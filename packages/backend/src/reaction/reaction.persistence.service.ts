@@ -8,10 +8,11 @@ import { SlackUser } from '../shared/db/models/SlackUser';
 import type { ReactionByUser } from '../shared/models/reaction/ReactionByUser.model';
 import type { Event } from '../shared/models/slack/slack-models';
 import { PortfolioTransactions } from '../shared/db/models/PortfolioTransaction';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 export class ReactionPersistenceService {
-  customLogger = logger.child('ReactionPersistenceService');
+  customLogger = logger.child({ module: 'ReactionPersistenceService' });
 
   public saveReaction(event: Event, value: number, teamId: string): Promise<Reaction> {
     const reaction = new Reaction();
@@ -23,7 +24,19 @@ export class ReactionPersistenceService {
     reaction.channel = event.item.channel;
     reaction.teamId = teamId;
 
-    return getRepository(Reaction).save(reaction);
+    return getRepository(Reaction)
+      .save(reaction)
+      .catch((e) => {
+        logError(this.customLogger, 'Failed to save reaction', e, {
+          reaction: event.reaction,
+          value,
+          teamId,
+          reactingUser: event.user,
+          affectedUser: event.item_user,
+          channelId: event.item.channel,
+        });
+        throw e;
+      });
   }
 
   public async removeReaction(event: Event, teamId: string): Promise<void> {
@@ -36,7 +49,16 @@ export class ReactionPersistenceService {
         channel: event.item.channel,
         teamId: teamId,
       })
-      .catch((e) => e);
+      .catch((e) => {
+        logError(this.customLogger, 'Failed to remove reaction', e, {
+          reaction: event.reaction,
+          teamId,
+          reactingUser: event.user,
+          affectedUser: event.item_user,
+          channelId: event.item.channel,
+        });
+        throw e;
+      });
   }
 
   public async getTotalRep(userId: string, teamId: string): Promise<TotalRep> {
@@ -148,7 +170,11 @@ export class ReactionPersistenceService {
       )
       .then((value) => value)
       .catch((e) => {
-        throw new Error(e);
+        logError(this.customLogger, 'Failed to retrieve reaction report by user', e, {
+          userId,
+          teamId,
+        });
+        throw new Error(e instanceof Error ? e.message : String(e));
       });
   }
 }

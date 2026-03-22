@@ -4,6 +4,8 @@ import { SlackUser } from '../db/models/SlackUser';
 import type { EventRequest, SlashCommandRequest } from '../models/slack/slack-models';
 import { Message } from '../db/models/Message';
 import type { MessageWithName } from '../models/message/message-with-name';
+import { logError } from '../logger/error-logging';
+import { logger } from '../logger/logger';
 
 export interface HistoryOptions {
   teamId: string;
@@ -14,6 +16,8 @@ export interface HistoryOptions {
 }
 
 export class HistoryPersistenceService {
+  private logger = logger.child({ module: 'HistoryPersistenceService' });
+
   async logHistory(request: EventRequest): Promise<InsertResult | undefined> {
     // This is a bandaid to stop workflows from breaking the service.
     if (typeof request.event.user !== 'string' || request.event.type === 'user_profile_changed') {
@@ -34,7 +38,17 @@ export class HistoryPersistenceService {
     message.teamId = request.team_id;
     message.userId = user;
     message.message = request.event.text;
-    return getRepository(Message).insert(message);
+    return getRepository(Message)
+      .insert(message)
+      .catch((e) => {
+        logError(this.logger, 'Failed to persist message history', e, {
+          eventType: request.event.type,
+          teamId: request.team_id,
+          userId: request.event.user,
+          channelId: message.channel,
+        });
+        throw e;
+      });
   }
 
   async getLastFiveMinutesCount(teamId: string, channelId: string): Promise<number> {
@@ -69,7 +83,16 @@ export class HistoryPersistenceService {
     ORDER BY createdAt DESC
   ) ORDER BY createdAt ASC;`;
 
-    return getRepository(Message).query(query, [teamId, channel, teamId, channel]);
+    return getRepository(Message)
+      .query(query, [teamId, channel, teamId, channel])
+      .catch((e) => {
+        logError(this.logger, 'Failed to retrieve message history', e, {
+          teamId,
+          channelId: channel,
+          isDaily,
+        });
+        throw e;
+      });
   }
 
   /**
@@ -101,6 +124,17 @@ export class HistoryPersistenceService {
       ORDER BY createdAt DESC
     ) ORDER BY createdAt ASC;`;
 
-    return getRepository(Message).query(query, [teamId, channelId, maxMessages, teamId, channelId, timeWindowMinutes]);
+    return getRepository(Message)
+      .query(query, [teamId, channelId, maxMessages, teamId, channelId, timeWindowMinutes])
+      .catch((e) => {
+        logError(this.logger, 'Failed to retrieve message history with options', e, {
+          teamId,
+          channelId,
+          maxMessages,
+          timeWindowMinutes,
+          excludeUserId,
+        });
+        throw e;
+      });
   }
 }

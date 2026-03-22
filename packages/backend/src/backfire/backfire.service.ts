@@ -1,5 +1,6 @@
 import { ABUSE_PENALTY_TIME, MAX_SUPPRESSIONS } from '../muzzle/constants';
 import { getTimeString } from '../muzzle/muzzle-utilities';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import type { EventRequest } from '../shared/models/slack/slack-models';
 import { SuppressorService } from '../shared/services/suppressor.service';
@@ -75,7 +76,13 @@ export class BackfireService extends SuppressorService {
                 ABUSE_PENALTY_TIME,
               )} :rotating_light:`,
             )
-            .catch((e) => this.logger.error(e));
+            .catch((e) =>
+              logError(this.logger, 'Failed to send backfire abuse warning', e, {
+                channelId: request.event.channel,
+                userId: request.event.user,
+                teamId: request.team_id,
+              }),
+            );
         }
       }
     }

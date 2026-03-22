@@ -1,9 +1,12 @@
 import { ReactionPersistenceService } from '../reaction/reaction.persistence.service';
+import { logError } from '../shared/logger/error-logging';
+import { logger } from '../shared/logger/logger';
 import { StorePersistenceService } from './store.persistence.service';
 
 export class StoreService {
   storePersistenceService = new StorePersistenceService();
   reactionPersistenceService = new ReactionPersistenceService();
+  logger = logger.child({ module: 'StoreService' });
 
   async listItems(slackId: string, teamId: string): Promise<string> {
     const items = await this.storePersistenceService.getItems(teamId);
@@ -38,7 +41,14 @@ export class StoreService {
 
   buyItem(itemId: string, userId: string, teamId: string): Promise<string> {
     const id = +itemId;
-    return this.storePersistenceService.buyItem(id, userId, teamId);
+    return this.storePersistenceService.buyItem(id, userId, teamId).catch((e) => {
+      logError(this.logger, 'Failed to buy store item', e, {
+        itemId,
+        userId,
+        teamId,
+      });
+      throw e;
+    });
   }
 
   async isUserRequired(itemId: string | undefined): Promise<boolean> {
@@ -54,7 +64,15 @@ export class StoreService {
     if (isNaN(id)) {
       return `Sorry, ${itemId} is not a valid item.`;
     }
-    return this.storePersistenceService.useItem(id, userId, teamId, userIdForItem);
+    return this.storePersistenceService.useItem(id, userId, teamId, userIdForItem).catch((e) => {
+      logError(this.logger, 'Failed to use store item', e, {
+        itemId,
+        userId,
+        teamId,
+        targetUserId: userIdForItem,
+      });
+      throw e;
+    });
   }
 
   isItemActive(userId: string, teamId: string, itemId: number): Promise<boolean> {

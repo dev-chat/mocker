@@ -306,7 +306,17 @@ describe('SlackService', () => {
       const postPromise = mockPost.mock.results[0]?.value as Promise<unknown>;
       await postPromise.catch(() => undefined);
       expect(mockPost).toHaveBeenCalled();
-      expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('Error responding'));
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'Failed to post Slack response URL callback',
+        expect.objectContaining({
+          context: expect.objectContaining({
+            responseUrl: 'https://hooks.slack.com/test',
+            responseType: 'in_channel',
+            responseText: 'test',
+          }),
+          error: expect.objectContaining({ message: 'Network error', name: 'Error' }),
+        }),
+      );
     });
   });
 
@@ -392,7 +402,12 @@ describe('SlackService', () => {
       const promise = slackService.getAllUsers();
 
       await expect(promise).rejects.toThrow('Unable to retrieve users');
-      expect(loggerSpy).toHaveBeenCalledWith('Failed to retrieve users', expect.any(Error));
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'Failed to retrieve users',
+        expect.objectContaining({
+          error: expect.objectContaining({ message: 'API Error', name: 'Error' }),
+        }),
+      );
 
       jest.useRealTimers();
     });
@@ -489,7 +504,13 @@ describe('SlackService', () => {
       } as unknown as EventRequest);
 
       await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(loggerSpy).toHaveBeenCalledWith('Error handling team join event:', expect.any(Error));
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'Error handling team join event',
+        expect.objectContaining({
+          context: expect.objectContaining({ eventType: 'team_join' }),
+          error: expect.objectContaining({ message: 'API Error', name: 'Error' }),
+        }),
+      );
     });
   });
 

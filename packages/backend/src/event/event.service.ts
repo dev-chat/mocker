@@ -3,6 +3,7 @@ import { BackfireService } from '../backfire/backfire.service';
 import { CounterService } from '../counter/counter.service';
 import { MuzzleService } from '../muzzle/muzzle.service';
 import { ReactionService } from '../reaction/reaction.service';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import type { EventRequest } from '../shared/models/slack/slack-models';
 import { HistoryPersistenceService } from '../shared/services/history.persistence.service';
@@ -59,7 +60,12 @@ export class EventService {
       this.aiService.handle(request),
     ];
     return Promise.all(handlers).catch((error) => {
-      this.logger.error('Error handling event:', error);
+      logError(this.logger, 'Error handling event', error, {
+        eventType: request.event.type,
+        teamId: request.team_id,
+        channelId: request.event.channel,
+        userId: request.event.user,
+      });
       throw error;
     });
   }

@@ -120,3 +120,30 @@ You can also run workspace-specific commands using:
 npm run <script> -w @mocker/backend
 npm run <script> -w @mocker/frontend
 ```
+
+## Docker Logs
+
+The backend writes structured JSON logs to stdout so deployed failures can be investigated directly with `docker logs`.
+
+Each log entry includes:
+
+- `timestamp`
+- `level`
+- `module`
+- `message`
+- `context`
+- `error.name`
+- `error.message`
+- `error.stack`
+
+Useful commands:
+
+```bash
+docker logs <container-name>
+docker logs <container-name> | grep '"level":"error"'
+docker logs <container-name> | grep '"module":"AIService"'
+docker logs <container-name> | grep '"channelId":"C123"'
+docker logs <container-name> | jq .
+```
+
+The `context` object is where request-specific identifiers live, such as `userId`, `teamId`, `channelId`, `itemId`, `symbol`, and prompt text. In production, start with `module` and `message`, then use `context` to isolate the failing request, and finally inspect `error.stack` for the root cause.

@@ -4,6 +4,7 @@ import { SuppressorService } from '../shared/services/suppressor.service';
 import { ABUSE_PENALTY_TIME, MAX_SUPPRESSIONS } from '../muzzle/constants';
 import { getTimeString } from '../muzzle/muzzle-utilities';
 import type { EventRequest } from '../shared/models/slack/slack-models';
+import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 export class CounterService extends SuppressorService {
@@ -69,7 +70,14 @@ export class CounterService extends SuppressorService {
           channel,
           `:crossed_swords: <@${userId}> successfully countered <@${requestorId}>! <@${requestorId}> has lost muzzle privileges for 24 hours and is muzzled for the next 5 minutes! :crossed_swords:`,
         )
-        .catch((e) => this.logger.error(e));
+        .catch((e) =>
+          logError(this.logger, 'Failed to send counter success message', e, {
+            channel,
+            userId,
+            requestorId,
+            teamId,
+          }),
+        );
     }
   }
 
@@ -99,7 +107,13 @@ export class CounterService extends SuppressorService {
               ABUSE_PENALTY_TIME,
             )} :rotating_light:`,
           )
-          .catch((e) => this.logger.error(e));
+          .catch((e) =>
+            logError(this.logger, 'Failed to send counter abuse warning', e, {
+              channelId: request.event.channel,
+              userId: request.event.user,
+              teamId: request.team_id,
+            }),
+          );
       }
     }
   }

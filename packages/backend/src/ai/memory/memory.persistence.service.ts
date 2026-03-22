@@ -2,6 +2,7 @@ import { getRepository } from 'typeorm';
 import type { MemoryWithSlackId } from '../../shared/db/models/Memory';
 import { Memory } from '../../shared/db/models/Memory';
 import { SlackUser } from '../../shared/db/models/SlackUser';
+import { logError } from '../../shared/logger/error-logging';
 import { logger } from '../../shared/logger/logger';
 
 export class MemoryPersistenceService {
@@ -25,7 +26,11 @@ export class MemoryPersistenceService {
     return getRepository(Memory)
       .save(memories)
       .catch((e) => {
-        this.logger.error('Error saving memories:', e);
+        logError(this.logger, 'Error saving memories', e, {
+          slackId,
+          teamId,
+          memoryCount: contents.length,
+        });
         return [];
       });
   }
@@ -40,7 +45,10 @@ export class MemoryPersistenceService {
         [slackId, teamId],
       )
       .catch((e) => {
-        this.logger.error('Error fetching all memories for user:', e);
+        logError(this.logger, 'Error fetching all memories for user', e, {
+          slackId,
+          teamId,
+        });
         return [];
       });
   }
@@ -64,7 +72,7 @@ export class MemoryPersistenceService {
       .query('UPDATE memory SET updatedAt = CURRENT_TIMESTAMP WHERE id = ?', [memoryId])
       .then(() => true)
       .catch((e) => {
-        this.logger.error('Error reinforcing memory:', e);
+        logError(this.logger, 'Error reinforcing memory', e, { memoryId });
         return false;
       });
   }
@@ -74,7 +82,7 @@ export class MemoryPersistenceService {
       .delete({ id: memoryId })
       .then((result) => (result.affected ?? 0) > 0)
       .catch((e) => {
-        this.logger.error('Error deleting memory:', e);
+        logError(this.logger, 'Error deleting memory', e, { memoryId });
         return false;
       });
   }
