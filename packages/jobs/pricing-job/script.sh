@@ -102,7 +102,6 @@ main() {
 
 	require_command mysql
 	require_command awk
-	require_command sort
 	require_env TYPEORM_USERNAME
 	require_env TYPEORM_PASSWORD
 	require_env TYPEORM_DATABASE
