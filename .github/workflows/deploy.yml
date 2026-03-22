@@ -58,9 +58,9 @@ jobs:
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             docker pull "$IMAGE"
 
-            # Tear down the currently running container (if any).
-            docker stop ghcr.io/dev-chat/muzzle:latest 2>/dev/null || true
-            docker rm   ghcr.io/dev-chat/muzzle:latest 2>/dev/null || true
+            # Tear down any running containers from this image.
+            docker stop $(docker ps -q --filter ancestor="$IMAGE") 2>/dev/null || true
+            docker rm $(docker ps -aq --filter ancestor="$IMAGE") 2>/dev/null || true
 
             # Hand off to your existing startup script which handles volume
             # mounts and env var injection.
