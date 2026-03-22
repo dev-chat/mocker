@@ -59,8 +59,8 @@ jobs:
             docker pull "$IMAGE"
 
             # Tear down the currently running container (if any).
-            docker stop muzzle 2>/dev/null || true
-            docker rm   muzzle 2>/dev/null || true
+            docker stop ghcr.io/dev-chat/muzzle:latest 2>/dev/null || true
+            docker rm   ghcr.io/dev-chat/muzzle:latest 2>/dev/null || true
 
             # Hand off to your existing startup script which handles volume
             # mounts and env var injection.
