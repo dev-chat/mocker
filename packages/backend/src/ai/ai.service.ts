@@ -156,7 +156,7 @@ export class AIService {
         },
       })
       .then((response) => {
-        this.aiServiceLogger.debug('Gemini response structure:', {
+        this.aiServiceLogger.info('Gemini response structure:', {
           hasCandidates: !!response.candidates,
           candidatesLength: response.candidates?.length,
           firstCandidateKeys: response.candidates?.[0] ? Object.keys(response.candidates[0]) : null,
@@ -181,7 +181,7 @@ export class AIService {
           if (part.inlineData?.data) {
             imageBytes = Buffer.concat([imageBytes, Buffer.from(part.inlineData.data, 'base64')]);
           } else {
-            this.aiServiceLogger.debug('Part does not have inlineData.data:', Object.keys(part));
+            this.aiServiceLogger.info('Part does not have inlineData.data:', Object.keys(part));
           }
         });
 
@@ -238,7 +238,7 @@ export class AIService {
         },
       })
       .then((response) => {
-        this.aiServiceLogger.debug('Gemini generateImage response structure:', {
+        this.aiServiceLogger.info('Gemini generateImage response structure:', {
           hasCandidates: !!response.candidates,
           candidatesLength: response.candidates?.length,
           firstCandidateKeys: response.candidates?.[0] ? Object.keys(response.candidates[0]) : null,
@@ -262,7 +262,7 @@ export class AIService {
           if (part.inlineData?.data) {
             imageBytes = Buffer.concat([imageBytes, Buffer.from(part.inlineData.data, 'base64')]);
           } else {
-            this.aiServiceLogger.debug('GenerateImage part does not have inlineData.data:', Object.keys(part));
+            this.aiServiceLogger.info('GenerateImage part does not have inlineData.data:', Object.keys(part));
           }
         });
 

@@ -60,6 +60,7 @@ const buildAiService = (): AIService => {
     error: jest.fn(),
     warn: jest.fn(),
     info: jest.fn(),
+    debug: jest.fn(),
   } as unknown as AIService['aiServiceLogger'];
 
   return ai;
