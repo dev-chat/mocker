@@ -20,8 +20,19 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
   const base = 'v0:' + timestamp + ':' + body;
   const hashed: string = 'v0=' + crypto.createHmac('sha256', signingSecret).update(base).digest('hex');
 
+  const isValidSlackSignature = (() => {
+    if (typeof slackSignature !== 'string') {
+      return false;
+    }
+    try {
+      return crypto.timingSafeEqual(Buffer.from(hashed), Buffer.from(slackSignature));
+    } catch {
+      return false;
+    }
+  })();
+
   if (
-    hashed === slackSignature ||
+    isValidSlackSignature ||
     req.body.token === process.env.CLAPPER_TOKEN ||
     req.body.token === process.env.MOCKER_TOKEN ||
     req.body.token === process.env.DEFINE_TOKEN ||
