@@ -143,6 +143,36 @@ describe('WebService', () => {
     });
   });
 
+  describe('fetchFile', () => {
+    it('fetches a slack file url with bearer token and returns a buffer', async () => {
+      const bytes = Buffer.from('image data');
+      const arrayBuf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(arrayBuf),
+      } as Response);
+      process.env.MUZZLE_BOT_TOKEN = 'test-token';
+
+      const result = await webService.fetchFile('https://files.slack.com/test');
+
+      expect(global.fetch).toHaveBeenCalledWith('https://files.slack.com/test', {
+        headers: { Authorization: 'Bearer test-token' },
+      });
+      expect(result).toEqual(Buffer.from(arrayBuf));
+    });
+
+    it('throws when the response is not ok', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: false,
+        status: 403,
+      } as Response);
+
+      await expect(webService.fetchFile('https://files.slack.com/test')).rejects.toThrow(
+        'Failed to fetch Slack file: 403',
+      );
+    });
+  });
+
   describe('uploadFile', () => {
     it('uploads file', async () => {
       mockWebClient.files.upload.mockResolvedValue({ ok: true });

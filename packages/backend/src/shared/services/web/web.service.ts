@@ -158,6 +158,17 @@ export class WebService {
     });
   }
 
+  public async fetchFile(url: string): Promise<Buffer> {
+    const token = process.env.MUZZLE_BOT_TOKEN;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Slack file: ${response.status}`);
+    }
+    return Buffer.from(await response.arrayBuffer());
+  }
+
   public uploadFile(channel: string, content: string, title: string, userId: string): void {
     const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const uploadRequest: FilesUploadArguments = {

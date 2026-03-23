@@ -48,6 +48,7 @@ const buildAiService = (): AIService => {
 
   ai.webService = {
     sendMessage: jest.fn().mockResolvedValue({ ok: true }),
+    fetchFile: jest.fn().mockResolvedValue(Buffer.from('image')),
   } as unknown as AIService['webService'];
 
   ai.slackService = {
@@ -271,7 +272,73 @@ describe('AIService', () => {
         },
       } as never);
 
-      expect(participateSpy).toHaveBeenCalledWith('T1', 'C1', `<@${MOONBEAM_SLACK_ID}> hello`);
+      expect(participateSpy).toHaveBeenCalledWith('T1', 'C1', `<@${MOONBEAM_SLACK_ID}> hello`, []);
+    });
+
+    it('downloads image files and passes them to participate', async () => {
+      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
+      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
+      (aiService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(false);
+      const imageBuffer = Buffer.from('png-bytes');
+      (aiService.webService.fetchFile as jest.Mock).mockResolvedValue(imageBuffer);
+      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
+
+      await aiService.handle({
+        team_id: 'T1',
+        event: {
+          user: 'U1',
+          channel: 'C1',
+          text: `<@${MOONBEAM_SLACK_ID}> look at this`,
+          files: [{ id: 'F1', name: 'photo.png', mimetype: 'image/png', url_private: 'https://files.slack.com/photo.png' }],
+        },
+      } as never);
+
+      expect(aiService.webService.fetchFile).toHaveBeenCalledWith('https://files.slack.com/photo.png');
+      expect(participateSpy).toHaveBeenCalledWith('T1', 'C1', `<@${MOONBEAM_SLACK_ID}> look at this`, [
+        { data: imageBuffer, mimetype: 'image/png' },
+      ]);
+    });
+
+    it('skips non-image files and only passes image files to participate', async () => {
+      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
+      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
+      (aiService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(false);
+      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
+
+      await aiService.handle({
+        team_id: 'T1',
+        event: {
+          user: 'U1',
+          channel: 'C1',
+          text: `<@${MOONBEAM_SLACK_ID}> check this`,
+          files: [{ id: 'F1', name: 'doc.pdf', mimetype: 'application/pdf', url_private: 'https://files.slack.com/doc.pdf' }],
+        },
+      } as never);
+
+      expect(aiService.webService.fetchFile).not.toHaveBeenCalled();
+      expect(participateSpy).toHaveBeenCalledWith('T1', 'C1', `<@${MOONBEAM_SLACK_ID}> check this`, []);
+    });
+
+    it('participates without images when image download fails', async () => {
+      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
+      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
+      (aiService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(false);
+      (aiService.webService.fetchFile as jest.Mock).mockRejectedValue(new Error('fetch failed'));
+      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
+      const errSpy = jest.spyOn(aiService.aiServiceLogger, 'error');
+
+      await aiService.handle({
+        team_id: 'T1',
+        event: {
+          user: 'U1',
+          channel: 'C1',
+          text: `<@${MOONBEAM_SLACK_ID}> look`,
+          files: [{ id: 'F1', name: 'photo.jpg', mimetype: 'image/jpeg', url_private: 'https://files.slack.com/photo.jpg' }],
+        },
+      } as never);
+
+      expect(errSpy).toHaveBeenCalled();
+      expect(participateSpy).toHaveBeenCalledWith('T1', 'C1', `<@${MOONBEAM_SLACK_ID}> look`, []);
     });
 
     it('does not participate if requesting user is muzzled', async () => {
@@ -424,6 +491,43 @@ describe('AIService', () => {
       ]);
       expect(aiService.redis.setHasParticipated).toHaveBeenCalledWith('T1', 'C1');
       expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
+    });
+
+    it('passes multimodal input to openai when images are provided', async () => {
+      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'nice image' }] }],
+      });
+      (aiService.webService.sendMessage as jest.Mock).mockResolvedValue({ ok: true });
+
+      const imageBuffer = Buffer.from('png-bytes');
+      await aiService.participate('T1', 'C1', '<@moonbeam> what is this?', [
+        { data: imageBuffer, mimetype: 'image/png' },
+      ]);
+
+      const callArgs = (aiService.openAi.responses.create as jest.Mock).mock.calls[0][0];
+      expect(Array.isArray(callArgs.input)).toBe(true);
+      const message = callArgs.input[0];
+      expect(message.role).toBe('user');
+      expect(message.content[0]).toEqual({ type: 'input_text', text: expect.stringContaining('<@moonbeam> what is this?') });
+      expect(message.content[1]).toEqual({
+        type: 'input_image',
+        image_url: `data:image/png;base64,${imageBuffer.toString('base64')}`,
+        detail: 'auto',
+      });
+    });
+
+    it('passes plain string input when no images are provided', async () => {
+      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'response' }] }],
+      });
+      (aiService.webService.sendMessage as jest.Mock).mockResolvedValue({ ok: true });
+
+      await aiService.participate('T1', 'C1', '<@moonbeam> hello');
+
+      const callArgs = (aiService.openAi.responses.create as jest.Mock).mock.calls[0][0];
+      expect(typeof callArgs.input).toBe('string');
     });
 
     it('throws when participate model call fails', async () => {

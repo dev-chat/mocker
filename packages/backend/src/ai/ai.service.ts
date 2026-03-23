@@ -34,6 +34,9 @@ import type {
   ResponseOutputItem,
   ResponseOutputText,
   ResponseOutputRefusal,
+  ResponseInput,
+  ResponseInputContent,
+  EasyInputMessage,
 } from 'openai/resources/responses/responses';
 import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
@@ -422,7 +425,12 @@ export class AIService {
       });
   }
 
-  public async participate(teamId: string, channelId: string, taggedMessage: string): Promise<void> {
+  public async participate(
+    teamId: string,
+    channelId: string,
+    taggedMessage: string,
+    images: Array<{ data: Buffer; mimetype: string }> = [],
+  ): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
     const historyMessages = await this.historyService.getHistoryWithOptions({
@@ -441,7 +449,23 @@ export class AIService {
     const memoryContext = await this.fetchMemoryContext(participantSlackIds, teamId, history, historyMessages);
     const systemInstructions = this.appendMemoryContext(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryContext);
 
-    const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
+    const textContent = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
+
+    let input: string | ResponseInput;
+    if (images.length > 0) {
+      const textItem: ResponseInputContent = { type: 'input_text', text: textContent };
+      const imageItems: ResponseInputContent[] = images.map(
+        (img): ResponseInputContent => ({
+          type: 'input_image',
+          image_url: `data:${img.mimetype};base64,${img.data.toString('base64')}`,
+          detail: 'auto',
+        }),
+      );
+      const message: EasyInputMessage = { role: 'user', content: [textItem, ...imageItems] };
+      input = [message];
+    } else {
+      input = textContent;
+    }
 
     return this.openAi.responses
       .create({
@@ -756,7 +780,23 @@ export class AIService {
       const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, MOONBEAM_SLACK_ID);
       const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
-        void this.participate(request.team_id, request.event.channel, request.event.text);
+        const imageFiles = (request.event.files ?? []).filter((f) => f.mimetype.startsWith('image/'));
+        const images = await Promise.all(
+          imageFiles.map(async (f) => {
+            try {
+              const data = await this.webService.fetchFile(f.url_private);
+              return { data, mimetype: f.mimetype };
+            } catch (e) {
+              logError(this.aiServiceLogger, 'Failed to fetch Slack image for Moonbeam', e, {
+                fileId: f.id,
+                channelId: request.event.channel,
+              });
+              return null;
+            }
+          }),
+        ).then((results) => results.filter((r): r is { data: Buffer; mimetype: string } => r !== null));
+
+        void this.participate(request.team_id, request.event.channel, request.event.text, images);
       }
     }
   }

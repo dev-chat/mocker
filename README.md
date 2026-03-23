@@ -59,6 +59,7 @@ Each of the slash commands should have `Escape Channels, users and links sent to
   - chat:write:bot
   - chat:write:user
   - commands
+  - files:read
   - files:write:user
   - groups:history
   - reactions:read

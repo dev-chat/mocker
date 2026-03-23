@@ -35,6 +35,13 @@ export interface EventItem {
   channel: string;
 }
 
+export interface SlackFile {
+  id: string;
+  name: string;
+  mimetype: string;
+  url_private: string;
+}
+
 export interface Event {
   client_msg_id: string;
   type: string;
@@ -59,6 +66,7 @@ export interface Event {
   bot_profile: {
     name: string;
   };
+  files?: SlackFile[];
 }
 
 export interface Attachment {
