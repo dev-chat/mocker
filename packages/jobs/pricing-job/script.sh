@@ -28,8 +28,23 @@ load_env() {
 	for env_file in "${candidates[@]}"; do
 		[[ -n "${env_file}" ]] || continue
 		if [[ -f "${env_file}" ]]; then
+			# Temporarily relax errexit/nounset while sourcing potentially interactive profiles.
+			set +e +u
 			# shellcheck disable=SC1090
 			. "${env_file}"
+			local source_status=$?
+			# Restore strict mode for the rest of the script.
+			set -euo pipefail
+			if [[ "${source_status}" -ne 0 ]]; then
+				# Many profile scripts may return non-zero even when sourcing succeeded.
+				# Treat non-zero as a hard failure only for the job-owned env file.
+				if [[ -n "${JOB_ENV_FILE:-}" && "${env_file}" == "${JOB_ENV_FILE}" ]]; then
+					log WARN "Failed to load environment from ${env_file} (exit ${source_status}); continuing"
+					continue
+				else
+					log WARN "Loaded environment from ${env_file} but it exited with status ${source_status}; ignoring exit status"
+				fi
+			fi
 			log INFO "Loaded environment from ${env_file}"
 			return 0
 		fi
@@ -61,7 +76,7 @@ require_command() {
 	local command_name="$1"
 
 	if ! command -v "${command_name}" >/dev/null 2>&1; then
-		log ERROR "Missing required command: ${command_name}" >&2
+		log ERROR "Missing required command: ${command_name}"
 		exit 1
 	fi
 }
@@ -70,7 +85,7 @@ require_env() {
 	local env_name="$1"
 
 	if [[ -z "${!env_name:-}" ]]; then
-		log ERROR "Missing required environment variable: ${env_name}" >&2
+		log ERROR "Missing required environment variable: ${env_name}"
 		exit 1
 	fi
 }
@@ -100,7 +115,7 @@ calculate_median_rep() {
 
 	count=$(mysql_query 'SELECT COUNT(DISTINCT affectedUser) FROM reaction;')
 	if (( count == 0 )); then
-		log ERROR 'No reputation data found; refusing to calculate prices' >&2
+		log ERROR 'No reputation data found; refusing to calculate prices'
 		return 1
 	fi
 
@@ -195,7 +210,7 @@ main() {
 		log INFO 'Executing batch price inserts'
 		mysql_query "START TRANSACTION;
 ${sql_batch}COMMIT;" || {
-			log ERROR 'Batch insert failed; transaction has been rolled back' >&2
+			log ERROR 'Batch insert failed; transaction has been rolled back'
 			return 1
 		}
 		log INFO 'Batch price inserts committed successfully'
