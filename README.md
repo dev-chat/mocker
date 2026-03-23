@@ -94,9 +94,43 @@ Each of the slash commands should have `Escape Channels, users and links sent to
 
 The scripts in `packages/jobs` are standalone bash jobs intended for cron-style execution. They no longer require Python or Pipenv.
 
+Each job now logs timestamped `INFO`, `WARN`, and `ERROR` lines to stdout/stderr so cron can capture clear success and failure status in its own logs or redirected log files.
+
+The jobs will try to load environment variables from the first file that exists in this order:
+
+1. `JOB_ENV_FILE`
+2. `packages/jobs/<job-name>/.env`
+3. `$HOME/.bash_profile`
+4. `$HOME/.profile`
+5. `/home/muzzle.lol/.bash_profile`
+
+If none of those files exist, the jobs fall back to whatever environment cron provides directly.
+
 - `packages/jobs/health-job/script.sh` requires `bash` and `curl`
 - `packages/jobs/fun-fact-job/script.sh` requires `bash`, `curl`, `jq`, and `mysql`
 - `packages/jobs/pricing-job/script.sh` requires `bash`, `mysql`, and `awk`
+
+Example `crontab -e` entries when the default shell is bash:
+
+```bash
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+MAILTO=""
+
+# Optional shared env file for the jobs
+JOB_ENV_FILE=/home/steve/code/mocker/.cron.env
+
+# Daily fun facts at 09:00
+0 9 * * * /home/steve/code/mocker/packages/jobs/fun-fact-job/script.sh >> /home/steve/logs/fun-fact-job.log 2>&1
+
+# Health check every 5 minutes
+*/5 * * * * /home/steve/code/mocker/packages/jobs/health-job/script.sh >> /home/steve/logs/health-job.log 2>&1
+
+# Price refresh every hour at minute 10
+10 * * * * /home/steve/code/mocker/packages/jobs/pricing-job/script.sh >> /home/steve/logs/pricing-job.log 2>&1
+```
+
+Use root only if the jobs truly need root-owned resources such as privileged ports, root-only files, or system-level service management. These jobs only need network access, MySQL access, and Slack credentials, so they should normally run as a dedicated non-root user that owns the repo and the log directory.
 
 ### Available Scripts
 
