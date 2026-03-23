@@ -106,7 +106,7 @@ The jobs will try to load environment variables from the first file that exists 
 
 If none of those files exist, the jobs fall back to whatever environment cron provides directly.
 
-- `packages/jobs/health-job/script.sh` requires `bash` and `curl`
+- `packages/jobs/health-job/script.sh` requires `bash`, `curl`, `grep`, `mktemp`, and `tr`
 - `packages/jobs/fun-fact-job/script.sh` requires `bash`, `curl`, `jq`, and `mysql`
 - `packages/jobs/pricing-job/script.sh` requires `bash`, `mysql`, and `awk`
 
