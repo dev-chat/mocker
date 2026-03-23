@@ -111,7 +111,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: npm run test -w @mocker/frontend
+      - name: Enforce 80% coverage
+        run: npm run test:coverage -w @mocker/frontend
 
   docker-build:
     name: Docker Build
