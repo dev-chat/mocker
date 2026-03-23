@@ -1,4 +1,5 @@
 import datetime
+import logging
 import mysql.connector
 import os
 import requests
@@ -27,6 +28,9 @@ retry = Retry(
 adapter = requests.adapters.HTTPAdapter(max_retries=retry)
 session.mount('http://', adapter)
 session.mount('https://', adapter)
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
 def getFacts(ctx):
   facts = []
@@ -67,7 +71,6 @@ def getOnThisDay():
     onThisDayJson = onThisDay.json()
     otd = onThisDayJson["selected"][0]
     firstPage = otd["pages"][0]
-    print(firstPage)
     hasThumbnail = firstPage.get("thumbnail") != None
     return { "text": otd["text"], "url":firstPage["content_urls"]["desktop"]["page"], "image": firstPage["thumbnail"]["source"] if hasThumbnail else None, "title": firstPage["title"]}
   else:
@@ -79,7 +82,6 @@ def getJoke(ctx):
 
   if(joke):
     jokeJson = joke.json()
-    print(jokeJson)
     if (isNewJoke(jokeJson["id"], ctx)):
       addJokeIdToDb(jokeJson["id"],ctx)
       if (jokeJson["type"] == "single"):
@@ -87,7 +89,7 @@ def getJoke(ctx):
       elif(jokeJson["type"] == "twopart"):
         return "{setup} \n\n {delivery}".format(setup=jokeJson["setup"], delivery=jokeJson["delivery"])
     else:
-      getJoke(ctx)
+      return getJoke(ctx)
   else:
     raise Exception("Unable to retrieve Joke of the Day")
 
@@ -135,14 +137,12 @@ def sendSlackMessage(facts, joke, quote, onThisDay):
   client = WebClient(token=slack_token)
 
   try:
-      client.api_call(
-        api_method='chat.postMessage',
-        json={'channel': '#general','blocks': blocks}
-      )
+      response = client.chat_postMessage(channel="#general", blocks=blocks)
+      logger.info("Posted fun-fact message to Slack channel=%s ts=%s", response["channel"], response["ts"])
     
   except SlackApiError as e:
       # You will get a SlackApiError if "ok" is False
-      print(e)
+      logger.exception("Failed to post fun-fact message to Slack")
       assert e.response["error"]
 
 def createBlocks(quote, facts, otd, joke):
@@ -257,6 +257,11 @@ def createBlocks(quote, facts, otd, joke):
 
   if (otd["image"]):
     blocks.append({
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Related image:*"
+      },
       "accessory": {
         "type": "image",
         "image_url": "{url}".format(url=otd["image"]),
@@ -284,6 +289,7 @@ def createBlocks(quote, facts, otd, joke):
   return blocks
 
 def main():
+  logger.info("Starting fun-fact job")
   try:
     cnx = mysql.connector.connect(
         host="localhost",
@@ -308,6 +314,12 @@ def main():
   onThisDay = getOnThisDay()
 
   sendSlackMessage(facts, joke, quote, onThisDay)
+  logger.info("Fun-fact job finished")
 
 
-main()
+if __name__ == "__main__":
+  try:
+    main()
+  except Exception:
+    logger.exception("Fun-fact job failed")
+    raise

@@ -1,4 +1,5 @@
 import mysql.connector
+from mysql.connector import errorcode
 import os
 import time
 import math
@@ -7,7 +8,7 @@ print("Beginning pricing job...")
 start = time.time()
 try:
   print("Connecting to mysql DB...")
-  cnx = mydb = mysql.connector.connect(
+  cnx = mysql.connector.connect(
       host="localhost",
       user=os.getenv('TYPEORM_USERNAME'),
       password=os.getenv('TYPEORM_PASSWORD'),
@@ -21,6 +22,7 @@ except mysql.connector.Error as err:
     print("Database does not exist")
   else:
     print(err)
+  raise
 
 print("Connected!")
 mycursor = cnx.cursor(dictionary=True, buffered=True)
@@ -30,11 +32,13 @@ mycursor.execute("SELECT DISTINCT(teamId) FROM slack_user;")
 
 teams = mycursor.fetchall()
 print('Teams retrieved!')
+print("Found {count} teams".format(count=len(teams)))
 print('Retrieving all items...')
 mycursor.execute("SELECT id, pricePct from item;")
 print('Items retrieved!')
 
 items = mycursor.fetchall()
+print("Found {count} items".format(count=len(items)))
 
 for team in teams:
   # get total earned rep by team per user.

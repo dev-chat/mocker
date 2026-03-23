@@ -1,4 +1,5 @@
 import os
+import logging
 import requests
 import ssl
 from slack_sdk import WebClient
@@ -17,15 +18,22 @@ adapter = requests.adapters.HTTPAdapter(max_retries=retries)
 session.mount('http://', adapter)
 session.mount('https://', adapter)
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
+
 def getHealth():
   try:
     url = "http://127.0.0.1:3000/health"
+    logger.info("Checking backend health at %s", url)
     health = session.get(url)
-    print(health)
+    logger.info("Health endpoint status_code=%s", health.status_code)
     if (health.ok == False):
+      logger.warning("Health check failed, sending Slack alert")
       sendSlackMessage()
+    else:
+      logger.info("Health check passed")
   except requests.exceptions.ConnectionError as e:
-    print(e)
+    logger.exception("Health check connection error")
     sendSlackMessage()
 
 def sendSlackMessage():
@@ -33,18 +41,26 @@ def sendSlackMessage():
   client = WebClient(token=slack_token)
 
   try:
-      client.api_call(
-        api_method='chat.postMessage',
-        json={'channel': '#muzzlefeedback','text': ':this-is-fine: `Moonbeam is experiencing some technical difficulties at the moment.` :this-is-fine:'}
+      response = client.chat_postMessage(
+        channel="#muzzlefeedback",
+        text=':this-is-fine: `Moonbeam is experiencing some technical difficulties at the moment.` :this-is-fine:'
       )
+      logger.info("Posted health alert to Slack channel=%s ts=%s", response["channel"], response["ts"])
     
   except SlackApiError as e:
       # You will get a SlackApiError if "ok" is False
-      print(e)
+      logger.exception("Failed to post health alert to Slack")
       assert e.response["error"]
 
 def main():
+  logger.info("Starting health-job")
   getHealth()
+  logger.info("Health-job finished")
 
 
-main()
+if __name__ == "__main__":
+  try:
+    main()
+  except Exception:
+    logger.exception("Health-job failed")
+    raise
