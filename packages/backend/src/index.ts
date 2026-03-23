@@ -38,7 +38,9 @@ import { authMiddleware } from './shared/middleware/authMiddleware';
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
-const searchCors = cors({ origin: process.env.SEARCH_UI_ORIGIN || 'http://localhost:5173' });
+const searchCors = cors({
+  origin: process.env.SEARCH_FRONTEND_URL || process.env.SEARCH_UI_ORIGIN || 'http://localhost:5173',
+});
 
 app.use(
   bodyParser.urlencoded({
