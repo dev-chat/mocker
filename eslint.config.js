@@ -5,13 +5,7 @@ const tseslint = require('typescript-eslint');
 
 module.exports = tseslint.config(
   {
-    ignores: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/coverage/**',
-      '**/*.d.ts',
-      'packages/backend/scripts/*.js',
-    ],
+    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '**/*.d.ts', 'packages/backend/scripts/*.js'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

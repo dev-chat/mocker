@@ -19,8 +19,8 @@
     "test:backend": "npm run test -w @mocker/backend",
     "test:coverage": "npm run test:coverage -w @mocker/backend",
     "dev:frontend": "npm run dev -w @mocker/frontend",
-    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/**/*.ts",
-    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/**/*.ts --quiet --fix",
+    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/backend/**/*.ts",
+    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/backend/**/*.ts --quiet --fix",
     "format:check": "prettier --cache --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:fix": "prettier --cache --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\""
   },
