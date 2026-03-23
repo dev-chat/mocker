@@ -1,6 +1,7 @@
 import 'reflect-metadata'; // Necessary for TypeORM entities.
 import 'dotenv/config';
 import bodyParser from 'body-parser';
+import cors from 'cors';
 
 import type { Application } from 'express';
 import express from 'express';
@@ -29,10 +30,12 @@ import { logger } from './shared/logger/logger';
 import { AIService } from './ai/ai.service';
 import { portfolioController } from './portfolio/portfolio.controller';
 import { hookController } from './hook/hook.controller';
+import { searchController } from './search/search.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors({ origin: process.env.SEARCH_UI_ORIGIN || 'http://localhost:5173' }));
 app.use(
   bodyParser.urlencoded({
     extended: true,
@@ -48,6 +51,7 @@ app.use(
     },
   }),
 );
+app.use('/search', searchController);
 app.use(signatureVerificationMiddleware);
 app.use('/ai', aiController);
 app.use('/clap', clapController);
