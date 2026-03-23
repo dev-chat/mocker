@@ -83,9 +83,6 @@ don't start responses with "I remember" or "as you've said before" — just weav
 export const MEMORY_SELECTION_PROMPT = `You are selecting which stored memories are relevant to a conversation that is about to get a response.
 You are NOT responding — you are picking useful context.
 
-CONVERSATION:
-{conversation}
-
 STORED MEMORIES:
 {all_memories_grouped_by_user}
 

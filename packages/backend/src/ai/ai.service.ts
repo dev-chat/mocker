@@ -496,17 +496,14 @@ export class AIService {
       })
       .join('\n\n');
 
-    const prompt = MEMORY_SELECTION_PROMPT.replace('{conversation}', conversation).replace(
-      '{all_memories_grouped_by_user}',
-      formattedMemories,
-    );
+    const prompt = MEMORY_SELECTION_PROMPT.replace('{all_memories_grouped_by_user}', formattedMemories);
 
     try {
       const raw = await this.openAi.responses
         .create({
           model: GATE_MODEL,
           instructions: prompt,
-          input: prompt,
+          input: conversation,
         })
         .then((x) => extractAndParseOpenAiResponse(x));
 
