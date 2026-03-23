@@ -9,15 +9,25 @@ export const searchController: Router = express.Router();
 const searchPersistenceService = new SearchPersistenceService();
 const searchLogger = logger.child({ module: 'SearchController' });
 
+const MAX_LIMIT = 1000;
+
 searchController.get('/messages', (req, res) => {
   const { userName, channel, content, limit } = req.query;
+
+  let parsedLimit: number | undefined;
+  if (typeof limit === 'string') {
+    const parsed = parseInt(limit, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      parsedLimit = Math.min(parsed, MAX_LIMIT);
+    }
+  }
 
   searchPersistenceService
     .searchMessages({
       userName: typeof userName === 'string' ? userName : undefined,
       channel: typeof channel === 'string' ? channel : undefined,
       content: typeof content === 'string' ? content : undefined,
-      limit: typeof limit === 'string' ? parseInt(limit, 10) : undefined,
+      limit: parsedLimit,
     })
     .then((messages) => res.status(200).json(messages))
     .catch((e: unknown) => {

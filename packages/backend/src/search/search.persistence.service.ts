@@ -14,8 +14,20 @@ export interface MessageSearchParams {
 export class SearchPersistenceService {
   private logger = logger.child({ module: 'SearchPersistenceService' });
 
+  private static readonly DEFAULT_LIMIT = 100;
+  private static readonly MIN_LIMIT = 1;
+  private static readonly MAX_LIMIT = 500;
+
+  private static resolveLimit(limit: number | undefined): number {
+    if (limit === undefined || !Number.isFinite(limit) || limit < SearchPersistenceService.MIN_LIMIT) {
+      return SearchPersistenceService.DEFAULT_LIMIT;
+    }
+    return Math.min(limit, SearchPersistenceService.MAX_LIMIT);
+  }
+
   async searchMessages(params: MessageSearchParams): Promise<MessageWithName[]> {
-    const { userName, channel, content, limit = 100 } = params;
+    const { userName, channel, content } = params;
+    const effectiveLimit = SearchPersistenceService.resolveLimit(params.limit);
 
     const conditions: string[] = ["message.message != ''"];
     const queryParams: (string | number)[] = [];
@@ -46,7 +58,7 @@ export class SearchPersistenceService {
       LIMIT ?
     `;
 
-    queryParams.push(limit);
+    queryParams.push(effectiveLimit);
 
     return getRepository(Message)
       .query(query, queryParams)

@@ -1,14 +1,17 @@
 import crypto from 'crypto';
-import { logger } from '../logger/logger';
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const secretLogger = logger.child({ module: 'SessionToken' });
 
 function getSecret(): string {
   const secret = process.env.SEARCH_AUTH_SECRET;
   if (!secret) {
-    secretLogger.warn('SEARCH_AUTH_SECRET is not set — session tokens are insecure. Set this variable in production.');
-    return 'insecure-default-secret';
+    if (process.env.NODE_ENV === 'test') {
+      return 'insecure-test-secret';
+    }
+    throw new Error(
+      'SEARCH_AUTH_SECRET environment variable is not set. ' +
+        'Session tokens cannot be created or verified without a secret.',
+    );
   }
   return secret;
 }

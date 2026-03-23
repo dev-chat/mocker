@@ -44,11 +44,13 @@ export default function App() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const tokenFromUrl = urlParams.get('token');
     const errorFromUrl = urlParams.get('auth_error') ?? undefined;
 
-    if (tokenFromUrl) {
-      localStorage.setItem(AUTH_TOKEN_KEY, tokenFromUrl);
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const tokenFromHash = hashParams.get('token');
+
+    if (tokenFromHash) {
+      localStorage.setItem(AUTH_TOKEN_KEY, tokenFromHash);
       window.history.replaceState({}, '', window.location.pathname);
       setIsAuthenticated(true);
     } else if (getStoredToken()) {

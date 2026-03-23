@@ -12,7 +12,15 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
   }
 
   const token = authHeader.slice(7);
-  const session = verifySessionToken(token);
+  let session: ReturnType<typeof verifySessionToken>;
+  try {
+    session = verifySessionToken(token);
+  } catch {
+    authLogger.error('Session token verification failed — SEARCH_AUTH_SECRET may not be set');
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
   if (!session) {
     authLogger.warn('Invalid or expired session token');
     res.status(401).json({ error: 'Unauthorized' });

@@ -1,4 +1,5 @@
-import type { Router } from 'express';
+import crypto from 'crypto';
+import type { Request, Router } from 'express';
 import express from 'express';
 import Axios from 'axios';
 import { createSessionToken } from '../shared/utils/session-token';
@@ -12,6 +13,8 @@ const ALLOWED_TEAM_DOMAIN = 'dabros2016';
 const SLACK_AUTH_URL = 'https://slack.com/oauth/v2/authorize';
 const SLACK_TOKEN_URL = 'https://slack.com/api/oauth.v2.access';
 const SLACK_IDENTITY_URL = 'https://slack.com/api/users.identity';
+const OAUTH_STATE_COOKIE = 'oauth_state';
+const OAUTH_STATE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 
 interface SlackTokenResponse {
   ok: boolean;
@@ -33,6 +36,14 @@ interface SlackIdentityResponse {
   };
 }
 
+function getCookieValue(req: Request, name: string): string | undefined {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return undefined;
+  const match = cookieHeader.split(';').find((c) => c.trim().startsWith(`${name}=`));
+  if (!match) return undefined;
+  return match.split('=').slice(1).join('=');
+}
+
 authController.get('/slack', (_req, res) => {
   const clientId = process.env.SLACK_CLIENT_ID;
   const redirectUri = process.env.SLACK_REDIRECT_URI ?? 'http://localhost:3000/auth/slack/callback';
@@ -42,10 +53,19 @@ authController.get('/slack', (_req, res) => {
     return;
   }
 
+  const state = crypto.randomBytes(16).toString('hex');
+  res.cookie(OAUTH_STATE_COOKIE, state, {
+    httpOnly: true,
+    maxAge: OAUTH_STATE_MAX_AGE_MS,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
+
   const params = new URLSearchParams({
     client_id: clientId,
     user_scope: 'identity.basic',
     redirect_uri: redirectUri,
+    state,
   });
 
   res.redirect(`${SLACK_AUTH_URL}?${params.toString()}`);
@@ -55,7 +75,15 @@ authController.get('/slack/callback', (req, res) => {
   const frontendUrl = process.env.SEARCH_FRONTEND_URL ?? 'http://localhost:5173';
 
   void (async () => {
-    const { code, error } = req.query;
+    const { code, error, state: stateFromQuery } = req.query;
+    const stateFromCookie = getCookieValue(req, OAUTH_STATE_COOKIE);
+
+    res.clearCookie(OAUTH_STATE_COOKIE);
+
+    if (!stateFromCookie || typeof stateFromQuery !== 'string' || stateFromQuery !== stateFromCookie) {
+      res.redirect(`${frontendUrl}?auth_error=access_denied`);
+      return;
+    }
 
     if (error || typeof code !== 'string') {
       res.redirect(`${frontendUrl}?auth_error=access_denied`);
@@ -99,7 +127,7 @@ authController.get('/slack/callback', (req, res) => {
     }
 
     const sessionToken = createSessionToken(userId, teamDomain);
-    res.redirect(`${frontendUrl}?token=${sessionToken}`);
+    res.redirect(`${frontendUrl}#token=${sessionToken}`);
   })().catch((e: unknown) => {
     logError(authLogger, 'Slack OAuth callback failed', e, {});
     res.redirect(`${frontendUrl}?auth_error=server_error`);

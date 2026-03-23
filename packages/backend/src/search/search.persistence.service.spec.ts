@@ -73,6 +73,33 @@ describe('SearchPersistenceService', () => {
     expect(params[params.length - 1]).toBe(25);
   });
 
+  it('clamps limit to MAX_LIMIT (500) when provided value exceeds it', async () => {
+    query.mockResolvedValue([]);
+
+    await service.searchMessages({ limit: 9999 });
+
+    const [, params] = (query as jest.Mock).mock.calls[0] as [string, unknown[]];
+    expect(params[params.length - 1]).toBe(500);
+  });
+
+  it('uses default limit when provided value is below MIN_LIMIT', async () => {
+    query.mockResolvedValue([]);
+
+    await service.searchMessages({ limit: 0 });
+
+    const [, params] = (query as jest.Mock).mock.calls[0] as [string, unknown[]];
+    expect(params[params.length - 1]).toBe(100);
+  });
+
+  it('uses default limit when provided value is NaN', async () => {
+    query.mockResolvedValue([]);
+
+    await service.searchMessages({ limit: NaN });
+
+    const [, params] = (query as jest.Mock).mock.calls[0] as [string, unknown[]];
+    expect(params[params.length - 1]).toBe(100);
+  });
+
   it('rethrows and logs errors from the database', async () => {
     const error = new Error('DB error');
     query.mockRejectedValue(error);

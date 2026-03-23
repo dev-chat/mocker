@@ -49,6 +49,30 @@ describe('searchController', () => {
     });
   });
 
+  it('clamps limit to MAX_LIMIT (1000) when provided value exceeds it', async () => {
+    searchMessagesMock.mockResolvedValue([]);
+
+    await request(app).get('/messages').query({ limit: '9999' }).expect(200);
+
+    expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ limit: 1000 }));
+  });
+
+  it('passes undefined for limit when the value is not a valid positive integer (NaN)', async () => {
+    searchMessagesMock.mockResolvedValue([]);
+
+    await request(app).get('/messages').query({ limit: 'abc' }).expect(200);
+
+    expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ limit: undefined }));
+  });
+
+  it('passes undefined for limit when the value is zero or negative', async () => {
+    searchMessagesMock.mockResolvedValue([]);
+
+    await request(app).get('/messages').query({ limit: '-5' }).expect(200);
+
+    expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ limit: undefined }));
+  });
+
   it('returns 500 when search throws an error', async () => {
     searchMessagesMock.mockRejectedValue(new Error('DB failure'));
 

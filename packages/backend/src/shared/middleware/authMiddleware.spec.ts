@@ -71,4 +71,23 @@ describe('authMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
   });
+
+  it('returns 401 when token verification throws (e.g. SEARCH_AUTH_SECRET not set)', () => {
+    const origNodeEnv = process.env.NODE_ENV;
+    delete process.env.SEARCH_AUTH_SECRET;
+    process.env.NODE_ENV = 'production';
+    try {
+      const req = makeReq('Bearer sometoken.withsig');
+      const res = makeRes();
+      const next = jest.fn() as unknown as NextFunction;
+
+      authMiddleware(req as Request, res as Response, next);
+
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(401);
+    } finally {
+      process.env.SEARCH_AUTH_SECRET = 'test-secret';
+      process.env.NODE_ENV = origNodeEnv ?? '';
+    }
+  });
 });

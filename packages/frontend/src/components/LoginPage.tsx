@@ -29,9 +29,9 @@ export function LoginPage({ authError }: LoginPageProps) {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {errorMessage && <p className="text-destructive text-sm">{errorMessage}</p>}
-          <a href={loginUrl}>
-            <Button className="w-full">Sign in with Slack</Button>
-          </a>
+          <Button asChild className="w-full">
+            <a href={loginUrl}>Sign in with Slack</a>
+          </Button>
         </CardContent>
       </Card>
     </div>

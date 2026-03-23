@@ -36,6 +36,18 @@ describe('session-token', () => {
       expect(decoded.exp).toBeGreaterThan(before);
       expect(decoded.exp).toBeGreaterThan(after);
     });
+
+    it('throws when SEARCH_AUTH_SECRET is not set in a non-test environment', () => {
+      const origNodeEnv = process.env.NODE_ENV;
+      delete process.env.SEARCH_AUTH_SECRET;
+      process.env.NODE_ENV = 'production';
+      try {
+        expect(() => createSessionToken('U1', 'team')).toThrow();
+      } finally {
+        process.env.SEARCH_AUTH_SECRET = 'test-secret';
+        process.env.NODE_ENV = origNodeEnv ?? '';
+      }
+    });
   });
 
   describe('verifySessionToken', () => {
