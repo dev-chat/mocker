@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --quiet --fix",
+    "lint": "eslint --cache --cache-location ../../node_modules/.cache/eslint/frontend/.eslintcache './**/*.{ts,tsx}'",
+    "lint:fix": "eslint --cache --cache-location ../../node_modules/.cache/eslint/frontend/.eslintcache './**/*.{ts,tsx}' --quiet --fix",
     "format:check": "prettier --cache --ignore-path ../../.prettierignore --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:fix": "prettier --cache --ignore-path ../../.prettierignore --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "test": "vitest run --passWithNoTests",
