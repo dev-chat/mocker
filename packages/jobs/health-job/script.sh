@@ -10,7 +10,9 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 log() {
 	local level="$1"
 	shift
-	printf '%s [%s] [%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "${SCRIPT_NAME}" "${level}" "$*"
+	local fd=1
+	[[ "${level}" == "WARN" || "${level}" == "ERROR" ]] && fd=2
+	printf '%s [%s] [%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "${SCRIPT_NAME}" "${level}" "$*" >&"${fd}"
 }
 
 load_env() {
