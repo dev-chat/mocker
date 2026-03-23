@@ -615,6 +615,83 @@ describe('AIService', () => {
       expect(selected).toEqual([]);
     });
 
+    it('returns empty array without calling model when memoriesMap is empty', async () => {
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+
+      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories('conv', new Map());
+
+      expect(selected).toEqual([]);
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    it('passes conversation as input and memories as instructions (not duplicated)', async () => {
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: '[1]' }] }],
+      });
+      const conversation = 'Alice: hey what is up';
+      const map = new Map([['U1', [{ id: 1, slackId: 'U1', content: 'likes tea' }]]]);
+
+      await (aiService as unknown as AiServicePrivate).selectRelevantMemories(conversation, map);
+
+      expect(createSpy).toHaveBeenCalledTimes(1);
+      const callArgs = createSpy.mock.calls[0][0] as { instructions: string; input: string };
+      expect(callArgs.input).toBe(conversation);
+      expect(callArgs.instructions).not.toBe(conversation);
+      expect(callArgs.instructions).not.toContain(conversation);
+    });
+
+    it('returns empty array and warns when model call throws', async () => {
+      (aiService.openAi.responses.create as jest.Mock).mockRejectedValue(new Error('model error'));
+      const warnSpy = jest.spyOn(aiService.aiServiceLogger, 'warn');
+
+      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories(
+        'conv',
+        new Map([['U1', [{ id: 1 }]]]),
+      );
+
+      expect(selected).toEqual([]);
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it('returns empty array when model returns non-array JSON', async () => {
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: '{"ids":[1,2]}' }] }],
+      });
+
+      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories(
+        'conv',
+        new Map([['U1', [{ id: 1 }]]]),
+      );
+
+      expect(selected).toEqual([]);
+    });
+
+    it('returns empty array when model returns empty array', async () => {
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
+      });
+
+      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories(
+        'conv',
+        new Map([['U1', [{ id: 1 }]]]),
+      );
+
+      expect(selected).toEqual([]);
+    });
+
+    it('filters out IDs from model response that do not exist in memoriesMap', async () => {
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: '[1, 99]' }] }],
+      });
+      const map = new Map([['U1', [{ id: 1, slackId: 'U1', content: 'likes tea' }]]]);
+
+      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories('conv', map);
+
+      expect(selected).toHaveLength(1);
+      expect(selected[0]).toMatchObject({ id: 1 });
+    });
+
     it('fetches memory context end-to-end', async () => {
       (aiService.memoryPersistenceService.getAllMemoriesForUsers as jest.Mock).mockResolvedValue(
         new Map([['U1', [{ id: 1, slackId: 'U1', content: 'likes tea' }]]]),
