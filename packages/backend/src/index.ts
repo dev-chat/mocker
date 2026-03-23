@@ -55,8 +55,8 @@ app.use(
     },
   }),
 );
-const AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const SEARCH_RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const AUTH_RATE_LIMIT_WINDOW_MS = 900000; // 15 minutes
+const SEARCH_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 
 const authRateLimit = rateLimit({
   windowMs: AUTH_RATE_LIMIT_WINDOW_MS,
