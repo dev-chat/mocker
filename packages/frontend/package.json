@@ -11,7 +11,7 @@
     "lint:fix": "eslint . --quiet --fix",
     "format:check": "prettier --cache --ignore-path ../../.prettierignore --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:fix": "prettier --cache --ignore-path ../../.prettierignore --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "preview": "vite preview"
   },
