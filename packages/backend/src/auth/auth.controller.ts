@@ -5,6 +5,7 @@ import Axios from 'axios';
 import { createSessionToken } from '../shared/utils/session-token';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
+import type { SlackIdentityResponse, SlackTokenResponse } from './auth.model';
 
 export const authController: Router = express.Router();
 const authLogger = logger.child({ module: 'AuthController' });
@@ -15,26 +16,6 @@ const SLACK_TOKEN_URL = 'https://slack.com/api/oauth.v2.access';
 const SLACK_IDENTITY_URL = 'https://slack.com/api/users.identity';
 const OAUTH_STATE_COOKIE = 'oauth_state';
 const OAUTH_STATE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
-
-interface SlackTokenResponse {
-  ok: boolean;
-  authed_user?: {
-    id: string;
-    access_token: string;
-  };
-}
-
-interface SlackIdentityResponse {
-  ok: boolean;
-  user?: {
-    id: string;
-    name: string;
-  };
-  team?: {
-    domain: string;
-    id: string;
-  };
-}
 
 function getCookieValue(req: Request, name: string): string | undefined {
   const cookieHeader = req.headers.cookie;
