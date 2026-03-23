@@ -36,8 +36,14 @@ load_env() {
 			# Restore strict mode for the rest of the script.
 			set -euo pipefail
 			if [[ "${source_status}" -ne 0 ]]; then
-				log WARN "Failed to load environment from ${env_file} (exit ${source_status}); continuing"
-				continue
+				# Many profile scripts may return non-zero even when sourcing succeeded.
+				# Treat non-zero as a hard failure only for the job-owned env file.
+				if [[ -n "${JOB_ENV_FILE:-}" && "${env_file}" == "${JOB_ENV_FILE}" ]]; then
+					log WARN "Failed to load environment from ${env_file} (exit ${source_status}); continuing"
+					continue
+				else
+					log WARN "Loaded environment from ${env_file} but it exited with status ${source_status}; ignoring exit status"
+				fi
 			fi
 			log INFO "Loaded environment from ${env_file}"
 			return 0
@@ -419,6 +425,7 @@ main() {
 	require_command curl
 	require_command jq
 	require_command mysql
+	require_command tr
 	require_env TYPEORM_USERNAME
 	require_env TYPEORM_PASSWORD
 	require_env MUZZLE_BOT_TOKEN
