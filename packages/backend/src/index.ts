@@ -38,7 +38,8 @@ import { authMiddleware } from './shared/middleware/authMiddleware';
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({ origin: process.env.SEARCH_UI_ORIGIN || 'http://localhost:5173' }));
+const searchCors = cors({ origin: process.env.SEARCH_UI_ORIGIN || 'http://localhost:5173' });
+
 app.use(
   bodyParser.urlencoded({
     extended: true,
@@ -54,22 +55,25 @@ app.use(
     },
   }),
 );
+const AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const SEARCH_RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+
 const authRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: AUTH_RATE_LIMIT_WINDOW_MS,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 const searchRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
+  windowMs: SEARCH_RATE_LIMIT_WINDOW_MS,
   max: 60,
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-app.use('/auth', authRateLimit, authController);
-app.use('/search', searchRateLimit, authMiddleware, searchController);
+app.use('/auth', searchCors, authRateLimit, authController);
+app.use('/search', searchCors, searchRateLimit, authMiddleware, searchController);
 app.use(signatureVerificationMiddleware);
 app.use('/ai', aiController);
 app.use('/clap', clapController);

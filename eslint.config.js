@@ -11,7 +11,6 @@ module.exports = tseslint.config(
       '**/coverage/**',
       '**/*.d.ts',
       'packages/backend/scripts/*.js',
-      'packages/frontend/**',
     ],
   },
   js.configs.recommended,

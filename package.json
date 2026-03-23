@@ -40,8 +40,12 @@
     "typescript-eslint": "^8.57.1"
   },
   "lint-staged": {
-    "**/*.{ts,tsx,js,jsx}": [
+    "packages/backend/**/*.{ts,js}": [
       "eslint --quiet --fix",
+      "prettier --write"
+    ],
+    "packages/frontend/**/*.{ts,tsx,js,jsx}": [
+      "eslint --config packages/frontend/eslint.config.js --quiet --fix",
       "prettier --write"
     ],
     "**/*.{json,md,yml,yaml}": [
