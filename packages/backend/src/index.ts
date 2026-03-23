@@ -5,6 +5,7 @@ import cors from 'cors';
 
 import type { Application } from 'express';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { createConnection, getConnectionOptions } from 'typeorm';
 import type { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
 import { aiController } from './ai/ai.controller';
@@ -31,6 +32,8 @@ import { AIService } from './ai/ai.service';
 import { portfolioController } from './portfolio/portfolio.controller';
 import { hookController } from './hook/hook.controller';
 import { searchController } from './search/search.controller';
+import { authController } from './auth/auth.controller';
+import { authMiddleware } from './shared/middleware/authMiddleware';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -51,7 +54,22 @@ app.use(
     },
   }),
 );
-app.use('/search', searchController);
+const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const searchRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/auth', authRateLimit, authController);
+app.use('/search', searchRateLimit, authMiddleware, searchController);
 app.use(signatureVerificationMiddleware);
 app.use('/ai', aiController);
 app.use('/clap', clapController);

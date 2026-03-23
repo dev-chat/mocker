@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Search, Loader2 } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Search, Loader2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
+import { LoginPage } from '@/components/LoginPage';
 
 interface Message {
   id: number;
@@ -24,7 +25,15 @@ function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleString();
 }
 
+const AUTH_TOKEN_KEY = 'auth_token';
+
+function getStoredToken(): string | null {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authError, setAuthError] = useState<string | undefined>(undefined);
   const [userName, setUserName] = useState('');
   const [channel, setChannel] = useState('');
   const [content, setContent] = useState('');
@@ -32,6 +41,32 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+    const errorFromUrl = urlParams.get('auth_error') ?? undefined;
+
+    if (tokenFromUrl) {
+      localStorage.setItem(AUTH_TOKEN_KEY, tokenFromUrl);
+      window.history.replaceState({}, '', window.location.pathname);
+      setIsAuthenticated(true);
+    } else if (getStoredToken()) {
+      setIsAuthenticated(true);
+    }
+
+    if (errorFromUrl) {
+      setAuthError(errorFromUrl);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    setIsAuthenticated(false);
+    setMessages([]);
+    setHasSearched(false);
+  }, []);
 
   const handleSearch = useCallback(async () => {
     setIsLoading(true);
@@ -43,7 +78,15 @@ export default function App() {
     if (content.trim()) params.set('content', content.trim());
 
     try {
-      const response = await fetch(`${API_BASE_URL}/search/messages?${params.toString()}`);
+      const token = getStoredToken() ?? '';
+      const response = await fetch(`${API_BASE_URL}/search/messages?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.status === 401) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        setIsAuthenticated(false);
+        return;
+      }
       if (!response.ok) {
         throw new Error(`Search failed: ${response.statusText}`);
       }
@@ -69,12 +112,22 @@ export default function App() {
     content.trim() && { label: 'Content', value: content.trim() },
   ].filter(Boolean) as { label: string; value: string }[];
 
+  if (!isAuthenticated) {
+    return <LoginPage authError={authError} />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Message Search</h1>
-          <p className="text-muted-foreground mt-2">Search through Slack messages by user, channel, or content.</p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Message Search</h1>
+            <p className="text-muted-foreground mt-2">Search through Slack messages by user, channel, or content.</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign out
+          </Button>
         </div>
 
         <Card className="mb-6">
