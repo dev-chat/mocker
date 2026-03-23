@@ -2,13 +2,70 @@
 
 set -euo pipefail
 
-if [[ -f /home/muzzle.lol/.bash_profile ]]; then
-	# Cron runs with a minimal environment, so load the deployed shell profile when present.
-	# shellcheck disable=SC1091
-	. /home/muzzle.lol/.bash_profile
-fi
-
 PATH=/usr/local/bin:/usr/bin:/bin:${PATH:-}
+
+SCRIPT_NAME="fun-fact-job"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+log() {
+	local level="$1"
+	shift
+	local fd=1
+	[[ "${level}" == "WARN" || "${level}" == "ERROR" ]] && fd=2
+	printf '%s [%s] [%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "${SCRIPT_NAME}" "${level}" "$*" >&"${fd}"
+}
+
+load_env() {
+	local env_file
+	local -a candidates=(
+		"${JOB_ENV_FILE:-}"
+		"${SCRIPT_DIR}/.env"
+		"${HOME:-}/.bash_profile"
+		"${HOME:-}/.profile"
+		"/home/muzzle.lol/.bash_profile"
+	)
+
+	for env_file in "${candidates[@]}"; do
+		[[ -n "${env_file}" ]] || continue
+		if [[ -f "${env_file}" ]]; then
+			# Temporarily relax errexit/nounset while sourcing potentially interactive profiles.
+			set +e +u
+			# shellcheck disable=SC1090
+			. "${env_file}"
+			local source_status=$?
+			# Restore strict mode for the rest of the script.
+			set -euo pipefail
+			if [[ "${source_status}" -ne 0 ]]; then
+				# Many profile scripts may return non-zero even when sourcing succeeded.
+				# Treat non-zero as a hard failure only for the job-owned env file.
+				if [[ -n "${JOB_ENV_FILE:-}" && "${env_file}" == "${JOB_ENV_FILE}" ]]; then
+					log WARN "Failed to load environment from ${env_file} (exit ${source_status}); continuing"
+					continue
+				else
+					log WARN "Loaded environment from ${env_file} but it exited with status ${source_status}; ignoring exit status"
+				fi
+			fi
+			log INFO "Loaded environment from ${env_file}"
+			return 0
+		fi
+	done
+
+	log INFO 'No environment profile loaded; relying on cron-provided environment variables'
+}
+
+handle_exit() {
+	local exit_code="$1"
+
+	if [[ "${exit_code}" -eq 0 ]]; then
+		log INFO 'Job completed successfully'
+	else
+		log ERROR "Job failed with exit code ${exit_code}"
+	fi
+}
+
+trap 'handle_exit "$?"' EXIT
+
+load_env
 
 FACT_TARGET_COUNT="${FACT_TARGET_COUNT:-5}"
 MAX_FACT_ATTEMPTS="${MAX_FACT_ATTEMPTS:-50}"
@@ -29,7 +86,7 @@ require_command() {
 	local command_name="$1"
 
 	if ! command -v "${command_name}" >/dev/null 2>&1; then
-		echo "Missing required command: ${command_name}" >&2
+		log ERROR "Missing required command: ${command_name}"
 		exit 1
 	fi
 }
@@ -38,7 +95,7 @@ require_env() {
 	local env_name="$1"
 
 	if [[ -z "${!env_name:-}" ]]; then
-		echo "Missing required environment variable: ${env_name}" >&2
+		log ERROR "Missing required environment variable: ${env_name}"
 		exit 1
 	fi
 }
@@ -129,9 +186,9 @@ collect_facts() {
 	local source
 
 	while (( ${#facts[@]} < FACT_TARGET_COUNT )); do
-		(( attempts++ ))
+		attempts=$(( attempts + 1 ))
 		if (( attempts > MAX_FACT_ATTEMPTS )); then
-			echo "Unable to collect ${FACT_TARGET_COUNT} unique facts after ${MAX_FACT_ATTEMPTS} attempts" >&2
+			log ERROR "Unable to collect ${FACT_TARGET_COUNT} unique facts after ${MAX_FACT_ATTEMPTS} attempts"
 			return 1
 		fi
 
@@ -142,7 +199,7 @@ collect_facts() {
 		if is_new_fact "${fact}" "${source}"; then
 			add_fact "${fact}" "${source}"
 			facts+=("${fact_json}")
-			echo "Collected fact ${#facts[@]}/${FACT_TARGET_COUNT}"
+			log INFO "Collected fact ${#facts[@]}/${FACT_TARGET_COUNT} from ${source}"
 		fi
 	done
 
@@ -178,7 +235,7 @@ fetch_joke() {
 	local joke_id
 
 	while (( attempt < MAX_JOKE_ATTEMPTS )); do
-		(( attempt++ ))
+		attempt=$(( attempt + 1 ))
 		response=$(curl_json "${JOKE_URL}")
 		joke_id=$(jq -r '.id' <<<"${response}")
 
@@ -193,7 +250,7 @@ fetch_joke() {
 		fi
 	done
 
-	echo "Unable to retrieve a unique joke after ${MAX_JOKE_ATTEMPTS} attempts" >&2
+	log ERROR "Unable to retrieve a unique joke after ${MAX_JOKE_ATTEMPTS} attempts"
 	return 1
 }
 
@@ -340,17 +397,18 @@ send_slack_message() {
 		https://slack.com/api/chat.postMessage || true)
 
 	if [[ -z "${response_code:-}" ]]; then
-		echo "Slack API request failed: curl did not complete successfully" >&2
+		log ERROR 'Slack API request failed: curl did not complete successfully'
 		rm -f "${response_file}"
 		return 1
 	fi
 
 	if [[ "${response_code}" != '200' ]] || ! jq -e '.ok == true' "${response_file}" >/dev/null 2>&1; then
-		cat "${response_file}" >&2
+		log ERROR "Slack API request failed with HTTP ${response_code}: $(tr '\n' ' ' < "${response_file}")"
 		rm -f "${response_file}"
 		return 1
 	fi
 
+	log INFO "Posted Slack message to ${SLACK_CHANNEL}"
 	rm -f "${response_file}"
 }
 
@@ -363,9 +421,11 @@ main() {
 	local blocks_json
 	local fact_line
 
+	log INFO 'Starting job run'
 	require_command curl
 	require_command jq
 	require_command mysql
+	require_command tr
 	require_env TYPEORM_USERNAME
 	require_env TYPEORM_PASSWORD
 	require_env MUZZLE_BOT_TOKEN
@@ -374,14 +434,17 @@ main() {
 	while IFS= read -r fact_line; do
 		facts_json+=("${fact_line}")
 	done < <(collect_facts)
+	log INFO "Collected ${#facts_json[@]} facts"
 	facts_array_json=$(printf '%s\n' "${facts_json[@]}" | jq -s '.')
 	joke_text=$(fetch_joke)
+	log INFO 'Fetched daily joke'
 	quote_json=$(fetch_quote)
+	log INFO 'Fetched quote of the day payload'
 	on_this_day_json=$(fetch_on_this_day)
+	log INFO 'Fetched on-this-day payload'
 	blocks_json=$(build_blocks "${quote_json}" "${facts_array_json}" "${on_this_day_json}" "${joke_text}")
 
 	send_slack_message "${blocks_json}"
-	echo 'Fun fact job completed successfully.'
 }
 
 main "$@"
