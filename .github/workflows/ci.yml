@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   setup:
-    name: Install Dependencies
+    name: Install Dependencies (All)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,7 +29,7 @@ jobs:
           retention-days: 1
 
   lint:
-    name: Backend Lint
+    name: Lint (Back End)
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -41,7 +41,7 @@ jobs:
       - run: npm run lint
 
   lint-frontend:
-    name: Frontend Lint
+    name: Lint (Front End)
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -53,7 +53,7 @@ jobs:
       - run: npm run lint -w @mocker/frontend
 
   format-check:
-    name: Format Check
+    name: Format Check (All)
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -65,7 +65,7 @@ jobs:
       - run: npm run format:check
 
   build:
-    name: Backend Build
+    name: Build (Back End)
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -77,7 +77,7 @@ jobs:
       - run: npm run build:backend
 
   build-frontend:
-    name: Frontend Build
+    name: Build (Front End)
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -89,7 +89,7 @@ jobs:
       - run: npm run build:frontend
 
   test:
-    name: Backend Test & Coverage
+    name: Test & Coverage (Back End)
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -102,7 +102,7 @@ jobs:
         run: npm run test:coverage
 
   test-frontend:
-    name: Frontend Test
+    name: Test & Coverage (Front End)
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -115,7 +115,7 @@ jobs:
         run: npm run test:coverage -w @mocker/frontend
 
   docker-build:
-    name: Docker Build
+    name: Docker Build (Back End)
     runs-on: ubuntu-latest
     permissions:
       contents: read
