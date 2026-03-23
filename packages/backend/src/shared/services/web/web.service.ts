@@ -14,7 +14,21 @@ import { WebClient } from '@slack/web-api';
 import { logError } from '../../logger/error-logging';
 import { logger } from '../../logger/logger';
 
+/**
+ * Minimal shape of a Slack channel history message that may include image files.
+ * Structurally compatible with the Slack Web API's MessageElement.
+ */
+export interface ChannelHistoryMessage {
+  ts?: string;
+  files?: Array<{
+    id?: string;
+    mimetype?: string;
+    url_private?: string;
+  }>;
+}
+
 const MAX_RETRIES = 5;
+const CHANNEL_HISTORY_LIMIT = 200;
 
 const getSlackErrorCode = (error: unknown): string | undefined => {
   if (!error || typeof error !== 'object') {
@@ -156,6 +170,15 @@ export class WebService {
       exclude_archived: true,
       types: 'public_channel,private_channel',
     });
+  }
+
+  public async getChannelHistory(channelId: string, oldestTs: string): Promise<ChannelHistoryMessage[]> {
+    const response = await this.web.conversations.history({
+      channel: channelId,
+      oldest: oldestTs,
+      limit: CHANNEL_HISTORY_LIMIT,
+    });
+    return response.messages ?? [];
   }
 
   public async fetchFile(url: string): Promise<Buffer> {

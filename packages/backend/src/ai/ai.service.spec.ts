@@ -49,6 +49,7 @@ const buildAiService = (): AIService => {
   ai.webService = {
     sendMessage: jest.fn().mockResolvedValue({ ok: true }),
     fetchFile: jest.fn().mockResolvedValue(Buffer.from('image')),
+    getChannelHistory: jest.fn().mockResolvedValue([]),
   } as unknown as AIService['webService'];
 
   ai.slackService = {
@@ -288,6 +289,7 @@ describe('AIService', () => {
         event: {
           user: 'U1',
           channel: 'C1',
+          ts: '1234567890.000001',
           text: `<@${MOONBEAM_SLACK_ID}> look at this`,
           files: [{ id: 'F1', name: 'photo.png', mimetype: 'image/png', url_private: 'https://files.slack.com/photo.png' }],
         },
@@ -295,7 +297,7 @@ describe('AIService', () => {
 
       expect(aiService.webService.fetchFile).toHaveBeenCalledWith('https://files.slack.com/photo.png');
       expect(participateSpy).toHaveBeenCalledWith('T1', 'C1', `<@${MOONBEAM_SLACK_ID}> look at this`, [
-        { data: imageBuffer, mimetype: 'image/png' },
+        { data: imageBuffer, mimetype: 'image/png', ts: 1234567890.000001 },
       ]);
     });
 
@@ -476,7 +478,7 @@ describe('AIService', () => {
 
     it('sends participation response and sets participation marker', async () => {
       (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([
-        { slackId: 'U2', name: 'Jane', message: 'Hello' },
+        { slackId: 'U2', name: 'Jane', message: 'Hello', createdAt: new Date('2024-01-15T10:30:00Z') },
       ]);
       (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Participation response' }] }],
@@ -493,7 +495,7 @@ describe('AIService', () => {
       expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
     });
 
-    it('passes multimodal input to openai when images are provided', async () => {
+    it('passes multimodal input to openai when tagged images are provided', async () => {
       (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
       (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'nice image' }] }],
@@ -502,7 +504,7 @@ describe('AIService', () => {
 
       const imageBuffer = Buffer.from('png-bytes');
       await aiService.participate('T1', 'C1', '<@moonbeam> what is this?', [
-        { data: imageBuffer, mimetype: 'image/png' },
+        { data: imageBuffer, mimetype: 'image/png', ts: 1234567890 },
       ]);
 
       const callArgs = (aiService.openAi.responses.create as jest.Mock).mock.calls[0][0];
@@ -515,6 +517,56 @@ describe('AIService', () => {
         image_url: `data:image/png;base64,${imageBuffer.toString('base64')}`,
         detail: 'auto',
       });
+    });
+
+    it('fetches and interleaves historical images from channel history in time order', async () => {
+      const msgTime = new Date('2024-01-15T10:31:00Z');
+      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([
+        { name: 'Jane', slackId: 'U2', message: 'Look at this image', createdAt: msgTime },
+      ]);
+      const msgTs = (msgTime.getTime() / 1000).toFixed(6);
+      (aiService.webService.getChannelHistory as jest.Mock).mockResolvedValue([
+        { ts: msgTs, files: [{ id: 'F1', mimetype: 'image/png', url_private: 'https://files.slack.com/hist.png' }] },
+      ]);
+      const histImageBuffer = Buffer.from('hist-image');
+      (aiService.webService.fetchFile as jest.Mock).mockResolvedValue(histImageBuffer);
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'nice' }] }],
+      });
+      (aiService.webService.sendMessage as jest.Mock).mockResolvedValue({ ok: true });
+
+      await aiService.participate('T1', 'C1', '@moonbeam thoughts?');
+
+      expect(aiService.webService.getChannelHistory).toHaveBeenCalledWith('C1', expect.any(String));
+      expect(aiService.webService.fetchFile).toHaveBeenCalledWith('https://files.slack.com/hist.png');
+
+      const callArgs = (aiService.openAi.responses.create as jest.Mock).mock.calls[0][0];
+      expect(Array.isArray(callArgs.input)).toBe(true);
+      const message = callArgs.input[0];
+      // Text appears before image in time order
+      const textIdx = message.content.findIndex((c: { type: string }) => c.type === 'input_text' && c.text.includes('Look at this image'));
+      const imageIdx = message.content.findIndex((c: { type: string }) => c.type === 'input_image');
+      expect(textIdx).toBeGreaterThanOrEqual(0);
+      expect(imageIdx).toBeGreaterThan(textIdx);
+    });
+
+    it('continues participating when channel history fetch fails', async () => {
+      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([
+        { name: 'Bob', slackId: 'U3', message: 'hi', createdAt: new Date() },
+      ]);
+      (aiService.webService.getChannelHistory as jest.Mock).mockRejectedValue(new Error('slack error'));
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'response' }] }],
+      });
+      (aiService.webService.sendMessage as jest.Mock).mockResolvedValue({ ok: true });
+      const errSpy = jest.spyOn(aiService.aiServiceLogger, 'error');
+
+      await aiService.participate('T1', 'C1', '@moonbeam hi');
+
+      expect(errSpy).toHaveBeenCalled();
+      // Falls back to plain string input since historical images failed and no tagged images
+      const callArgs = (aiService.openAi.responses.create as jest.Mock).mock.calls[0][0];
+      expect(typeof callArgs.input).toBe('string');
     });
 
     it('passes plain string input when no images are provided', async () => {

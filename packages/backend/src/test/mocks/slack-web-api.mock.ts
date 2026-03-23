@@ -16,6 +16,7 @@ export class WebClient {
 
   conversations = {
     list: jest.fn().mockResolvedValue({ ok: true, channels: [] }),
+    history: jest.fn().mockResolvedValue({ ok: true, messages: [] }),
   };
 
   files = {

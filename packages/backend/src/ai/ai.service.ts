@@ -3,10 +3,11 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { HistoryPersistenceService } from '../shared/services/history.persistence.service';
-import type { EventRequest, SlashCommandRequest } from '../shared/models/slack/slack-models';
+import type { EventRequest, SlashCommandRequest, SlackImage } from '../shared/models/slack/slack-models';
 import { AIPersistenceService } from './ai.persistence';
 import type { KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
+import type { ChannelHistoryMessage } from '../shared/services/web/web.service';
 import {
   CORPO_SPEAK_INSTRUCTIONS,
   GENERAL_TEXT_INSTRUCTIONS,
@@ -60,6 +61,7 @@ const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): str
 };
 
 const DEFAULT_IMAGE_DIR = path.join('/tmp', 'mocker-images');
+const IMAGE_TIMESTAMP_TOLERANCE_SECONDS = 2;
 
 export class AIService {
   redis = new AIPersistenceService();
@@ -429,7 +431,7 @@ export class AIService {
     teamId: string,
     channelId: string,
     taggedMessage: string,
-    images: Array<{ data: Buffer; mimetype: string }> = [],
+    taggedImages: SlackImage[] = [],
   ): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
@@ -449,22 +451,15 @@ export class AIService {
     const memoryContext = await this.fetchMemoryContext(participantSlackIds, teamId, history, historyMessages);
     const systemInstructions = this.appendMemoryContext(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryContext);
 
-    const textContent = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
+    // Fetch historical images from Slack channel history in the same time window
+    const historicalImages = await this.fetchHistoricalImages(channelId, historyMessages);
 
+    const allImages = [...historicalImages, ...taggedImages];
     let input: string | ResponseInput;
-    if (images.length > 0) {
-      const textItem: ResponseInputContent = { type: 'input_text', text: textContent };
-      const imageItems: ResponseInputContent[] = images.map(
-        (img): ResponseInputContent => ({
-          type: 'input_image',
-          image_url: `data:${img.mimetype};base64,${img.data.toString('base64')}`,
-          detail: 'auto',
-        }),
-      );
-      const message: EasyInputMessage = { role: 'user', content: [textItem, ...imageItems] };
-      input = [message];
+    if (allImages.length > 0) {
+      input = this.buildOrderedInput(historyMessages, historicalImages, taggedMessage, taggedImages);
     } else {
-      input = textContent;
+      input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
     }
 
     return this.openAi.responses
@@ -505,6 +500,115 @@ export class AIService {
       .finally(() => {
         void this.redis.removeParticipationInFlight(channelId, teamId);
       });
+  }
+
+  /**
+   * Builds a time-ordered `ResponseInput` array where text blocks from the conversation
+   * history alternate with image blocks at the positions where those images were posted.
+   * Tagged-message images are appended at the end.
+   */
+  private buildOrderedInput(
+    historyMessages: MessageWithName[],
+    historicalImages: SlackImage[],
+    taggedMessage: string,
+    taggedImages: SlackImage[],
+  ): ResponseInput {
+    const content: ResponseInputContent[] = [];
+    const sortedHistImages = [...historicalImages].sort((a, b) => a.ts - b.ts);
+    let imageIdx = 0;
+    let pendingText = '';
+
+    for (const msg of historyMessages) {
+      const timestamp = new Date(msg.createdAt).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      pendingText += (pendingText ? '\n' : '') + `[${timestamp}] ${msg.name} (${msg.slackId}): ${msg.message}`;
+
+      // Flush any images whose ts falls at or before this message's timestamp (+2s tolerance)
+      const msgTime = msg.createdAt.getTime() / 1000;
+      while (imageIdx < sortedHistImages.length && sortedHistImages[imageIdx].ts <= msgTime + IMAGE_TIMESTAMP_TOLERANCE_SECONDS) {
+        if (pendingText) {
+          content.push({ type: 'input_text', text: pendingText });
+          pendingText = '';
+        }
+        const img = sortedHistImages[imageIdx];
+        content.push({
+          type: 'input_image',
+          image_url: `data:${img.mimetype};base64,${img.data.toString('base64')}`,
+          detail: 'auto',
+        });
+        imageIdx++;
+      }
+    }
+
+    // Flush any remaining historical images (ts after all DB messages)
+    while (imageIdx < sortedHistImages.length) {
+      if (pendingText) {
+        content.push({ type: 'input_text', text: pendingText });
+        pendingText = '';
+      }
+      const img = sortedHistImages[imageIdx];
+      content.push({
+        type: 'input_image',
+        image_url: `data:${img.mimetype};base64,${img.data.toString('base64')}`,
+        detail: 'auto',
+      });
+      imageIdx++;
+    }
+
+    // Append separator + tagged message text, then tagged images
+    const sep = `\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
+    content.push({ type: 'input_text', text: (pendingText + sep).trim() });
+    for (const img of taggedImages) {
+      content.push({
+        type: 'input_image',
+        image_url: `data:${img.mimetype};base64,${img.data.toString('base64')}`,
+        detail: 'auto',
+      });
+    }
+
+    const message: EasyInputMessage = { role: 'user', content };
+    return [message];
+  }
+
+  /**
+   * Fetches image files from recent Slack channel history within the same time window
+   * as the DB history messages, returning them sorted by ascending timestamp.
+   */
+  private async fetchHistoricalImages(channelId: string, historyMessages: MessageWithName[]): Promise<SlackImage[]> {
+    if (historyMessages.length === 0) return [];
+
+    const oldestTs = (historyMessages[0].createdAt.getTime() / 1000).toFixed(6);
+    let slackMessages: ChannelHistoryMessage[];
+    try {
+      slackMessages = await this.webService.getChannelHistory(channelId, oldestTs);
+    } catch (e) {
+      logError(this.aiServiceLogger, 'Failed to fetch Slack channel history for images', e, { channelId });
+      return [];
+    }
+
+    const images: SlackImage[] = [];
+    for (const msg of slackMessages) {
+      if (!msg.ts) continue;
+      const ts = parseFloat(msg.ts);
+      if (isNaN(ts)) continue;
+      for (const file of msg.files ?? []) {
+        if (file.mimetype?.startsWith('image/') && file.url_private) {
+          try {
+            const data = await this.webService.fetchFile(file.url_private);
+            images.push({ data, mimetype: file.mimetype, ts });
+          } catch (e) {
+            logError(this.aiServiceLogger, 'Failed to fetch historical Slack image', e, {
+              channelId,
+              fileId: file.id,
+            });
+          }
+        }
+      }
+    }
+
+    return images.sort((a, b) => a.ts - b.ts);
   }
 
   private async selectRelevantMemories(
@@ -780,12 +884,13 @@ export class AIService {
       const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, MOONBEAM_SLACK_ID);
       const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
+        const eventTs = parseFloat(request.event.ts);
         const imageFiles = (request.event.files ?? []).filter((f) => f.mimetype.startsWith('image/'));
-        const images = await Promise.all(
+        const taggedImages = await Promise.all(
           imageFiles.map(async (f) => {
             try {
               const data = await this.webService.fetchFile(f.url_private);
-              return { data, mimetype: f.mimetype };
+              return { data, mimetype: f.mimetype, ts: eventTs } satisfies SlackImage;
             } catch (e) {
               logError(this.aiServiceLogger, 'Failed to fetch Slack image for Moonbeam', e, {
                 fileId: f.id,
@@ -794,9 +899,9 @@ export class AIService {
               return null;
             }
           }),
-        ).then((results) => results.filter((r): r is { data: Buffer; mimetype: string } => r !== null));
+        ).then((results) => results.filter((r): r is SlackImage => r !== null));
 
-        void this.participate(request.team_id, request.event.channel, request.event.text, images);
+        void this.participate(request.team_id, request.event.channel, request.event.text, taggedImages);
       }
     }
   }

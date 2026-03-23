@@ -8,7 +8,7 @@ type MockWebClient = {
     update: jest.Mock;
   };
   users: { list: jest.Mock };
-  conversations: { list: jest.Mock };
+  conversations: { list: jest.Mock; history: jest.Mock };
   files: { upload: jest.Mock };
 };
 
@@ -140,6 +140,37 @@ describe('WebService', () => {
 
       await expect(webService.getAllUsers()).resolves.toEqual({ ok: true, members: [{ id: 'U1' }] });
       await expect(webService.getAllChannels()).resolves.toEqual({ ok: true, channels: [{ id: 'C1' }] });
+    });
+  });
+
+  describe('getChannelHistory', () => {
+    it('returns messages from channel history', async () => {
+      const messages = [
+        { ts: '1234567890.000001', files: [{ id: 'F1', mimetype: 'image/png', url_private: 'https://files.slack.com/img.png' }] },
+        { ts: '1234567891.000000', text: 'hello' },
+      ];
+      mockWebClient.conversations.history.mockResolvedValue({ ok: true, messages });
+
+      const result = await webService.getChannelHistory('C1', '1234567890.000000');
+
+      expect(mockWebClient.conversations.history).toHaveBeenCalledWith(
+        expect.objectContaining({ channel: 'C1', oldest: '1234567890.000000', limit: 200 }),
+      );
+      expect(result).toEqual(messages);
+    });
+
+    it('returns empty array when no messages in response', async () => {
+      mockWebClient.conversations.history.mockResolvedValue({ ok: true });
+
+      const result = await webService.getChannelHistory('C1', '1234567890.000000');
+
+      expect(result).toEqual([]);
+    });
+
+    it('throws when the Slack API call fails', async () => {
+      mockWebClient.conversations.history.mockRejectedValue(new Error('slack error'));
+
+      await expect(webService.getChannelHistory('C1', '1234567890.000000')).rejects.toThrow('slack error');
     });
   });
 

@@ -42,6 +42,12 @@ export interface SlackFile {
   url_private: string;
 }
 
+export interface SlackImage {
+  data: Buffer;
+  mimetype: string;
+  ts: number; // Unix timestamp (seconds) from Slack message ts, used for time-ordering
+}
+
 export interface Event {
   client_msg_id: string;
   type: string;
