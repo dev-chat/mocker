@@ -28,8 +28,17 @@ load_env() {
 	for env_file in "${candidates[@]}"; do
 		[[ -n "${env_file}" ]] || continue
 		if [[ -f "${env_file}" ]]; then
+			# Temporarily relax errexit/nounset while sourcing potentially interactive profiles.
+			set +e +u
 			# shellcheck disable=SC1090
 			. "${env_file}"
+			local source_status=$?
+			# Restore strict mode for the rest of the script.
+			set -euo pipefail
+			if [[ "${source_status}" -ne 0 ]]; then
+				log WARN "Failed to load environment from ${env_file} (exit ${source_status}); continuing"
+				continue
+			fi
 			log INFO "Loaded environment from ${env_file}"
 			return 0
 		fi
@@ -56,7 +65,7 @@ require_command() {
 	local command_name="$1"
 
 	if ! command -v "${command_name}" >/dev/null 2>&1; then
-		log ERROR "Missing required command: ${command_name}" >&2
+		log ERROR "Missing required command: ${command_name}"
 		exit 1
 	fi
 }
@@ -71,7 +80,7 @@ MAX_TIME="${MAX_TIME:-15}"
 
 send_slack_message() {
 	if [[ -z "${MUZZLE_BOT_TOKEN:-}" ]]; then
-		log ERROR 'MUZZLE_BOT_TOKEN is not set; unable to send Slack alert' >&2
+		log ERROR 'MUZZLE_BOT_TOKEN is not set; unable to send Slack alert'
 		return 1
 	fi
 
@@ -93,18 +102,18 @@ send_slack_message() {
 		https://slack.com/api/chat.postMessage || true)
 
 	if [[ -z "${response_code:-}" ]]; then
-		log ERROR 'Slack API request failed: curl did not complete successfully' >&2
+		log ERROR 'Slack API request failed: curl did not complete successfully'
 		rm -f "${response_body}"
 		return 1
 	fi
 	if [[ "${response_code}" != "200" ]]; then
-		log ERROR "Slack API request failed with HTTP ${response_code}: $(cat "${response_body}")" >&2
+		log ERROR "Slack API request failed with HTTP ${response_code}: $(tr '\n' ' ' < "${response_body}")"
 		rm -f "${response_body}"
 		return 1
 	fi
 
 	if ! grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "${response_body}"; then
-		log ERROR "Slack API request failed: $(cat "${response_body}")" >&2
+		log ERROR "Slack API request failed: $(tr '\n' ' ' < "${response_body}")"
 		rm -f "${response_body}"
 		return 1
 	fi
@@ -150,6 +159,7 @@ main() {
 	require_command curl
 	require_command grep
 	require_command mktemp
+	require_command tr
 
 	log INFO "Starting health check for ${HEALTH_URL}"
 	if check_health; then
