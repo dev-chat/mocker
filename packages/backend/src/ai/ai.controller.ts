@@ -8,15 +8,55 @@ import { aiMiddleware } from './middleware/aiMiddleware';
 import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
+import { UserPromptPersistenceService } from './user-prompt.persistence.service';
 
 export const aiController: Router = express.Router();
-aiController.use(suppressedMiddleware);
-aiController.use(textMiddleware);
-aiController.use(aiMiddleware);
 
 const webService = new WebService();
 const aiService = new AIService();
+const userPromptPersistenceService = new UserPromptPersistenceService();
 const aiLogger = logger.child({ module: 'AIController' });
+
+// /set-prompt does not require rate-limiting or text-length validation
+aiController.post('/set-prompt', (req, res) => {
+  const { user_id, team_id, text } = req.body;
+
+  if (!text) {
+    void userPromptPersistenceService.getCustomPrompt(user_id, team_id).then((prompt) => {
+      if (prompt) {
+        res.send(`Your current custom prompt: "${prompt}"`);
+      } else {
+        res.send(
+          'You have no custom prompt set. Use `/set-prompt [prompt]` to set one, or `/set-prompt clear` to remove it.',
+        );
+      }
+    });
+    return;
+  }
+
+  if (text.toLowerCase() === 'clear') {
+    void userPromptPersistenceService.clearCustomPrompt(user_id, team_id).then((success) => {
+      if (success) {
+        res.send('Your custom prompt has been cleared. Moonbeam will use the default instructions.');
+      } else {
+        res.send('Failed to clear your custom prompt. Please try again.');
+      }
+    });
+    return;
+  }
+
+  void userPromptPersistenceService.setCustomPrompt(user_id, team_id, text).then((success) => {
+    if (success) {
+      res.send(`Your custom prompt has been set.`);
+    } else {
+      res.send('Failed to set your custom prompt. Please try again.');
+    }
+  });
+});
+
+aiController.use(suppressedMiddleware);
+aiController.use(textMiddleware);
+aiController.use(aiMiddleware);
 
 aiController.post('/text', (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;

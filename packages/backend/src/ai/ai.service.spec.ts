@@ -59,6 +59,10 @@ const buildAiService = (): AIService => {
     isUserMuzzled: jest.fn().mockResolvedValue(false),
   } as unknown as AIService['muzzlePersistenceService'];
 
+  ai.userPromptPersistenceService = {
+    getCustomPrompt: jest.fn().mockResolvedValue(null),
+  } as unknown as AIService['userPromptPersistenceService'];
+
   ai.aiServiceLogger = {
     error: jest.fn(),
     warn: jest.fn(),
@@ -119,6 +123,36 @@ describe('AIService', () => {
 
       expect(aiService.redis.removeInflight).toHaveBeenCalledWith('U1', 'T1');
       expect(aiService.redis.decrementDailyRequests).toHaveBeenCalledWith('U1', 'T1');
+    });
+  });
+
+  describe('generateText with custom prompt', () => {
+    it('uses custom prompt as instructions when user has one set', async () => {
+      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue('respond like a pirate');
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Arrr!' }] }],
+      });
+      jest.spyOn(aiService, 'sendGptText').mockImplementation();
+
+      await aiService.generateText('U1', 'T1', 'C1', 'hello');
+
+      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
+      expect(callArgs.instructions).toContain('respond like a pirate');
+    });
+
+    it('uses GENERAL_TEXT_INSTRUCTIONS when no custom prompt is set', async () => {
+      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(null);
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Result' }] }],
+      });
+      jest.spyOn(aiService, 'sendGptText').mockImplementation();
+
+      await aiService.generateText('U1', 'T1', 'C1', 'hello');
+
+      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
+      expect(callArgs.instructions).toContain('helpful and succinct');
     });
   });
 
@@ -271,7 +305,7 @@ describe('AIService', () => {
         },
       } as never);
 
-      expect(participateSpy).toHaveBeenCalledWith('T1', 'C1', `<@${MOONBEAM_SLACK_ID}> hello`);
+      expect(participateSpy).toHaveBeenCalledWith('T1', 'C1', `<@${MOONBEAM_SLACK_ID}> hello`, 'U1');
     });
 
     it('does not participate if requesting user is muzzled', async () => {
@@ -432,6 +466,82 @@ describe('AIService', () => {
 
       await expect(aiService.participate('T1', 'C1', 'hi')).rejects.toThrow('model fail');
       expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
+    });
+  });
+
+  describe('participate with custom prompt', () => {
+    it('uses custom prompt as system instructions when userId is provided and user has a custom prompt', async () => {
+      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(
+        'always respond in haiku',
+      );
+      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'A haiku response' }] }],
+      });
+
+      await aiService.participate('T1', 'C1', 'hi', 'U1');
+
+      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
+      expect(callArgs.instructions).toContain('always respond in haiku');
+    });
+
+    it('uses MOONBEAM_SYSTEM_INSTRUCTIONS when userId is not provided', async () => {
+      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Default response' }] }],
+      });
+
+      await aiService.participate('T1', 'C1', 'hi');
+
+      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
+      expect(callArgs.instructions).toContain('you are moonbeam');
+      expect(aiService.userPromptPersistenceService.getCustomPrompt).not.toHaveBeenCalled();
+    });
+
+    it('uses MOONBEAM_SYSTEM_INSTRUCTIONS when user has no custom prompt', async () => {
+      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(null);
+      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Default response' }] }],
+      });
+
+      await aiService.participate('T1', 'C1', 'hi', 'U1');
+
+      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
+      expect(callArgs.instructions).toContain('you are moonbeam');
+    });
+  });
+
+  describe('promptWithHistory with custom prompt', () => {
+    it('prepends custom prompt to history instructions when user has one set', async () => {
+      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue('always be brief');
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Brief reply' }] }],
+      });
+
+      await aiService.promptWithHistory({ user_id: 'U1', team_id: 'T1', channel_id: 'C1', text: 'query' } as never);
+
+      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
+      expect(callArgs.instructions).toContain('always be brief');
+      expect(callArgs.instructions).toContain('conversation history');
+    });
+
+    it('uses only history instructions when no custom prompt is set', async () => {
+      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(null);
+      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Reply' }] }],
+      });
+
+      await aiService.promptWithHistory({ user_id: 'U1', team_id: 'T1', channel_id: 'C1', text: 'query' } as never);
+
+      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
+      expect(callArgs.instructions).toContain('conversation history');
+      expect(callArgs.instructions).not.toContain('always be brief');
     });
   });
 

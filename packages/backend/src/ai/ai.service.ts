@@ -23,6 +23,7 @@ import {
   GPT_MODEL,
 } from './ai.constants';
 import { MemoryPersistenceService } from './memory/memory.persistence.service';
+import { UserPromptPersistenceService } from './user-prompt.persistence.service';
 import type { MemoryWithSlackId } from '../shared/db/models/Memory';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
@@ -70,6 +71,7 @@ export class AIService {
   webService = new WebService();
   slackService = new SlackService();
   memoryPersistenceService = new MemoryPersistenceService();
+  userPromptPersistenceService = new UserPromptPersistenceService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
@@ -88,9 +90,12 @@ export class AIService {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
 
+    const customPrompt = await this.userPromptPersistenceService.getCustomPrompt(userId, teamId);
+
     // Fetch and select relevant memories for the requesting user
     const memoryContext = await this.fetchMemoryContext([userId], teamId, `User prompt: ${text}`, []);
-    const instructions = this.appendMemoryContext(GENERAL_TEXT_INSTRUCTIONS, memoryContext);
+    const baseInstructions = customPrompt ?? GENERAL_TEXT_INSTRUCTIONS;
+    const instructions = this.appendMemoryContext(baseInstructions, memoryContext);
 
     return this.openAi.responses
       .create({
@@ -353,6 +358,8 @@ export class AIService {
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
     const formattedHistory: string = this.formatHistory(history);
 
+    const customPrompt = await this.userPromptPersistenceService.getCustomPrompt(user_id, team_id);
+
     // Fetch and select relevant memories
     const memoryContext = await this.fetchMemoryContext(
       this.extractParticipantSlackIds(history, { includeSlackId: user_id }),
@@ -360,7 +367,10 @@ export class AIService {
       `${formattedHistory}\n\nUser prompt: ${prompt}`,
       history,
     );
-    const systemInstructions = this.appendMemoryContext(getHistoryInstructions(formattedHistory), memoryContext);
+    const baseInstructions = customPrompt
+      ? `${customPrompt}\n\n${getHistoryInstructions(formattedHistory)}`
+      : getHistoryInstructions(formattedHistory);
+    const systemInstructions = this.appendMemoryContext(baseInstructions, memoryContext);
 
     return this.openAi.responses
       .create({
@@ -422,7 +432,7 @@ export class AIService {
       });
   }
 
-  public async participate(teamId: string, channelId: string, taggedMessage: string): Promise<void> {
+  public async participate(teamId: string, channelId: string, taggedMessage: string, userId?: string): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
     const historyMessages = await this.historyService.getHistoryWithOptions({
@@ -434,12 +444,15 @@ export class AIService {
 
     const history = this.formatHistory(historyMessages);
 
+    const customPrompt = userId ? await this.userPromptPersistenceService.getCustomPrompt(userId, teamId) : null;
+
     // Fetch and select relevant memories
     const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
     const memoryContext = await this.fetchMemoryContext(participantSlackIds, teamId, history, historyMessages);
-    const systemInstructions = this.appendMemoryContext(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryContext);
+    const baseInstructions = customPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
+    const systemInstructions = this.appendMemoryContext(baseInstructions, memoryContext);
 
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
@@ -756,7 +769,7 @@ export class AIService {
       const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, MOONBEAM_SLACK_ID);
       const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
-        void this.participate(request.team_id, request.event.channel, request.event.text);
+        void this.participate(request.team_id, request.event.channel, request.event.text, request.event.user);
       }
     }
   }

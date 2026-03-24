@@ -5,6 +5,9 @@ const generateText = jest.fn().mockResolvedValue(undefined);
 const generateImage = jest.fn().mockResolvedValue(undefined);
 const promptWithHistory = jest.fn().mockResolvedValue(undefined);
 const sendEphemeral = jest.fn().mockResolvedValue({ ok: true });
+const getCustomPrompt = jest.fn().mockResolvedValue(null);
+const setCustomPrompt = jest.fn().mockResolvedValue(true);
+const clearCustomPrompt = jest.fn().mockResolvedValue(true);
 
 jest.mock('./ai.service', () => ({
   AIService: jest.fn().mockImplementation(() => ({
@@ -17,6 +20,14 @@ jest.mock('./ai.service', () => ({
 jest.mock('../shared/services/web/web.service', () => ({
   WebService: jest.fn().mockImplementation(() => ({
     sendEphemeral,
+  })),
+}));
+
+jest.mock('./user-prompt.persistence.service', () => ({
+  UserPromptPersistenceService: jest.fn().mockImplementation(() => ({
+    getCustomPrompt,
+    setCustomPrompt,
+    clearCustomPrompt,
   })),
 }));
 
@@ -41,6 +52,9 @@ describe('aiController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    getCustomPrompt.mockResolvedValue(null);
+    setCustomPrompt.mockResolvedValue(true);
+    clearCustomPrompt.mockResolvedValue(true);
   });
 
   it('handles /text', async () => {
@@ -75,5 +89,75 @@ describe('aiController', () => {
 
     await Promise.resolve();
     expect(sendEphemeral).toHaveBeenCalled();
+  });
+
+  describe('/set-prompt', () => {
+    it('returns current prompt when text is not provided and prompt is set', async () => {
+      getCustomPrompt.mockResolvedValue('respond like a pirate');
+
+      const res = await request(app).post('/set-prompt').send({ user_id: 'U1', team_id: 'T1' }).expect(200);
+
+      expect(res.text).toContain('respond like a pirate');
+    });
+
+    it('returns no-prompt message when text is not provided and no prompt is set', async () => {
+      getCustomPrompt.mockResolvedValue(null);
+
+      const res = await request(app).post('/set-prompt').send({ user_id: 'U1', team_id: 'T1' }).expect(200);
+
+      expect(res.text).toContain('no custom prompt set');
+    });
+
+    it('clears prompt when text is "clear"', async () => {
+      const res = await request(app)
+        .post('/set-prompt')
+        .send({ user_id: 'U1', team_id: 'T1', text: 'clear' })
+        .expect(200);
+
+      expect(clearCustomPrompt).toHaveBeenCalledWith('U1', 'T1');
+      expect(res.text).toContain('cleared');
+    });
+
+    it('clears prompt case-insensitively', async () => {
+      const res = await request(app)
+        .post('/set-prompt')
+        .send({ user_id: 'U1', team_id: 'T1', text: 'CLEAR' })
+        .expect(200);
+
+      expect(clearCustomPrompt).toHaveBeenCalledWith('U1', 'T1');
+      expect(res.text).toContain('cleared');
+    });
+
+    it('sets custom prompt when text is provided', async () => {
+      const res = await request(app)
+        .post('/set-prompt')
+        .send({ user_id: 'U1', team_id: 'T1', text: 'respond in rhymes' })
+        .expect(200);
+
+      expect(setCustomPrompt).toHaveBeenCalledWith('U1', 'T1', 'respond in rhymes');
+      expect(res.text).toContain('set');
+    });
+
+    it('returns failure message when setCustomPrompt fails', async () => {
+      setCustomPrompt.mockResolvedValue(false);
+
+      const res = await request(app)
+        .post('/set-prompt')
+        .send({ user_id: 'U1', team_id: 'T1', text: 'respond in rhymes' })
+        .expect(200);
+
+      expect(res.text).toContain('Failed');
+    });
+
+    it('returns failure message when clearCustomPrompt fails', async () => {
+      clearCustomPrompt.mockResolvedValue(false);
+
+      const res = await request(app)
+        .post('/set-prompt')
+        .send({ user_id: 'U1', team_id: 'T1', text: 'clear' })
+        .expect(200);
+
+      expect(res.text).toContain('Failed');
+    });
   });
 });
