@@ -5,7 +5,6 @@ const generateText = jest.fn().mockResolvedValue(undefined);
 const generateImage = jest.fn().mockResolvedValue(undefined);
 const promptWithHistory = jest.fn().mockResolvedValue(undefined);
 const sendEphemeral = jest.fn().mockResolvedValue({ ok: true });
-const getCustomPrompt = jest.fn().mockResolvedValue(null);
 const setCustomPrompt = jest.fn().mockResolvedValue(true);
 const clearCustomPrompt = jest.fn().mockResolvedValue(true);
 
@@ -14,20 +13,14 @@ jest.mock('./ai.service', () => ({
     generateText,
     generateImage,
     promptWithHistory,
+    setCustomPrompt,
+    clearCustomPrompt,
   })),
 }));
 
 jest.mock('../shared/services/web/web.service', () => ({
   WebService: jest.fn().mockImplementation(() => ({
     sendEphemeral,
-  })),
-}));
-
-jest.mock('./user-prompt.persistence.service', () => ({
-  UserPromptPersistenceService: jest.fn().mockImplementation(() => ({
-    getCustomPrompt,
-    setCustomPrompt,
-    clearCustomPrompt,
   })),
 }));
 
@@ -52,7 +45,6 @@ describe('aiController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    getCustomPrompt.mockResolvedValue(null);
     setCustomPrompt.mockResolvedValue(true);
     clearCustomPrompt.mockResolvedValue(true);
   });
@@ -92,22 +84,6 @@ describe('aiController', () => {
   });
 
   describe('/set-prompt', () => {
-    it('returns current prompt when text is not provided and prompt is set', async () => {
-      getCustomPrompt.mockResolvedValue('respond like a pirate');
-
-      const res = await request(app).post('/set-prompt').send({ user_id: 'U1', team_id: 'T1' }).expect(200);
-
-      expect(res.text).toContain('respond like a pirate');
-    });
-
-    it('returns no-prompt message when text is not provided and no prompt is set', async () => {
-      getCustomPrompt.mockResolvedValue(null);
-
-      const res = await request(app).post('/set-prompt').send({ user_id: 'U1', team_id: 'T1' }).expect(200);
-
-      expect(res.text).toContain('no custom prompt set');
-    });
-
     it('clears prompt when text is "clear"', async () => {
       const res = await request(app)
         .post('/set-prompt')
@@ -128,6 +104,16 @@ describe('aiController', () => {
       expect(res.text).toContain('cleared');
     });
 
+    it('clears prompt when text is "clear" with surrounding whitespace', async () => {
+      const res = await request(app)
+        .post('/set-prompt')
+        .send({ user_id: 'U1', team_id: 'T1', text: '  clear  ' })
+        .expect(200);
+
+      expect(clearCustomPrompt).toHaveBeenCalledWith('U1', 'T1');
+      expect(res.text).toContain('cleared');
+    });
+
     it('sets custom prompt when text is provided', async () => {
       const res = await request(app)
         .post('/set-prompt')
@@ -136,6 +122,38 @@ describe('aiController', () => {
 
       expect(setCustomPrompt).toHaveBeenCalledWith('U1', 'T1', 'respond in rhymes');
       expect(res.text).toContain('set');
+    });
+
+    it('trims whitespace before saving the prompt', async () => {
+      const res = await request(app)
+        .post('/set-prompt')
+        .send({ user_id: 'U1', team_id: 'T1', text: '  respond in rhymes  ' })
+        .expect(200);
+
+      expect(setCustomPrompt).toHaveBeenCalledWith('U1', 'T1', 'respond in rhymes');
+      expect(res.text).toContain('set');
+    });
+
+    it('rejects whitespace-only prompt', async () => {
+      const res = await request(app)
+        .post('/set-prompt')
+        .send({ user_id: 'U1', team_id: 'T1', text: '   ' })
+        .expect(200);
+
+      expect(setCustomPrompt).not.toHaveBeenCalled();
+      expect(res.text).toContain('Please provide a prompt');
+    });
+
+    it('rejects prompt exceeding max length', async () => {
+      const longPrompt = 'a'.repeat(801);
+
+      const res = await request(app)
+        .post('/set-prompt')
+        .send({ user_id: 'U1', team_id: 'T1', text: longPrompt })
+        .expect(200);
+
+      expect(setCustomPrompt).not.toHaveBeenCalled();
+      expect(res.text).toContain('exceed');
     });
 
     it('returns failure message when setCustomPrompt fails', async () => {

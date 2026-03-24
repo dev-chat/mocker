@@ -137,6 +137,51 @@ export class SlackPersistenceService {
     return getRepository(SlackChannel).findOne({ where: { channelId, teamId } });
   }
 
+  async getCustomPrompt(slackId: string, teamId: string): Promise<string | null> {
+    return getRepository(SlackUserFromDB)
+      .findOne({ where: { slackId, teamId } })
+      .then((user) => user?.customPrompt ?? null)
+      .catch((e) => {
+        logError(this.logger, 'Error fetching custom prompt for user', e, { slackId, teamId });
+        return null;
+      });
+  }
+
+  async setCustomPrompt(slackId: string, teamId: string, prompt: string): Promise<boolean> {
+    const trimmedPrompt = prompt.trim();
+    const normalizedPrompt = trimmedPrompt.length > 0 ? trimmedPrompt : null;
+
+    return getRepository(SlackUserFromDB)
+      .update({ slackId, teamId }, { customPrompt: normalizedPrompt })
+      .then((result) => {
+        if ((result.affected ?? 0) === 0) {
+          this.logger.warn(`Cannot set custom prompt: user ${slackId} not found in team ${teamId}`);
+          return false;
+        }
+        return true;
+      })
+      .catch((e) => {
+        logError(this.logger, 'Error setting custom prompt for user', e, { slackId, teamId });
+        return false;
+      });
+  }
+
+  async clearCustomPrompt(slackId: string, teamId: string): Promise<boolean> {
+    return getRepository(SlackUserFromDB)
+      .update({ slackId, teamId }, { customPrompt: null })
+      .then((result) => {
+        if ((result.affected ?? 0) === 0) {
+          this.logger.warn(`Cannot clear custom prompt: user ${slackId} not found in team ${teamId}`);
+          return false;
+        }
+        return true;
+      })
+      .catch((e) => {
+        logError(this.logger, 'Error clearing custom prompt for user', e, { slackId, teamId });
+        return false;
+      });
+  }
+
   // This should really require a teamId to be more generic but idc.
   private getRedisKeyName() {
     return `team`;

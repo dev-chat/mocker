@@ -59,9 +59,9 @@ const buildAiService = (): AIService => {
     isUserMuzzled: jest.fn().mockResolvedValue(false),
   } as unknown as AIService['muzzlePersistenceService'];
 
-  ai.userPromptPersistenceService = {
+  ai.slackPersistenceService = {
     getCustomPrompt: jest.fn().mockResolvedValue(null),
-  } as unknown as AIService['userPromptPersistenceService'];
+  } as unknown as AIService['slackPersistenceService'];
 
   ai.aiServiceLogger = {
     error: jest.fn(),
@@ -441,9 +441,7 @@ describe('AIService', () => {
 
   describe('participate with custom prompt', () => {
     it('uses custom prompt as system instructions when userId is provided and user has a custom prompt', async () => {
-      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(
-        'always respond in haiku',
-      );
+      (aiService.slackPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue('always respond in haiku');
       (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
       const createSpy = aiService.openAi.responses.create as jest.Mock;
       createSpy.mockResolvedValue({
@@ -467,11 +465,11 @@ describe('AIService', () => {
 
       const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
       expect(callArgs.instructions).toContain('you are moonbeam');
-      expect(aiService.userPromptPersistenceService.getCustomPrompt).not.toHaveBeenCalled();
+      expect(aiService.slackPersistenceService.getCustomPrompt).not.toHaveBeenCalled();
     });
 
     it('uses MOONBEAM_SYSTEM_INSTRUCTIONS when user has no custom prompt', async () => {
-      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(null);
+      (aiService.slackPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(null);
       (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
       const createSpy = aiService.openAi.responses.create as jest.Mock;
       createSpy.mockResolvedValue({
@@ -487,7 +485,7 @@ describe('AIService', () => {
 
   describe('promptWithHistory with custom prompt', () => {
     it('prepends custom prompt to history instructions when user has one set', async () => {
-      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue('always be brief');
+      (aiService.slackPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue('always be brief');
       const createSpy = aiService.openAi.responses.create as jest.Mock;
       createSpy.mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Brief reply' }] }],
@@ -501,7 +499,7 @@ describe('AIService', () => {
     });
 
     it('uses only history instructions when no custom prompt is set', async () => {
-      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(null);
+      (aiService.slackPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(null);
       const createSpy = aiService.openAi.responses.create as jest.Mock;
       createSpy.mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Reply' }] }],

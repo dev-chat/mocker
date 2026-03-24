@@ -23,11 +23,11 @@ import {
   GPT_MODEL,
 } from './ai.constants';
 import { MemoryPersistenceService } from './memory/memory.persistence.service';
-import { UserPromptPersistenceService } from './user-prompt.persistence.service';
 import type { MemoryWithSlackId } from '../shared/db/models/Memory';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
+import { SlackPersistenceService } from '../shared/services/slack/slack.persistence.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import OpenAI from 'openai';
 import type {
@@ -70,8 +70,8 @@ export class AIService {
   historyService = new HistoryPersistenceService();
   webService = new WebService();
   slackService = new SlackService();
+  slackPersistenceService = new SlackPersistenceService();
   memoryPersistenceService = new MemoryPersistenceService();
-  userPromptPersistenceService = new UserPromptPersistenceService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
@@ -84,6 +84,14 @@ export class AIService {
 
   public isAlreadyAtMaxRequests(userId: string, teamId: string): Promise<boolean> {
     return this.redis.getDailyRequests(userId, teamId).then((x) => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
+  }
+
+  public setCustomPrompt(userId: string, teamId: string, prompt: string): Promise<boolean> {
+    return this.slackPersistenceService.setCustomPrompt(userId, teamId, prompt);
+  }
+
+  public clearCustomPrompt(userId: string, teamId: string): Promise<boolean> {
+    return this.slackPersistenceService.clearCustomPrompt(userId, teamId);
   }
 
   public async generateText(userId: string, teamId: string, channelId: string, text: string): Promise<void> {
@@ -355,7 +363,8 @@ export class AIService {
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
     const formattedHistory: string = this.formatHistory(history);
 
-    const customPrompt = await this.userPromptPersistenceService.getCustomPrompt(user_id, team_id);
+    const customPrompt = await this.slackPersistenceService.getCustomPrompt(user_id, team_id);
+    const normalizedCustomPrompt = customPrompt?.trim() || null;
 
     // Fetch and select relevant memories
     const memoryContext = await this.fetchMemoryContext(
@@ -364,8 +373,8 @@ export class AIService {
       `${formattedHistory}\n\nUser prompt: ${prompt}`,
       history,
     );
-    const baseInstructions = customPrompt
-      ? `${customPrompt}\n\n${getHistoryInstructions(formattedHistory)}`
+    const baseInstructions = normalizedCustomPrompt
+      ? `${normalizedCustomPrompt}\n\n${getHistoryInstructions(formattedHistory)}`
       : getHistoryInstructions(formattedHistory);
     const systemInstructions = this.appendMemoryContext(baseInstructions, memoryContext);
 
@@ -441,14 +450,15 @@ export class AIService {
 
     const history = this.formatHistory(historyMessages);
 
-    const customPrompt = userId ? await this.userPromptPersistenceService.getCustomPrompt(userId, teamId) : null;
+    const customPrompt = userId ? await this.slackPersistenceService.getCustomPrompt(userId, teamId) : null;
+    const normalizedCustomPrompt = customPrompt?.trim() || null;
 
     // Fetch and select relevant memories
     const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
     const memoryContext = await this.fetchMemoryContext(participantSlackIds, teamId, history, historyMessages);
-    const baseInstructions = customPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
+    const baseInstructions = normalizedCustomPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
     const systemInstructions = this.appendMemoryContext(baseInstructions, memoryContext);
 
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
