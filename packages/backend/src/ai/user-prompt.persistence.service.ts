@@ -17,8 +17,11 @@ export class UserPromptPersistenceService {
   }
 
   async setCustomPrompt(slackId: string, teamId: string, prompt: string): Promise<boolean> {
+    const trimmedPrompt = prompt.trim();
+    const normalizedPrompt = trimmedPrompt.length > 0 ? trimmedPrompt : null;
+
     return getRepository(SlackUser)
-      .update({ slackId, teamId }, { customPrompt: prompt })
+      .update({ slackId, teamId }, { customPrompt: normalizedPrompt })
       .then((result) => {
         if ((result.affected ?? 0) === 0) {
           this.logger.warn(`Cannot set custom prompt: user ${slackId} not found in team ${teamId}`);
