@@ -126,36 +126,6 @@ describe('AIService', () => {
     });
   });
 
-  describe('generateText with custom prompt', () => {
-    it('uses custom prompt as instructions when user has one set', async () => {
-      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue('respond like a pirate');
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
-      createSpy.mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Arrr!' }] }],
-      });
-      jest.spyOn(aiService, 'sendGptText').mockImplementation();
-
-      await aiService.generateText('U1', 'T1', 'C1', 'hello');
-
-      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
-      expect(callArgs.instructions).toContain('respond like a pirate');
-    });
-
-    it('uses GENERAL_TEXT_INSTRUCTIONS when no custom prompt is set', async () => {
-      (aiService.userPromptPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(null);
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
-      createSpy.mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Result' }] }],
-      });
-      jest.spyOn(aiService, 'sendGptText').mockImplementation();
-
-      await aiService.generateText('U1', 'T1', 'C1', 'hello');
-
-      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
-      expect(callArgs.instructions).toContain('helpful and succinct');
-    });
-  });
-
   describe('generateImage', () => {
     it('sends generated image after writing it to disk', async () => {
       const generateContentSpy = aiService.gemini.models.generateContent as jest.Mock;

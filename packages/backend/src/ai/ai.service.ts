@@ -90,12 +90,9 @@ export class AIService {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
 
-    const customPrompt = await this.userPromptPersistenceService.getCustomPrompt(userId, teamId);
-
     // Fetch and select relevant memories for the requesting user
     const memoryContext = await this.fetchMemoryContext([userId], teamId, `User prompt: ${text}`, []);
-    const baseInstructions = customPrompt ?? GENERAL_TEXT_INSTRUCTIONS;
-    const instructions = this.appendMemoryContext(baseInstructions, memoryContext);
+    const instructions = this.appendMemoryContext(GENERAL_TEXT_INSTRUCTIONS, memoryContext);
 
     return this.openAi.responses
       .create({
