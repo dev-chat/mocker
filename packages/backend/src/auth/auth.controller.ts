@@ -2,20 +2,24 @@ import crypto from 'crypto';
 import type { Request, Router } from 'express';
 import express from 'express';
 import Axios from 'axios';
+import type { OauthV2AccessResponse, UsersIdentityResponse } from '@slack/web-api';
 import { createSessionToken } from '../shared/utils/session-token';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
-import type { SlackIdentityResponse, SlackTokenResponse } from './auth.model';
+import {
+  ALLOWED_TEAM_DOMAIN,
+  SLACK_AUTH_URL,
+  SLACK_TOKEN_URL,
+  SLACK_IDENTITY_URL,
+  OAUTH_STATE_COOKIE,
+  OAUTH_STATE_MAX_AGE_MS,
+} from './auth.const';
+
+type SlackTokenResponse = OauthV2AccessResponse;
+type SlackIdentityResponse = UsersIdentityResponse & { team?: { domain?: string } };
 
 export const authController: Router = express.Router();
 const authLogger = logger.child({ module: 'AuthController' });
-
-const ALLOWED_TEAM_DOMAIN = 'dabros2016';
-const SLACK_AUTH_URL = 'https://slack.com/oauth/v2/authorize';
-const SLACK_TOKEN_URL = 'https://slack.com/api/oauth.v2.access';
-const SLACK_IDENTITY_URL = 'https://slack.com/api/users.identity';
-const OAUTH_STATE_COOKIE = 'oauth_state';
-const OAUTH_STATE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 
 function getCookieValue(req: Request, name: string): string | undefined {
   const cookieHeader = req.headers.cookie;
@@ -27,9 +31,9 @@ function getCookieValue(req: Request, name: string): string | undefined {
 
 authController.get('/slack', (_req, res) => {
   const clientId = process.env.SLACK_CLIENT_ID;
-  const redirectUri = process.env.SLACK_REDIRECT_URI ?? 'http://localhost:3000/auth/slack/callback';
+  const redirectUri = process.env.SLACK_REDIRECT_URI;
 
-  if (!clientId) {
+  if (!clientId || !redirectUri) {
     res.status(500).send('Slack OAuth is not configured');
     return;
   }
@@ -53,7 +57,12 @@ authController.get('/slack', (_req, res) => {
 });
 
 authController.get('/slack/callback', (req, res) => {
-  const frontendUrl = process.env.SEARCH_FRONTEND_URL ?? 'http://localhost:5173';
+  const frontendUrl = process.env.SEARCH_FRONTEND_URL;
+
+  if (!frontendUrl) {
+    res.status(500).send('Frontend URL is not configured');
+    return;
+  }
 
   void (async () => {
     const { code, error, state: stateFromQuery } = req.query;
@@ -73,9 +82,9 @@ authController.get('/slack/callback', (req, res) => {
 
     const clientId = process.env.SLACK_CLIENT_ID;
     const clientSecret = process.env.SLACK_CLIENT_SECRET;
-    const redirectUri = process.env.SLACK_REDIRECT_URI ?? 'http://localhost:3000/auth/slack/callback';
+    const redirectUri = process.env.SLACK_REDIRECT_URI;
 
-    if (!clientId || !clientSecret) {
+    if (!clientId || !clientSecret || !redirectUri) {
       res.status(500).send('Slack OAuth is not configured');
       return;
     }

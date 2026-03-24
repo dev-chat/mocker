@@ -29,14 +29,14 @@ describe('App – token in URL hash', () => {
     render(<App />);
     expect(screen.getByText(/message search/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/user name/i)).toBeInTheDocument();
-    expect(localStorage.getItem('auth_token')).toBe('test-token-123');
+    expect(localStorage.getItem('muzzle.lol-auth-token')).toBe('test-token-123');
     expect(window.location.hash).toBe('');
   });
 });
 
 describe('App – authenticated state', () => {
   beforeEach(() => {
-    localStorage.setItem('auth_token', 'stored-token');
+    localStorage.setItem('muzzle.lol-auth-token', 'stored-token');
   });
 
   it('shows the search UI when a token is already stored', () => {
@@ -49,7 +49,7 @@ describe('App – authenticated state', () => {
   it('clears the token and returns to LoginPage on Sign out click', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /sign out/i }));
-    expect(localStorage.getItem('auth_token')).toBeNull();
+    expect(localStorage.getItem('muzzle.lol-auth-token')).toBeNull();
     expect(screen.getByRole('link', { name: /sign in with slack/i })).toBeInTheDocument();
   });
 
@@ -159,6 +159,6 @@ describe('App – authenticated state', () => {
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByRole('link', { name: /sign in with slack/i })).toBeInTheDocument());
-    expect(localStorage.getItem('auth_token')).toBeNull();
+    expect(localStorage.getItem('muzzle.lol-auth-token')).toBeNull();
   });
 });

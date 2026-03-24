@@ -3,13 +3,12 @@ import express from 'express';
 import { SearchPersistenceService } from './search.persistence.service';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
+import { MAX_LIMIT } from './search.const';
 
 export const searchController: Router = express.Router();
 
 const searchPersistenceService = new SearchPersistenceService();
 const searchLogger = logger.child({ module: 'SearchController' });
-
-const MAX_LIMIT = 1000;
 
 searchController.get('/messages', (req, res) => {
   const { userName, channel, content, limit } = req.query;

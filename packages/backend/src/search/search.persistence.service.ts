@@ -3,32 +3,25 @@ import { Message } from '../shared/db/models/Message';
 import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
-
-export interface MessageSearchParams {
-  userName?: string;
-  channel?: string;
-  content?: string;
-  limit?: number;
-}
+import type { MessageSearchParams } from './search.model';
+import { DEFAULT_LIMIT, MIN_LIMIT, PERSISTENCE_MAX_LIMIT } from './search.const';
 
 export class SearchPersistenceService {
   private logger = logger.child({ module: 'SearchPersistenceService' });
 
-  private static readonly DEFAULT_LIMIT = 100;
-  private static readonly MIN_LIMIT = 1;
-  private static readonly MAX_LIMIT = 500;
-
   private static resolveLimit(limit: number | undefined): number {
-    if (limit === undefined || !Number.isFinite(limit) || limit < SearchPersistenceService.MIN_LIMIT) {
-      return SearchPersistenceService.DEFAULT_LIMIT;
+    if (limit === undefined || !Number.isFinite(limit) || limit < MIN_LIMIT) {
+      return DEFAULT_LIMIT;
     }
-    return Math.min(limit, SearchPersistenceService.MAX_LIMIT);
+    return Math.min(limit, PERSISTENCE_MAX_LIMIT);
   }
 
   async searchMessages(params: MessageSearchParams): Promise<MessageWithName[]> {
     const { userName, channel, content } = params;
     const effectiveLimit = SearchPersistenceService.resolveLimit(params.limit);
 
+    // Each condition is joined with AND in the WHERE clause; queryParams holds the
+    // positional `?` values in the same order as the conditions that use them.
     const conditions: string[] = ["message.message != ''"];
     const queryParams: (string | number)[] = [];
 

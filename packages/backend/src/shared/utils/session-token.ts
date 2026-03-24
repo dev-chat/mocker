@@ -1,6 +1,8 @@
 import crypto from 'crypto';
+import { TOKEN_TTL_MS } from './session-token.const';
+import type { SessionPayload } from './session-token.model';
 
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+export type { SessionPayload };
 
 function getSecret(): string {
   const secret = process.env.SEARCH_AUTH_SECRET;
@@ -22,12 +24,6 @@ export function createSessionToken(userId: string, teamDomain: string): string {
   );
   const sig = crypto.createHmac('sha256', getSecret()).update(payload).digest('base64url');
   return `${payload}.${sig}`;
-}
-
-export interface SessionPayload {
-  userId: string;
-  teamDomain: string;
-  exp: number;
 }
 
 function isSessionPayload(value: unknown): value is SessionPayload {
@@ -57,6 +53,8 @@ export function verifySessionToken(token: string): SessionPayload | null {
   }
 
   try {
+    // We control what was serialized into this token; the isSessionPayload guard
+    // validates the shape at runtime before we return it.
     const parsed: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString());
     if (!isSessionPayload(parsed)) return null;
     if (parsed.exp < Date.now()) return null;

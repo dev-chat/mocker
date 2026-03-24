@@ -8,28 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { LoginPage } from '@/components/LoginPage';
+import type { Message } from '@/app.model';
+import { AUTH_TOKEN_KEY } from '@/app.const';
 
-interface Message {
-  id: number;
-  message: string;
-  channel: string;
-  teamId: string;
-  createdAt: string;
-  name: string;
-  slackId: string;
-}
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleString();
-}
-
-const AUTH_TOKEN_KEY = 'auth_token';
-
-function getStoredToken(): string | null {
-  return localStorage.getItem(AUTH_TOKEN_KEY);
-}
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -53,7 +35,7 @@ export default function App() {
       localStorage.setItem(AUTH_TOKEN_KEY, tokenFromHash);
       window.history.replaceState({}, '', window.location.pathname);
       setIsAuthenticated(true);
-    } else if (getStoredToken()) {
+    } else if (localStorage.getItem(AUTH_TOKEN_KEY)) {
       setIsAuthenticated(true);
     }
 
@@ -68,6 +50,8 @@ export default function App() {
     setIsAuthenticated(false);
     setMessages([]);
     setHasSearched(false);
+    setError(null);
+    setAuthError(undefined);
   }, []);
 
   const handleSearch = useCallback(async () => {
@@ -80,13 +64,12 @@ export default function App() {
     if (content.trim()) params.set('content', content.trim());
 
     try {
-      const token = getStoredToken() ?? '';
+      const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
       const response = await fetch(`${API_BASE_URL}/search/messages?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.status === 401) {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        setIsAuthenticated(false);
+        handleLogout();
         return;
       }
       if (!response.ok) {
@@ -100,7 +83,7 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [userName, channel, content]);
+  }, [userName, channel, content, handleLogout]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -231,7 +214,9 @@ export default function App() {
                           <TableCell className="max-w-md">
                             <span className="break-words">{msg.message}</span>
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-xs">{formatDate(msg.createdAt)}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {new Date(msg.createdAt).toLocaleString()}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

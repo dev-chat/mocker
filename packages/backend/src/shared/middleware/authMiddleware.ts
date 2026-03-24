@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { verifySessionToken } from '../utils/session-token';
+import { BEARER_PREFIX_LENGTH } from '../utils/session-token.const';
 import { logger } from '../logger/logger';
 
 const authLogger = logger.child({ module: 'AuthMiddleware' });
@@ -11,7 +12,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
     return;
   }
 
-  const token = authHeader.slice(7);
+  const token = authHeader.slice(BEARER_PREFIX_LENGTH);
   let session: ReturnType<typeof verifySessionToken>;
   try {
     session = verifySessionToken(token);

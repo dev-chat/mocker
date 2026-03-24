@@ -52,9 +52,24 @@ describe('authController', () => {
       const res = await request(app).get('/slack');
       expect(res.status).toBe(500);
     });
+
+    it('returns 500 when SLACK_REDIRECT_URI is not set', async () => {
+      delete process.env.SLACK_REDIRECT_URI;
+      const res = await request(app).get('/slack');
+      expect(res.status).toBe(500);
+    });
   });
 
   describe('GET /slack/callback', () => {
+    it('returns 500 when SEARCH_FRONTEND_URL is not set', async () => {
+      delete process.env.SEARCH_FRONTEND_URL;
+      const res = await request(app)
+        .get('/slack/callback')
+        .set('Cookie', STATE_COOKIE)
+        .query({ code: 'valid-code', state: TEST_STATE });
+      expect(res.status).toBe(500);
+    });
+
     it('redirects to frontend with token in hash on successful OAuth', async () => {
       (Axios.post as jest.Mock).mockResolvedValue({
         data: { ok: true, authed_user: { id: 'U123', access_token: 'xoxp-token' } },
