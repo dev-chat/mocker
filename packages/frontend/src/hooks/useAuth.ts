@@ -7,27 +7,31 @@ export interface UseAuthReturn {
   logout: (onLogout?: () => void) => void;
 }
 
+// Lazy initializer: reads the token from the URL hash or localStorage once at mount.
+// localStorage.setItem is called here (before the first render) when a hash token is found.
+function readInitialAuthState(): boolean {
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  const tokenFromHash = hashParams.get('token');
+  if (tokenFromHash) {
+    localStorage.setItem(AUTH_TOKEN_KEY, tokenFromHash);
+  }
+  return !!tokenFromHash || !!localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+// Lazy initializer: reads the auth_error query param once at mount.
+function readInitialAuthError(): string | undefined {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('auth_error') ?? undefined;
+}
+
 export function useAuth(): UseAuthReturn {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authError, setAuthError] = useState<string | undefined>(undefined);
+  const [isAuthenticated, setIsAuthenticated] = useState(readInitialAuthState);
+  const [authError, setAuthError] = useState<string | undefined>(readInitialAuthError);
 
+  // Side effects only: clean up the URL after reading the token / error from it.
+  // No setState calls here — initial state is already set via the lazy initializers above.
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const errorFromUrl = urlParams.get('auth_error') ?? undefined;
-
-    const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    const tokenFromHash = hashParams.get('token');
-
-    if (tokenFromHash) {
-      localStorage.setItem(AUTH_TOKEN_KEY, tokenFromHash);
-      window.history.replaceState({}, '', window.location.pathname);
-      setIsAuthenticated(true);
-    } else if (localStorage.getItem(AUTH_TOKEN_KEY)) {
-      setIsAuthenticated(true);
-    }
-
-    if (errorFromUrl) {
-      setAuthError(errorFromUrl);
+    if (window.location.hash || window.location.search.includes('auth_error')) {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);

@@ -15,6 +15,12 @@ import {
   OAUTH_STATE_MAX_AGE_MS,
 } from './auth.const';
 
+// The Slack users.identity API returns team.domain but the SDK type only declares team.id.
+// Use an extended type that reflects the actual API response shape.
+type IdentityResponseWithTeamDomain = Omit<UsersIdentityResponse, 'team'> & {
+  team?: { id?: string; domain?: string };
+};
+
 export const authController: Router = express.Router();
 const authLogger = logger.child({ module: 'AuthController' });
 
@@ -102,12 +108,11 @@ authController.get('/slack/callback', (req, res) => {
       return;
     }
 
-    const identityResponse = await Axios.get<UsersIdentityResponse>(SLACK_IDENTITY_URL, {
+    const identityResponse = await Axios.get<IdentityResponseWithTeamDomain>(SLACK_IDENTITY_URL, {
       headers: { Authorization: `Bearer ${tokenResponse.data.authed_user.access_token}` },
     });
 
-    // The Slack users.identity API returns team.domain but the SDK type only declares team.id.
-    const teamDomain = (identityResponse.data.team as { id?: string; domain?: string } | undefined)?.domain;
+    const teamDomain = identityResponse.data.team?.domain;
     const userId = identityResponse.data.user?.id;
     if (!identityResponse.data.ok || teamDomain !== ALLOWED_TEAM_DOMAIN || !userId) {
       res.redirect(`${frontendUrl}?auth_error=unauthorized_workspace`);
