@@ -10,10 +10,9 @@ export class SearchPersistenceService {
   private logger = logger.child({ module: 'SearchPersistenceService' });
 
   private static resolveLimit(limit: number | undefined): number {
-    if (limit === undefined || !Number.isFinite(limit) || limit < MIN_LIMIT) {
-      return DEFAULT_LIMIT;
-    }
-    return Math.min(limit, PERSISTENCE_MAX_LIMIT);
+    return limit === undefined || !Number.isFinite(limit) || limit < MIN_LIMIT
+      ? DEFAULT_LIMIT
+      : Math.min(limit, PERSISTENCE_MAX_LIMIT);
   }
 
   async searchMessages(params: MessageSearchParams): Promise<MessageWithName[]> {

@@ -63,14 +63,14 @@ describe('App – authenticated state', () => {
     expect(screen.getByText(/content: hello/i)).toBeInTheDocument();
   });
 
-  it('triggers search on Enter keydown in an input', async () => {
+  it('triggers search after typing in an input', async () => {
     mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => [] });
     render(<App />);
-    fireEvent.keyDown(screen.getByLabelText(/user name/i), { key: 'Enter' });
-    await waitFor(() => expect(screen.getByText(/no messages found/i)).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
+    await waitFor(() => expect(screen.getByText(/no messages found/i)).toBeInTheDocument(), { timeout: 2000 });
   });
 
-  it('does not trigger search on a non-Enter keydown', async () => {
+  it('does not trigger search when no input values change', async () => {
     render(<App />);
     fireEvent.keyDown(screen.getByLabelText(/user name/i), { key: 'a' });
     expect(mockFetch).not.toHaveBeenCalled();

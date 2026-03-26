@@ -7,9 +7,6 @@ export type { SessionPayload };
 function getSecret(): string {
   const secret = process.env.SEARCH_AUTH_SECRET;
   if (!secret) {
-    if (process.env.NODE_ENV === 'test') {
-      return 'insecure-test-secret';
-    }
     throw new Error(
       'SEARCH_AUTH_SECRET environment variable is not set. ' +
         'Session tokens cannot be created or verified without a secret.',

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Search, Loader2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,12 +10,12 @@ import { Separator } from '@/components/ui/separator';
 import { LoginPage } from '@/components/LoginPage';
 import type { Message } from '@/app.model';
 import { AUTH_TOKEN_KEY } from '@/app.const';
+import { useAuth } from '@/hooks/useAuth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authError, setAuthError] = useState<string | undefined>(undefined);
+  const { isAuthenticated, authError, logout } = useAuth();
   const [userName, setUserName] = useState('');
   const [channel, setChannel] = useState('');
   const [content, setContent] = useState('');
@@ -24,35 +24,13 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const errorFromUrl = urlParams.get('auth_error') ?? undefined;
-
-    const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    const tokenFromHash = hashParams.get('token');
-
-    if (tokenFromHash) {
-      localStorage.setItem(AUTH_TOKEN_KEY, tokenFromHash);
-      window.history.replaceState({}, '', window.location.pathname);
-      setIsAuthenticated(true);
-    } else if (localStorage.getItem(AUTH_TOKEN_KEY)) {
-      setIsAuthenticated(true);
-    }
-
-    if (errorFromUrl) {
-      setAuthError(errorFromUrl);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
   const handleLogout = useCallback(() => {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    setIsAuthenticated(false);
-    setMessages([]);
-    setHasSearched(false);
-    setError(null);
-    setAuthError(undefined);
-  }, []);
+    logout(() => {
+      setMessages([]);
+      setHasSearched(false);
+      setError(null);
+    });
+  }, [logout]);
 
   const handleSearch = useCallback(async () => {
     setIsLoading(true);
@@ -85,11 +63,19 @@ export default function App() {
     }
   }, [userName, channel, content, handleLogout]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      void handleSearch();
+  // Debounced search-as-you-type: skip the initial render, then trigger a search
+  // 300ms after the user stops changing userName, channel, or content.
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
     }
-  };
+    const timer = setTimeout(() => {
+      void handleSearch();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [handleSearch]);
 
   const activeFilters = [
     userName.trim() && { label: 'User', value: userName.trim() },
@@ -131,7 +117,6 @@ export default function App() {
                   placeholder="e.g. john"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  onKeyDown={handleKeyDown}
                 />
               </div>
               <div className="space-y-2">
@@ -141,7 +126,6 @@ export default function App() {
                   placeholder="e.g. general"
                   value={channel}
                   onChange={(e) => setChannel(e.target.value)}
-                  onKeyDown={handleKeyDown}
                 />
               </div>
               <div className="space-y-2">
@@ -151,7 +135,6 @@ export default function App() {
                   placeholder="e.g. hello world"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  onKeyDown={handleKeyDown}
                 />
               </div>
             </div>
