@@ -4,7 +4,7 @@ import type { MessageWithName } from '../shared/models/message/message-with-name
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import type { MessageSearchParams } from './search.model';
-import { DEFAULT_LIMIT, MIN_LIMIT, PERSISTENCE_MAX_LIMIT } from './search.const';
+import { DEFAULT_LIMIT, MIN_LIMIT, MAX_LIMIT } from './search.const';
 
 export class SearchPersistenceService {
   private logger = logger.child({ module: 'SearchPersistenceService' });
@@ -12,7 +12,7 @@ export class SearchPersistenceService {
   private static resolveLimit(limit: number | undefined): number {
     return limit === undefined || !Number.isFinite(limit) || limit < MIN_LIMIT
       ? DEFAULT_LIMIT
-      : Math.min(limit, PERSISTENCE_MAX_LIMIT);
+      : Math.min(limit, MAX_LIMIT);
   }
 
   async searchMessages(params: MessageSearchParams): Promise<MessageWithName[]> {
