@@ -835,13 +835,7 @@ export class AIService {
       const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
         const threadTs = request.event.thread_ts ?? request.event.ts;
-        void this.participate(
-          request.team_id,
-          request.event.channel,
-          request.event.text,
-          request.event.user,
-          threadTs,
-        );
+        void this.participate(request.team_id, request.event.channel, request.event.text, request.event.user, threadTs);
       }
     }
   }

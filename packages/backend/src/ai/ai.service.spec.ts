@@ -502,11 +502,9 @@ describe('AIService', () => {
       await aiService.participate('T1', 'C1', 'hey @Moonbeam', 'U1');
 
       expect(aiService.webService.startStream).not.toHaveBeenCalled();
-      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
-        'C1',
-        'Response text',
-        [{ type: 'markdown', text: 'Response text' }],
-      );
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Response text', [
+        { type: 'markdown', text: 'Response text' },
+      ]);
     });
 
     it('falls back to sendMessage when streaming throws', async () => {
@@ -519,11 +517,9 @@ describe('AIService', () => {
 
       await aiService.participate('T1', 'C1', 'hey @Moonbeam', 'U1', '1700000001.123456');
 
-      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
-        'C1',
-        'Fallback text',
-        [{ type: 'markdown', text: 'Fallback text' }],
-      );
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Fallback text', [
+        { type: 'markdown', text: 'Fallback text' },
+      ]);
     });
 
     it('stops stream cleanly on OpenAI error', async () => {
@@ -542,9 +538,9 @@ describe('AIService', () => {
       };
       (aiService.openAi.responses.create as jest.Mock).mockResolvedValue(mockStream);
 
-      await expect(
-        aiService.participate('T1', 'C1', 'hey @Moonbeam', 'U1', '1700000001.123456'),
-      ).rejects.toThrow('OpenAI stream error');
+      await expect(aiService.participate('T1', 'C1', 'hey @Moonbeam', 'U1', '1700000001.123456')).rejects.toThrow(
+        'OpenAI stream error',
+      );
 
       expect(mockStop).toHaveBeenCalled();
     });
