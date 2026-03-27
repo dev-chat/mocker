@@ -27,6 +27,7 @@ import type { MemoryWithSlackId } from '../shared/db/models/Memory';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
+import { SlackPersistenceService } from '../shared/services/slack/slack.persistence.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import OpenAI from 'openai';
 import type {
@@ -69,6 +70,7 @@ export class AIService {
   historyService = new HistoryPersistenceService();
   webService = new WebService();
   slackService = new SlackService();
+  slackPersistenceService = new SlackPersistenceService();
   memoryPersistenceService = new MemoryPersistenceService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
@@ -82,6 +84,14 @@ export class AIService {
 
   public isAlreadyAtMaxRequests(userId: string, teamId: string): Promise<boolean> {
     return this.redis.getDailyRequests(userId, teamId).then((x) => Number(x) >= MAX_AI_REQUESTS_PER_DAY);
+  }
+
+  public setCustomPrompt(userId: string, teamId: string, prompt: string): Promise<boolean> {
+    return this.slackPersistenceService.setCustomPrompt(userId, teamId, prompt);
+  }
+
+  public clearCustomPrompt(userId: string, teamId: string): Promise<boolean> {
+    return this.slackPersistenceService.clearCustomPrompt(userId, teamId);
   }
 
   public async generateText(userId: string, teamId: string, channelId: string, text: string): Promise<void> {
@@ -353,6 +363,9 @@ export class AIService {
     const history: MessageWithName[] = await this.historyService.getHistory(request, true);
     const formattedHistory: string = this.formatHistory(history);
 
+    const customPrompt = await this.slackPersistenceService.getCustomPrompt(user_id, team_id);
+    const normalizedCustomPrompt = customPrompt?.trim() || null;
+
     // Fetch and select relevant memories
     const memoryContext = await this.fetchMemoryContext(
       this.extractParticipantSlackIds(history, { includeSlackId: user_id }),
@@ -360,7 +373,10 @@ export class AIService {
       `${formattedHistory}\n\nUser prompt: ${prompt}`,
       history,
     );
-    const systemInstructions = this.appendMemoryContext(getHistoryInstructions(formattedHistory), memoryContext);
+    const baseInstructions = normalizedCustomPrompt
+      ? `${normalizedCustomPrompt}\n\n${getHistoryInstructions(formattedHistory)}`
+      : getHistoryInstructions(formattedHistory);
+    const systemInstructions = this.appendMemoryContext(baseInstructions, memoryContext);
 
     return this.openAi.responses
       .create({
@@ -422,7 +438,7 @@ export class AIService {
       });
   }
 
-  public async participate(teamId: string, channelId: string, taggedMessage: string): Promise<void> {
+  public async participate(teamId: string, channelId: string, taggedMessage: string, userId?: string): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
     const historyMessages = await this.historyService.getHistoryWithOptions({
@@ -434,12 +450,16 @@ export class AIService {
 
     const history = this.formatHistory(historyMessages);
 
+    const customPrompt = userId ? await this.slackPersistenceService.getCustomPrompt(userId, teamId) : null;
+    const normalizedCustomPrompt = customPrompt?.trim() || null;
+
     // Fetch and select relevant memories
     const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
     const memoryContext = await this.fetchMemoryContext(participantSlackIds, teamId, history, historyMessages);
-    const systemInstructions = this.appendMemoryContext(MOONBEAM_SYSTEM_INSTRUCTIONS, memoryContext);
+    const baseInstructions = normalizedCustomPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
+    const systemInstructions = this.appendMemoryContext(baseInstructions, memoryContext);
 
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
@@ -764,7 +784,7 @@ export class AIService {
       const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, MOONBEAM_SLACK_ID);
       const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
-        void this.participate(request.team_id, request.event.channel, request.event.text);
+        void this.participate(request.team_id, request.event.channel, request.event.text, request.event.user);
       }
     }
   }

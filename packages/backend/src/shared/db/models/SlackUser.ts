@@ -36,4 +36,7 @@ export class SlackUser {
 
   @OneToOne(() => Portfolio, (portfolio) => portfolio.user, { cascade: true })
   public portfolio?: Portfolio;
+
+  @Column({ type: 'text', nullable: true, default: null })
+  public customPrompt!: string | null;
 }

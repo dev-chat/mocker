@@ -31,6 +31,7 @@ describe('SlackPersistenceService', () => {
   const userRepo = {
     findOne: jest.fn(),
     save: jest.fn(),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
   const redis = {
@@ -132,5 +133,83 @@ describe('SlackPersistenceService', () => {
     await expect(service.getUserByUserName('alice', 'T1')).resolves.toEqual({ id: 1 });
     await expect(service.getBotByBotId('B1', 'T1')).resolves.toEqual({ id: 1 });
     await expect(service.getChannelById('C1', 'T1')).resolves.toEqual({ id: 2 });
+  });
+
+  describe('getCustomPrompt', () => {
+    it('returns the custom prompt when user exists and has one set', async () => {
+      userRepo.findOne.mockResolvedValue({ slackId: 'U1', teamId: 'T1', customPrompt: 'respond like a pirate' });
+
+      await expect(service.getCustomPrompt('U1', 'T1')).resolves.toBe('respond like a pirate');
+    });
+
+    it('returns null when user exists but has no custom prompt', async () => {
+      userRepo.findOne.mockResolvedValue({ slackId: 'U1', teamId: 'T1', customPrompt: null });
+
+      await expect(service.getCustomPrompt('U1', 'T1')).resolves.toBeNull();
+    });
+
+    it('returns null when user is not found', async () => {
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.getCustomPrompt('U1', 'T1')).resolves.toBeNull();
+    });
+
+    it('returns null when repository throws', async () => {
+      userRepo.findOne.mockRejectedValue(new Error('db error'));
+
+      await expect(service.getCustomPrompt('U1', 'T1')).resolves.toBeNull();
+    });
+  });
+
+  describe('setCustomPrompt', () => {
+    it('saves the trimmed custom prompt and returns true when user exists', async () => {
+      userRepo.update.mockResolvedValue({ affected: 1 });
+
+      await expect(service.setCustomPrompt('U1', 'T1', '  my custom prompt  ')).resolves.toBe(true);
+      expect(userRepo.update).toHaveBeenCalledWith(
+        { slackId: 'U1', teamId: 'T1' },
+        { customPrompt: 'my custom prompt' },
+      );
+    });
+
+    it('stores null when prompt is whitespace-only', async () => {
+      userRepo.update.mockResolvedValue({ affected: 1 });
+
+      await expect(service.setCustomPrompt('U1', 'T1', '   ')).resolves.toBe(true);
+      expect(userRepo.update).toHaveBeenCalledWith({ slackId: 'U1', teamId: 'T1' }, { customPrompt: null });
+    });
+
+    it('returns false when user is not found', async () => {
+      userRepo.update.mockResolvedValue({ affected: 0 });
+
+      await expect(service.setCustomPrompt('U1', 'T1', 'my prompt')).resolves.toBe(false);
+    });
+
+    it('returns false when repository throws', async () => {
+      userRepo.update.mockRejectedValue(new Error('db error'));
+
+      await expect(service.setCustomPrompt('U1', 'T1', 'my prompt')).resolves.toBe(false);
+    });
+  });
+
+  describe('clearCustomPrompt', () => {
+    it('clears the custom prompt and returns true when user exists', async () => {
+      userRepo.update.mockResolvedValue({ affected: 1 });
+
+      await expect(service.clearCustomPrompt('U1', 'T1')).resolves.toBe(true);
+      expect(userRepo.update).toHaveBeenCalledWith({ slackId: 'U1', teamId: 'T1' }, { customPrompt: null });
+    });
+
+    it('returns false when user is not found', async () => {
+      userRepo.update.mockResolvedValue({ affected: 0 });
+
+      await expect(service.clearCustomPrompt('U1', 'T1')).resolves.toBe(false);
+    });
+
+    it('returns false when repository throws', async () => {
+      userRepo.update.mockRejectedValue(new Error('db error'));
+
+      await expect(service.clearCustomPrompt('U1', 'T1')).resolves.toBe(false);
+    });
   });
 });
