@@ -237,7 +237,7 @@ docker logs <container-id> | jq .
 
 - **OAuth Login** - Users authenticate via Slack to access the search UI
 - **Team-Scoped Search** - Messages are filtered by `teamId` to prevent cross-workspace leakage
-- **Session Tokens** - JWTs issued after OAuth callback, required for all search requests
+- **Session Tokens** - HMAC-signed custom session tokens (base64url payload + signature, not JWT), issued after OAuth callback, required for all search requests
 - **Rate Limiting** - Auth endpoints: 20/15min, Search endpoints: 60/1min
 
 ### AI Features (Optional)
