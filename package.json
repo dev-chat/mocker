@@ -9,6 +9,7 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "build:backend": "npm run build -w @mocker/backend",
+    "build:frontend": "npm run build -w @mocker/frontend",
     "build:prod": "npm run build:prod --workspaces --if-present",
     "build:prod:backend": "npm run build:prod -w @mocker/backend",
     "prepare": "husky",
@@ -17,8 +18,11 @@
     "test": "npm run test --workspaces --if-present",
     "test:backend": "npm run test -w @mocker/backend",
     "test:coverage": "npm run test:coverage -w @mocker/backend",
-    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/**/*.ts",
-    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/root/.eslintcache packages/**/*.ts --quiet --fix",
+    "dev:frontend": "npm run dev -w @mocker/frontend",
+    "lint": "npm run lint -w @mocker/backend && npm run lint -w @mocker/frontend",
+    "lint:fix": "npm run lint:fix -w @mocker/backend && npm run lint:fix -w @mocker/frontend",
+    "lint:backend": "npm run lint -w @mocker/backend",
+    "lint:frontend": "npm run lint -w @mocker/frontend",
     "format:check": "prettier --cache --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:fix": "prettier --cache --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\""
   },
@@ -30,6 +34,8 @@
     "@typescript-eslint/parser": "^8.57.1",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
@@ -37,9 +43,18 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.1"
   },
+  "overrides": {
+    "eslint-plugin-react-hooks": {
+      "eslint": "$eslint"
+    }
+  },
   "lint-staged": {
-    "**/*.{ts,tsx,js,jsx}": [
+    "packages/backend/**/*.{ts,js}": [
       "eslint --quiet --fix",
+      "prettier --write"
+    ],
+    "packages/frontend/**/*.{ts,tsx,js,jsx}": [
+      "eslint --config packages/frontend/eslint.config.js --quiet --fix",
       "prettier --write"
     ],
     "**/*.{json,md,yml,yaml}": [

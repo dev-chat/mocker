@@ -1,0 +1,41 @@
+import type { Response, NextFunction } from 'express';
+import { verifySessionToken } from '../utils/session-token';
+import { BEARER_PREFIX_LENGTH } from '../utils/session-token.const';
+import { logger } from '../logger/logger';
+import type { RequestWithAuthSession } from '../models/express/RequestWithAuthSession';
+
+const authLogger = logger.child({ module: 'AuthMiddleware' });
+
+export const authMiddleware = (req: RequestWithAuthSession, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const token = authHeader.slice(BEARER_PREFIX_LENGTH);
+  let session: ReturnType<typeof verifySessionToken>;
+  try {
+    session = verifySessionToken(token);
+  } catch {
+    authLogger.error('Session token verification failed — SEARCH_AUTH_SECRET may not be set');
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  if (!session) {
+    authLogger.warn('Invalid or expired session token');
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  if (!session.teamId) {
+    authLogger.warn('Session token missing teamId; rejecting request');
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  req.authSession = session;
+
+  next();
+};
