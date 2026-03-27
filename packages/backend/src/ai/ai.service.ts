@@ -438,7 +438,7 @@ export class AIService {
       });
   }
 
-  public async participate(teamId: string, channelId: string, taggedMessage: string, userId?: string): Promise<void> {
+  public async participate(teamId: string, channelId: string, taggedMessage: string, userId?: string, threadTs?: string): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
     const historyMessages = await this.historyService.getHistoryWithOptions({
@@ -784,7 +784,14 @@ export class AIService {
       const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, MOONBEAM_SLACK_ID);
       const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
-        void this.participate(request.team_id, request.event.channel, request.event.text, request.event.user);
+        const threadTs = request.event.thread_ts ?? request.event.ts;
+        void this.participate(
+          request.team_id,
+          request.event.channel,
+          request.event.text,
+          request.event.user,
+          threadTs,
+        );
       }
     }
   }

@@ -273,10 +273,68 @@ describe('AIService', () => {
           user: 'U1',
           channel: 'C1',
           text: `<@${MOONBEAM_SLACK_ID}> hello`,
+          ts: '1700000001.000000',
         },
       } as never);
 
-      expect(participateSpy).toHaveBeenCalledWith('T1', 'C1', `<@${MOONBEAM_SLACK_ID}> hello`, 'U1');
+      expect(participateSpy).toHaveBeenCalledWith(
+        'T1',
+        'C1',
+        `<@${MOONBEAM_SLACK_ID}> hello`,
+        'U1',
+        '1700000001.000000',
+      );
+    });
+
+    it('passes event.ts as threadTs when not in a thread', async () => {
+      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
+      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
+      (aiService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(false);
+      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
+
+      await aiService.handle({
+        team_id: 'T1',
+        event: {
+          user: 'U1',
+          channel: 'C1',
+          text: `<@${MOONBEAM_SLACK_ID}> hello`,
+          ts: '1700000001.123456',
+        },
+      } as never);
+
+      expect(participateSpy).toHaveBeenCalledWith(
+        'T1',
+        'C1',
+        `<@${MOONBEAM_SLACK_ID}> hello`,
+        'U1',
+        '1700000001.123456',
+      );
+    });
+
+    it('passes event.thread_ts as threadTs when in a thread', async () => {
+      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
+      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
+      (aiService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(false);
+      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
+
+      await aiService.handle({
+        team_id: 'T1',
+        event: {
+          user: 'U1',
+          channel: 'C1',
+          text: `<@${MOONBEAM_SLACK_ID}> hello`,
+          ts: '1700000002.654321',
+          thread_ts: '1700000001.123456',
+        },
+      } as never);
+
+      expect(participateSpy).toHaveBeenCalledWith(
+        'T1',
+        'C1',
+        `<@${MOONBEAM_SLACK_ID}> hello`,
+        'U1',
+        '1700000001.123456',
+      );
     });
 
     it('does not participate if requesting user is muzzled', async () => {
