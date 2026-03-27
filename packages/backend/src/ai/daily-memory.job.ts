@@ -16,16 +16,20 @@ export class DailyMemoryJob {
 
     const channels = await getRepository(SlackChannel).find();
 
-    let processed = 0;
-    for (const channel of channels) {
-      try {
-        await this.aiService.extractMemoriesForChannel(channel.teamId, channel.channelId);
-        processed++;
-      } catch (e) {
-        this.jobLogger.warn(`Failed to extract memories for channel ${channel.channelId} (team ${channel.teamId}):`, e);
-      }
-    }
+    const results = await Promise.allSettled(
+      channels.map((channel) => this.aiService.extractMemoriesForChannel(channel.teamId, channel.channelId)),
+    );
 
+    const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+    failed.forEach((r, i) => {
+      const channel = channels[i];
+      this.jobLogger.warn(
+        `Failed to extract memories for channel ${channel.channelId} (team ${channel.teamId}):`,
+        r.reason,
+      );
+    });
+
+    const processed = results.length - failed.length;
     this.jobLogger.info(`Daily memory extraction job complete: processed ${processed}/${channels.length} channels`);
   }
 }

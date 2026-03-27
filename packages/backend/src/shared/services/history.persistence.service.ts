@@ -95,11 +95,6 @@ export class HistoryPersistenceService {
       });
   }
 
-  /**
-   * Get history with configurable options.
-   * Unlike getHistory(), this method does NOT exclude any users by default,
-   * allowing Moonbeam to see its own prior messages for conversational continuity.
-   */
   async getLast24HoursForChannel(teamId: string, channelId: string): Promise<MessageWithName[]> {
     const query = `
       SELECT message.*, slack_user.name, slack_user.slackId
@@ -120,6 +115,11 @@ export class HistoryPersistenceService {
       });
   }
 
+  /**
+   * Get history with configurable options.
+   * Unlike getHistory(), this method does NOT exclude any users by default,
+   * allowing Moonbeam to see its own prior messages for conversational continuity.
+   */
   async getHistoryWithOptions(options: HistoryOptions): Promise<MessageWithName[]> {
     const { teamId, channelId, maxMessages = 200, timeWindowMinutes = 120, excludeUserId } = options;
 
