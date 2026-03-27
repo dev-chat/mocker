@@ -22,6 +22,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleLogout = useCallback(() => {
     logout(() => {
@@ -35,6 +36,15 @@ export default function App() {
     setIsLoading(true);
     setError(null);
 
+    // Abort any previous in-flight request to prevent stale results
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create a new abort controller for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     const params = new URLSearchParams();
     if (userName.trim()) params.set('userName', userName.trim());
     if (channel.trim()) params.set('channel', channel.trim());
@@ -44,6 +54,7 @@ export default function App() {
       const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
       const response = await fetch(`${API_BASE_URL}/search/messages?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal: abortController.signal,
       });
       if (response.status === 401) {
         handleLogout();
@@ -56,6 +67,10 @@ export default function App() {
       setMessages(data);
       setHasSearched(true);
     } catch (err) {
+      // Ignore abort errors from cancelled requests
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
