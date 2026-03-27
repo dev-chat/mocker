@@ -10,13 +10,37 @@ import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 export const aiController: Router = express.Router();
-aiController.use(suppressedMiddleware);
-aiController.use(textMiddleware);
-aiController.use(aiMiddleware);
 
 const webService = new WebService();
 const aiService = new AIService();
 const aiLogger = logger.child({ module: 'AIController' });
+
+aiController.use(suppressedMiddleware);
+aiController.use(textMiddleware);
+aiController.use(aiMiddleware);
+
+aiController.post('/set-prompt', (req, res) => {
+  const { user_id, team_id, text } = req.body;
+
+  if (text.trim().toLowerCase() === 'clear') {
+    void aiService.clearCustomPrompt(user_id, team_id).then((success) => {
+      if (success) {
+        res.send('Your custom prompt has been cleared. Moonbeam will use the default instructions.');
+      } else {
+        res.send('Failed to clear your custom prompt. Please try again.');
+      }
+    });
+    return;
+  }
+
+  void aiService.setCustomPrompt(user_id, team_id, text.trim()).then((success) => {
+    if (success) {
+      res.send(`Your custom prompt has been set.`);
+    } else {
+      res.send('Failed to set your custom prompt. Please try again.');
+    }
+  });
+});
 
 aiController.post('/text', (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
