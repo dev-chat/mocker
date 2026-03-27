@@ -11,6 +11,7 @@ import type {
   UsersListResponse,
 } from '@slack/web-api';
 import { WebClient } from '@slack/web-api';
+import type { ChatStreamer } from '@slack/web-api/dist/chat-stream';
 import { logError } from '../../logger/error-logging';
 import { logger } from '../../logger/logger';
 
@@ -142,6 +143,14 @@ export class WebService {
         text,
       }),
     );
+  }
+
+  public startStream(channel: string, threadTs: string): ChatStreamer {
+    return this.web.chatStream({
+      channel,
+      thread_ts: threadTs,
+      token: process.env.MUZZLE_BOT_USER_TOKEN,
+    });
   }
 
   public getAllUsers(): Promise<UsersListResponse> {

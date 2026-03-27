@@ -22,6 +22,11 @@ export class WebClient {
     upload: jest.fn().mockResolvedValue(okResult()),
   };
 
+  chatStream = jest.fn().mockReturnValue({
+    append: jest.fn().mockResolvedValue(null),
+    stop: jest.fn().mockResolvedValue(okResult()),
+  });
+
   constructor(_token?: string) {
     void _token;
   }

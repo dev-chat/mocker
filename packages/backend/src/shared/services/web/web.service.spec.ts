@@ -10,6 +10,7 @@ type MockWebClient = {
   users: { list: jest.Mock };
   conversations: { list: jest.Mock };
   files: { upload: jest.Mock };
+  chatStream: jest.Mock;
 };
 
 type WebServicePrivate = WebService & { web: MockWebClient };
@@ -130,6 +131,22 @@ describe('WebService', () => {
       expect(mockWebClient.chat.update).toHaveBeenCalledWith(
         expect.objectContaining({ channel: 'C1', text: 'updated', ts: '1.23' }),
       );
+    });
+  });
+
+  describe('startStream', () => {
+    it('calls chatStream with channel, thread_ts, and token', () => {
+      const streamer = webService.startStream('C1', '1700000001.123456');
+
+      expect(mockWebClient.chatStream).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channel: 'C1',
+          thread_ts: '1700000001.123456',
+        }),
+      );
+      expect(streamer).toBeDefined();
+      expect(streamer.append).toBeDefined();
+      expect(streamer.stop).toBeDefined();
     });
   });
 
