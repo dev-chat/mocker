@@ -10,15 +10,18 @@ import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 
 export const aiController: Router = express.Router();
-aiController.use(suppressedMiddleware);
-aiController.use(textMiddleware);
-aiController.use(aiMiddleware);
 
 const webService = new WebService();
 const aiService = new AIService();
 const aiLogger = logger.child({ module: 'AIController' });
 
 const MAX_CUSTOM_PROMPT_LENGTH = 800;
+
+aiController.use(suppressedMiddleware);
+
+// /set-prompt is placed before textMiddleware and aiMiddleware intentionally:
+// - textMiddleware rejects empty text (Slack sends text:'' for bare /set-prompt with no args)
+// - aiMiddleware consumes the daily AI quota; prompt configuration should not count
 
 aiController.post('/set-prompt', (req, res) => {
   const { user_id, team_id, text } = req.body;
@@ -53,6 +56,9 @@ aiController.post('/set-prompt', (req, res) => {
     }
   });
 });
+
+aiController.use(textMiddleware);
+aiController.use(aiMiddleware);
 
 aiController.post('/text', (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
