@@ -134,35 +134,6 @@ describe('aiController', () => {
       expect(res.text).toContain('set');
     });
 
-    it('rejects whitespace-only prompt', async () => {
-      const res = await request(app)
-        .post('/set-prompt')
-        .send({ user_id: 'U1', team_id: 'T1', text: '   ' })
-        .expect(200);
-
-      expect(setCustomPrompt).not.toHaveBeenCalled();
-      expect(res.text).toContain('Please provide a prompt');
-    });
-
-    it('handles empty text (no args sent by Slack)', async () => {
-      const res = await request(app).post('/set-prompt').send({ user_id: 'U1', team_id: 'T1', text: '' }).expect(200);
-
-      expect(setCustomPrompt).not.toHaveBeenCalled();
-      expect(res.text).toContain('Please provide a prompt');
-    });
-
-    it('rejects prompt exceeding max length', async () => {
-      const longPrompt = 'a'.repeat(801);
-
-      const res = await request(app)
-        .post('/set-prompt')
-        .send({ user_id: 'U1', team_id: 'T1', text: longPrompt })
-        .expect(200);
-
-      expect(setCustomPrompt).not.toHaveBeenCalled();
-      expect(res.text).toContain('exceed');
-    });
-
     it('returns failure message when setCustomPrompt fails', async () => {
       setCustomPrompt.mockResolvedValue(false);
 

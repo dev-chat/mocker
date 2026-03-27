@@ -15,29 +15,14 @@ const webService = new WebService();
 const aiService = new AIService();
 const aiLogger = logger.child({ module: 'AIController' });
 
-const MAX_CUSTOM_PROMPT_LENGTH = 800;
-
 aiController.use(suppressedMiddleware);
-
-// /set-prompt is placed before textMiddleware and aiMiddleware intentionally:
-// - textMiddleware rejects empty text (Slack sends text:'' for bare /set-prompt with no args)
-// - aiMiddleware consumes the daily AI quota; prompt configuration should not count
+aiController.use(textMiddleware);
+aiController.use(aiMiddleware);
 
 aiController.post('/set-prompt', (req, res) => {
   const { user_id, team_id, text } = req.body;
-  const normalized = (text ?? '').trim();
 
-  if (!normalized) {
-    res.send('Please provide a prompt. Use `/set-prompt clear` to remove your current prompt.');
-    return;
-  }
-
-  if (normalized.length > MAX_CUSTOM_PROMPT_LENGTH) {
-    res.send(`Your custom prompt cannot exceed ${MAX_CUSTOM_PROMPT_LENGTH} characters.`);
-    return;
-  }
-
-  if (normalized.toLowerCase() === 'clear') {
+  if (text.trim().toLowerCase() === 'clear') {
     void aiService.clearCustomPrompt(user_id, team_id).then((success) => {
       if (success) {
         res.send('Your custom prompt has been cleared. Moonbeam will use the default instructions.');
@@ -48,7 +33,7 @@ aiController.post('/set-prompt', (req, res) => {
     return;
   }
 
-  void aiService.setCustomPrompt(user_id, team_id, normalized).then((success) => {
+  void aiService.setCustomPrompt(user_id, team_id, text.trim()).then((success) => {
     if (success) {
       res.send(`Your custom prompt has been set.`);
     } else {
@@ -56,9 +41,6 @@ aiController.post('/set-prompt', (req, res) => {
     }
   });
 });
-
-aiController.use(textMiddleware);
-aiController.use(aiMiddleware);
 
 aiController.post('/text', (req, res) => {
   const { user_id, team_id, channel_id, text } = req.body;
