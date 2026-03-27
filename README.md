@@ -1,94 +1,250 @@
 # Mocker
 
-## A Slack app to annoy your friends.
+A Slack app that lets you mock your friends. Features real-time reactions, reputation tracking, game modes (Muzzle, Backfire, Counter, etc.), AI-powered summaries, and a web-based search interface for message history with team-scoped access control.
 
-## Project Structure
+## Architecture
 
-This project is organized as a monorepo using npm workspaces:
+This project is organized as a **npm monorepo** with the following structure:
 
 ```
 mocker/
 ├── packages/
-│   ├── backend/      # @mocker/backend - Express API server with Slack integration
-│   ├── frontend/     # @mocker/frontend - Frontend application
-│   └── jobs/         # Scheduled jobs
-│       ├── fun-fact-job/
-│       ├── health-job/
-│       └── pricing-job/
-├── package.json      # Root package with workspace configuration
-└── tsconfig.base.json
+│   ├── backend/      # @mocker/backend - Express API server
+│   │                 # - Slack bot integration
+│   │                 # - REST APIs for Slack commands and events
+│   │                 # - Search endpoint (team-scoped, requires OAuth token)
+│   │                 # - Slack OAuth flow (/auth/slack, /auth/slack/callback)
+│   │
+│   ├── frontend/     # @mocker/frontend - React + Vite
+│   │                 # - Message search UI
+│   │                 # - OAuth login flow
+│   │                 # - Requires session token in URL fragment
+│   │
+│   └── jobs/         # Standalone bash scheduled jobs
+│       ├── fun-fact-job/     # Daily fun facts via Slack API
+│       ├── health-job/       # Health check endpoint
+│       └── pricing-job/      # Price update job
+│
+├── package.json         # Root workspace config
+├── tsconfig.base.json   # Shared TypeScript config
+└── eslint.config.js     # Root ESLint config (flat config)
 ```
 
 ## Getting Started
 
-### Setting Up Your Slack Environment
+### Prerequisites
 
-1. Set up a new slack workspace for development purposes. (https://slack.com/get-started#/create)
-2. Go to: https://api.slack.com/apps and click Create New App
-3. Choose your newly created workspace as your Development Workspace and click Create App.
-4. Configure Ngrok for your newly created bot: https://api.slack.com/tutorials/tunneling-with-ngrok
-5. Add your bot oauth token as MUZZLE_BOT_TOKEN and your bot user token as MUZZLE_BOT_USER_TOKEN to your environment variables. Alternatively, you can pass these in as command line arguments.
-6. Your app should have the following features per the Slack management web app:
+- **Node.js** 20+ (for backend and frontend development)
+- **MySQL** 5.7+ (for storing messages, users, game state)
+- **Slack workspace** (for bot integration)
+- **Ngrok** (optional, for local tunneling during development)
 
-- Slash Commands
-  - /mock - Request URL: `<ngrokUrl>/mock`
-  - /define - Request URL: `<ngrokUrl>/define`
-  - /muzzle - Request URL: `<ngrokUrl>/muzzle`
-  - /muzzlestats - Request URL: `<ngrokUrl>/muzzle/stats`
-  - /confess - Request URL: `<ngrokUrl>/confess`
-  - /list - Request URL: `<ngrokUrl>/list/add`
-  - /listreport - Request URL: `<ngrokUrl>/list/retrieve`
-  - /listremove - Request URL: `<ngrokUrl>/list/remove`
-  - /counter - Request URL: `<ngrokUrl>/counter`
-  - /repstats - Request URL: `<ngrokUrl>/rep/get`
-  - /walkie - Request URL: `<ngrokUrl>/walkie`
+### 1. Set Up Slack App
 
-Each of the slash commands should have `Escape Channels, users and links sent to your app` checked.
+1. Create a Slack workspace for development: https://slack.com/get-started#/create
+2. Go to https://api.slack.com/apps and create a new app in your workspace.
+3. Configure the app with the following settings:
 
-- Event Subscriptions
-  - Request URL: `<ngrokUrl>/muzzle/handle`
-  - Subscribe to Workspace Events:
-    - messages.channels
-    - reaction_added
-    - reaction_removed
-    - team_join
+#### Slash Commands
 
-- Permissions
-  - admin
-  - channels:history
-  - chat:write:bot
-  - chat:write:user
-  - commands
-  - files:write:user
-  - groups:history
-  - reactions:read
-  - users.profile:read
-  - users:read
+Add these slash commands with their request URLs:
 
-### Setting Up Your MYSQL Instance
+- `/mock` → `<backend-url>/mock`
+- `/define` → `<backend-url>/define`
+- `/muzzle` → `<backend-url>/muzzle`
+- `/muzzlestats` → `<backend-url>/muzzle/stats`
+- `/confess` → `<backend-url>/confess`
+- `/list` → `<backend-url>/list/add`
+- `/listreport` → `<backend-url>/list/retrieve`
+- `/listremove` → `<backend-url>/list/remove`
+- `/counter` → `<backend-url>/counter`
+- `/repstats` → `<backend-url>/rep/get`
+- `/walkie` → `<backend-url>/walkie`
 
-1. Be sure to have mysql installed and configured.
-2. Create a database called `mockerdbdev`.
-3. `mysql -u <user> -p < DB_SEED.sql`
-4. You should now have a fully seeded database.
+**Important:** Check `Escape Channels, users and links sent to your app` for all commands.
 
-### Running Locally
+#### Event Subscriptions
 
-1. `npm install` (from the root directory - this installs dependencies for all workspaces)
-2. Add the following environment variables for typeORM:
+- **Request URL:** `<backend-url>/muzzle/handle`
+- **Subscribe to Workspace Events:**
+  - `messages.channels`
+  - `reaction_added`
+  - `reaction_removed`
+  - `team_join`
 
+#### OAuth & Permissions
+
+- **Redirect URLs (for search/auth UI):** `http://localhost:3001` (dev), or your deployed frontend URL
+- **Scopes:**
+  - `admin`
+  - `channels:history`
+  - `chat:write:bot`
+  - `chat:write:user`
+  - `commands`
+  - `files:write:user`
+  - `groups:history`
+  - `reactions:read`
+  - `users.profile:read`
+  - `users:read`
+  - `users.identity` (for OAuth login flow)
+
+Copy your **Bot Token** and **User OAuth Token** from the app credentials page.
+
+### 2. Set Up MySQL Database
+
+```bash
+# Ensure MySQL is running and create the database
+mysql -u <username> -p -e "CREATE DATABASE mockerdbdev;"
+
+# Seed the database (if DB_SEED.sql exists in repo root)
+mysql -u <username> -p mockerdbdev < DB_SEED.sql
 ```
-  TYPEORM_CONNECTION: mysql,
-  TYPEORM_HOST: localhost,
-  TYPEORM_PORT: 3306,
-  TYPEORM_USERNAME: <USER-NAME-FOR-MYSQL>,
-  TYPEORM_PASSWORD: <PASSWORD-FOR-MYSQL>,
-  TYPEORM_DATABASE: mockerdbdev,
-  TYPEORM_ENTITIES: /absolute/path/to/mocker/packages/backend/src/shared/db/models/*.ts,
-  TYPEORM_SYNCHRONIZE: true
+
+### 3. Environment Variables
+
+Create `.env` files in `packages/backend` and `packages/frontend` (or set them globally).
+
+#### Backend (`packages/backend/.env`)
+
+```bash
+# Slack Bot Credentials
+MUZZLE_BOT_TOKEN=xoxb-your-bot-token
+MUZZLE_BOT_USER_TOKEN=xoxp-your-user-token
+MUZZLE_BOT_SIGNING_SECRET=your-signing-secret
+
+# Slack OAuth (for search/auth UI login)
+SLACK_CLIENT_ID=your-client-id
+SLACK_CLIENT_SECRET=your-client-secret
+SLACK_REDIRECT_URI=http://localhost:3000/auth/slack/callback
+
+# Search & Auth
+ALLOWED_TEAM_DOMAIN=your-workspace-domain
+SEARCH_FRONTEND_URL=http://localhost:3001
+SEARCH_AUTH_SECRET=generate-a-random-secret-key
+
+# MySQL / TypeORM
+TYPEORM_CONNECTION=mysql
+TYPEORM_HOST=localhost
+TYPEORM_PORT=3306
+TYPEORM_USERNAME=root
+TYPEORM_PASSWORD=your-password
+TYPEORM_DATABASE=mockerdbdev
+TYPEORM_ENTITIES=/absolute/path/to/mocker/packages/backend/src/shared/db/models/*.ts
+TYPEORM_SYNCHRONIZE=true
+
+# API Server
+PORT=3000
+NODE_ENV=development
+
+# External APIs (optional, for AI features)
+OPENAI_API_KEY=sk-your-openai-key
+GOOGLE_TRANSLATE_API_KEY=your-google-translate-key
 ```
 
-3. `npm run start` (starts the backend server)
+#### Frontend (`packages/frontend/.env`)
+
+```bash
+# Backend API URL
+VITE_API_BASE_URL=http://localhost:3000
+```
+
+### 4. Local Development Setup
+
+```bash
+# Install dependencies (installs all workspaces)
+npm install
+
+# Start backend development server
+npm run start
+
+# In a new terminal, start frontend development server
+npm run dev -w @mocker/frontend
+
+# Backend: http://localhost:3000
+# Frontend (search UI): http://localhost:5173
+```
+
+### 5. Testing
+
+```bash
+# Run all tests
+npm run test
+
+# Run only backend tests
+npm run test -w @mocker/backend
+
+# Run backend tests in watch mode
+npm run test:watch -w @mocker/backend
+
+# Run with coverage
+npm run test:coverage -w @mocker/backend
+```
+
+### 6. Linting & Formatting
+
+```bash
+# Check linting and format issues
+npm run lint
+npm run format:check
+
+# Auto-fix linting and formatting issues
+npm run lint:fix
+npm run format:fix
+```
+
+### 7. Build for Production
+
+```bash
+# Build all workspaces
+npm run build
+
+# Build only backend
+npm run build:backend
+
+# Build backend with production optimizations
+npm run build:prod:backend
+
+# Build only frontend
+npm run build:frontend
+```
+
+### 8. Docker
+
+```bash
+# Build backend Docker image
+docker build -f packages/backend/Dockerfile -t mocker-backend:latest .
+
+# Run Docker container
+docker run -p 3000:3000 \
+  -e TYPEORM_HOST=host.docker.internal \
+  -e MUZZLE_BOT_TOKEN=xoxb-... \
+  mocker-backend:latest
+
+# View logs
+docker logs <container-id>
+docker logs <container-id> | jq .
+```
+
+## Key Features
+
+### Slack Bot Commands
+
+- **Mock, Define, Muzzle, Counter, Confess, List, Walkie** - Various game modes and actions
+- **Reputation Tracking** - Rep stats, reactions, achievements
+- **Event Handling** - Real-time reactions, team join events, message history
+
+### Search & Auth System (New)
+
+- **OAuth Login** - Users authenticate via Slack to access the search UI
+- **Team-Scoped Search** - Messages are filtered by `teamId` to prevent cross-workspace leakage
+- **Session Tokens** - JWTs issued after OAuth callback, required for all search requests
+- **Rate Limiting** - Auth endpoints: 20/15min, Search endpoints: 60/1min
+
+### AI Features (Optional)
+
+- **Daily Memory Job** - Summarizes conversations daily at 3 AM (requires OpenAI API key)
+- **Sentiment Analysis** - Analyzes message tone
+- **AI Summaries** - Generates summaries of message threads
 
 ### Scheduled Jobs
 
