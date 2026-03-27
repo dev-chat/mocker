@@ -15,10 +15,15 @@ function getSecret(): string {
   return secret;
 }
 
-export function createSessionToken(userId: string, teamDomain: string): string {
-  const payload = Buffer.from(JSON.stringify({ userId, teamDomain, exp: Date.now() + TOKEN_TTL_MS })).toString(
-    'base64url',
-  );
+export function createSessionToken(userId: string, teamDomain: string, teamId?: string): string {
+  const payloadData: SessionPayload = {
+    userId,
+    teamDomain,
+    exp: Date.now() + TOKEN_TTL_MS,
+    ...(teamId ? { teamId } : {}),
+  };
+
+  const payload = Buffer.from(JSON.stringify(payloadData)).toString('base64url');
   const sig = crypto.createHmac('sha256', getSecret()).update(payload).digest('base64url');
   return `${payload}.${sig}`;
 }
@@ -30,6 +35,7 @@ function isSessionPayload(value: unknown): value is SessionPayload {
   return (
     typeof Reflect.get(value, 'userId') === 'string' &&
     typeof Reflect.get(value, 'teamDomain') === 'string' &&
+    (Reflect.get(value, 'teamId') === undefined || typeof Reflect.get(value, 'teamId') === 'string') &&
     typeof Reflect.get(value, 'exp') === 'number'
   );
 }
