@@ -115,7 +115,7 @@ authController.get('/slack/callback', (req, res) => {
     const teamDomain = identityResponse.data.team?.domain;
     const teamId = identityResponse.data.team?.id;
     const userId = identityResponse.data.user?.id;
-    if (!identityResponse.data.ok || teamDomain !== ALLOWED_TEAM_DOMAIN || !userId) {
+    if (!identityResponse.data.ok || teamDomain !== ALLOWED_TEAM_DOMAIN || !userId || !teamId) {
       res.redirect(`${frontendUrl}?auth_error=unauthorized_workspace`);
       return;
     }
