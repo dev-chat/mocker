@@ -49,6 +49,10 @@ const buildAiService = (): AIService => {
 
   ai.webService = {
     sendMessage: jest.fn().mockResolvedValue({ ok: true }),
+    startStream: jest.fn().mockReturnValue({
+      append: jest.fn().mockResolvedValue(null),
+      stop: jest.fn().mockResolvedValue({ ok: true }),
+    }),
   } as unknown as AIService['webService'];
 
   ai.slackService = {
@@ -466,35 +470,83 @@ describe('AIService', () => {
   });
 
   describe('participate', () => {
-    it('should be defined', () => {
-      expect(aiService.participate).toBeDefined();
-    });
-
-    it('sends participation response and sets participation marker', async () => {
-      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([
-        { slackId: 'U2', name: 'Jane', message: 'Hello' },
-      ]);
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Participation response' }] }],
+    it('streams response to Slack when threadTs is provided', async () => {
+      const mockAppend = jest.fn().mockResolvedValue(null);
+      const mockStop = jest.fn().mockResolvedValue({ ok: true });
+      (aiService.webService.startStream as jest.Mock).mockReturnValue({
+        append: mockAppend,
+        stop: mockStop,
       });
-      (aiService.webService.sendMessage as jest.Mock).mockResolvedValue({ ok: true });
 
-      await aiService.participate('T1', 'C1', '<@moonbeam> hi');
-      await Promise.resolve();
+      const mockStream = {
+        async *[Symbol.asyncIterator]() {
+          yield { type: 'response.output_text.delta', delta: 'Hello ' };
+          yield { type: 'response.output_text.delta', delta: 'world!' };
+        },
+      };
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue(mockStream);
 
-      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Participation response', [
-        { type: 'markdown', text: 'Participation response' },
-      ]);
-      expect(aiService.redis.setHasParticipated).toHaveBeenCalledWith('T1', 'C1');
-      expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
+      await aiService.participate('T1', 'C1', 'hey @Moonbeam', 'U1', '1700000001.123456');
+
+      expect(aiService.webService.startStream).toHaveBeenCalledWith('C1', '1700000001.123456');
+      expect(mockAppend).toHaveBeenCalledWith({ markdown_text: 'Hello ' });
+      expect(mockAppend).toHaveBeenCalledWith({ markdown_text: 'world!' });
+      expect(mockStop).toHaveBeenCalled();
     });
 
-    it('throws when participate model call fails', async () => {
-      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
-      (aiService.openAi.responses.create as jest.Mock).mockRejectedValue(new Error('model fail'));
+    it('falls back to sendMessage when threadTs is not provided', async () => {
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Response text' }] }],
+      });
 
-      await expect(aiService.participate('T1', 'C1', 'hi')).rejects.toThrow('model fail');
-      expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
+      await aiService.participate('T1', 'C1', 'hey @Moonbeam', 'U1');
+
+      expect(aiService.webService.startStream).not.toHaveBeenCalled();
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        'C1',
+        'Response text',
+        [{ type: 'markdown', text: 'Response text' }],
+      );
+    });
+
+    it('falls back to sendMessage when streaming throws', async () => {
+      (aiService.webService.startStream as jest.Mock).mockImplementation(() => {
+        throw new Error('streaming not available');
+      });
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Fallback text' }] }],
+      });
+
+      await aiService.participate('T1', 'C1', 'hey @Moonbeam', 'U1', '1700000001.123456');
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        'C1',
+        'Fallback text',
+        [{ type: 'markdown', text: 'Fallback text' }],
+      );
+    });
+
+    it('stops stream cleanly on OpenAI error', async () => {
+      const mockAppend = jest.fn().mockResolvedValue(null);
+      const mockStop = jest.fn().mockResolvedValue({ ok: true });
+      (aiService.webService.startStream as jest.Mock).mockReturnValue({
+        append: mockAppend,
+        stop: mockStop,
+      });
+
+      const mockStream = {
+        async *[Symbol.asyncIterator]() {
+          yield { type: 'response.output_text.delta', delta: 'partial' };
+          throw new Error('OpenAI stream error');
+        },
+      };
+      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue(mockStream);
+
+      await expect(
+        aiService.participate('T1', 'C1', 'hey @Moonbeam', 'U1', '1700000001.123456'),
+      ).rejects.toThrow('OpenAI stream error');
+
+      expect(mockStop).toHaveBeenCalled();
     });
   });
 

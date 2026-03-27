@@ -438,64 +438,114 @@ export class AIService {
       });
   }
 
-  public async participate(teamId: string, channelId: string, taggedMessage: string, userId?: string, threadTs?: string): Promise<void> {
+  public async participate(
+    teamId: string,
+    channelId: string,
+    taggedMessage: string,
+    userId?: string,
+    threadTs?: string,
+  ): Promise<void> {
     await this.redis.setParticipationInFlight(channelId, teamId);
 
-    const historyMessages = await this.historyService.getHistoryWithOptions({
-      teamId,
-      channelId,
-      maxMessages: 200,
-      timeWindowMinutes: 120,
-    });
+    try {
+      const historyMessages = await this.historyService.getHistoryWithOptions({
+        teamId,
+        channelId,
+        maxMessages: 200,
+        timeWindowMinutes: 120,
+      });
 
-    const history = this.formatHistory(historyMessages);
+      const history = this.formatHistory(historyMessages);
 
-    const customPrompt = userId ? await this.slackPersistenceService.getCustomPrompt(userId, teamId) : null;
-    const normalizedCustomPrompt = customPrompt?.trim() || null;
+      const customPrompt = userId ? await this.slackPersistenceService.getCustomPrompt(userId, teamId) : null;
+      const normalizedCustomPrompt = customPrompt?.trim() || null;
 
-    // Fetch and select relevant memories
-    const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
-      excludeSlackIds: [MOONBEAM_SLACK_ID],
-    });
-    const memoryContext = await this.fetchMemoryContext(participantSlackIds, teamId, history, historyMessages);
-    const baseInstructions = normalizedCustomPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
-    const systemInstructions = this.appendMemoryContext(baseInstructions, memoryContext);
+      const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
+        excludeSlackIds: [MOONBEAM_SLACK_ID],
+      });
+      const memoryContext = await this.fetchMemoryContext(participantSlackIds, teamId, history, historyMessages);
+      const baseInstructions = normalizedCustomPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
+      const systemInstructions = this.appendMemoryContext(baseInstructions, memoryContext);
 
-    const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
+      const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
-    return this.openAi.responses
-      .create({
+      if (threadTs) {
+        await this.participateWithStreaming(channelId, teamId, systemInstructions, input, threadTs);
+      } else {
+        await this.participateWithMessage(channelId, teamId, systemInstructions, input);
+      }
+
+      await this.redis.setHasParticipated(teamId, channelId);
+    } catch (e) {
+      logError(this.aiServiceLogger, 'Failed to generate AI participation response', e, {
+        teamId,
+        channelId,
+        taggedMessage,
+      });
+      throw e;
+    } finally {
+      void this.redis.removeParticipationInFlight(channelId, teamId);
+    }
+  }
+
+  private async participateWithStreaming(
+    channelId: string,
+    teamId: string,
+    instructions: string,
+    input: string,
+    threadTs: string,
+  ): Promise<void> {
+    let streamer;
+    try {
+      streamer = this.webService.startStream(channelId, threadTs);
+    } catch (e) {
+      this.aiServiceLogger.warn('Failed to start Slack stream, falling back to sendMessage', e);
+      return this.participateWithMessage(channelId, teamId, instructions, input);
+    }
+
+    try {
+      const stream = await this.openAi.responses.create({
         model: GPT_MODEL,
         tools: [{ type: 'web_search_preview' }],
-        instructions: systemInstructions,
+        instructions,
         input,
+        stream: true,
         user: `participation-${channelId}-${teamId}-DaBros2016`,
-      })
-      .then((x) => extractAndParseOpenAiResponse(x))
-      .then((result) => {
-        if (result) {
-          this.webService
-            .sendMessage(channelId, result, [{ type: 'markdown', text: result }])
-            .then(() => this.redis.setHasParticipated(teamId, channelId))
-            .catch((e) =>
-              logError(this.aiServiceLogger, 'Failed to send AI participation message', e, {
-                teamId,
-                channelId,
-              }),
-            );
-        }
-      })
-      .catch(async (e) => {
-        logError(this.aiServiceLogger, 'Failed to generate AI participation response', e, {
-          teamId,
-          channelId,
-          taggedMessage,
-        });
-        throw e;
-      })
-      .finally(() => {
-        void this.redis.removeParticipationInFlight(channelId, teamId);
       });
+
+      for await (const event of stream) {
+        if (event.type === 'response.output_text.delta') {
+          await streamer.append({ markdown_text: event.delta });
+        }
+      }
+
+      await streamer.stop();
+    } catch (e) {
+      await streamer.stop().catch((stopErr: unknown) => {
+        this.aiServiceLogger.warn('Failed to stop stream after error', stopErr);
+      });
+      throw e;
+    }
+  }
+
+  private async participateWithMessage(
+    channelId: string,
+    _teamId: string,
+    instructions: string,
+    input: string,
+  ): Promise<void> {
+    const response = await this.openAi.responses.create({
+      model: GPT_MODEL,
+      tools: [{ type: 'web_search_preview' }],
+      instructions,
+      input,
+      user: `participation-${channelId}-${_teamId}-DaBros2016`,
+    });
+
+    const result = extractAndParseOpenAiResponse(response);
+    if (result) {
+      await this.webService.sendMessage(channelId, result, [{ type: 'markdown', text: result }]);
+    }
   }
 
   private async selectRelevantMemories(
