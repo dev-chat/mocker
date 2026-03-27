@@ -1,5 +1,6 @@
 import { DailyMemoryJob } from './daily-memory.job';
 import type { SlackChannel } from '../shared/db/models/SlackChannel';
+import { DAILY_MEMORY_JOB_CONCURRENCY } from './ai.constants';
 
 jest.mock('typeorm', () => ({
   getRepository: jest.fn().mockReturnValue({
@@ -90,5 +91,44 @@ describe('DailyMemoryJob', () => {
     await job.run();
 
     expect(job.aiService.extractMemoriesForChannel).not.toHaveBeenCalled();
+  });
+
+  it('processes all channels even when count exceeds the concurrency limit', async () => {
+    const channels: Partial<SlackChannel>[] = Array.from({ length: DAILY_MEMORY_JOB_CONCURRENCY + 2 }, (_, i) => ({
+      channelId: `C${i}`,
+      teamId: 'T1',
+    }));
+    findMock.mockResolvedValue(channels);
+
+    await job.run();
+
+    expect(job.aiService.extractMemoriesForChannel).toHaveBeenCalledTimes(channels.length);
+  });
+
+  it('processes channels in batches so at most DAILY_MEMORY_JOB_CONCURRENCY run at once', async () => {
+    const channels: Partial<SlackChannel>[] = Array.from({ length: DAILY_MEMORY_JOB_CONCURRENCY + 1 }, (_, i) => ({
+      channelId: `C${i}`,
+      teamId: 'T1',
+    }));
+    findMock.mockResolvedValue(channels);
+
+    let maxInflight = 0;
+    let currentInflight = 0;
+    (job.aiService.extractMemoriesForChannel as jest.Mock).mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          currentInflight++;
+          if (currentInflight > maxInflight) maxInflight = currentInflight;
+          setImmediate(() => {
+            currentInflight--;
+            resolve();
+          });
+        }),
+    );
+
+    await job.run();
+
+    expect(maxInflight).toBeLessThanOrEqual(DAILY_MEMORY_JOB_CONCURRENCY);
+    expect(job.aiService.extractMemoriesForChannel).toHaveBeenCalledTimes(channels.length);
   });
 });
