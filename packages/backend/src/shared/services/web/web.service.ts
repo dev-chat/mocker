@@ -11,7 +11,7 @@ import type {
   UsersListResponse,
 } from '@slack/web-api';
 import { WebClient } from '@slack/web-api';
-import type { ChatStreamer } from '@slack/web-api/dist/chat-stream';
+import type { ChatStreamer } from '@slack/web-api';
 import { logError } from '../../logger/error-logging';
 import { logger } from '../../logger/logger';
 

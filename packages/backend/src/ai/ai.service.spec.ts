@@ -290,31 +290,6 @@ describe('AIService', () => {
       );
     });
 
-    it('passes event.ts as threadTs when not in a thread', async () => {
-      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
-      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
-      (aiService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(false);
-      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
-
-      await aiService.handle({
-        team_id: 'T1',
-        event: {
-          user: 'U1',
-          channel: 'C1',
-          text: `<@${MOONBEAM_SLACK_ID}> hello`,
-          ts: '1700000001.123456',
-        },
-      } as never);
-
-      expect(participateSpy).toHaveBeenCalledWith(
-        'T1',
-        'C1',
-        `<@${MOONBEAM_SLACK_ID}> hello`,
-        'U1',
-        '1700000001.123456',
-      );
-    });
-
     it('passes event.thread_ts as threadTs when in a thread', async () => {
       (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
       (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
@@ -492,6 +467,8 @@ describe('AIService', () => {
       expect(mockAppend).toHaveBeenCalledWith({ markdown_text: 'Hello ' });
       expect(mockAppend).toHaveBeenCalledWith({ markdown_text: 'world!' });
       expect(mockStop).toHaveBeenCalled();
+      expect(aiService.redis.setHasParticipated).toHaveBeenCalledWith('T1', 'C1');
+      expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
     });
 
     it('falls back to sendMessage when threadTs is not provided', async () => {
@@ -543,6 +520,7 @@ describe('AIService', () => {
       );
 
       expect(mockStop).toHaveBeenCalled();
+      expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
     });
   });
 

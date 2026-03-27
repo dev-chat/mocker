@@ -530,7 +530,7 @@ export class AIService {
 
   private async participateWithMessage(
     channelId: string,
-    _teamId: string,
+    teamId: string,
     instructions: string,
     input: string,
   ): Promise<void> {
@@ -539,7 +539,7 @@ export class AIService {
       tools: [{ type: 'web_search_preview' }],
       instructions,
       input,
-      user: `participation-${channelId}-${_teamId}-DaBros2016`,
+      user: `participation-${channelId}-${teamId}-DaBros2016`,
     });
 
     const result = extractAndParseOpenAiResponse(response);
