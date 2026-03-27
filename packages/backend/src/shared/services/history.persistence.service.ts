@@ -100,6 +100,26 @@ export class HistoryPersistenceService {
    * Unlike getHistory(), this method does NOT exclude any users by default,
    * allowing Moonbeam to see its own prior messages for conversational continuity.
    */
+  async getLast24HoursForChannel(teamId: string, channelId: string): Promise<MessageWithName[]> {
+    const query = `
+      SELECT message.*, slack_user.name, slack_user.slackId
+      FROM message
+      INNER JOIN slack_user ON slack_user.id=message.userIdId
+      WHERE message.teamId=? AND message.channel=? AND message.message != ''
+        AND message.createdAt >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+      ORDER BY message.createdAt ASC`;
+
+    return getRepository(Message)
+      .query(query, [teamId, channelId])
+      .catch((e) => {
+        logError(this.logger, 'Failed to retrieve last 24 hours of message history', e, {
+          teamId,
+          channelId,
+        });
+        throw e;
+      });
+  }
+
   async getHistoryWithOptions(options: HistoryOptions): Promise<MessageWithName[]> {
     const { teamId, channelId, maxMessages = 200, timeWindowMinutes = 120, excludeUserId } = options;
 
