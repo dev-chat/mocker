@@ -38,8 +38,15 @@ import { authMiddleware } from './shared/middleware/authMiddleware';
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
+const SEARCH_UI_ORIGIN = process.env.SEARCH_FRONTEND_URL;
+
+if (!SEARCH_UI_ORIGIN) {
+  logger.error('Environment variable SEARCH_FRONTEND_URL must be set to configure CORS for search/auth routes.');
+  throw new Error('Missing required environment variable: SEARCH_FRONTEND_URL');
+}
+
 const searchCors = cors({
-  origin: process.env.SEARCH_FRONTEND_URL || process.env.SEARCH_UI_ORIGIN || 'http://localhost:5173',
+  origin: SEARCH_UI_ORIGIN,
 });
 
 app.use(
