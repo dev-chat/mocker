@@ -44,6 +44,7 @@ const buildAiService = (): AIService => {
   ai.historyService = {
     getHistory: jest.fn().mockResolvedValue([]),
     getHistoryWithOptions: jest.fn().mockResolvedValue([]),
+    getLast24HoursForChannel: jest.fn().mockResolvedValue([]),
   } as unknown as AIService['historyService'];
 
   ai.webService = {
@@ -545,13 +546,7 @@ describe('AIService', () => {
         conversation: string,
         messages: Array<{ slackId: string; name: string; message: string }>,
       ) => Promise<string>;
-      extractMemories: (
-        teamId: string,
-        channelId: string,
-        history: string,
-        response: string,
-        participantIds: string[],
-      ) => Promise<void>;
+      extractMemories: (teamId: string, channelId: string, history: string, participantIds: string[]) => Promise<void>;
     };
 
     it('extracts participant slack ids with include/exclude rules', () => {
@@ -714,7 +709,7 @@ describe('AIService', () => {
       (aiService.redis.getExtractionLock as jest.Mock).mockResolvedValue('1');
       const infoSpy = jest.spyOn(aiService.aiServiceLogger, 'info');
 
-      await (aiService as unknown as AiServicePrivate).extractMemories('T1', 'C1', 'history', 'response', ['U1']);
+      await (aiService as unknown as AiServicePrivate).extractMemories('T1', 'C1', 'history', ['U1']);
 
       expect(infoSpy).toHaveBeenCalled();
     });
@@ -725,7 +720,7 @@ describe('AIService', () => {
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'NONE' }] }],
       });
 
-      await (aiService as unknown as AiServicePrivate).extractMemories('T1', 'C1', 'history', 'response', ['U1']);
+      await (aiService as unknown as AiServicePrivate).extractMemories('T1', 'C1', 'history', ['U1']);
 
       expect(aiService.memoryPersistenceService.saveMemories).not.toHaveBeenCalled();
     });
@@ -750,7 +745,7 @@ describe('AIService', () => {
         ],
       });
 
-      await (aiService as unknown as AiServicePrivate).extractMemories('T1', 'C1', 'history', 'response', ['U123ABC']);
+      await (aiService as unknown as AiServicePrivate).extractMemories('T1', 'C1', 'history', ['U123ABC']);
 
       expect(aiService.memoryPersistenceService.saveMemories).toHaveBeenCalled();
       expect(aiService.memoryPersistenceService.reinforceMemory).toHaveBeenCalledWith(10);
@@ -778,9 +773,47 @@ describe('AIService', () => {
         ],
       });
 
-      await (aiService as unknown as AiServicePrivate).extractMemories('T1', 'C1', 'history', 'response', ['U123ABC']);
+      await (aiService as unknown as AiServicePrivate).extractMemories('T1', 'C1', 'history', ['U123ABC']);
 
       expect(warnSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('extractMemoriesForChannel', () => {
+    it('returns early when there are no messages in the last 24 hours', async () => {
+      (aiService.historyService.getLast24HoursForChannel as jest.Mock).mockResolvedValue([]);
+
+      await aiService.extractMemoriesForChannel('T1', 'C1');
+
+      expect(aiService.openAi.responses.create).not.toHaveBeenCalled();
+    });
+
+    it('returns early when there are no non-Moonbeam participants', async () => {
+      (aiService.historyService.getLast24HoursForChannel as jest.Mock).mockResolvedValue([
+        { slackId: MOONBEAM_SLACK_ID, name: 'Moonbeam', message: 'Hello there' },
+      ]);
+
+      await aiService.extractMemoriesForChannel('T1', 'C1');
+
+      expect(aiService.openAi.responses.create).not.toHaveBeenCalled();
+    });
+
+    it('calls extractMemories with formatted history when valid messages exist', async () => {
+      (aiService.historyService.getLast24HoursForChannel as jest.Mock).mockResolvedValue([
+        { slackId: 'U1', name: 'Alice', message: 'Hello' },
+        { slackId: MOONBEAM_SLACK_ID, name: 'Moonbeam', message: 'Hi Alice' },
+      ]);
+      (aiService.redis.getExtractionLock as jest.Mock).mockResolvedValue('1');
+
+      await aiService.extractMemoriesForChannel('T1', 'C1');
+
+      expect(aiService.historyService.getLast24HoursForChannel).toHaveBeenCalledWith('T1', 'C1');
+    });
+
+    it('propagates errors from getLast24HoursForChannel', async () => {
+      (aiService.historyService.getLast24HoursForChannel as jest.Mock).mockRejectedValue(new Error('DB error'));
+
+      await expect(aiService.extractMemoriesForChannel('T1', 'C1')).rejects.toThrow('DB error');
     });
   });
 

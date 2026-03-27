@@ -463,11 +463,6 @@ export class AIService {
                 channelId,
               }),
             );
-
-          // Fire-and-forget: extract memories from this conversation
-          this.extractMemories(teamId, channelId, history, result, participantSlackIds).catch((e) =>
-            this.aiServiceLogger.warn('Background extraction failed:', e),
-          );
         }
       })
       .catch(async (e) => {
@@ -579,11 +574,24 @@ export class AIService {
     return `${baseInstructions}\n\n${memoryContext}`;
   }
 
+  public async extractMemoriesForChannel(teamId: string, channelId: string): Promise<void> {
+    const historyMessages = await this.historyService.getLast24HoursForChannel(teamId, channelId);
+    if (historyMessages.length === 0) return;
+
+    const history = this.formatHistory(historyMessages);
+    const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
+      excludeSlackIds: [MOONBEAM_SLACK_ID],
+    });
+
+    if (participantSlackIds.length === 0) return;
+
+    await this.extractMemories(teamId, channelId, history, participantSlackIds);
+  }
+
   private async extractMemories(
     teamId: string,
     channelId: string,
     conversationHistory: string,
-    moonbeamResponse: string,
     participantSlackIds: string[],
   ): Promise<void> {
     const locked = await this.redis.getExtractionLock(channelId, teamId);
@@ -609,7 +617,7 @@ export class AIService {
               .join('\n\n')
           : '(no existing memories)';
 
-      const extractionInput = `${conversationHistory}\n\nMoonbeam: ${moonbeamResponse}`;
+      const extractionInput = conversationHistory;
       const prompt = MEMORY_EXTRACTION_PROMPT.replace('{existing_memories}', existingMemoriesText);
 
       const result = await this.openAi.responses

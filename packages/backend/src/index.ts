@@ -2,6 +2,7 @@ import 'reflect-metadata'; // Necessary for TypeORM entities.
 import 'dotenv/config';
 import bodyParser from 'body-parser';
 import cors from 'cors';
+import cron from 'node-cron';
 
 import type { Application } from 'express';
 import express from 'express';
@@ -29,6 +30,7 @@ import { signatureVerificationMiddleware } from './shared/middleware/signatureVe
 import { WebService } from './shared/services/web/web.service';
 import { logger } from './shared/logger/logger';
 import { AIService } from './ai/ai.service';
+import { DailyMemoryJob } from './ai/daily-memory.job';
 import { portfolioController } from './portfolio/portfolio.controller';
 import { hookController } from './hook/hook.controller';
 import { searchController } from './search/search.controller';
@@ -106,6 +108,7 @@ app.use('/walkie', walkieController);
 const slackService = new SlackService();
 const webService = new WebService();
 const aiService = new AIService();
+const dailyMemoryJob = new DailyMemoryJob(aiService);
 const indexLogger = logger.child({ module: 'Index' });
 
 const connectToDb = async (): Promise<boolean> => {
@@ -187,6 +190,14 @@ app.listen(PORT, (e?: Error) => {
       } else {
         indexLogger.info('Database connection established successfully.');
         void aiService.redeployMoonbeam();
+        cron.schedule(
+          '0 3 * * *',
+          () => {
+            void dailyMemoryJob.run();
+          },
+          { timezone: 'America/New_York' },
+        );
+        indexLogger.info('Daily memory extraction job scheduled daily at 3AM America/New_York time.');
       }
     })
     .catch((error) => {

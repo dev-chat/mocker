@@ -104,4 +104,21 @@ describe('HistoryPersistenceService', () => {
       30,
     ]);
   });
+
+  it('queries the last 24 hours of messages for a channel', async () => {
+    const rows = [{ id: 1, message: 'hello', name: 'Alice', slackId: 'U1' }];
+    query.mockResolvedValue(rows);
+
+    const result = await service.getLast24HoursForChannel('T1', 'C1');
+
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('INTERVAL 1 DAY'), ['T1', 'C1']);
+    expect(result).toEqual(rows);
+  });
+
+  it('throws and logs when getLast24HoursForChannel query fails', async () => {
+    const err = new Error('DB fail');
+    query.mockRejectedValue(err);
+
+    await expect(service.getLast24HoursForChannel('T1', 'C1')).rejects.toThrow('DB fail');
+  });
 });
