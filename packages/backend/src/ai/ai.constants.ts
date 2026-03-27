@@ -147,4 +147,4 @@ Format: [{"slackId": "U12345", "content": "description of what they said or did"
 
 Keep each memory to 1-2 sentences. Be specific — include what was actually said, not a summary of the topic.`;
 
-export const DAILY_MEMORY_JOB_CONCURRENCY = 5;
+export const DAILY_MEMORY_JOB_CONCURRENCY = 50;

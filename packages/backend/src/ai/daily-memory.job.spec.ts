@@ -105,7 +105,7 @@ describe('DailyMemoryJob', () => {
     expect(job.aiService.extractMemoriesForChannel).toHaveBeenCalledTimes(channels.length);
   });
 
-  it('processes channels in batches so at most DAILY_MEMORY_JOB_CONCURRENCY run at once', async () => {
+  it('processes channels with a sliding window so at most DAILY_MEMORY_JOB_CONCURRENCY run at once', async () => {
     const channels: Partial<SlackChannel>[] = Array.from({ length: DAILY_MEMORY_JOB_CONCURRENCY + 1 }, (_, i) => ({
       channelId: `C${i}`,
       teamId: 'T1',

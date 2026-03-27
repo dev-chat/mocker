@@ -593,7 +593,6 @@ export class AIService {
     channelId: string,
     conversationHistory: string,
     participantSlackIds: string[],
-    _moonbeamResponse?: unknown,
   ): Promise<void> {
     const locked = await this.redis.getExtractionLock(channelId, teamId);
     if (locked) {

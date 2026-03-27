@@ -41,12 +41,21 @@ export class DailyMemoryJob {
     tasks: Array<() => Promise<T>>,
     concurrency: number,
   ): Promise<PromiseSettledResult<T>[]> {
-    const results: PromiseSettledResult<T>[] = [];
-    for (let i = 0; i < tasks.length; i += concurrency) {
-      const batch = tasks.slice(i, i + concurrency);
-      const batchResults = await Promise.allSettled(batch.map((task) => task()));
-      results.push(...batchResults);
-    }
+    const results: PromiseSettledResult<T>[] = new Array(tasks.length);
+    let nextIndex = 0;
+
+    const runNext = async (): Promise<void> => {
+      while (nextIndex < tasks.length) {
+        const index = nextIndex++;
+        try {
+          results[index] = { status: 'fulfilled', value: await tasks[index]() };
+        } catch (reason) {
+          results[index] = { status: 'rejected', reason };
+        }
+      }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, () => runNext()));
     return results;
   }
 }
