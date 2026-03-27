@@ -82,13 +82,13 @@ describe('SearchPersistenceService', () => {
     expect(params[params.length - 1]).toBe(25);
   });
 
-  it('clamps limit to MAX_LIMIT (500) when provided value exceeds it', async () => {
+  it('clamps limit to MAX_LIMIT (1000) when provided value exceeds it', async () => {
     query.mockResolvedValue([]);
 
     await service.searchMessages({ teamId: 'T1', limit: 9999 });
 
     const [, params] = (query as jest.Mock).mock.calls[0] as [string, unknown[]];
-    expect(params[params.length - 1]).toBe(500);
+    expect(params[params.length - 1]).toBe(1000);
   });
 
   it('uses default limit when provided value is below MIN_LIMIT', async () => {
