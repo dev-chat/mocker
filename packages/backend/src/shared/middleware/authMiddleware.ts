@@ -1,11 +1,12 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Response, NextFunction } from 'express';
 import { verifySessionToken } from '../utils/session-token';
 import { BEARER_PREFIX_LENGTH } from '../utils/session-token.const';
 import { logger } from '../logger/logger';
+import type { RequestWithAuthSession } from '../models/express/RequestWithAuthSession';
 
 const authLogger = logger.child({ module: 'AuthMiddleware' });
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+export const authMiddleware = (req: RequestWithAuthSession, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -27,6 +28,14 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
+
+  if (!session.teamId) {
+    authLogger.warn('Session token missing teamId; rejecting request');
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  req.authSession = session;
 
   next();
 };

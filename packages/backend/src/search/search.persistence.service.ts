@@ -16,13 +16,13 @@ export class SearchPersistenceService {
   }
 
   async searchMessages(params: MessageSearchParams): Promise<MessageWithName[]> {
-    const { userName, channel, content } = params;
+    const { userName, channel, content, teamId } = params;
     const effectiveLimit = SearchPersistenceService.resolveLimit(params.limit);
 
     // Each condition is joined with AND in the WHERE clause; queryParams holds the
     // positional `?` values in the same order as the conditions that use them.
-    const conditions: string[] = ["message.message != ''"];
-    const queryParams: (string | number)[] = [];
+    const conditions: string[] = ["message.message != ''", 'message.teamId = ?', 'slack_user.teamId = ?'];
+    const queryParams: (string | number)[] = [teamId, teamId];
 
     if (userName) {
       conditions.push('slack_user.name LIKE ?');
@@ -56,6 +56,7 @@ export class SearchPersistenceService {
       .query(query, queryParams)
       .catch((e: unknown) => {
         logError(this.logger, 'Failed to search messages', e, {
+          teamId: params.teamId,
           userName: params.userName,
           channel: params.channel,
           content: params.content,

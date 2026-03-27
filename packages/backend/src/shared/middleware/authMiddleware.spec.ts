@@ -28,7 +28,7 @@ describe('authMiddleware', () => {
   });
 
   it('calls next for a valid Bearer token', () => {
-    const token = createSessionToken('U1', 'dabros2016');
+    const token = createSessionToken('U1', 'dabros2016', 'T1');
     const req = makeReq(`Bearer ${token}`);
     const res = makeRes();
     const next = jest.fn() as unknown as NextFunction;
@@ -37,6 +37,19 @@ describe('authMiddleware', () => {
 
     expect(next).toHaveBeenCalled();
     expect(res.status).not.toHaveBeenCalled();
+    expect((req as Request & { authSession?: { teamId?: string } }).authSession?.teamId).toBe('T1');
+  });
+
+  it('returns 401 when verified token payload has no teamId', () => {
+    const token = createSessionToken('U1', 'dabros2016');
+    const req = makeReq(`Bearer ${token}`);
+    const res = makeRes();
+    const next = jest.fn() as unknown as NextFunction;
+
+    authMiddleware(req as Request, res as Response, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
   });
 
   it('returns 401 when Authorization header is missing', () => {

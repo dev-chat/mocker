@@ -4,13 +4,20 @@ import { SearchPersistenceService } from './search.persistence.service';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { MAX_LIMIT } from './search.const';
+import type { RequestWithAuthSession } from '../shared/models/express/RequestWithAuthSession';
 
 export const searchController: Router = express.Router();
 
 const searchPersistenceService = new SearchPersistenceService();
 const searchLogger = logger.child({ module: 'SearchController' });
 
-searchController.get('/messages', (req, res) => {
+searchController.get('/messages', (req: RequestWithAuthSession, res) => {
+  const teamId = req.authSession?.teamId;
+  if (!teamId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
   const { userName, channel, content, limit } = req.query;
 
   let parsedLimit: number | undefined;
@@ -23,6 +30,7 @@ searchController.get('/messages', (req, res) => {
 
   searchPersistenceService
     .searchMessages({
+      teamId,
       userName: typeof userName === 'string' ? userName : undefined,
       channel: typeof channel === 'string' ? channel : undefined,
       content: typeof content === 'string' ? content : undefined,

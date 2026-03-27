@@ -14,6 +14,15 @@ import { searchController } from './search.controller';
 describe('searchController', () => {
   const app = express();
   app.use(express.json());
+  app.use((req, _res, next) => {
+    (req as { authSession?: { userId: string; teamDomain: string; teamId: string; exp: number } }).authSession = {
+      userId: 'U1',
+      teamDomain: 'dabros2016',
+      teamId: 'T1',
+      exp: Date.now() + 60000,
+    };
+    next();
+  });
   app.use('/', searchController);
 
   beforeEach(() => jest.clearAllMocks());
@@ -29,6 +38,7 @@ describe('searchController', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual(messages);
     expect(searchMessagesMock).toHaveBeenCalledWith({
+      teamId: 'T1',
       userName: 'alice',
       channel: 'general',
       content: 'hello',
@@ -42,6 +52,7 @@ describe('searchController', () => {
     await request(app).get('/messages').expect(200);
 
     expect(searchMessagesMock).toHaveBeenCalledWith({
+      teamId: 'T1',
       userName: undefined,
       channel: undefined,
       content: undefined,
@@ -79,5 +90,24 @@ describe('searchController', () => {
     const res = await request(app).get('/messages').query({ userName: 'bob' });
 
     expect(res.status).toBe(500);
+  });
+
+  it('returns 401 when auth session is missing teamId', async () => {
+    const appWithoutTeam = express();
+    appWithoutTeam.use(express.json());
+    appWithoutTeam.use((req, _res, next) => {
+      (req as { authSession?: { userId: string; teamDomain: string; exp: number } }).authSession = {
+        userId: 'U1',
+        teamDomain: 'dabros2016',
+        exp: Date.now() + 60000,
+      };
+      next();
+    });
+    appWithoutTeam.use('/', searchController);
+
+    const res = await request(appWithoutTeam).get('/messages');
+
+    expect(res.status).toBe(401);
+    expect(searchMessagesMock).not.toHaveBeenCalled();
   });
 });
