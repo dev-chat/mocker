@@ -155,10 +155,14 @@ app.listen(PORT, (e?: Error) => {
       } else {
         indexLogger.info('Database connection established successfully.');
         void aiService.redeployMoonbeam();
-        cron.schedule('0 8 * * *', () => {
-          void dailyMemoryJob.run();
-        });
-        indexLogger.info('Daily memory extraction job scheduled at 3AM EST (8AM UTC).');
+        cron.schedule(
+          '0 3 * * *',
+          () => {
+            void dailyMemoryJob.run();
+          },
+          { timezone: 'America/New_York' },
+        );
+        indexLogger.info('Daily memory extraction job scheduled daily at 3AM America/New_York time.');
       }
     })
     .catch((error) => {
