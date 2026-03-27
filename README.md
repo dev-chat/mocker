@@ -86,7 +86,7 @@ Add these slash commands with their request URLs:
   - `reactions:read`
   - `users.profile:read`
   - `users:read`
-  - `users.identity` (for OAuth login flow)
+  - `identity.basic` (user token scope for OAuth login flow)
 
 Copy your **Bot Token** and **User OAuth Token** from the app credentials page.
 
