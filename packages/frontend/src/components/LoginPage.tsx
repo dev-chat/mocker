@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
+import { API_BASE_URL } from '@/config';
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   access_denied: 'Access was denied. Please try again.',

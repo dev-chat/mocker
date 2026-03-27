@@ -11,8 +11,7 @@ import { LoginPage } from '@/components/LoginPage';
 import type { Message } from '@/app.model';
 import { AUTH_TOKEN_KEY } from '@/app.const';
 import { useAuth } from '@/hooks/useAuth';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+import { API_BASE_URL } from '@/config';
 
 export default function App() {
   const { isAuthenticated, authError, logout } = useAuth();
