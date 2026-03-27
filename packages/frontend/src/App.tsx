@@ -176,7 +176,7 @@ export default function App() {
             {messages.length > 0 && (
               <>
                 <Separator />
-                <CardContent className="pt-4 p-0">
+                <CardContent className="pt-4">
                   <Table>
                     <TableHeader>
                       <TableRow>
