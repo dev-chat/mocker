@@ -43,6 +43,7 @@ export interface Event {
   user: string;
   username: string;
   ts: string;
+  thread_ts?: string;
   channel: string;
   event_ts: string;
   channel_type: string;
