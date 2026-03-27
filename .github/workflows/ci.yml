@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   setup:
-    name: Install Dependencies (All)
+    name: Install Dependencies
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,7 +29,7 @@ jobs:
           retention-days: 1
 
   lint:
-    name: Lint (Back End)
+    name: Lint
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -38,22 +38,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: npm run lint:backend
-
-  lint-frontend:
-    name: Lint (Front End)
-    needs: setup
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - run: npm run lint -w @mocker/frontend
+      - run: npm run lint
 
   format-check:
-    name: Format Check (All)
+    name: Format Check
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -65,7 +53,7 @@ jobs:
       - run: npm run format:check
 
   build:
-    name: Build (Back End)
+    name: Build
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -74,22 +62,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: npm run build:backend
-
-  build-frontend:
-    name: Build (Front End)
-    needs: setup
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - run: npm run build:frontend
+      - run: npm run build
 
   test:
-    name: Test & Coverage (Back End)
+    name: Test & Coverage
     needs: setup
     runs-on: ubuntu-latest
     permissions:
@@ -101,21 +77,8 @@ jobs:
       - name: Enforce 80% coverage
         run: npm run test:coverage
 
-  test-frontend:
-    name: Test & Coverage (Front End)
-    needs: setup
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - name: Enforce 80% coverage
-        run: npm run test:coverage -w @mocker/frontend
-
   docker-build:
-    name: Docker Build (Back End)
+    name: Docker Build
     runs-on: ubuntu-latest
     permissions:
       contents: read

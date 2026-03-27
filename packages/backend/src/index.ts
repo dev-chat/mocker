@@ -1,12 +1,10 @@
 import 'reflect-metadata'; // Necessary for TypeORM entities.
 import 'dotenv/config';
 import bodyParser from 'body-parser';
-import cors from 'cors';
 import cron from 'node-cron';
 
 import type { Application } from 'express';
 import express from 'express';
-import { rateLimit } from 'express-rate-limit';
 import { createConnection, getConnectionOptions } from 'typeorm';
 import type { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
 import { aiController } from './ai/ai.controller';
@@ -33,23 +31,9 @@ import { AIService } from './ai/ai.service';
 import { DailyMemoryJob } from './ai/daily-memory.job';
 import { portfolioController } from './portfolio/portfolio.controller';
 import { hookController } from './hook/hook.controller';
-import { searchController } from './search/search.controller';
-import { authController } from './auth/auth.controller';
-import { authMiddleware } from './shared/middleware/authMiddleware';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
-
-const SEARCH_UI_ORIGIN = process.env.SEARCH_FRONTEND_URL;
-
-if (!SEARCH_UI_ORIGIN) {
-  logger.error('Environment variable SEARCH_FRONTEND_URL must be set to configure CORS for search/auth routes.');
-  throw new Error('Missing required environment variable: SEARCH_FRONTEND_URL');
-}
-
-const searchCors = cors({
-  origin: SEARCH_UI_ORIGIN,
-});
 
 app.use(
   bodyParser.urlencoded({
@@ -66,25 +50,6 @@ app.use(
     },
   }),
 );
-const AUTH_RATE_LIMIT_WINDOW_MS = 900000; // 15 minutes
-const SEARCH_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
-
-const authRateLimit = rateLimit({
-  windowMs: AUTH_RATE_LIMIT_WINDOW_MS,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const searchRateLimit = rateLimit({
-  windowMs: SEARCH_RATE_LIMIT_WINDOW_MS,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-app.use('/auth', searchCors, authRateLimit, authController);
-app.use('/search', searchCors, searchRateLimit, authMiddleware, searchController);
 app.use(signatureVerificationMiddleware);
 app.use('/ai', aiController);
 app.use('/clap', clapController);
