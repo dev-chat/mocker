@@ -1,5 +1,7 @@
-import { getRepository } from 'typeorm';
+import { getRepository, Like } from 'typeorm';
 import { Message } from '../shared/db/models/Message';
+import { SlackChannel } from '../shared/db/models/SlackChannel';
+import { SlackUser } from '../shared/db/models/SlackUser';
 import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
@@ -8,6 +10,22 @@ import { DEFAULT_LIMIT, MIN_LIMIT, MAX_LIMIT } from './search.const';
 
 export class SearchPersistenceService {
   private logger = logger.child({ module: 'SearchPersistenceService' });
+
+  async getSearchFilters(teamId: string): Promise<{ users: string[]; channels: string[] }> {
+    const [users, channels] = await Promise.all([
+      getRepository(SlackUser)
+        .find({ where: { teamId }, select: ['name'], order: { name: 'ASC' } })
+        .then((rows) => Array.from(new Set(rows.map((row) => row.name).filter(Boolean)))),
+      getRepository(SlackChannel)
+        .find({ where: { teamId, channelId: Like('C%') }, select: ['name'], order: { name: 'ASC' } })
+        .then((rows) => Array.from(new Set(rows.map((row) => row.name).filter(Boolean)))),
+    ]).catch((e: unknown) => {
+      logError(this.logger, 'Failed to get search filters', e, { teamId });
+      throw e;
+    });
+
+    return { users, channels };
+  }
 
   private static resolveLimit(limit: number | undefined): number {
     return limit === undefined || !Number.isFinite(limit) || limit < MIN_LIMIT
@@ -21,7 +39,12 @@ export class SearchPersistenceService {
 
     // Each condition is joined with AND in the WHERE clause; queryParams holds the
     // positional `?` values in the same order as the conditions that use them.
-    const conditions: string[] = ["message.message != ''", 'message.teamId = ?', 'slack_user.teamId = ?'];
+    const conditions: string[] = [
+      "message.message != ''",
+      'message.teamId = ?',
+      'slack_user.teamId = ?',
+      "message.channel LIKE 'C%'",
+    ];
     const queryParams: (string | number)[] = [teamId, teamId];
 
     if (userName) {
@@ -30,7 +53,8 @@ export class SearchPersistenceService {
     }
 
     if (channel) {
-      conditions.push('message.channel LIKE ?');
+      conditions.push('(message.channel LIKE ? OR slack_channel.name LIKE ?)');
+      queryParams.push(`%${channel}%`);
       queryParams.push(`%${channel}%`);
     }
 
@@ -42,9 +66,10 @@ export class SearchPersistenceService {
     const whereClause = conditions.join(' AND ');
 
     const query = `
-      SELECT message.*, slack_user.name, slack_user.slackId
+      SELECT message.*, slack_user.name, slack_user.slackId, COALESCE(slack_channel.name, message.channel) AS channelName
       FROM message
       INNER JOIN slack_user ON slack_user.id = message.userIdId
+      LEFT JOIN slack_channel ON slack_channel.channelId = message.channel AND slack_channel.teamId = message.teamId
       WHERE ${whereClause}
       ORDER BY message.createdAt DESC
       LIMIT ?
