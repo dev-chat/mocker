@@ -39,8 +39,12 @@ export class SearchPersistenceService {
   async searchMessages(params: MessageSearchParams): Promise<SearchMessagesResponse> {
     const { userName, channel, content, teamId } = params;
     const effectiveLimit = SearchPersistenceService.resolveLimit(params.limit);
+    const effectiveOffset =
+      params.offset !== undefined && Number.isFinite(params.offset) && params.offset >= 0
+        ? Math.floor(params.offset)
+        : 0;
 
-    // Each condition is joined with AND in the WHERE clause; queryParams holds the
+    // Each condition is joined with AND in the WHERE clause; filterParams holds the
     // positional `?` values in the same order as the conditions that use them.
     const conditions: string[] = [
       "message.message != ''",
@@ -48,40 +52,61 @@ export class SearchPersistenceService {
       'slack_user.teamId = ?',
       "message.channel LIKE 'C%'",
     ];
-    const queryParams: (string | number)[] = [teamId, teamId];
+    const filterParams: (string | number)[] = [teamId, teamId];
 
     if (userName) {
       conditions.push('slack_user.name LIKE ?');
-      queryParams.push(`%${userName}%`);
+      filterParams.push(`%${userName}%`);
     }
 
     if (channel) {
       conditions.push('(message.channel LIKE ? OR slack_channel.name LIKE ?)');
-      queryParams.push(`%${channel}%`);
-      queryParams.push(`%${channel}%`);
+      filterParams.push(`%${channel}%`);
+      filterParams.push(`%${channel}%`);
     }
 
     if (content) {
       conditions.push('message.message LIKE ?');
-      queryParams.push(`%${content}%`);
+      filterParams.push(`%${content}%`);
     }
 
     const whereClause = conditions.join(' AND ');
 
-    const query = `
-      SELECT message.*, slack_user.name, slack_user.slackId, COALESCE(slack_channel.name, message.channel) AS channelName
+    const joins = `
       FROM message
       INNER JOIN slack_user ON slack_user.id = message.userIdId
       LEFT JOIN slack_channel ON slack_channel.channelId = message.channel AND slack_channel.teamId = message.teamId
       WHERE ${whereClause}
-      ORDER BY message.createdAt DESC
-      LIMIT ?
     `;
 
-    queryParams.push(effectiveLimit);
+    const countQuery = `SELECT COUNT(*) AS total ${joins}`;
 
-    const messages: MessageWithName[] = await getRepository(Message)
-      .query(query, queryParams)
+    const dataQuery = `
+      SELECT message.*, slack_user.name, slack_user.slackId, COALESCE(slack_channel.name, message.channel) AS channelName
+      ${joins}
+      ORDER BY message.createdAt DESC
+      LIMIT ?
+      OFFSET ?
+    `;
+
+    const repo = getRepository(Message);
+
+    const countRows: { total: number | string }[] = await repo.query(countQuery, filterParams).catch((e: unknown) => {
+      logError(this.logger, 'Failed to search messages', e, {
+        teamId: params.teamId,
+        userName: params.userName,
+        channel: params.channel,
+        content: params.content,
+        limit: params.limit,
+        offset: params.offset,
+      });
+      throw e;
+    });
+
+    const total = Number(countRows[0]?.total ?? 0);
+
+    const messages: MessageWithName[] = await repo
+      .query(dataQuery, [...filterParams, effectiveLimit, effectiveOffset])
       .catch((e: unknown) => {
         logError(this.logger, 'Failed to search messages', e, {
           teamId: params.teamId,
@@ -89,12 +114,13 @@ export class SearchPersistenceService {
           channel: params.channel,
           content: params.content,
           limit: params.limit,
+          offset: params.offset,
         });
         throw e;
       });
 
     const mentions = await this.resolveMentions(messages, teamId);
-    return { messages, mentions };
+    return { messages, mentions, total };
   }
 
   private async resolveMentions(messages: MessageWithName[], teamId: string): Promise<Record<string, string>> {

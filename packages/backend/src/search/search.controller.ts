@@ -36,13 +36,21 @@ searchController.get('/messages', (req: RequestWithAuthSession, res) => {
     return;
   }
 
-  const { userName, channel, content, limit } = req.query;
+  const { userName, channel, content, limit, offset } = req.query;
 
   let parsedLimit: number | undefined;
   if (typeof limit === 'string') {
     const parsed = parseInt(limit, 10);
     if (Number.isFinite(parsed) && parsed > 0) {
       parsedLimit = Math.min(parsed, MAX_LIMIT);
+    }
+  }
+
+  let parsedOffset: number | undefined;
+  if (typeof offset === 'string') {
+    const parsed = Number(offset);
+    if (Number.isInteger(parsed) && parsed >= 0) {
+      parsedOffset = parsed;
     }
   }
 
@@ -53,9 +61,12 @@ searchController.get('/messages', (req: RequestWithAuthSession, res) => {
       channel: typeof channel === 'string' ? channel : undefined,
       content: typeof content === 'string' ? content : undefined,
       limit: parsedLimit,
+      offset: parsedOffset,
     })
-    .then(({ messages, mentions }) =>
-      res.status(200).json({ messages: messages.filter((message) => isPublicChannelId(message.channel)), mentions }),
+    .then(({ messages, mentions, total }) =>
+      res
+        .status(200)
+        .json({ messages: messages.filter((message) => isPublicChannelId(message.channel)), mentions, total }),
     )
     .catch((e: unknown) => {
       logError(searchLogger, 'Failed to search messages', e, {
