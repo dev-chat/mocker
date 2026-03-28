@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, Loader2, LogOut } from 'lucide-react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Search, Loader2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,17 +8,23 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { LoginPage } from '@/components/LoginPage';
-import type { Message } from '@/app.model';
+import type { Message, SearchFiltersResponse, SortKey, SortDirection } from '@/app.model';
 import { AUTH_TOKEN_KEY } from '@/app.const';
 import { useAuth } from '@/hooks/useAuth';
 import { API_BASE_URL } from '@/config';
+import { getDisplayedMessages } from '@/app.helpers';
 
 export default function App() {
   const { isAuthenticated, authError, logout } = useAuth();
   const [userName, setUserName] = useState('');
   const [channel, setChannel] = useState('');
   const [content, setContent] = useState('');
+  const [tableFilter, setTableFilter] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [searchFilterOptions, setSearchFilterOptions] = useState<SearchFiltersResponse>({ users: [], channels: [] });
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isFiltersLoading, setIsFiltersLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -34,6 +40,7 @@ export default function App() {
 
   const handleSearch = useCallback(async () => {
     setIsLoading(true);
+    setHasSearched(true);
     setError(null);
 
     // Abort any previous in-flight request to prevent stale results
@@ -65,7 +72,6 @@ export default function App() {
       }
       const data: Message[] = (await response.json()) as Message[];
       setMessages(data);
-      setHasSearched(true);
     } catch (err) {
       // Ignore abort errors from cancelled requests
       if (err instanceof Error && err.name === 'AbortError') {
@@ -77,9 +83,39 @@ export default function App() {
     }
   }, [userName, channel, content, handleLogout]);
 
+  const loadSearchFilters = useCallback(async () => {
+    setIsFiltersLoading(true);
+    try {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
+      const response = await fetch(`${API_BASE_URL}/search/filters`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.status === 401) {
+        handleLogout();
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(`Failed to load search filters: ${response.statusText}`);
+      }
+      const data = (await response.json()) as SearchFiltersResponse;
+      setSearchFilterOptions({ users: data.users ?? [], channels: data.channels ?? [] });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load search filters');
+    } finally {
+      setIsFiltersLoading(false);
+    }
+  }, [handleLogout]);
+
   // Debounced search-as-you-type: skip the initial render, then trigger a search
   // 300ms after the user stops changing userName, channel, or content.
   const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    void loadSearchFilters();
+  }, [isAuthenticated, loadSearchFilters]);
+
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -90,6 +126,37 @@ export default function App() {
     }, 300);
     return () => clearTimeout(timer);
   }, [handleSearch]);
+
+  const displayedMessages = useMemo(
+    () => getDisplayedMessages(messages, tableFilter, sortKey, sortDirection),
+    [messages, tableFilter, sortKey, sortDirection],
+  );
+
+  const toggleSort = useCallback(
+    (nextKey: SortKey) => {
+      if (sortKey === nextKey) {
+        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+        return;
+      }
+      setSortKey(nextKey);
+      setSortDirection(nextKey === 'createdAt' ? 'desc' : 'asc');
+    },
+    [sortKey],
+  );
+
+  const sortIconFor = useCallback(
+    (column: SortKey) => {
+      if (sortKey !== column) {
+        return <ArrowUpDown className="ml-2 h-3.5 w-3.5" aria-hidden="true" />;
+      }
+      return sortDirection === 'asc' ? (
+        <ArrowUp className="ml-2 h-3.5 w-3.5" aria-hidden="true" />
+      ) : (
+        <ArrowDown className="ml-2 h-3.5 w-3.5" aria-hidden="true" />
+      );
+    },
+    [sortKey, sortDirection],
+  );
 
   const activeFilters = [
     userName.trim() && { label: 'User', value: userName.trim() },
@@ -129,18 +196,30 @@ export default function App() {
                 <Input
                   id="userName"
                   placeholder="e.g. john"
+                  list="user-filter-options"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                 />
+                <datalist id="user-filter-options">
+                  {searchFilterOptions.users.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="channel">Channel</Label>
                 <Input
                   id="channel"
                   placeholder="e.g. general"
+                  list="channel-filter-options"
                   value={channel}
                   onChange={(e) => setChannel(e.target.value)}
                 />
+                <datalist id="channel-filter-options">
+                  {searchFilterOptions.channels.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="content">Message Content</Label>
@@ -157,6 +236,7 @@ export default function App() {
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                 {isLoading ? 'Searching...' : 'Search'}
               </Button>
+              {isFiltersLoading && <p className="text-muted-foreground text-xs">Loading user/channel suggestions...</p>}
               {activeFilters.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {activeFilters.map((filter) => (
@@ -183,30 +263,68 @@ export default function App() {
             <CardHeader>
               <CardTitle>Results</CardTitle>
               <CardDescription>
-                {messages.length === 0
-                  ? 'No messages found matching your search criteria.'
-                  : `Found ${messages.length} message${messages.length === 1 ? '' : 's'}`}
+                {isLoading
+                  ? 'Loading results...'
+                  : messages.length === 0
+                    ? 'No messages found matching your search criteria.'
+                    : `Found ${messages.length} message${messages.length === 1 ? '' : 's'}${tableFilter.trim() ? ` (${displayedMessages.length} shown)` : ''}`}
               </CardDescription>
             </CardHeader>
-            {messages.length > 0 && (
+            {isLoading ? (
+              <CardContent className="pt-2">
+                <div className="text-muted-foreground flex min-h-[160px] items-center justify-center gap-2 text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading results...
+                </div>
+              </CardContent>
+            ) : messages.length > 0 ? (
               <>
                 <Separator />
                 <CardContent className="pt-4">
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <Input
+                      aria-label="Filter result rows"
+                      placeholder="Filter results by user, channel, or message"
+                      value={tableFilter}
+                      onChange={(e) => setTableFilter(e.target.value)}
+                      className="max-w-md"
+                    />
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[140px]">User</TableHead>
-                        <TableHead className="w-[140px]">Channel</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead className="w-[180px]">Date</TableHead>
+                        <TableHead className="w-[140px]">
+                          <Button variant="ghost" size="sm" onClick={() => toggleSort('name')}>
+                            User
+                            {sortIconFor('name')}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="w-[140px]">
+                          <Button variant="ghost" size="sm" onClick={() => toggleSort('channel')}>
+                            Channel
+                            {sortIconFor('channel')}
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button variant="ghost" size="sm" onClick={() => toggleSort('message')}>
+                            Message
+                            {sortIconFor('message')}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="w-[180px]">
+                          <Button variant="ghost" size="sm" onClick={() => toggleSort('createdAt')}>
+                            Date
+                            {sortIconFor('createdAt')}
+                          </Button>
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {messages.map((msg) => (
+                      {displayedMessages.map((msg) => (
                         <TableRow key={msg.id}>
                           <TableCell className="font-medium">{msg.name}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">#{msg.channel}</Badge>
+                            <Badge variant="outline">#{msg.channelName ?? msg.channel}</Badge>
                           </TableCell>
                           <TableCell className="max-w-md">
                             <span className="break-words">{msg.message}</span>
@@ -218,9 +336,12 @@ export default function App() {
                       ))}
                     </TableBody>
                   </Table>
+                  {displayedMessages.length === 0 && (
+                    <p className="text-muted-foreground mt-4 text-sm">No rows match your result filter.</p>
+                  )}
                 </CardContent>
               </>
-            )}
+            ) : null}
           </Card>
         )}
       </div>

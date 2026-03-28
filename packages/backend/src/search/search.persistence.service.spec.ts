@@ -1,5 +1,6 @@
 import { getRepository } from 'typeorm';
 import { SearchPersistenceService } from './search.persistence.service';
+import { SlackChannel } from '../shared/db/models/SlackChannel';
 
 jest.mock('typeorm', () => {
   const actual = jest.requireActual('typeorm');
@@ -12,11 +13,27 @@ jest.mock('typeorm', () => {
 describe('SearchPersistenceService', () => {
   let service: SearchPersistenceService;
   const query = jest.fn();
+  const find = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     service = new SearchPersistenceService();
-    (getRepository as jest.Mock).mockReturnValue({ query });
+    (getRepository as jest.Mock).mockReturnValue({ query, find });
+  });
+
+  it('gets and de-duplicates users/channels for search filters', async () => {
+    const userFind = jest.fn().mockResolvedValue([{ name: 'alice' }, { name: 'alice' }, { name: 'bob' }]);
+    const channelFind = jest.fn().mockResolvedValue([{ name: 'general' }, { name: 'random' }, { name: 'general' }]);
+
+    (getRepository as jest.Mock).mockReturnValueOnce({ find: userFind }).mockReturnValueOnce({ find: channelFind });
+
+    const result = await service.getSearchFilters('T1');
+
+    expect(result).toEqual({ users: ['alice', 'bob'], channels: ['general', 'random'] });
+    expect(getRepository).toHaveBeenNthCalledWith(2, SlackChannel);
+    expect(channelFind).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ teamId: 'T1', channelId: expect.anything() }) }),
+    );
   });
 
   it('searches with no filters (default conditions only)', async () => {
@@ -28,6 +45,7 @@ describe('SearchPersistenceService', () => {
     expect(sql).toContain("message.message != ''");
     expect(sql).toContain('message.teamId = ?');
     expect(sql).toContain('slack_user.teamId = ?');
+    expect(sql).toContain("message.channel LIKE 'C%'");
     expect(params).toEqual(['T1', 'T1', 100]);
     expect(result).toEqual([{ id: 1, message: 'hello', name: 'alice' }]);
   });
@@ -45,12 +63,10 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', channel: 'general' });
 
-    expect(query).toHaveBeenCalledWith(expect.stringContaining('message.channel LIKE ?'), [
-      'T1',
-      'T1',
-      '%general%',
-      100,
-    ]);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('(message.channel LIKE ? OR slack_channel.name LIKE ?)'),
+      ['T1', 'T1', '%general%', '%general%', 100],
+    );
   });
 
   it('applies content LIKE filter when content is provided', async () => {
@@ -68,9 +84,9 @@ describe('SearchPersistenceService', () => {
 
     const [sql, params] = (query as jest.Mock).mock.calls[0] as [string, unknown[]];
     expect(sql).toContain('slack_user.name LIKE ?');
-    expect(sql).toContain('message.channel LIKE ?');
+    expect(sql).toContain('(message.channel LIKE ? OR slack_channel.name LIKE ?)');
     expect(sql).toContain('message.message LIKE ?');
-    expect(params).toEqual(['T1', 'T1', '%alice%', '%general%', '%hello%', 100]);
+    expect(params).toEqual(['T1', 'T1', '%alice%', '%general%', '%general%', '%hello%', 100]);
   });
 
   it('uses the provided limit instead of the default', async () => {
