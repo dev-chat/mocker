@@ -223,13 +223,6 @@ export class AIService {
             image_url: imageUrl,
             alt_text: 'Moonbeam has been deployed.',
           },
-          {
-            type: 'header',
-            text: {
-              type: 'plain_text',
-              text: 'Moonbeam has been deployed.',
-            },
-          },
           { type: 'markdown', text: quote ? `"${quote}"` : '' },
         ];
         void this.webService.sendMessage('#muzzlefeedback', 'Moonbeam has been deployed.', blocks);
