@@ -10,44 +10,44 @@ export class PricingJob {
   async run(): Promise<void> {
     this.jobLogger.info('Beginning pricing job');
 
-    const teams = await this.getDistinctTeams();
-    if (teams.length === 0) {
-      this.jobLogger.warn('No teams found; pricing job will exit without inserting prices');
-      return;
-    }
-    this.jobLogger.info(`Retrieved ${teams.length} teams`);
-
-    const items = await getRepository(Item).find();
-    if (items.length === 0) {
-      this.jobLogger.warn('No items found; pricing job will exit without inserting prices');
-      return;
-    }
-    this.jobLogger.info(`Retrieved ${items.length} items`);
-
-    const medianRep = await this.calculateMedianRep();
-    if (medianRep === null) {
-      this.jobLogger.error('No reputation data found; refusing to calculate prices');
-      return;
-    }
-    this.jobLogger.info(`Calculated median reputation as ${medianRep}`);
-
-    await getManager().transaction(async (entityManager) => {
-      for (const teamId of teams) {
-        for (const item of items) {
-          const price = medianRep * item.pricePct;
-          // itemIdId is a TypeORM-generated FK column that co-exists with the plain
-          // integer column itemId on the Price entity (@Column + @ManyToOne combined).
-          // Both columns receive the same item ID to match the existing schema.
-          await entityManager.query(
-            'INSERT INTO price(itemId, teamId, price, itemIdId) VALUES(?, ?, ?, ?)',
-            [item.id, teamId, price, item.id],
-          );
-        }
-        this.jobLogger.info(`Inserted price refresh for team ${teamId}`);
+    try {
+      const teams = await this.getDistinctTeams();
+      if (teams.length === 0) {
+        this.jobLogger.warn('No teams found; pricing job will exit without inserting prices');
+        return;
       }
-    });
+      this.jobLogger.info(`Retrieved ${teams.length} teams`);
 
-    this.jobLogger.info('Pricing job complete');
+      const items = await getRepository(Item).find();
+      if (items.length === 0) {
+        this.jobLogger.warn('No items found; pricing job will exit without inserting prices');
+        return;
+      }
+      this.jobLogger.info(`Retrieved ${items.length} items`);
+
+      const medianRep = await this.calculateMedianRep();
+      if (medianRep === null) {
+        this.jobLogger.error('No reputation data found; refusing to calculate prices');
+        return;
+      }
+      this.jobLogger.info(`Calculated median reputation as ${medianRep}`);
+
+      await getManager().transaction(async (entityManager) => {
+        for (const teamId of teams) {
+          const values = items.map((item) => [item.id, teamId, medianRep * item.pricePct, item.id]);
+          const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ');
+          await entityManager.query(
+            `INSERT INTO price(itemId, teamId, price, itemIdId) VALUES ${placeholders}`,
+            values.flat(),
+          );
+          this.jobLogger.info(`Inserted price refresh for team ${teamId}`);
+        }
+      });
+
+      this.jobLogger.info('Pricing job complete');
+    } catch (e) {
+      this.jobLogger.error('Pricing job failed', e);
+    }
   }
 
   private async getDistinctTeams(): Promise<string[]> {

@@ -2,7 +2,7 @@ import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class Fact {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'factId' })
   public id!: number;
 
   @Column('longtext')

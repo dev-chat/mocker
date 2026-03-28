@@ -61,12 +61,12 @@ export class FunFactJob {
   }
 
   private async fetchFactFromApi(): Promise<FetchedFact> {
-    if (Math.random() < 0.5) {
+    if (!process.env.API_NINJA_KEY || Math.random() < 0.5) {
       const response = await Axios.get<{ text: string }>(USELESS_FACTS_URL);
       return { fact: response.data.text, source: USELESS_FACTS_URL };
     } else {
       const response = await Axios.get<Array<{ fact: string }>>(API_NINJAS_URL, {
-        headers: { 'X-Api-Key': process.env.API_NINJA_KEY ?? '' },
+        headers: { 'X-Api-Key': process.env.API_NINJA_KEY },
       });
       return { fact: response.data[0].fact, source: API_NINJAS_URL };
     }
