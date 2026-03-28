@@ -1,10 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity()
 export class Joke {
-  @PrimaryGeneratedColumn()
-  public id!: number;
-
-  @Column({ length: 255 })
+  @PrimaryColumn({ name: 'id', length: 255 })
   public jokeApiId!: string;
 }
