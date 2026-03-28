@@ -1,4 +1,4 @@
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'https://api.muzzle.lol';
 
 if (!apiBaseUrl) {
   throw new Error('VITE_API_BASE_URL must be set. Add it to your .env file (see .env.example).');
