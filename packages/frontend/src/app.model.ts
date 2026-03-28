@@ -12,6 +12,7 @@ export interface Message {
 export interface SearchMessagesResponse {
   messages: Message[];
   mentions: Record<string, string>;
+  total: number;
 }
 
 export interface SearchFiltersResponse {

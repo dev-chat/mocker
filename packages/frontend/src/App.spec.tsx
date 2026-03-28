@@ -23,7 +23,7 @@ const setupAuthenticatedFetch = () => {
     return Promise.resolve({
       ok: true,
       status: 200,
-      json: async () => ({ messages: [], mentions: {} }),
+      json: async () => ({ messages: [], mentions: {}, total: 0 }),
     });
   });
 };
@@ -99,7 +99,11 @@ describe('App – authenticated state', () => {
   });
 
   it('triggers search after typing in an input', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ messages: [], mentions: {} }) });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ messages: [], mentions: {}, total: 0 }),
+    });
     render(<App />);
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     await waitFor(() => expect(screen.getByText(/no messages found/i)).toBeInTheDocument(), { timeout: 2000 });
@@ -130,7 +134,7 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
-      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {} }) });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 1 }) });
     });
 
     render(<App />);
@@ -139,7 +143,7 @@ describe('App – authenticated state', () => {
     await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
     expect(screen.getByText('#general')).toBeInTheDocument();
     expect(screen.getByText('alice')).toBeInTheDocument();
-    expect(screen.getByText(/found 1 message$/i)).toBeInTheDocument();
+    expect(screen.getByText(/found 1 message overall/i)).toBeInTheDocument();
   });
 
   it('displays plural "messages" for more than one result', async () => {
@@ -168,11 +172,11 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
-      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {} }) });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 2 }) });
     });
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
-    await waitFor(() => expect(screen.getByText(/found 2 messages/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/found 2 messages overall/i)).toBeInTheDocument());
   });
 
   it('filters result rows in the table', async () => {
@@ -204,20 +208,20 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
-      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {} }) });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 2 }) });
     });
 
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
-    await waitFor(() => expect(screen.getByText(/found 2 messages/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/found 2 messages overall/i)).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText(/filter result rows/i), { target: { value: 'alpha' } });
 
     await waitFor(() => {
       expect(screen.getByText('alpha keyword')).toBeInTheDocument();
       expect(screen.queryByText('beta text')).not.toBeInTheDocument();
-      expect(screen.getByText(/found 2 messages \(1 shown\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/found 2 messages overall \(1 shown\)/i)).toBeInTheDocument();
     });
   });
 
@@ -250,13 +254,13 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
-      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {} }) });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 2 }) });
     });
 
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
-    await waitFor(() => expect(screen.getByText(/found 2 messages/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/found 2 messages overall/i)).toBeInTheDocument());
 
     const table = screen.getByRole('table');
     const userOrder = () =>
@@ -324,7 +328,7 @@ describe('App – authenticated state', () => {
       return Promise.resolve({
         ok: true,
         status: 200,
-        json: async () => ({ messages, mentions: { U99: 'carol' } }),
+        json: async () => ({ messages, mentions: { U99: 'carol' }, total: 1 }),
       });
     });
 
@@ -359,7 +363,7 @@ describe('App – authenticated state', () => {
       return Promise.resolve({
         ok: true,
         status: 200,
-        json: async () => ({ messages, mentions: { C99: 'announcements' } }),
+        json: async () => ({ messages, mentions: { C99: 'announcements' }, total: 1 }),
       });
     });
 
@@ -387,5 +391,137 @@ describe('App – authenticated state', () => {
 
     await waitFor(() => expect(screen.getByRole('link', { name: /sign in with slack/i })).toBeInTheDocument());
     expect(localStorage.getItem('muzzle.lol-auth-token')).toBeNull();
+  });
+
+  it('shows pagination controls when total exceeds page size', async () => {
+    const messages = Array.from({ length: 25 }, (_, i) => ({
+      id: i + 1,
+      message: `msg ${i + 1}`,
+      channel: 'C111',
+      channelName: 'general',
+      teamId: 'T1',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      name: 'alice',
+      slackId: 'U1',
+    }));
+
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/search/filters')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 50 }) });
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await waitFor(() => expect(screen.getByText(/found 50 messages overall/i)).toBeInTheDocument());
+    expect(screen.getByText(/page 1 of 2/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /previous page/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /next page/i })).not.toBeDisabled();
+  });
+
+  it('navigates to the next page when Next is clicked', async () => {
+    const page1Messages = Array.from({ length: 25 }, (_, i) => ({
+      id: i + 1,
+      message: `page1 msg ${i + 1}`,
+      channel: 'C111',
+      channelName: 'general',
+      teamId: 'T1',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      name: 'alice',
+      slackId: 'U1',
+    }));
+    const page2Messages = [
+      {
+        id: 26,
+        message: 'page2 msg 1',
+        channel: 'C111',
+        channelName: 'general',
+        teamId: 'T1',
+        createdAt: '2024-01-01T00:00:00.000Z',
+        name: 'alice',
+        slackId: 'U1',
+      },
+    ];
+
+    let callCount = 0;
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/search/filters')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
+      }
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ messages: page1Messages, mentions: {}, total: 26 }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ messages: page2Messages, mentions: {}, total: 26 }),
+      });
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await waitFor(() => expect(screen.getByText(/page 1 of 2/i)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /next page/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('page2 msg 1')).toBeInTheDocument();
+      expect(screen.getByText(/page 2 of 2/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /next page/i })).toBeDisabled();
+  });
+
+  it('does not show pagination controls when results fit on one page', async () => {
+    const messages = [
+      {
+        id: 1,
+        message: 'only message',
+        channel: 'C111',
+        channelName: 'general',
+        teamId: 'T1',
+        createdAt: '2024-01-01T00:00:00.000Z',
+        name: 'alice',
+        slackId: 'U1',
+      },
+    ];
+
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/search/filters')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 1 }) });
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await waitFor(() => expect(screen.getByText(/found 1 message overall/i)).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /previous page/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /next page/i })).not.toBeInTheDocument();
+  });
+
+  it('passes limit and offset query params to the search API', async () => {
+    setupAuthenticatedFetch();
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await waitFor(() => {
+      const searchCalls = mockFetch.mock.calls.filter((call) => String(call[0]).includes('/search/messages'));
+      expect(searchCalls.length).toBeGreaterThan(0);
+      const url = String(searchCalls[0][0]);
+      expect(url).toContain('limit=25');
+      expect(url).toContain('offset=0');
+    });
   });
 });

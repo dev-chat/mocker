@@ -6,9 +6,11 @@ export interface MessageSearchParams {
   channel?: string;
   content?: string;
   limit?: number;
+  offset?: number;
 }
 
 export interface SearchMessagesResponse {
   messages: MessageWithName[];
   mentions: Record<string, string>;
+  total: number;
 }

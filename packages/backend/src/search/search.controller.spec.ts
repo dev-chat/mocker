@@ -48,20 +48,21 @@ describe('searchController', () => {
 
   it('returns 200 with messages when search succeeds', async () => {
     const messages = [{ id: 1, message: 'hello', name: 'alice', channel: 'C123' }];
-    searchMessagesMock.mockResolvedValue({ messages, mentions: {} });
+    searchMessagesMock.mockResolvedValue({ messages, mentions: {}, total: 1 });
 
     const res = await request(app)
       .get('/messages')
       .query({ userName: 'alice', channel: 'general', content: 'hello', limit: '10' });
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ messages, mentions: {} });
+    expect(res.body).toEqual({ messages, mentions: {}, total: 1 });
     expect(searchMessagesMock).toHaveBeenCalledWith({
       teamId: 'T1',
       userName: 'alice',
       channel: 'general',
       content: 'hello',
       limit: 10,
+      offset: undefined,
     });
   });
 
@@ -73,6 +74,7 @@ describe('searchController', () => {
         { id: 3, message: 'dm', name: 'carol', channel: 'D333' },
       ],
       mentions: {},
+      total: 3,
     });
 
     const res = await request(app).get('/messages');
@@ -81,11 +83,12 @@ describe('searchController', () => {
     expect(res.body).toEqual({
       messages: [{ id: 1, message: 'public', name: 'alice', channel: 'C111' }],
       mentions: {},
+      total: 3,
     });
   });
 
   it('passes undefined for query params that are not strings', async () => {
-    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {} });
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 0 });
 
     await request(app).get('/messages').expect(200);
 
@@ -95,11 +98,12 @@ describe('searchController', () => {
       channel: undefined,
       content: undefined,
       limit: undefined,
+      offset: undefined,
     });
   });
 
   it('clamps limit to MAX_LIMIT (1000) when provided value exceeds it', async () => {
-    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {} });
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 0 });
 
     await request(app).get('/messages').query({ limit: '9999' }).expect(200);
 
@@ -107,7 +111,7 @@ describe('searchController', () => {
   });
 
   it('passes undefined for limit when the value is not a valid positive integer (NaN)', async () => {
-    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {} });
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 0 });
 
     await request(app).get('/messages').query({ limit: 'abc' }).expect(200);
 
@@ -115,11 +119,44 @@ describe('searchController', () => {
   });
 
   it('passes undefined for limit when the value is zero or negative', async () => {
-    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {} });
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 0 });
 
     await request(app).get('/messages').query({ limit: '-5' }).expect(200);
 
     expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ limit: undefined }));
+  });
+
+  it('parses a valid offset and forwards it to the service', async () => {
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 50 });
+
+    await request(app).get('/messages').query({ offset: '25' }).expect(200);
+
+    expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ offset: 25 }));
+  });
+
+  it('passes undefined for offset when the value is negative', async () => {
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 0 });
+
+    await request(app).get('/messages').query({ offset: '-1' }).expect(200);
+
+    expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ offset: undefined }));
+  });
+
+  it('passes undefined for offset when the value is not a valid integer', async () => {
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 0 });
+
+    await request(app).get('/messages').query({ offset: 'abc' }).expect(200);
+
+    expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ offset: undefined }));
+  });
+
+  it('includes total in the response body', async () => {
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 99 });
+
+    const res = await request(app).get('/messages');
+
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(99);
   });
 
   it('returns 500 when search throws an error', async () => {
