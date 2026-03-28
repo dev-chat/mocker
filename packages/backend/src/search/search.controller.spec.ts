@@ -2,10 +2,12 @@ import express from 'express';
 import request from 'supertest';
 
 const searchMessagesMock = jest.fn();
+const getSearchFiltersMock = jest.fn();
 
 jest.mock('./search.persistence.service', () => ({
   SearchPersistenceService: jest.fn().mockImplementation(() => ({
     searchMessages: searchMessagesMock,
+    getSearchFilters: getSearchFiltersMock,
   })),
 }));
 
@@ -26,8 +28,26 @@ describe('searchController', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
+  it('returns 200 with filter options when loading filters succeeds', async () => {
+    getSearchFiltersMock.mockResolvedValue({ users: ['alice'], channels: ['general'] });
+
+    const res = await request(app).get('/filters');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ users: ['alice'], channels: ['general'] });
+    expect(getSearchFiltersMock).toHaveBeenCalledWith('T1');
+  });
+
+  it('returns 500 when loading filters throws an error', async () => {
+    getSearchFiltersMock.mockRejectedValue(new Error('DB failure'));
+
+    const res = await request(app).get('/filters');
+
+    expect(res.status).toBe(500);
+  });
+
   it('returns 200 with messages when search succeeds', async () => {
-    const messages = [{ id: 1, message: 'hello', name: 'alice', channel: 'general' }];
+    const messages = [{ id: 1, message: 'hello', name: 'alice', channel: 'C123' }];
     searchMessagesMock.mockResolvedValue(messages);
 
     const res = await request(app)
@@ -43,6 +63,19 @@ describe('searchController', () => {
       content: 'hello',
       limit: 10,
     });
+  });
+
+  it('returns only public channel messages when persistence returns mixed channel types', async () => {
+    searchMessagesMock.mockResolvedValue([
+      { id: 1, message: 'public', name: 'alice', channel: 'C111' },
+      { id: 2, message: 'private', name: 'bob', channel: 'G222' },
+      { id: 3, message: 'dm', name: 'carol', channel: 'D333' },
+    ]);
+
+    const res = await request(app).get('/messages');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([{ id: 1, message: 'public', name: 'alice', channel: 'C111' }]);
   });
 
   it('passes undefined for query params that are not strings', async () => {
@@ -105,8 +138,11 @@ describe('searchController', () => {
     appWithoutTeam.use('/', searchController);
 
     const res = await request(appWithoutTeam).get('/messages');
+    const filtersRes = await request(appWithoutTeam).get('/filters');
 
     expect(res.status).toBe(401);
+    expect(filtersRes.status).toBe(401);
     expect(searchMessagesMock).not.toHaveBeenCalled();
+    expect(getSearchFiltersMock).not.toHaveBeenCalled();
   });
 });

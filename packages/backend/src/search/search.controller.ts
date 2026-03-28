@@ -11,6 +11,24 @@ export const searchController: Router = express.Router();
 const searchPersistenceService = new SearchPersistenceService();
 const searchLogger = logger.child({ module: 'SearchController' });
 
+const isPublicChannelId = (value: unknown): boolean => typeof value === 'string' && value.startsWith('C');
+
+searchController.get('/filters', (req: RequestWithAuthSession, res) => {
+  const teamId = req.authSession?.teamId;
+  if (!teamId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  searchPersistenceService
+    .getSearchFilters(teamId)
+    .then((filters) => res.status(200).json(filters))
+    .catch((e: unknown) => {
+      logError(searchLogger, 'Failed to load search filters', e, { teamId });
+      res.status(500).send();
+    });
+});
+
 searchController.get('/messages', (req: RequestWithAuthSession, res) => {
   const teamId = req.authSession?.teamId;
   if (!teamId) {
@@ -36,7 +54,7 @@ searchController.get('/messages', (req: RequestWithAuthSession, res) => {
       content: typeof content === 'string' ? content : undefined,
       limit: parsedLimit,
     })
-    .then((messages) => res.status(200).json(messages))
+    .then((messages) => res.status(200).json(messages.filter((message) => isPublicChannelId(message.channel))))
     .catch((e: unknown) => {
       logError(searchLogger, 'Failed to search messages', e, {
         userName,
