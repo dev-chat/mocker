@@ -32,7 +32,6 @@ import { logger } from './shared/logger/logger';
 import { AIService } from './ai/ai.service';
 import { DailyMemoryJob } from './ai/daily-memory.job';
 import { FunFactJob } from './jobs/fun-fact.job';
-import { HealthJob } from './jobs/health.job';
 import { PricingJob } from './jobs/pricing.job';
 import { portfolioController } from './portfolio/portfolio.controller';
 import { hookController } from './hook/hook.controller';
@@ -114,7 +113,6 @@ const webService = new WebService();
 const aiService = new AIService();
 const dailyMemoryJob = new DailyMemoryJob(aiService);
 const funFactJob = new FunFactJob();
-const healthJob = new HealthJob();
 const pricingJob = new PricingJob();
 const indexLogger = logger.child({ module: 'Index' });
 
@@ -213,10 +211,6 @@ app.listen(PORT, (e?: Error) => {
           { timezone: 'America/New_York' },
         );
         indexLogger.info('Fun-fact job scheduled daily at 9AM America/New_York time.');
-        cron.schedule('*/5 * * * *', () => {
-          void healthJob.run();
-        });
-        indexLogger.info('Health check job scheduled every 5 minutes.');
         cron.schedule(
           '10 * * * *',
           () => {

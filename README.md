@@ -14,7 +14,7 @@ mocker/
 │   │                 # - REST APIs for Slack commands and events
 │   │                 # - Search endpoint (team-scoped, requires OAuth token)
 │   │                 # - Slack OAuth flow (/auth/slack, /auth/slack/callback)
-│   │                 # - Scheduled jobs (fun-fact, health check, pricing, memory)
+│   │                 # - Scheduled jobs (fun-fact, pricing, memory)
 │   │
 │   └── frontend/     # @mocker/frontend - React + Vite
 │                     # - Message search UI
@@ -244,14 +244,14 @@ docker logs <container-id> | jq .
 
 ### Scheduled Jobs
 
-All scheduled jobs run inside the backend Node.js process using `node-cron`. They are started automatically when the server connects to the database. No external cron daemon is required.
+Most scheduled jobs run inside the backend Node.js process using `node-cron`. They are started automatically when the server connects to the database.
 
-| Job | Schedule | Description |
-|-----|----------|-------------|
-| **Daily Memory** | `0 3 * * *` (3 AM ET) | Extracts AI memories from all Slack channels |
-| **Fun Fact** | `0 9 * * *` (9 AM ET) | Posts daily facts, joke, quote, and on-this-day event to Slack |
-| **Health Check** | `*/5 * * * *` (every 5 min) | Checks the `/health` endpoint and alerts Slack on failure |
-| **Pricing** | `10 * * * *` (every hour at :10) | Recalculates item prices based on median reputation |
+| Job | Schedule | Location | Description |
+|-----|----------|----------|-------------|
+| **Daily Memory** | `0 3 * * *` (3 AM ET) | In-process | Extracts AI memories from all Slack channels |
+| **Fun Fact** | `0 9 * * *` (9 AM ET) | In-process | Posts daily facts, joke, quote, and on-this-day event to Slack |
+| **Pricing** | `10 * * * *` (every hour at :10) | In-process | Recalculates item prices based on median reputation |
+| **Health Check** | `*/5 * * * *` (every 5 min) | Bash script | Checks the `/health` endpoint from outside the process and alerts Slack on failure |
 
 #### Fun Fact Job environment variables
 
@@ -263,15 +263,16 @@ All scheduled jobs run inside the backend Node.js process using `node-cron`. The
 | `MAX_FACT_ATTEMPTS` | `50` | Maximum fetch attempts before giving up on facts |
 | `MAX_JOKE_ATTEMPTS` | `20` | Maximum fetch attempts before giving up on the joke |
 
-#### Health Job environment variables
+#### Health Check Job (bash script)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `HEALTH_URL` | `http://127.0.0.1:<PORT>/health` | URL to probe |
-| `HEALTH_SLACK_CHANNEL` | `#muzzlefeedback` | Slack channel for failure alerts |
-| `HEALTH_MAX_ATTEMPTS` | `5` | Number of retry attempts before declaring unhealthy |
-| `HEALTH_SLEEP_MS` | `1000` | Milliseconds to wait between retries |
-| `HEALTH_TIMEOUT_MS` | `15000` | HTTP request timeout in milliseconds |
+The health check job lives in `packages/jobs/health-job/script.sh` and must be run from **outside** the Node.js process so it can detect when the server itself is down. Schedule it with an external cron daemon:
+
+```bash
+# Health check every 5 minutes
+*/5 * * * * /path/to/mocker/packages/jobs/health-job/script.sh >> /path/to/logs/health-job.log 2>&1
+```
+
+The script requires `bash`, `curl`, `grep`, `mktemp`, and `tr`. It reads environment from the first file found in: `JOB_ENV_FILE`, `script dir/.env`, `~/.bash_profile`, `~/.profile`, or `/home/muzzle.lol/.bash_profile`.
 
 ### Available Scripts
 
