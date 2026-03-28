@@ -144,7 +144,7 @@ export class AIService {
     try {
       await fs.promises.mkdir(dir, { recursive: true });
       await fs.promises.writeFile(filePath, base64Data, 'base64');
-      return `https://muzzle.lol/${filename}`;
+      return `https://muzzle.lol/images/${filename}`;
     } catch (error) {
       logError(this.aiServiceLogger, 'Failed to write AI image to disk', error, {
         imageDirectory: dir,
