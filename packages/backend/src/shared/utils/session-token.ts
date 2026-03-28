@@ -2,8 +2,6 @@ import crypto from 'crypto';
 import { TOKEN_TTL_MS } from './session-token.const';
 import type { SessionPayload } from './session-token.model';
 
-export type { SessionPayload };
-
 function getSecret(): string {
   const secret = process.env.SEARCH_AUTH_SECRET;
   if (!secret) {
@@ -15,10 +13,10 @@ function getSecret(): string {
   return secret;
 }
 
-export function createSessionToken(userId: string, teamDomain: string, teamId?: string): string {
+export function createSessionToken(userId: string, teamId: string): string {
   const payloadData: SessionPayload = {
     userId,
-    teamDomain,
+    teamId,
     exp: Date.now() + TOKEN_TTL_MS,
     ...(teamId ? { teamId } : {}),
   };
@@ -34,7 +32,7 @@ function isSessionPayload(value: unknown): value is SessionPayload {
   }
   return (
     typeof Reflect.get(value, 'userId') === 'string' &&
-    typeof Reflect.get(value, 'teamDomain') === 'string' &&
+    typeof Reflect.get(value, 'teamId') === 'string' &&
     (Reflect.get(value, 'teamId') === undefined || typeof Reflect.get(value, 'teamId') === 'string') &&
     typeof Reflect.get(value, 'exp') === 'number'
   );

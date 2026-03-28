@@ -27,6 +27,7 @@ describe('authController', () => {
       SLACK_CLIENT_SECRET: 'test-client-secret',
       SLACK_REDIRECT_URI: 'http://localhost:3000/auth/slack/callback',
       SEARCH_FRONTEND_URL: 'http://localhost:5173',
+      ALLOWED_TEAM_DOMAIN: 'T123',
     };
   });
 
@@ -75,7 +76,11 @@ describe('authController', () => {
         data: { ok: true, authed_user: { id: 'U123', access_token: 'xoxp-token' } },
       });
       (Axios.get as jest.Mock).mockResolvedValue({
-        data: { ok: true, user: { id: 'U123', name: 'alice' }, team: { name: 'dabros2016', id: 'T123' } },
+        data: {
+          ok: true,
+          user: { id: 'U123', name: 'alice' },
+          team: { name: 'T123', id: 'T123' },
+        },
       });
 
       const res = await request(app)
@@ -163,12 +168,12 @@ describe('authController', () => {
       expect(res.headers.location).toContain('auth_error=token_exchange_failed');
     });
 
-    it('redirects with auth_error=unauthorized_workspace when team domain is wrong', async () => {
+    it('redirects with auth_error=unauthorized_workspace when team id is wrong', async () => {
       (Axios.post as jest.Mock).mockResolvedValue({
         data: { ok: true, authed_user: { id: 'U999', access_token: 'xoxp-other' } },
       });
       (Axios.get as jest.Mock).mockResolvedValue({
-        data: { ok: true, user: { id: 'U999', name: 'bob' }, team: { domain: 'otherworkspace', id: 'T999' } },
+        data: { ok: true, user: { id: 'U999', name: 'bob' }, team: { name: 'otherworkspace', id: 'T999' } },
       });
 
       const res = await request(app)
