@@ -42,7 +42,7 @@ describe('authController', () => {
       expect(res.headers.location).toContain('client_id=test-client-id');
       expect(res.headers.location).toContain('user_scope=identity.basic');
       expect(res.headers.location).toContain('state=');
-      const cookies = res.headers['set-cookie'] as string[] | undefined;
+      const cookies = res.headers['set-cookie'] as unknown as string[] | undefined;
       expect(cookies).toBeDefined();
       expect(cookies?.some((c: string) => c.startsWith('oauth_state='))).toBe(true);
     });
@@ -75,7 +75,7 @@ describe('authController', () => {
         data: { ok: true, authed_user: { id: 'U123', access_token: 'xoxp-token' } },
       });
       (Axios.get as jest.Mock).mockResolvedValue({
-        data: { ok: true, user: { id: 'U123', name: 'alice' }, team: { domain: 'dabros2016', id: 'T123' } },
+        data: { ok: true, user: { id: 'U123', name: 'alice' }, team: { name: 'dabros2016', id: 'T123' } },
       });
 
       const res = await request(app)
