@@ -8,3 +8,8 @@ export interface Message {
   name: string;
   slackId: string;
 }
+
+export interface SearchFiltersResponse {
+  users: string[];
+  channels: string[];
+}

@@ -27,15 +27,13 @@ export class SlackPersistenceService {
     if (!channels) {
       return;
     } else {
-      const dbChannels = channels
-        .filter((channel) => typeof channel.id === 'string' && channel.id.startsWith('C'))
-        .map((channel) => {
-          return {
-            channelId: channel.id,
-            name: channel.name,
-            teamId: channel.shared_team_ids?.[0],
-          };
-        });
+      const dbChannels = channels.map((channel) => {
+        return {
+          channelId: channel.id,
+          name: channel.name,
+          teamId: channel.shared_team_ids?.[0],
+        };
+      });
 
       try {
         for (const channel of dbChannels) {

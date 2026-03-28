@@ -8,15 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { LoginPage } from '@/components/LoginPage';
-import type { Message } from '@/app.model';
+import type { Message, SearchFiltersResponse } from '@/app.model';
 import { AUTH_TOKEN_KEY } from '@/app.const';
 import { useAuth } from '@/hooks/useAuth';
 import { API_BASE_URL } from '@/config';
-
-interface SearchFiltersResponse {
-  users: string[];
-  channels: string[];
-}
 
 type SortKey = 'name' | 'channel' | 'message' | 'createdAt';
 type SortDirection = 'asc' | 'desc';

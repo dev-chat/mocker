@@ -75,18 +75,6 @@ describe('SlackPersistenceService', () => {
     expect(channelRepo.save).toHaveBeenCalledWith(expect.objectContaining({ channelId: 'C2', name: 'random' }));
   });
 
-  it('saveChannels ignores private channels and DMs', async () => {
-    await service.saveChannels([
-      { id: 'G1', name: 'private-team', shared_team_ids: ['T1'] } as unknown as SlackChannelResponse,
-      { id: 'D1', name: 'direct-message', shared_team_ids: ['T1'] } as unknown as SlackChannelResponse,
-      { id: 'C1', name: 'general', shared_team_ids: ['T1'] } as unknown as SlackChannelResponse,
-    ]);
-
-    expect(channelRepo.findOne).toHaveBeenCalledTimes(1);
-    expect(channelRepo.save).toHaveBeenCalledTimes(1);
-    expect(channelRepo.save).toHaveBeenCalledWith(expect.objectContaining({ channelId: 'C1', name: 'general' }));
-  });
-
   it('getCachedUsers returns parsed users when cache is present', async () => {
     redis.getValue.mockResolvedValue(JSON.stringify([{ slackId: 'U1' }]));
 
