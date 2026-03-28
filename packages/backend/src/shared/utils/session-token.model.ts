@@ -1,6 +1,5 @@
 export interface SessionPayload {
   userId: string;
-  teamDomain: string;
-  teamId?: string;
+  teamId: string;
   exp: number;
 }

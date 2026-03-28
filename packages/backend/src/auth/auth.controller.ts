@@ -7,7 +7,6 @@ import { createSessionToken } from '../shared/utils/session-token';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import {
-  ALLOWED_TEAM_DOMAIN,
   SLACK_AUTH_URL,
   SLACK_TOKEN_URL,
   SLACK_IDENTITY_URL,
@@ -106,12 +105,10 @@ authController.get('/slack/callback', (req, res) => {
       headers: { Authorization: `Bearer ${tokenResponse.data.authed_user.access_token}` },
     });
 
-    const teamDomain = identityResponse.data.team?.name;
     const teamId = identityResponse.data.team?.id;
     const userId = identityResponse.data.user?.id;
-    if (!identityResponse.data.ok || teamDomain !== ALLOWED_TEAM_DOMAIN || !userId || !teamId) {
+    if (!identityResponse.data.ok || !userId || !teamId || teamId !== process.env.ALLOWED_TEAM_DOMAIN) {
       logError(authLogger, 'Unauthorized Slack workspace attempted to authenticate', {
-        teamDomain,
         teamId,
         userId,
       });
@@ -119,7 +116,7 @@ authController.get('/slack/callback', (req, res) => {
       return;
     }
 
-    const sessionToken = createSessionToken(userId, teamDomain, teamId);
+    const sessionToken = createSessionToken(userId, teamId);
     res.redirect(`${frontendUrl}#token=${sessionToken}`);
   })().catch((e: unknown) => {
     logError(authLogger, 'Slack OAuth callback failed', e, {});
