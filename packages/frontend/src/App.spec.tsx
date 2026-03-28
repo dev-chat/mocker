@@ -23,7 +23,7 @@ const setupAuthenticatedFetch = () => {
     return Promise.resolve({
       ok: true,
       status: 200,
-      json: async () => [],
+      json: async () => ({ messages: [], mentions: {} }),
     });
   });
 };
@@ -99,7 +99,7 @@ describe('App – authenticated state', () => {
   });
 
   it('triggers search after typing in an input', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => [] });
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ messages: [], mentions: {} }) });
     render(<App />);
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     await waitFor(() => expect(screen.getByText(/no messages found/i)).toBeInTheDocument(), { timeout: 2000 });
@@ -130,7 +130,7 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
-      return Promise.resolve({ ok: true, status: 200, json: async () => messages });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {} }) });
     });
 
     render(<App />);
@@ -168,7 +168,7 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
-      return Promise.resolve({ ok: true, status: 200, json: async () => messages });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {} }) });
     });
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
@@ -204,7 +204,7 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
-      return Promise.resolve({ ok: true, status: 200, json: async () => messages });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {} }) });
     });
 
     render(<App />);
@@ -250,7 +250,7 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
-      return Promise.resolve({ ok: true, status: 200, json: async () => messages });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {} }) });
     });
 
     render(<App />);
@@ -301,6 +301,76 @@ describe('App – authenticated state', () => {
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByText(/search failed: internal server error/i)).toBeInTheDocument());
+  });
+
+  it('clicking a user mention badge sets the userName filter', async () => {
+    const messages = [
+      {
+        id: 1,
+        message: 'Hey <@U99>',
+        channel: 'C123',
+        channelName: 'general',
+        teamId: 'T1',
+        createdAt: '2024-01-01T00:00:00.000Z',
+        name: 'alice',
+        slackId: 'U1',
+      },
+    ];
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/search/filters')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ messages, mentions: { U99: 'carol' } }),
+      });
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await waitFor(() => expect(screen.getByText('@carol')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('@carol'));
+
+    expect(screen.getByLabelText(/user name/i)).toHaveValue('carol');
+  });
+
+  it('clicking a channel mention badge sets the channel filter', async () => {
+    const messages = [
+      {
+        id: 1,
+        message: 'See <#C99>',
+        channel: 'C123',
+        channelName: 'general',
+        teamId: 'T1',
+        createdAt: '2024-01-01T00:00:00.000Z',
+        name: 'alice',
+        slackId: 'U1',
+      },
+    ];
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/search/filters')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ messages, mentions: { C99: 'announcements' } }),
+      });
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    await waitFor(() => expect(screen.getByText('#announcements')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('#announcements'));
+
+    expect(screen.getByLabelText(/channel/i)).toHaveValue('announcements');
   });
 
   it('logs out when the API returns 401', async () => {

@@ -54,7 +54,9 @@ searchController.get('/messages', (req: RequestWithAuthSession, res) => {
       content: typeof content === 'string' ? content : undefined,
       limit: parsedLimit,
     })
-    .then((messages) => res.status(200).json(messages.filter((message) => isPublicChannelId(message.channel))))
+    .then(({ messages, mentions }) =>
+      res.status(200).json({ messages: messages.filter((message) => isPublicChannelId(message.channel)), mentions }),
+    )
     .catch((e: unknown) => {
       logError(searchLogger, 'Failed to search messages', e, {
         userName,
