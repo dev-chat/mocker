@@ -48,8 +48,8 @@ searchController.get('/messages', (req: RequestWithAuthSession, res) => {
 
   let parsedOffset: number | undefined;
   if (typeof offset === 'string') {
-    const parsed = parseInt(offset, 10);
-    if (Number.isFinite(parsed) && parsed >= 0) {
+    const parsed = Number(offset);
+    if (Number.isInteger(parsed) && parsed >= 0) {
       parsedOffset = parsed;
     }
   }

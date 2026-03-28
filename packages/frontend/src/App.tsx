@@ -50,7 +50,6 @@ export default function App() {
       setIsLoading(true);
       setHasSearched(true);
       setError(null);
-      setCurrentPage(page);
 
       // Abort any previous in-flight request to prevent stale results
       if (abortControllerRef.current) {
@@ -85,6 +84,7 @@ export default function App() {
         setMessages(data.messages);
         setMentions(data.mentions);
         setTotal(data.total);
+        setCurrentPage(page);
       } catch (err) {
         // Ignore abort errors from cancelled requests
         if (err instanceof Error && err.name === 'AbortError') {

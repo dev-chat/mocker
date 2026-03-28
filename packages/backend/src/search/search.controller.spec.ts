@@ -150,6 +150,22 @@ describe('searchController', () => {
     expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ offset: undefined }));
   });
 
+  it('passes undefined for offset when the value is a decimal (e.g. "1.5")', async () => {
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 0 });
+
+    await request(app).get('/messages').query({ offset: '1.5' }).expect(200);
+
+    expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ offset: undefined }));
+  });
+
+  it('passes undefined for offset when the value has trailing non-digit chars (e.g. "25abc")', async () => {
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 0 });
+
+    await request(app).get('/messages').query({ offset: '25abc' }).expect(200);
+
+    expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ offset: undefined }));
+  });
+
   it('includes total in the response body', async () => {
     searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 99 });
 
