@@ -45,8 +45,8 @@ export class PricingJob {
       });
 
       this.jobLogger.info('Pricing job complete');
-    } catch (e) {
-      this.jobLogger.error('Pricing job failed', e);
+    } catch (error) {
+      this.jobLogger.error('Pricing job failed', error);
     }
   }
 
