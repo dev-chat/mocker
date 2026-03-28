@@ -52,7 +52,7 @@ describe('App – token in URL hash', () => {
     setupAuthenticatedFetch();
     window.history.replaceState({}, '', '/#token=test-token-123');
     render(<App />);
-    expect(screen.getByText(/message search/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /message search/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/user name/i)).toBeInTheDocument();
     expect(localStorage.getItem('muzzle.lol-auth-token')).toBe('test-token-123');
     expect(window.location.hash).toBe('');
