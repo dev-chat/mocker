@@ -177,15 +177,6 @@ export class AIService {
         },
       })
       .then((response) => {
-        this.aiServiceLogger.info('Gemini response structure:', {
-          hasCandidates: !!response.candidates,
-          candidatesLength: response.candidates?.length,
-          firstCandidateKeys: response.candidates?.[0] ? Object.keys(response.candidates[0]) : null,
-          contentKeys: response.candidates?.[0]?.content ? Object.keys(response.candidates[0].content) : null,
-          partsLength: response.candidates?.[0]?.content?.parts?.length,
-          fullResponse: JSON.stringify(response, null, 2),
-        });
-
         let imageBytes = Buffer.from([]);
         if (!response.candidates || response.candidates.length === 0) {
           this.aiServiceLogger.warn('No candidates in Gemini response');
@@ -223,6 +214,9 @@ export class AIService {
     return Promise.all([aiImage, aiQuote])
       .then((results) => {
         const [imageUrl, quote] = results;
+        this.aiServiceLogger.info('Redeploy Moonbeam - generated quote and image successfully');
+        this.aiServiceLogger.info('Redeploy Moonbeam - quote:', quote);
+        this.aiServiceLogger.info('Redeploy Moonbeam - image URL:', imageUrl);
         const blocks: KnownBlock[] = [
           {
             type: 'image',
