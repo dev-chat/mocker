@@ -2,11 +2,7 @@ import { getManager, getRepository } from 'typeorm';
 import { Item } from '../shared/db/models/Item';
 import { SlackUser } from '../shared/db/models/SlackUser';
 import { logger } from '../shared/logger/logger';
-
-interface RepRow {
-  affectedUser: string;
-  rep: number;
-}
+import type { RepRow } from './pricing.model';
 
 export class PricingJob {
   private jobLogger = logger.child({ module: 'PricingJob' });
