@@ -31,6 +31,9 @@ import { WebService } from './shared/services/web/web.service';
 import { logger } from './shared/logger/logger';
 import { AIService } from './ai/ai.service';
 import { DailyMemoryJob } from './ai/daily-memory.job';
+import { FunFactJob } from './jobs/fun-fact.job';
+import { HealthJob } from './jobs/health.job';
+import { PricingJob } from './jobs/pricing.job';
 import { portfolioController } from './portfolio/portfolio.controller';
 import { hookController } from './hook/hook.controller';
 import { searchController } from './search/search.controller';
@@ -110,6 +113,9 @@ const slackService = new SlackService();
 const webService = new WebService();
 const aiService = new AIService();
 const dailyMemoryJob = new DailyMemoryJob(aiService);
+const funFactJob = new FunFactJob();
+const healthJob = new HealthJob();
+const pricingJob = new PricingJob();
 const indexLogger = logger.child({ module: 'Index' });
 
 const connectToDb = async (): Promise<boolean> => {
@@ -199,6 +205,26 @@ app.listen(PORT, (e?: Error) => {
           { timezone: 'America/New_York' },
         );
         indexLogger.info('Daily memory extraction job scheduled daily at 3AM America/New_York time.');
+        cron.schedule(
+          '0 9 * * *',
+          () => {
+            void funFactJob.run();
+          },
+          { timezone: 'America/New_York' },
+        );
+        indexLogger.info('Fun-fact job scheduled daily at 9AM America/New_York time.');
+        cron.schedule('*/5 * * * *', () => {
+          void healthJob.run();
+        });
+        indexLogger.info('Health check job scheduled every 5 minutes.');
+        cron.schedule(
+          '10 * * * *',
+          () => {
+            void pricingJob.run();
+          },
+          { timezone: 'America/New_York' },
+        );
+        indexLogger.info('Pricing job scheduled every hour at minute 10 America/New_York time.');
       }
     })
     .catch((error) => {
