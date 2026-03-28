@@ -1,4 +1,3 @@
-export const ALLOWED_TEAM_DOMAIN = 'dabros2016';
 export const SLACK_AUTH_URL = 'https://slack.com/oauth/v2/authorize';
 export const SLACK_TOKEN_URL = 'https://slack.com/api/oauth.v2.access';
 export const SLACK_IDENTITY_URL = 'https://slack.com/api/users.identity';

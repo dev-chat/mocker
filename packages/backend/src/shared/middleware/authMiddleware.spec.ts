@@ -28,7 +28,7 @@ describe('authMiddleware', () => {
   });
 
   it('calls next for a valid Bearer token', () => {
-    const token = createSessionToken('U1', 'dabros2016', 'T1');
+    const token = createSessionToken('U1', 'T1');
     const req = makeReq(`Bearer ${token}`);
     const res = makeRes();
     const next = jest.fn() as unknown as NextFunction;
@@ -41,7 +41,7 @@ describe('authMiddleware', () => {
   });
 
   it('returns 401 when verified token payload has no teamId', () => {
-    const token = createSessionToken('U1', 'dabros2016');
+    const token = createSessionToken('U1', '');
     const req = makeReq(`Bearer ${token}`);
     const res = makeRes();
     const next = jest.fn() as unknown as NextFunction;

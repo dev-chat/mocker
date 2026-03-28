@@ -15,9 +15,8 @@ describe('searchController', () => {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    (req as { authSession?: { userId: string; teamDomain: string; teamId: string; exp: number } }).authSession = {
+    (req as { authSession?: { userId: string; teamId: string; exp: number } }).authSession = {
       userId: 'U1',
-      teamDomain: 'dabros2016',
       teamId: 'T1',
       exp: Date.now() + 60000,
     };
@@ -96,9 +95,9 @@ describe('searchController', () => {
     const appWithoutTeam = express();
     appWithoutTeam.use(express.json());
     appWithoutTeam.use((req, _res, next) => {
-      (req as { authSession?: { userId: string; teamDomain: string; exp: number } }).authSession = {
+      (req as { authSession?: { userId: string; teamId: string; exp: number } }).authSession = {
         userId: 'U1',
-        teamDomain: 'dabros2016',
+        teamId: '',
         exp: Date.now() + 60000,
       };
       next();

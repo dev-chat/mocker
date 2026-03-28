@@ -19,12 +19,12 @@ describe('session-token', () => {
       expect(token).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
     });
 
-    it('embeds userId and teamDomain in the payload', () => {
+    it('embeds userId and teamId in the payload', () => {
       const token = createSessionToken('U456', 'myteam');
       const [payload] = token.split('.');
       const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString());
       expect(decoded.userId).toBe('U456');
-      expect(decoded.teamDomain).toBe('myteam');
+      expect(decoded.teamId).toBe('myteam');
     });
 
     it('sets an expiry timestamp in the future', () => {
@@ -53,7 +53,7 @@ describe('session-token', () => {
       const result = verifySessionToken(token);
       expect(result).not.toBeNull();
       expect(result?.userId).toBe('U789');
-      expect(result?.teamDomain).toBe('goodteam');
+      expect(result?.teamId).toBe('goodteam');
     });
 
     it('returns null for a token with no dot separator', () => {
