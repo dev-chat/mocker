@@ -3,6 +3,11 @@ name: Deploy
 on:
   push:
     branches: [master]
+    paths:
+      - 'packages/backend/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
 
 # GITHUB_TOKEN needs write access to push the image to GHCR.
 permissions:
