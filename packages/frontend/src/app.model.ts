@@ -13,3 +13,6 @@ export interface SearchFiltersResponse {
   users: string[];
   channels: string[];
 }
+
+export type SortKey = 'name' | 'channel' | 'message' | 'createdAt';
+export type SortDirection = 'asc' | 'desc';

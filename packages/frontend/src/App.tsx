@@ -8,13 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { LoginPage } from '@/components/LoginPage';
-import type { Message, SearchFiltersResponse } from '@/app.model';
+import type { Message, SearchFiltersResponse, SortKey, SortDirection } from '@/app.model';
 import { AUTH_TOKEN_KEY } from '@/app.const';
 import { useAuth } from '@/hooks/useAuth';
 import { API_BASE_URL } from '@/config';
-
-type SortKey = 'name' | 'channel' | 'message' | 'createdAt';
-type SortDirection = 'asc' | 'desc';
+import { getDisplayedMessages } from '@/app.helpers';
 
 export default function App() {
   const { isAuthenticated, authError, logout } = useAuth();
@@ -129,36 +127,10 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [handleSearch]);
 
-  const displayedMessages = useMemo(() => {
-    const normalizedFilter = tableFilter.trim().toLowerCase();
-    const filtered = normalizedFilter
-      ? messages.filter((message) => {
-          const channelText = (message.channelName ?? message.channel ?? '').toLowerCase();
-          return (
-            message.name.toLowerCase().includes(normalizedFilter) ||
-            channelText.includes(normalizedFilter) ||
-            message.message.toLowerCase().includes(normalizedFilter)
-          );
-        })
-      : messages;
-
-    return [...filtered].sort((a, b) => {
-      const comparison =
-        sortKey === 'createdAt'
-          ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          : sortKey === 'name'
-            ? a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-            : sortKey === 'channel'
-              ? ((): number => {
-                  const aChannel = a.channelName ?? a.channel;
-                  const bChannel = b.channelName ?? b.channel;
-                  return aChannel.localeCompare(bChannel, undefined, { sensitivity: 'base' });
-                })()
-              : a.message.localeCompare(b.message, undefined, { sensitivity: 'base' });
-
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-  }, [messages, tableFilter, sortKey, sortDirection]);
+  const displayedMessages = useMemo(
+    () => getDisplayedMessages(messages, tableFilter, sortKey, sortDirection),
+    [messages, tableFilter, sortKey, sortDirection],
+  );
 
   const toggleSort = useCallback(
     (nextKey: SortKey) => {
