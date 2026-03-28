@@ -37,11 +37,7 @@ export class FunFactJob {
       ]);
 
       const blocks = this.buildBlocks(quotePayload, facts, onThisDayPayload, jokeText);
-      await this.webService.sendMessage(
-        FUN_FACT_SLACK_CHANNEL,
-        "SimpleTech's SimpleFacts",
-        blocks,
-      );
+      await this.webService.sendMessage(FUN_FACT_SLACK_CHANNEL, "SimpleTech's SimpleFacts", blocks);
       this.jobLogger.info(`Fun-fact job complete — posted to ${FUN_FACT_SLACK_CHANNEL}`);
     } catch (e) {
       this.jobLogger.error('Fun-fact job failed', e);
@@ -79,9 +75,7 @@ export class FunFactJob {
     while (facts.length < FACT_TARGET_COUNT) {
       attempts++;
       if (attempts > MAX_FACT_ATTEMPTS) {
-        this.jobLogger.error(
-          `Unable to collect ${FACT_TARGET_COUNT} unique facts after ${MAX_FACT_ATTEMPTS} attempts`,
-        );
+        this.jobLogger.error(`Unable to collect ${FACT_TARGET_COUNT} unique facts after ${MAX_FACT_ATTEMPTS} attempts`);
         break;
       }
 

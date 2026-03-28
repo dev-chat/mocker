@@ -246,22 +246,22 @@ docker logs <container-id> | jq .
 
 Most scheduled jobs run inside the backend Node.js process using `node-cron`. They are started automatically when the server connects to the database.
 
-| Job | Schedule | Location | Description |
-|-----|----------|----------|-------------|
-| **Daily Memory** | `0 3 * * *` (3 AM ET) | In-process | Extracts AI memories from all Slack channels |
-| **Fun Fact** | `0 9 * * *` (9 AM ET) | In-process | Posts daily facts, joke, quote, and on-this-day event to Slack |
-| **Pricing** | `10 * * * *` (every hour at :10) | In-process | Recalculates item prices based on median reputation |
-| **Health Check** | `*/5 * * * *` (every 5 min) | Bash script | Checks the `/health` endpoint from outside the process and alerts Slack on failure |
+| Job              | Schedule                         | Location    | Description                                                                        |
+| ---------------- | -------------------------------- | ----------- | ---------------------------------------------------------------------------------- |
+| **Daily Memory** | `0 3 * * *` (3 AM ET)            | In-process  | Extracts AI memories from all Slack channels                                       |
+| **Fun Fact**     | `0 9 * * *` (9 AM ET)            | In-process  | Posts daily facts, joke, quote, and on-this-day event to Slack                     |
+| **Pricing**      | `10 * * * *` (every hour at :10) | In-process  | Recalculates item prices based on median reputation                                |
+| **Health Check** | `*/5 * * * *` (every 5 min)      | Bash script | Checks the `/health` endpoint from outside the process and alerts Slack on failure |
 
 #### Fun Fact Job environment variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `API_NINJA_KEY` | _(required)_ | API key for [api-ninjas.com](https://api-ninjas.com) facts endpoint |
-| `FUN_FACT_SLACK_CHANNEL` | `#general` | Slack channel to post the daily fun-fact message |
-| `FACT_TARGET_COUNT` | `5` | Number of unique facts to collect per run |
-| `MAX_FACT_ATTEMPTS` | `50` | Maximum fetch attempts before giving up on facts |
-| `MAX_JOKE_ATTEMPTS` | `20` | Maximum fetch attempts before giving up on the joke |
+| Variable                 | Default      | Description                                                         |
+| ------------------------ | ------------ | ------------------------------------------------------------------- |
+| `API_NINJA_KEY`          | _(required)_ | API key for [api-ninjas.com](https://api-ninjas.com) facts endpoint |
+| `FUN_FACT_SLACK_CHANNEL` | `#general`   | Slack channel to post the daily fun-fact message                    |
+| `FACT_TARGET_COUNT`      | `5`          | Number of unique facts to collect per run                           |
+| `MAX_FACT_ATTEMPTS`      | `50`         | Maximum fetch attempts before giving up on facts                    |
+| `MAX_JOKE_ATTEMPTS`      | `20`         | Maximum fetch attempts before giving up on the joke                 |
 
 #### Health Check Job (bash script)
 
