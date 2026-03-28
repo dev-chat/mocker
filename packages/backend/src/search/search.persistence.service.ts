@@ -1,4 +1,4 @@
-import { getRepository, Like, In } from 'typeorm';
+import { getRepository, Like } from 'typeorm';
 import { Message } from '../shared/db/models/Message';
 import { SlackChannel } from '../shared/db/models/SlackChannel';
 import { SlackUser } from '../shared/db/models/SlackUser';
@@ -113,36 +113,37 @@ export class SearchPersistenceService {
       }
     }
 
+    if (userIds.size === 0 && channelIds.size === 0) {
+      return {};
+    }
+
+    const userPlaceholders = userIds.size > 0 ? [...userIds].map(() => '?').join(', ') : null;
+    const channelPlaceholders = channelIds.size > 0 ? [...channelIds].map(() => '?').join(', ') : null;
+
+    const parts: string[] = [];
+    const queryParams: string[] = [];
+
+    if (userPlaceholders) {
+      parts.push(`SELECT slackId AS id, name FROM slack_user WHERE teamId = ? AND slackId IN (${userPlaceholders})`);
+      queryParams.push(teamId, ...[...userIds]);
+    }
+
+    if (channelPlaceholders) {
+      parts.push(
+        `SELECT channelId AS id, name FROM slack_channel WHERE teamId = ? AND channelId IN (${channelPlaceholders})`,
+      );
+      queryParams.push(teamId, ...[...channelIds]);
+    }
+
+    const rows: { id: string; name: string }[] = await getRepository(Message).query(
+      parts.join(' UNION ALL '),
+      queryParams,
+    );
+
     const mentions: Record<string, string> = {};
-
-    const lookups: Promise<void>[] = [];
-
-    if (userIds.size > 0) {
-      lookups.push(
-        getRepository(SlackUser)
-          .find({ where: { slackId: In([...userIds]), teamId }, select: ['slackId', 'name'] })
-          .then((rows) => {
-            for (const row of rows) {
-              mentions[row.slackId] = row.name;
-            }
-          }),
-      );
+    for (const row of rows) {
+      mentions[row.id] = row.name;
     }
-
-    if (channelIds.size > 0) {
-      lookups.push(
-        getRepository(SlackChannel)
-          .find({ where: { channelId: In([...channelIds]), teamId }, select: ['channelId', 'name'] })
-          .then((rows) => {
-            for (const row of rows) {
-              mentions[row.channelId] = row.name;
-            }
-          }),
-      );
-    }
-
-    await Promise.all(lookups);
-
     return mentions;
   }
 }

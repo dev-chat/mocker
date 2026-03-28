@@ -1,18 +1,6 @@
 import { Badge } from '@/components/ui/badge';
-
-interface MessageTextProps {
-  text: string;
-  mentions: Record<string, string>;
-  onUserClick: (name: string) => void;
-  onChannelClick: (name: string) => void;
-}
-
-type Segment =
-  | { kind: 'text'; value: string }
-  | { kind: 'user'; id: string; name: string }
-  | { kind: 'channel'; id: string; name: string };
-
-const MENTION_REGEX = /<(@|#)([A-Z0-9]+)(?:\|[^>]*)?>/g;
+import { MENTION_REGEX } from '@/components/MessageText.const';
+import type { MessageTextProps, Segment } from '@/components/MessageText.model';
 
 export function parseMessageSegments(text: string, mentions: Record<string, string>): Segment[] {
   const segments: Segment[] = [];

@@ -1,14 +1,12 @@
-import { getRepository, In } from 'typeorm';
+import { getRepository } from 'typeorm';
 import { SearchPersistenceService } from './search.persistence.service';
 import { SlackChannel } from '../shared/db/models/SlackChannel';
-import { SlackUser } from '../shared/db/models/SlackUser';
 
 jest.mock('typeorm', () => {
   const actual = jest.requireActual('typeorm');
   return {
     ...actual,
     getRepository: jest.fn(),
-    In: jest.fn((ids) => ids),
   };
 });
 
@@ -22,6 +20,8 @@ describe('SearchPersistenceService', () => {
     service = new SearchPersistenceService();
     (getRepository as jest.Mock).mockReturnValue({ query, find });
     find.mockResolvedValue([]);
+    // By default the second query call (mention resolution) returns empty rows
+    query.mockResolvedValue([]);
   });
 
   it('gets and de-duplicates users/channels for search filters', async () => {
@@ -40,7 +40,7 @@ describe('SearchPersistenceService', () => {
   });
 
   it('searches with no filters (default conditions only)', async () => {
-    query.mockResolvedValue([{ id: 1, message: 'hello', name: 'alice' }]);
+    query.mockResolvedValueOnce([{ id: 1, message: 'hello', name: 'alice' }]).mockResolvedValueOnce([]);
 
     const result = await service.searchMessages({ teamId: 'T1' });
 
@@ -136,78 +136,86 @@ describe('SearchPersistenceService', () => {
   });
 
   it('resolves user and channel mentions found in message text', async () => {
-    const userFind = jest.fn().mockResolvedValue([{ slackId: 'U123', name: 'alice' }]);
-    const channelFind = jest.fn().mockResolvedValue([{ channelId: 'C456', name: 'general' }]);
-
-    (getRepository as jest.Mock)
-      .mockReturnValueOnce({ query })
-      .mockReturnValueOnce({ find: userFind })
-      .mockReturnValueOnce({ find: channelFind });
-
-    query.mockResolvedValue([{ id: 1, message: 'Hello <@U123> check <#C456>', name: 'bob' }]);
+    query
+      .mockResolvedValueOnce([{ id: 1, message: 'Hello <@U123> check <#C456>', name: 'bob' }])
+      .mockResolvedValueOnce([
+        { id: 'U123', name: 'alice' },
+        { id: 'C456', name: 'general' },
+      ]);
 
     const result = await service.searchMessages({ teamId: 'T1' });
 
     expect(result.mentions).toEqual({ U123: 'alice', C456: 'general' });
-    expect(userFind).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ slackId: In(['U123']), teamId: 'T1' }) }),
-    );
-    expect(channelFind).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ channelId: In(['C456']), teamId: 'T1' }) }),
-    );
+
+    const [mentionSql, mentionParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    expect(mentionSql).toContain('UNION ALL');
+    expect(mentionSql).toContain('slack_user');
+    expect(mentionSql).toContain('slack_channel');
+    expect(mentionParams).toContain('U123');
+    expect(mentionParams).toContain('C456');
+    expect(mentionParams).toContain('T1');
   });
 
   it('deduplicates mentions across multiple messages', async () => {
-    const userFind = jest.fn().mockResolvedValue([{ slackId: 'U123', name: 'alice' }]);
-
-    (getRepository as jest.Mock).mockReturnValueOnce({ query }).mockReturnValueOnce({ find: userFind });
-
-    query.mockResolvedValue([
-      { id: 1, message: 'Hey <@U123>', name: 'bob' },
-      { id: 2, message: 'Also <@U123> mentioned here', name: 'carol' },
-    ]);
+    query
+      .mockResolvedValueOnce([
+        { id: 1, message: 'Hey <@U123>', name: 'bob' },
+        { id: 2, message: 'Also <@U123> mentioned here', name: 'carol' },
+      ])
+      .mockResolvedValueOnce([{ id: 'U123', name: 'alice' }]);
 
     const result = await service.searchMessages({ teamId: 'T1' });
 
     expect(result.mentions).toEqual({ U123: 'alice' });
-    expect(userFind).toHaveBeenCalledTimes(1);
+    // Second query call should only contain one occurrence of U123
+    const [mentionSql, mentionParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    expect(mentionParams.filter((p) => p === 'U123')).toHaveLength(1);
+    expect(mentionSql).not.toContain('UNION ALL');
   });
 
   it('skips mention lookups when no mentions exist in messages', async () => {
-    query.mockResolvedValue([{ id: 1, message: 'plain text no mentions', name: 'alice' }]);
+    query.mockResolvedValueOnce([{ id: 1, message: 'plain text no mentions', name: 'alice' }]);
 
     const result = await service.searchMessages({ teamId: 'T1' });
 
     expect(result.mentions).toEqual({});
-    expect(find).not.toHaveBeenCalled();
+    expect(query).toHaveBeenCalledTimes(1);
   });
 
   it('handles the |displayname variant in mention tokens', async () => {
-    const userFind = jest.fn().mockResolvedValue([{ slackId: 'U789', name: 'dave' }]);
-
-    (getRepository as jest.Mock).mockReturnValueOnce({ query }).mockReturnValueOnce({ find: userFind });
-
-    query.mockResolvedValue([{ id: 1, message: 'Hi <@U789|dave>', name: 'bob' }]);
+    query
+      .mockResolvedValueOnce([{ id: 1, message: 'Hi <@U789|dave>', name: 'bob' }])
+      .mockResolvedValueOnce([{ id: 'U789', name: 'dave' }]);
 
     const result = await service.searchMessages({ teamId: 'T1' });
 
     expect(result.mentions).toEqual({ U789: 'dave' });
   });
 
-  it('uses SlackUser repo for user mentions and SlackChannel repo for channel mentions', async () => {
-    const userFind = jest.fn().mockResolvedValue([{ slackId: 'U111', name: 'alice' }]);
-    const channelFind = jest.fn().mockResolvedValue([{ channelId: 'C222', name: 'random' }]);
+  it('resolves user-only mentions using a query without UNION ALL', async () => {
+    query
+      .mockResolvedValueOnce([{ id: 1, message: 'Hey <@U111>', name: 'bob' }])
+      .mockResolvedValueOnce([{ id: 'U111', name: 'alice' }]);
 
-    (getRepository as jest.Mock)
-      .mockReturnValueOnce({ query })
-      .mockReturnValueOnce({ find: userFind })
-      .mockReturnValueOnce({ find: channelFind });
+    const result = await service.searchMessages({ teamId: 'T1' });
 
-    query.mockResolvedValue([{ id: 1, message: '<@U111> posted in <#C222>', name: 'bob' }]);
+    expect(result.mentions).toEqual({ U111: 'alice' });
+    const [mentionSql] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    expect(mentionSql).toContain('slack_user');
+    expect(mentionSql).not.toContain('UNION ALL');
+  });
 
-    await service.searchMessages({ teamId: 'T1' });
+  it('resolves both user and channel mentions using a single UNION ALL query', async () => {
+    query.mockResolvedValueOnce([{ id: 1, message: '<@U111> posted in <#C222>', name: 'bob' }]).mockResolvedValueOnce([
+      { id: 'U111', name: 'alice' },
+      { id: 'C222', name: 'random' },
+    ]);
 
-    expect(getRepository).toHaveBeenCalledWith(SlackUser);
-    expect(getRepository).toHaveBeenCalledWith(SlackChannel);
+    const result = await service.searchMessages({ teamId: 'T1' });
+
+    expect(result.mentions).toEqual({ U111: 'alice', C222: 'random' });
+    expect(query).toHaveBeenCalledTimes(2);
+    const [mentionSql] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    expect(mentionSql).toContain('UNION ALL');
   });
 });
