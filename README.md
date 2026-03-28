@@ -14,16 +14,12 @@ mocker/
 │   │                 # - REST APIs for Slack commands and events
 │   │                 # - Search endpoint (team-scoped, requires OAuth token)
 │   │                 # - Slack OAuth flow (/auth/slack, /auth/slack/callback)
+│   │                 # - Scheduled jobs (fun-fact, pricing, memory)
 │   │
-│   ├── frontend/     # @mocker/frontend - React + Vite
-│   │                 # - Message search UI
-│   │                 # - OAuth login flow
-│   │                 # - Requires session token in URL fragment
-│   │
-│   └── jobs/         # Standalone bash scheduled jobs
-│       ├── fun-fact-job/     # Daily fun facts via Slack API
-│       ├── health-job/       # Health check endpoint
-│       └── pricing-job/      # Price update job
+│   └── frontend/     # @mocker/frontend - React + Vite
+│                     # - Message search UI
+│                     # - OAuth login flow
+│                     # - Requires session token in URL fragment
 │
 ├── package.json         # Root workspace config
 ├── tsconfig.base.json   # Shared TypeScript config
@@ -248,45 +244,35 @@ docker logs <container-id> | jq .
 
 ### Scheduled Jobs
 
-The scripts in `packages/jobs` are standalone bash jobs intended for cron-style execution. They no longer require Python or Pipenv.
+Most scheduled jobs run inside the backend Node.js process using `node-cron`. They are started automatically when the server connects to the database.
 
-Each job now logs timestamped `INFO`, `WARN`, and `ERROR` lines to stdout/stderr so cron can capture clear success and failure status in its own logs or redirected log files.
+| Job              | Schedule                         | Location    | Description                                                                        |
+| ---------------- | -------------------------------- | ----------- | ---------------------------------------------------------------------------------- |
+| **Daily Memory** | `0 3 * * *` (3 AM ET)            | In-process  | Extracts AI memories from all Slack channels                                       |
+| **Fun Fact**     | `0 9 * * *` (9 AM ET)            | In-process  | Posts daily facts, joke, quote, and on-this-day event to Slack                     |
+| **Pricing**      | `10 * * * *` (every hour at :10) | In-process  | Recalculates item prices based on median reputation                                |
+| **Health Check** | `*/5 * * * *` (every 5 min)      | Bash script | Checks the `/health` endpoint from outside the process and alerts Slack on failure |
 
-The jobs will try to load environment variables from the first file that exists in this order:
+#### Fun Fact Job environment variables
 
-1. `JOB_ENV_FILE`
-2. `packages/jobs/<job-name>/.env`
-3. `$HOME/.bash_profile`
-4. `$HOME/.profile`
-5. `/home/muzzle.lol/.bash_profile`
+| Variable                 | Default      | Description                                                         |
+| ------------------------ | ------------ | ------------------------------------------------------------------- |
+| `API_NINJA_KEY`          | _(required)_ | API key for [api-ninjas.com](https://api-ninjas.com) facts endpoint |
+| `FUN_FACT_SLACK_CHANNEL` | `#general`   | Slack channel to post the daily fun-fact message                    |
+| `FACT_TARGET_COUNT`      | `5`          | Number of unique facts to collect per run                           |
+| `MAX_FACT_ATTEMPTS`      | `50`         | Maximum fetch attempts before giving up on facts                    |
+| `MAX_JOKE_ATTEMPTS`      | `20`         | Maximum fetch attempts before giving up on the joke                 |
 
-If none of those files exist, the jobs fall back to whatever environment cron provides directly.
+#### Health Check Job (bash script)
 
-- `packages/jobs/health-job/script.sh` requires `bash`, `curl`, `grep`, `mktemp`, and `tr`
-- `packages/jobs/fun-fact-job/script.sh` requires `bash`, `curl`, `jq`, and `mysql`
-- `packages/jobs/pricing-job/script.sh` requires `bash`, `mysql`, and `awk`
-
-Example `crontab -e` entries when the default shell is bash:
+The health check job lives in `packages/jobs/health-job/script.sh` and must be run from **outside** the Node.js process so it can detect when the server itself is down. Schedule it with an external cron daemon:
 
 ```bash
-SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/bin:/bin
-MAILTO=""
-
-# Optional shared env file for the jobs
-JOB_ENV_FILE=/home/steve/code/mocker/.cron.env
-
-# Daily fun facts at 09:00
-0 9 * * * /home/steve/code/mocker/packages/jobs/fun-fact-job/script.sh >> /home/steve/logs/fun-fact-job.log 2>&1
-
 # Health check every 5 minutes
-*/5 * * * * /home/steve/code/mocker/packages/jobs/health-job/script.sh >> /home/steve/logs/health-job.log 2>&1
-
-# Price refresh every hour at minute 10
-10 * * * * /home/steve/code/mocker/packages/jobs/pricing-job/script.sh >> /home/steve/logs/pricing-job.log 2>&1
+*/5 * * * * /path/to/mocker/packages/jobs/health-job/script.sh >> /path/to/logs/health-job.log 2>&1
 ```
 
-Use root only if the jobs truly need root-owned resources such as privileged ports, root-only files, or system-level service management. These jobs only need network access, MySQL access, and Slack credentials, so they should normally run as a dedicated non-root user that owns the repo and the log directory.
+The script requires `bash`, `curl`, `grep`, `mktemp`, and `tr`. It reads environment from the first file found in: `JOB_ENV_FILE`, `script dir/.env`, `~/.bash_profile`, `~/.profile`, or `/home/muzzle.lol/.bash_profile`.
 
 ### Available Scripts
 
