@@ -214,7 +214,9 @@ app.listen(PORT, (e?: Error) => {
         cron.schedule(
           '10 * * * *',
           () => {
-            void pricingJob.run();
+            void pricingJob.run().catch((error) => {
+              indexLogger.error('Pricing job failed:', error);
+            });
           },
           { timezone: 'America/New_York' },
         );
