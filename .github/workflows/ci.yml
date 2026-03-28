@@ -8,8 +8,35 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect Changed Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'packages/backend/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig.base.json'
+            frontend:
+              - 'packages/frontend/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig.base.json'
+
   setup:
     name: Install Dependencies (All)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,7 +57,8 @@ jobs:
 
   lint:
     name: Lint (Back End)
-    needs: setup
+    needs: [changes, setup]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -42,7 +70,8 @@ jobs:
 
   lint-frontend:
     name: Lint (Front End)
-    needs: setup
+    needs: [changes, setup]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -54,7 +83,8 @@ jobs:
 
   format-check:
     name: Format Check (All)
-    needs: setup
+    needs: [changes, setup]
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -66,7 +96,8 @@ jobs:
 
   build:
     name: Build (Back End)
-    needs: setup
+    needs: [changes, setup]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -78,7 +109,8 @@ jobs:
 
   build-frontend:
     name: Build (Front End)
-    needs: setup
+    needs: [changes, setup]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -90,7 +122,8 @@ jobs:
 
   test:
     name: Test & Coverage (Back End)
-    needs: setup
+    needs: [changes, setup]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -103,7 +136,8 @@ jobs:
 
   test-frontend:
     name: Test & Coverage (Front End)
-    needs: setup
+    needs: [changes, setup]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -116,6 +150,8 @@ jobs:
 
   docker-build:
     name: Docker Build (Back End)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
