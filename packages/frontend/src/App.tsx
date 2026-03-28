@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { LoginPage } from '@/components/LoginPage';
-import type { Message, SearchFiltersResponse, SortKey, SortDirection } from '@/app.model';
+import { MessageText } from '@/components/MessageText';
+import type { Message, SearchFiltersResponse, SearchMessagesResponse, SortKey, SortDirection } from '@/app.model';
 import { AUTH_TOKEN_KEY } from '@/app.const';
 import { useAuth } from '@/hooks/useAuth';
 import { API_BASE_URL } from '@/config';
@@ -24,6 +25,7 @@ export default function App() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [searchFilterOptions, setSearchFilterOptions] = useState<SearchFiltersResponse>({ users: [], channels: [] });
   const [messages, setMessages] = useState<Message[]>([]);
+  const [mentions, setMentions] = useState<Record<string, string>>({});
   const [isFiltersLoading, setIsFiltersLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,7 @@ export default function App() {
   const handleLogout = useCallback(() => {
     logout(() => {
       setMessages([]);
+      setMentions({});
       setHasSearched(false);
       setError(null);
     });
@@ -70,8 +73,9 @@ export default function App() {
       if (!response.ok) {
         throw new Error(`Search failed: ${response.statusText}`);
       }
-      const data: Message[] = (await response.json()) as Message[];
-      setMessages(data);
+      const data = (await response.json()) as SearchMessagesResponse;
+      setMessages(data.messages);
+      setMentions(data.mentions);
     } catch (err) {
       // Ignore abort errors from cancelled requests
       if (err instanceof Error && err.name === 'AbortError') {
@@ -327,7 +331,12 @@ export default function App() {
                             <Badge variant="outline">#{msg.channelName ?? msg.channel}</Badge>
                           </TableCell>
                           <TableCell className="max-w-md">
-                            <span className="break-words">{msg.message}</span>
+                            <MessageText
+                              text={msg.message}
+                              mentions={mentions}
+                              onUserClick={(name) => setUserName(name)}
+                              onChannelClick={(name) => setChannel(name)}
+                            />
                           </TableCell>
                           <TableCell className="text-muted-foreground text-xs">
                             {new Date(msg.createdAt).toLocaleString()}

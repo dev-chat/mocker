@@ -9,6 +9,11 @@ export interface Message {
   slackId: string;
 }
 
+export interface SearchMessagesResponse {
+  messages: Message[];
+  mentions: Record<string, string>;
+}
+
 export interface SearchFiltersResponse {
   users: string[];
   channels: string[];

@@ -5,8 +5,11 @@ import { SlackUser } from '../shared/db/models/SlackUser';
 import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
-import type { MessageSearchParams } from './search.model';
+import type { MessageSearchParams, SearchMessagesResponse } from './search.model';
 import { DEFAULT_LIMIT, MIN_LIMIT, MAX_LIMIT } from './search.const';
+
+const USER_MENTION_REGEX = /<@([A-Z0-9]+)(?:\|[^>]*)?>/g;
+const CHANNEL_MENTION_REGEX = /<#([A-Z0-9]+)(?:\|[^>]*)?>/g;
 
 export class SearchPersistenceService {
   private logger = logger.child({ module: 'SearchPersistenceService' });
@@ -33,7 +36,7 @@ export class SearchPersistenceService {
       : Math.min(limit, MAX_LIMIT);
   }
 
-  async searchMessages(params: MessageSearchParams): Promise<MessageWithName[]> {
+  async searchMessages(params: MessageSearchParams): Promise<SearchMessagesResponse> {
     const { userName, channel, content, teamId } = params;
     const effectiveLimit = SearchPersistenceService.resolveLimit(params.limit);
 
@@ -77,7 +80,7 @@ export class SearchPersistenceService {
 
     queryParams.push(effectiveLimit);
 
-    return getRepository(Message)
+    const messages: MessageWithName[] = await getRepository(Message)
       .query(query, queryParams)
       .catch((e: unknown) => {
         logError(this.logger, 'Failed to search messages', e, {
@@ -89,5 +92,58 @@ export class SearchPersistenceService {
         });
         throw e;
       });
+
+    const mentions = await this.resolveMentions(messages, teamId);
+    return { messages, mentions };
+  }
+
+  private async resolveMentions(messages: MessageWithName[], teamId: string): Promise<Record<string, string>> {
+    const userIds = new Set<string>();
+    const channelIds = new Set<string>();
+
+    for (const msg of messages) {
+      USER_MENTION_REGEX.lastIndex = 0;
+      CHANNEL_MENTION_REGEX.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = USER_MENTION_REGEX.exec(msg.message)) !== null) {
+        userIds.add(match[1]);
+      }
+      while ((match = CHANNEL_MENTION_REGEX.exec(msg.message)) !== null) {
+        channelIds.add(match[1]);
+      }
+    }
+
+    if (userIds.size === 0 && channelIds.size === 0) {
+      return {};
+    }
+
+    const userPlaceholders = userIds.size > 0 ? [...userIds].map(() => '?').join(', ') : null;
+    const channelPlaceholders = channelIds.size > 0 ? [...channelIds].map(() => '?').join(', ') : null;
+
+    const parts: string[] = [];
+    const queryParams: string[] = [];
+
+    if (userPlaceholders) {
+      parts.push(`SELECT slackId AS id, name FROM slack_user WHERE teamId = ? AND slackId IN (${userPlaceholders})`);
+      queryParams.push(teamId, ...[...userIds]);
+    }
+
+    if (channelPlaceholders) {
+      parts.push(
+        `SELECT channelId AS id, name FROM slack_channel WHERE teamId = ? AND channelId IN (${channelPlaceholders})`,
+      );
+      queryParams.push(teamId, ...[...channelIds]);
+    }
+
+    const rows: { id: string; name: string }[] = await getRepository(Message).query(
+      parts.join(' UNION ALL '),
+      queryParams,
+    );
+
+    const mentions: Record<string, string> = {};
+    for (const row of rows) {
+      mentions[row.id] = row.name;
+    }
+    return mentions;
   }
 }

@@ -48,14 +48,14 @@ describe('searchController', () => {
 
   it('returns 200 with messages when search succeeds', async () => {
     const messages = [{ id: 1, message: 'hello', name: 'alice', channel: 'C123' }];
-    searchMessagesMock.mockResolvedValue(messages);
+    searchMessagesMock.mockResolvedValue({ messages, mentions: {} });
 
     const res = await request(app)
       .get('/messages')
       .query({ userName: 'alice', channel: 'general', content: 'hello', limit: '10' });
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual(messages);
+    expect(res.body).toEqual({ messages, mentions: {} });
     expect(searchMessagesMock).toHaveBeenCalledWith({
       teamId: 'T1',
       userName: 'alice',
@@ -66,20 +66,26 @@ describe('searchController', () => {
   });
 
   it('returns only public channel messages when persistence returns mixed channel types', async () => {
-    searchMessagesMock.mockResolvedValue([
-      { id: 1, message: 'public', name: 'alice', channel: 'C111' },
-      { id: 2, message: 'private', name: 'bob', channel: 'G222' },
-      { id: 3, message: 'dm', name: 'carol', channel: 'D333' },
-    ]);
+    searchMessagesMock.mockResolvedValue({
+      messages: [
+        { id: 1, message: 'public', name: 'alice', channel: 'C111' },
+        { id: 2, message: 'private', name: 'bob', channel: 'G222' },
+        { id: 3, message: 'dm', name: 'carol', channel: 'D333' },
+      ],
+      mentions: {},
+    });
 
     const res = await request(app).get('/messages');
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual([{ id: 1, message: 'public', name: 'alice', channel: 'C111' }]);
+    expect(res.body).toEqual({
+      messages: [{ id: 1, message: 'public', name: 'alice', channel: 'C111' }],
+      mentions: {},
+    });
   });
 
   it('passes undefined for query params that are not strings', async () => {
-    searchMessagesMock.mockResolvedValue([]);
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {} });
 
     await request(app).get('/messages').expect(200);
 
@@ -93,7 +99,7 @@ describe('searchController', () => {
   });
 
   it('clamps limit to MAX_LIMIT (1000) when provided value exceeds it', async () => {
-    searchMessagesMock.mockResolvedValue([]);
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {} });
 
     await request(app).get('/messages').query({ limit: '9999' }).expect(200);
 
@@ -101,7 +107,7 @@ describe('searchController', () => {
   });
 
   it('passes undefined for limit when the value is not a valid positive integer (NaN)', async () => {
-    searchMessagesMock.mockResolvedValue([]);
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {} });
 
     await request(app).get('/messages').query({ limit: 'abc' }).expect(200);
 
@@ -109,7 +115,7 @@ describe('searchController', () => {
   });
 
   it('passes undefined for limit when the value is zero or negative', async () => {
-    searchMessagesMock.mockResolvedValue([]);
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {} });
 
     await request(app).get('/messages').query({ limit: '-5' }).expect(200);
 
