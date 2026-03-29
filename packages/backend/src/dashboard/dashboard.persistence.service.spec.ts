@@ -183,8 +183,8 @@ describe('DashboardPersistenceService', () => {
       'getLeaderboards:rep',
     ]) {
       expect(loggerMock.debug).toHaveBeenCalledWith(
-        expect.objectContaining({ query: label, durationMs: expect.any(Number) }),
         'query profile',
+        expect.objectContaining({ query: label, durationMs: expect.any(Number) }),
       );
     }
   });
