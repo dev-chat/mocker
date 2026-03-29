@@ -48,7 +48,11 @@ export class DashboardPersistenceService {
     });
 
     const data: DashboardResponse = { myStats, myActivity, myTopChannels, mySentimentTrend, ...leaderboards };
-    await this.redisService.setValueWithExpire(cacheKey, JSON.stringify(data), 'EX', CACHE_TTL_SECONDS[period]);
+    try {
+      await this.redisService.setValueWithExpire(cacheKey, JSON.stringify(data), 'EX', CACHE_TTL_SECONDS[period]);
+    } catch (e: unknown) {
+      logError(this.logger, 'Failed to write dashboard data to cache', e, { userId, teamId, period });
+    }
     return data;
   }
 
