@@ -137,4 +137,44 @@ describe('HomePage', () => {
     expect(screen.getByRole('button', { name: 'Monthly' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Weekly' })).toHaveAttribute('aria-pressed', 'false');
   });
+
+  it('uses "the last 24 hours" in descriptions when Daily is selected', async () => {
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    render(<HomePage onLogout={vi.fn()} />);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    expect(screen.getAllByText(/the last 24 hours/).length).toBeGreaterThan(0);
+    const [url] = mockFetch.mock.calls[1] as [string, RequestInit];
+    expect(url).toContain('period=daily');
+  });
+
+  it('uses "the last 365 days" in descriptions when Yearly is selected', async () => {
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    render(<HomePage onLogout={vi.fn()} />);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Yearly' }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    expect(screen.getAllByText(/the last 365 days/).length).toBeGreaterThan(0);
+    const [url] = mockFetch.mock.calls[1] as [string, RequestInit];
+    expect(url).toContain('period=yearly');
+  });
+
+  it('uses "all time" in descriptions when All Time is selected', async () => {
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    render(<HomePage onLogout={vi.fn()} />);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'All Time' }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    expect(screen.getAllByText(/all time/).length).toBeGreaterThan(0);
+    const [url] = mockFetch.mock.calls[1] as [string, RequestInit];
+    expect(url).toContain('period=allTime');
+  });
+
+  it('shows zero sentiment as neutral (no plus or minus prefix)', async () => {
+    const data = { ...fullData, myStats: { totalMessages: 1, rep: 0, avgSentiment: 0 } };
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => data });
+    render(<HomePage onLogout={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('0.00')).toBeInTheDocument());
+  });
 });

@@ -35,7 +35,7 @@ const PERIODS: { value: TimePeriod; label: string }[] = [
 function periodLabel(period: TimePeriod): string {
   switch (period) {
     case 'daily':
-      return 'today';
+      return 'the last 24 hours';
     case 'weekly':
       return 'the last 7 days';
     case 'monthly':
