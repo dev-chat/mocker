@@ -1,0 +1,1 @@
+export const DB_CONNECTION_POOL_LIMIT = 10;

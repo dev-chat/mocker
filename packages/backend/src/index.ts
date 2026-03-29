@@ -8,6 +8,7 @@ import type { Application } from 'express';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { createConnection, getConnectionOptions } from 'typeorm';
+import { DB_CONNECTION_POOL_LIMIT } from './shared/db/db.const';
 import type { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
 import { aiController } from './ai/ai.controller';
 import { clapController } from './clap/clap.controller';
@@ -124,6 +125,7 @@ const connectToDb = async (): Promise<boolean> => {
     const overrideOptions = {
       ...options,
       charset: 'utf8mb4',
+      extra: { connectionLimit: DB_CONNECTION_POOL_LIMIT },
       synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
     };
     return createConnection(overrideOptions)
