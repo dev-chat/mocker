@@ -3,6 +3,7 @@ import type { Repository } from 'typeorm';
 import { Message } from '../shared/db/models/Message';
 import { logger } from '../shared/logger/logger';
 import { logError } from '../shared/logger/error-logging';
+import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 import type {
   ActivityDataPoint,
   ChannelDataPoint,
@@ -11,43 +12,75 @@ import type {
   MyStats,
   RepLeaderboardEntry,
   SentimentDataPoint,
+  TimePeriod,
 } from './dashboard.model';
-import { ACTIVITY_DAYS, SENTIMENT_WEEKS, TOP_CHANNELS_LIMIT, LEADERBOARD_LIMIT } from './dashboard.const';
+import { CACHE_TTL_SECONDS, LEADERBOARD_LIMIT, PERIOD_DAYS, TOP_CHANNELS_LIMIT } from './dashboard.const';
 export class DashboardPersistenceService {
   private logger = logger.child({ module: 'DashboardPersistenceService' });
+  private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
 
-  async getDashboardData(userId: string, teamId: string): Promise<DashboardResponse> {
+  async getDashboardData(userId: string, teamId: string, period: TimePeriod): Promise<DashboardResponse> {
+    const cacheKey = `dashboard:${teamId}:${userId}:${period}`;
+    const cached = await this.redisService.getValue(cacheKey);
+    if (cached) {
+      this.logger.info('dashboard cache hit', { userId, teamId, period });
+      const data: DashboardResponse = JSON.parse(cached);
+      return data;
+    }
+
+    const intervalDays = PERIOD_DAYS[period];
     const repo = getRepository(Message);
 
     const [myStats, myActivity, myTopChannels, mySentimentTrend, leaderboards] = await Promise.all([
-      this.getMyStats(repo, userId, teamId),
-      this.getMyActivity(repo, userId, teamId),
-      this.getMyTopChannels(repo, userId, teamId),
-      this.getMySentimentTrend(repo, userId, teamId),
-      this.getLeaderboards(repo, teamId),
+      this.getMyStats(repo, userId, teamId, intervalDays),
+      this.getMyActivity(repo, userId, teamId, intervalDays),
+      this.getMyTopChannels(repo, userId, teamId, intervalDays),
+      this.getMySentimentTrend(repo, userId, teamId, intervalDays),
+      this.getLeaderboards(repo, teamId, intervalDays),
     ]).catch((e: unknown) => {
       logError(this.logger, 'Failed to load dashboard data', e, { userId, teamId });
       throw e;
     });
 
-    return { myStats, myActivity, myTopChannels, mySentimentTrend, ...leaderboards };
+    const data: DashboardResponse = { myStats, myActivity, myTopChannels, mySentimentTrend, ...leaderboards };
+    await this.redisService.setValueWithExpire(cacheKey, JSON.stringify(data), 'EX', CACHE_TTL_SECONDS[period]);
+    return data;
   }
 
-  private async getMyStats(repo: Repository<Message>, userId: string, teamId: string): Promise<MyStats> {
+  private async getMyStats(
+    repo: Repository<Message>,
+    userId: string,
+    teamId: string,
+    intervalDays: number | null,
+  ): Promise<MyStats> {
+    const msgInterval = intervalDays !== null ? 'AND m.createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)' : '';
+    const reactionInterval = intervalDays !== null ? 'AND createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)' : '';
+    const sentimentInterval = intervalDays !== null ? 'AND createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)' : '';
+
+    const params: (string | number)[] = [userId, teamId];
+    if (intervalDays !== null) params.push(intervalDays);
+    params.push(userId, teamId);
+    if (intervalDays !== null) params.push(intervalDays);
+    params.push(userId, teamId);
+    if (intervalDays !== null) params.push(intervalDays);
+
     const rows = await this.timeQuery('getMyStats', () =>
       repo.query<{ totalMessages: string; rep: string; avgSentiment: string | null }[]>(
         `SELECT
            (SELECT COUNT(*)
             FROM message m
             INNER JOIN slack_user u ON u.id = m.userIdId
-            WHERE u.slackId = ? AND m.teamId = ? AND u.teamId = m.teamId AND m.channel LIKE 'C%') AS totalMessages,
+            WHERE u.slackId = ? AND m.teamId = ? AND u.teamId = m.teamId AND m.channel LIKE 'C%'
+            ${msgInterval}) AS totalMessages,
            (SELECT COALESCE(SUM(value), 0)
             FROM reaction
-            WHERE affectedUser = ? AND teamId = ?) AS rep,
+            WHERE affectedUser = ? AND teamId = ?
+            ${reactionInterval}) AS rep,
            (SELECT AVG(sentiment)
             FROM sentiment
-            WHERE userId = ? AND teamId = ?) AS avgSentiment`,
-        [userId, teamId, userId, teamId, userId, teamId],
+            WHERE userId = ? AND teamId = ?
+            ${sentimentInterval}) AS avgSentiment`,
+        params,
       ),
     );
 
@@ -60,17 +93,26 @@ export class DashboardPersistenceService {
     };
   }
 
-  private async getMyActivity(repo: Repository<Message>, userId: string, teamId: string): Promise<ActivityDataPoint[]> {
+  private async getMyActivity(
+    repo: Repository<Message>,
+    userId: string,
+    teamId: string,
+    intervalDays: number | null,
+  ): Promise<ActivityDataPoint[]> {
+    const intervalClause = intervalDays !== null ? 'AND m.createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)' : '';
+    const params: (string | number)[] = [userId, teamId];
+    if (intervalDays !== null) params.push(intervalDays);
+
     const rows = await this.timeQuery('getMyActivity', () =>
       repo.query<{ date: string; count: string }[]>(
         `SELECT DATE(m.createdAt) AS date, COUNT(*) AS count
          FROM message m
          INNER JOIN slack_user u ON u.id = m.userIdId
          WHERE u.slackId = ? AND m.teamId = ? AND m.channel LIKE 'C%'
-           AND m.createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)
+           ${intervalClause}
          GROUP BY DATE(m.createdAt)
          ORDER BY date ASC`,
-        [userId, teamId, ACTIVITY_DAYS],
+        params,
       ),
     );
     return rows.map((r) => ({ date: r.date, count: Number(r.count) }));
@@ -80,7 +122,13 @@ export class DashboardPersistenceService {
     repo: Repository<Message>,
     userId: string,
     teamId: string,
+    intervalDays: number | null,
   ): Promise<ChannelDataPoint[]> {
+    const intervalClause = intervalDays !== null ? 'AND m.createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)' : '';
+    const params: (string | number)[] = [userId, teamId];
+    if (intervalDays !== null) params.push(intervalDays);
+    params.push(TOP_CHANNELS_LIMIT);
+
     const rows = await this.timeQuery('getMyTopChannels', () =>
       repo.query<{ channel: string; count: string }[]>(
         `SELECT COALESCE(sc.name, m.channel) AS channel, COUNT(*) AS count
@@ -88,10 +136,11 @@ export class DashboardPersistenceService {
          INNER JOIN slack_user u ON u.id = m.userIdId
          LEFT JOIN slack_channel sc ON sc.channelId = m.channel AND sc.teamId = m.teamId
          WHERE u.slackId = ? AND m.teamId = ? AND m.channel LIKE 'C%'
+           ${intervalClause}
          GROUP BY m.channel, sc.name
          ORDER BY count DESC
          LIMIT ?`,
-        [userId, teamId, TOP_CHANNELS_LIMIT],
+        params,
       ),
     );
     return rows.map((r) => ({ channel: r.channel, count: Number(r.count) }));
@@ -101,17 +150,22 @@ export class DashboardPersistenceService {
     repo: Repository<Message>,
     userId: string,
     teamId: string,
+    intervalDays: number | null,
   ): Promise<SentimentDataPoint[]> {
+    const intervalClause = intervalDays !== null ? 'AND createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)' : '';
+    const params: (string | number)[] = [userId, teamId];
+    if (intervalDays !== null) params.push(intervalDays);
+
     const rows = await this.timeQuery('getMySentimentTrend', () =>
       repo.query<{ weekStart: string; avgSentiment: string }[]>(
         `SELECT MIN(DATE(createdAt)) AS weekStart,
                 ROUND(AVG(sentiment), 2) AS avgSentiment
          FROM sentiment
          WHERE userId = ? AND teamId = ?
-           AND createdAt >= DATE_SUB(NOW(), INTERVAL ? WEEK)
+           ${intervalClause}
          GROUP BY YEARWEEK(createdAt, 3)
          ORDER BY weekStart ASC`,
-        [userId, teamId, SENTIMENT_WEEKS],
+        params,
       ),
     );
     return rows.map((r) => ({
@@ -123,7 +177,19 @@ export class DashboardPersistenceService {
   private async getLeaderboards(
     repo: Repository<Message>,
     teamId: string,
+    intervalDays: number | null,
   ): Promise<{ leaderboard: LeaderboardEntry[]; repLeaderboard: RepLeaderboardEntry[] }> {
+    const activityInterval = intervalDays !== null ? 'AND m.createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)' : '';
+    const repInterval = intervalDays !== null ? 'AND r.createdAt >= DATE_SUB(NOW(), INTERVAL ? DAY)' : '';
+
+    const activityParams: (string | number)[] = [teamId];
+    if (intervalDays !== null) activityParams.push(intervalDays);
+    activityParams.push(LEADERBOARD_LIMIT);
+
+    const repParams: (string | number)[] = [teamId];
+    if (intervalDays !== null) repParams.push(intervalDays);
+    repParams.push(LEADERBOARD_LIMIT);
+
     const [activityRows, repRows] = await Promise.all([
       this.timeQuery('getLeaderboards:activity', () =>
         repo.query<{ name: string; value: string }[]>(
@@ -131,10 +197,11 @@ export class DashboardPersistenceService {
            FROM message m
            INNER JOIN slack_user u ON u.id = m.userIdId
            WHERE m.teamId = ? AND u.isBot = 0 AND m.channel LIKE 'C%'
+             ${activityInterval}
            GROUP BY u.slackId, u.name
            ORDER BY value DESC
            LIMIT ?`,
-          [teamId, LEADERBOARD_LIMIT],
+          activityParams,
         ),
       ),
       this.timeQuery('getLeaderboards:rep', () =>
@@ -143,10 +210,11 @@ export class DashboardPersistenceService {
            FROM reaction r
            INNER JOIN slack_user u ON u.slackId = r.affectedUser AND u.teamId = r.teamId
            WHERE r.teamId = ?
+             ${repInterval}
            GROUP BY r.affectedUser, u.name
            ORDER BY value DESC
            LIMIT ?`,
-          [teamId, LEADERBOARD_LIMIT],
+          repParams,
         ),
       ),
     ]);

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { HomePage } from '@/pages/HomePage';
 
 const mockFetch = vi.fn();
@@ -115,5 +115,26 @@ describe('HomePage', () => {
     mockFetch.mockResolvedValue({ ok: false, status: 401 });
     render(<HomePage onLogout={onLogout} />);
     await waitFor(() => expect(onLogout).toHaveBeenCalledOnce());
+  });
+
+  it('renders all five period selector buttons with Weekly active by default', () => {
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    render(<HomePage onLogout={vi.fn()} />);
+    for (const label of ['Daily', 'Weekly', 'Monthly', 'Yearly', 'All Time']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+    expect(screen.getByRole('button', { name: 'Weekly' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('switches to Monthly period and re-fetches when the Monthly button is clicked', async () => {
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    render(<HomePage onLogout={vi.fn()} />);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Monthly' }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    const [url] = mockFetch.mock.calls[1] as [string, RequestInit];
+    expect(url).toContain('period=monthly');
+    expect(screen.getByRole('button', { name: 'Monthly' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Weekly' })).toHaveAttribute('aria-pressed', 'false');
   });
 });

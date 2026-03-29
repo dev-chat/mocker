@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { CSSProperties, ElementType } from 'react';
 import {
   BarChart,
@@ -13,13 +14,38 @@ import {
 } from 'recharts';
 import { MessageSquare, ThumbsUp, Smile, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useDashboard } from '@/hooks/useDashboard';
 import type { HomePageProps } from '@/pages/HomePage.model';
+import type { TimePeriod } from '@/app.model';
 
 const CHART_COLORS = ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'];
 const POSITIVE_COLOR = '#22c55e';
 const NEGATIVE_COLOR = '#ef4444';
 const NEUTRAL_COLOR = '#94a3b8';
+
+const PERIODS: { value: TimePeriod; label: string }[] = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+  { value: 'allTime', label: 'All Time' },
+];
+
+function periodLabel(period: TimePeriod): string {
+  switch (period) {
+    case 'daily':
+      return 'today';
+    case 'weekly':
+      return 'the last 7 days';
+    case 'monthly':
+      return 'the last 30 days';
+    case 'yearly':
+      return 'the last 365 days';
+    case 'allTime':
+      return 'all time';
+  }
+}
 
 function sentimentColor(value: number | null): string {
   if (value === null) return NEUTRAL_COLOR;
@@ -70,7 +96,8 @@ function EmptyState({ message }: { message: string }) {
 }
 
 export function HomePage({ onLogout }: HomePageProps) {
-  const { data, isLoading, error } = useDashboard(onLogout);
+  const [period, setPeriod] = useState<TimePeriod>('weekly');
+  const { data, isLoading, error } = useDashboard(onLogout, period);
 
   const avgSentiment = data?.myStats.avgSentiment ?? null;
   const sentimentDisplay =
@@ -78,9 +105,24 @@ export function HomePage({ onLogout }: HomePageProps) {
 
   return (
     <div className="p-8 max-w-6xl space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Home</h1>
-        <p className="text-muted-foreground mt-2">Your Slack workspace at a glance.</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Home</h1>
+          <p className="text-muted-foreground mt-2">Your Slack workspace at a glance.</p>
+        </div>
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Time period">
+          {PERIODS.map(({ value, label }) => (
+            <Button
+              key={value}
+              size="sm"
+              variant={period === value ? 'default' : 'outline'}
+              onClick={() => setPeriod(value)}
+              aria-pressed={period === value}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {error && (
@@ -120,7 +162,7 @@ export function HomePage({ onLogout }: HomePageProps) {
         <Card>
           <CardHeader>
             <CardTitle>My Message Activity</CardTitle>
-            <CardDescription>Messages sent per day over the last 30 days</CardDescription>
+            <CardDescription>Messages sent per day over {periodLabel(period)}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -170,7 +212,7 @@ export function HomePage({ onLogout }: HomePageProps) {
           <Card className="h-full">
             <CardHeader>
               <CardTitle>My Top Channels</CardTitle>
-              <CardDescription>Where you spend the most time</CardDescription>
+              <CardDescription>Where you spend the most time over {periodLabel(period)}</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -227,7 +269,7 @@ export function HomePage({ onLogout }: HomePageProps) {
           <Card className="h-full">
             <CardHeader>
               <CardTitle>My Sentiment Trend</CardTitle>
-              <CardDescription>Weekly average sentiment score over the last 12 weeks</CardDescription>
+              <CardDescription>Weekly average sentiment score over {periodLabel(period)}</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -284,7 +326,7 @@ export function HomePage({ onLogout }: HomePageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Most Active Members</CardTitle>
-              <CardDescription>Top 10 workspace members by message count</CardDescription>
+              <CardDescription>Top 10 workspace members by message count over {periodLabel(period)}</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -332,7 +374,7 @@ export function HomePage({ onLogout }: HomePageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Reputation Standings</CardTitle>
-              <CardDescription>Top 10 members by reputation received</CardDescription>
+              <CardDescription>Top 10 members by reputation received over {periodLabel(period)}</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
