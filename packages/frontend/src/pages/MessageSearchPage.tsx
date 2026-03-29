@@ -29,6 +29,24 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
 
   const fetchPage = useCallback(
     async (page: number) => {
+      const trimmedUserName = userName.trim();
+      const trimmedChannel = channel.trim();
+      const trimmedContent = content.trim();
+
+      if (!trimmedUserName && !trimmedChannel && !trimmedContent) {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
+        setMessages([]);
+        setMentions({});
+        setTotal(0);
+        setHasSearched(false);
+        setIsLoading(false);
+        setError(null);
+        return;
+      }
+
       setIsLoading(true);
       setHasSearched(true);
       setError(null);
@@ -43,9 +61,9 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
       abortControllerRef.current = abortController;
 
       const params = new URLSearchParams();
-      if (userName.trim()) params.set('userName', userName.trim());
-      if (channel.trim()) params.set('channel', channel.trim());
-      if (content.trim()) params.set('content', content.trim());
+      if (trimmedUserName) params.set('userName', trimmedUserName);
+      if (trimmedChannel) params.set('channel', trimmedChannel);
+      if (trimmedContent) params.set('content', trimmedContent);
       params.set('limit', String(PAGE_SIZE));
       params.set('offset', String((page - 1) * PAGE_SIZE));
 
