@@ -13,9 +13,9 @@ beforeEach(() => {
 });
 
 describe('AppShell', () => {
-  it('renders the Message Search page by default', () => {
+  it('renders the Home page by default', () => {
     render(<AppShell onLogout={vi.fn()} />);
-    expect(screen.getByRole('heading', { name: /message search/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /home/i })).toBeInTheDocument();
   });
 
   it('switches to the Home page when the Home nav button is clicked', () => {
