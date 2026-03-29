@@ -116,6 +116,15 @@ describe('App – authenticated state', () => {
     expect(messageSearchCalls).toHaveLength(0);
   });
 
+  it('does not send a search request when all filters are empty', async () => {
+    setupAuthenticatedFetch();
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
+    const messageSearchCalls = mockFetch.mock.calls.filter((call) => String(call[0]).includes('/search/messages'));
+    expect(messageSearchCalls).toHaveLength(0);
+    expect(screen.queryByText(/no messages found/i)).not.toBeInTheDocument();
+  });
+
   it('calls the search API and displays a single result', async () => {
     const messages = [
       {
@@ -138,6 +147,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByText('Hello world')).toBeInTheDocument());
@@ -175,6 +185,7 @@ describe('App – authenticated state', () => {
       return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 2 }) });
     });
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
     await waitFor(() => expect(screen.getByText(/found 2 messages overall/i)).toBeInTheDocument());
   });
@@ -212,6 +223,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByText(/found 2 messages overall/i)).toBeInTheDocument());
@@ -258,6 +270,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByText(/found 2 messages overall/i)).toBeInTheDocument());
@@ -281,6 +294,7 @@ describe('App – authenticated state', () => {
   it('shows "no messages found" when search returns an empty array', async () => {
     setupAuthenticatedFetch();
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
     await waitFor(() =>
       expect(screen.getByText(/no messages found matching your search criteria/i)).toBeInTheDocument(),
@@ -302,6 +316,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByText(/search failed: internal server error/i)).toBeInTheDocument());
@@ -333,6 +348,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByText('@carol')).toBeInTheDocument());
@@ -368,6 +384,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByText('#announcements')).toBeInTheDocument());
@@ -387,6 +404,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByRole('link', { name: /sign in with slack/i })).toBeInTheDocument());
@@ -414,6 +432,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByText(/found 50 messages overall/i)).toBeInTheDocument());
@@ -468,6 +487,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByText(/page 1 of 2/i)).toBeInTheDocument());
@@ -504,6 +524,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => expect(screen.getByText(/found 1 message overall/i)).toBeInTheDocument());
@@ -514,6 +535,7 @@ describe('App – authenticated state', () => {
   it('passes limit and offset query params to the search API', async () => {
     setupAuthenticatedFetch();
     render(<App />);
+    fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     await waitFor(() => {
