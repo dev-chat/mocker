@@ -106,6 +106,7 @@ export class AIService {
       .create({
         model: GPT_MODEL,
         tools: [{ type: 'web_search_preview' }],
+        tool_choice: 'auto',
         instructions,
         input: text,
         user: `${userId}-DaBros2016`,
@@ -369,6 +370,7 @@ export class AIService {
       .create({
         model: GPT_MODEL,
         tools: [{ type: 'web_search_preview' }],
+        tool_choice: 'auto',
         instructions: systemInstructions,
         input: prompt,
         user: `${user_id}-DaBros2016`,
@@ -454,6 +456,7 @@ export class AIService {
       .create({
         model: GPT_MODEL,
         tools: [{ type: 'web_search_preview' }],
+        tool_choice: 'auto',
         instructions: systemInstructions,
         input,
         user: `participation-${channelId}-${teamId}-DaBros2016`,
