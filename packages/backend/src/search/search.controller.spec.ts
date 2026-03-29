@@ -95,6 +95,14 @@ describe('searchController', () => {
     expect(searchMessagesMock).not.toHaveBeenCalled();
   });
 
+  it('returns 400 when all search params are whitespace-only', async () => {
+    const res = await request(app).get('/messages').query({ userName: '  ', channel: ' ', content: '\t' });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'At least one search parameter (userName, channel, or content) is required' });
+    expect(searchMessagesMock).not.toHaveBeenCalled();
+  });
+
   it('passes undefined for query params that are not strings', async () => {
     searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 0 });
 
@@ -108,6 +116,14 @@ describe('searchController', () => {
       limit: undefined,
       offset: undefined,
     });
+  });
+
+  it('trims whitespace from search params before passing to service', async () => {
+    searchMessagesMock.mockResolvedValue({ messages: [], mentions: {}, total: 0 });
+
+    await request(app).get('/messages').query({ userName: '  alice  ', content: '  hello  ' }).expect(200);
+
+    expect(searchMessagesMock).toHaveBeenCalledWith(expect.objectContaining({ userName: 'alice', content: 'hello' }));
   });
 
   it('clamps limit to MAX_LIMIT (1000) when provided value exceeds it', async () => {

@@ -34,10 +34,16 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
       const trimmedContent = content.trim();
 
       if (!trimmedUserName && !trimmedChannel && !trimmedContent) {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
         setMessages([]);
         setMentions({});
         setTotal(0);
         setHasSearched(false);
+        setIsLoading(false);
+        setError(null);
         return;
       }
 
