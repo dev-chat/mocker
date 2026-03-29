@@ -14,7 +14,7 @@ import type {
   SentimentDataPoint,
   TimePeriod,
 } from './dashboard.model';
-import { CACHE_TTL_SECONDS, LEADERBOARD_LIMIT, PERIOD_DAYS, TOP_CHANNELS_LIMIT } from './dashboard.const';
+import { CACHE_TTL_MS, LEADERBOARD_LIMIT, PERIOD_DAYS, TOP_CHANNELS_LIMIT } from './dashboard.const';
 export class DashboardPersistenceService {
   private logger = logger.child({ module: 'DashboardPersistenceService' });
   private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
@@ -49,7 +49,7 @@ export class DashboardPersistenceService {
 
     const data: DashboardResponse = { myStats, myActivity, myTopChannels, mySentimentTrend, ...leaderboards };
     try {
-      await this.redisService.setValueWithExpire(cacheKey, JSON.stringify(data), 'EX', CACHE_TTL_SECONDS[period]);
+      await this.redisService.setValueWithExpire(cacheKey, JSON.stringify(data), 'PX', CACHE_TTL_MS[period]);
     } catch (e: unknown) {
       logError(this.logger, 'Failed to write dashboard data to cache', e, { userId, teamId, period });
     }

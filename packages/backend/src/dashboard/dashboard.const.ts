@@ -14,10 +14,10 @@ export const PERIOD_DAYS: Record<TimePeriod, number | null> = {
   allTime: null,
 };
 
-export const CACHE_TTL_SECONDS: Record<TimePeriod, number> = {
-  daily: 5 * 60,
-  weekly: 15 * 60,
-  monthly: 30 * 60,
-  yearly: 60 * 60,
-  allTime: 2 * 60 * 60,
+export const CACHE_TTL_MS: Record<TimePeriod, number> = {
+  daily: 300_000,
+  weekly: 900_000,
+  monthly: 1_800_000,
+  yearly: 3_600_000,
+  allTime: 7_200_000,
 };

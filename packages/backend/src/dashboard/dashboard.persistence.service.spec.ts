@@ -244,7 +244,7 @@ describe('DashboardPersistenceService', () => {
     expect(redis.setValueWithExpire).toHaveBeenCalledWith(
       'dashboard:T1:U1:weekly',
       expect.any(String),
-      'EX',
+      'PX',
       expect.any(Number),
     );
     const stored = JSON.parse((redis.setValueWithExpire.mock.calls[0] as unknown[])[1] as string) as object;
@@ -260,7 +260,7 @@ describe('DashboardPersistenceService', () => {
     expect(redis.setValueWithExpire).toHaveBeenCalledWith(
       'dashboard:T3:U7:yearly',
       expect.any(String),
-      'EX',
+      'PX',
       expect.any(Number),
     );
   });
