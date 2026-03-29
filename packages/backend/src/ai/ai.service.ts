@@ -105,7 +105,7 @@ export class AIService {
     return this.openAi.responses
       .create({
         model: GPT_MODEL,
-        tools: [{ type: 'web_search_preview_2025_03_11' }],
+        tools: [{ type: 'web_search_preview' }],
         tool_choice: 'auto',
         instructions,
         input: text,
@@ -369,7 +369,7 @@ export class AIService {
     return this.openAi.responses
       .create({
         model: GPT_MODEL,
-        tools: [{ type: 'web_search_preview_2025_03_11' }],
+        tools: [{ type: 'web_search_preview' }],
         tool_choice: 'auto',
         instructions: systemInstructions,
         input: prompt,
@@ -455,7 +455,7 @@ export class AIService {
     return this.openAi.responses
       .create({
         model: GPT_MODEL,
-        tools: [{ type: 'web_search_preview_2025_03_11' }],
+        tools: [{ type: 'web_search_preview' }],
         tool_choice: 'auto',
         instructions: systemInstructions,
         input,
