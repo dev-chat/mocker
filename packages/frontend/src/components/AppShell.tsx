@@ -54,7 +54,7 @@ export function AppShell({ onLogout }: AppShellProps) {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
-        {currentPage === 'home' ? <HomePage /> : <MessageSearchPage onLogout={onLogout} />}
+        {currentPage === 'home' ? <HomePage onLogout={onLogout} /> : <MessageSearchPage onLogout={onLogout} />}
       </main>
     </div>
   );

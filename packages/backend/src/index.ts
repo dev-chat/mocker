@@ -38,6 +38,7 @@ import { hookController } from './hook/hook.controller';
 import { searchController } from './search/search.controller';
 import { authController } from './auth/auth.controller';
 import { authMiddleware } from './shared/middleware/authMiddleware';
+import { dashboardController } from './dashboard/dashboard.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -88,6 +89,7 @@ const searchRateLimit = rateLimit({
 
 app.use('/auth', searchCors, authRateLimit, authController);
 app.use('/search', searchCors, searchRateLimit, authMiddleware, searchController);
+app.use('/dashboard', searchCors, searchRateLimit, authMiddleware, dashboardController);
 app.use(signatureVerificationMiddleware);
 app.use('/ai', aiController);
 app.use('/clap', clapController);
