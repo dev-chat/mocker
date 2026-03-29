@@ -48,7 +48,7 @@ export class DashboardPersistenceService {
         `SELECT COUNT(*) AS total
          FROM message m
          INNER JOIN slack_user u ON u.id = m.userIdId
-         WHERE u.slackId = ? AND m.teamId = ? AND m.channel LIKE 'C%'`,
+         WHERE u.slackId = ? AND m.teamId = ? AND u.teamId = m.teamId AND m.channel LIKE 'C%'`,
         [userId, teamId],
       ),
       repo.query<{ rep: string }[]>(
