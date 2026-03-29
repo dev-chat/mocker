@@ -25,7 +25,7 @@ export function useDashboard(onLogout: () => void, period: TimePeriod): UseDashb
 
       try {
         const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
-        const response = await fetch(`${API_BASE_URL}/dashboard?period=${period}`, {
+        const response = await fetch(`${API_BASE_URL}/dashboard?period=${encodeURIComponent(period)}`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: abortController.signal,
         });
