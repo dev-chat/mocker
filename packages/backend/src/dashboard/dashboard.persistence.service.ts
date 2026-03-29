@@ -21,11 +21,16 @@ export class DashboardPersistenceService {
 
   async getDashboardData(userId: string, teamId: string, period: TimePeriod): Promise<DashboardResponse> {
     const cacheKey = `dashboard:${teamId}:${userId}:${period}`;
-    const cached = await this.redisService.getValue(cacheKey);
-    if (cached) {
-      this.logger.info('dashboard cache hit', { userId, teamId, period });
-      const data: DashboardResponse = JSON.parse(cached);
-      return data;
+    try {
+      const cached = await this.redisService.getValue(cacheKey);
+      if (cached) {
+        this.logger.info('dashboard cache hit', { userId, teamId, period });
+        const data: DashboardResponse = JSON.parse(cached);
+        return data;
+      }
+    } catch (e: unknown) {
+      logError(this.logger, 'Failed to read or parse dashboard cache', e, { userId, teamId, period });
+      // Treat cache failures as a cache miss and continue to load data from the database.
     }
 
     const intervalDays = PERIOD_DAYS[period];
