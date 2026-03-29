@@ -9,6 +9,15 @@ const filtersResponse = {
   channels: ['general', 'random'],
 };
 
+const dashboardResponse = {
+  myStats: { totalMessages: 0, rep: 0, avgSentiment: null },
+  myActivity: [],
+  myTopChannels: [],
+  mySentimentTrend: [],
+  leaderboard: [],
+  repLeaderboard: [],
+};
+
 const setupAuthenticatedFetch = () => {
   mockFetch.mockImplementation((input: RequestInfo | URL) => {
     const url = String(input);
@@ -19,6 +28,13 @@ const setupAuthenticatedFetch = () => {
         json: async () => filtersResponse,
       });
     }
+    if (url.includes('/dashboard')) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => dashboardResponse,
+      });
+    }
 
     return Promise.resolve({
       ok: true,
@@ -26,6 +42,10 @@ const setupAuthenticatedFetch = () => {
       json: async () => ({ messages: [], mentions: {}, total: 0 }),
     });
   });
+};
+
+const navigateToSearch = () => {
+  fireEvent.click(screen.getByRole('button', { name: /message search/i }));
 };
 
 beforeEach(() => {
@@ -52,10 +72,11 @@ describe('App – token in URL hash', () => {
     setupAuthenticatedFetch();
     window.history.replaceState({}, '', '/#token=test-token-123');
     render(<App />);
-    expect(screen.getByRole('heading', { name: /message search/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/user name/i)).toBeInTheDocument();
     expect(localStorage.getItem('muzzle.lol-auth-token')).toBe('test-token-123');
     expect(window.location.hash).toBe('');
+    navigateToSearch();
+    expect(screen.getByRole('heading', { name: /message search/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/user name/i)).toBeInTheDocument();
   });
 });
 
@@ -67,6 +88,7 @@ describe('App – authenticated state', () => {
 
   it('shows the search UI when a token is already stored', () => {
     render(<App />);
+    navigateToSearch();
     expect(screen.getByLabelText(/user name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/channel/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/message content/i)).toBeInTheDocument();
@@ -74,6 +96,7 @@ describe('App – authenticated state', () => {
 
   it('prepopulates user and channel filter suggestions', async () => {
     render(<App />);
+    navigateToSearch();
 
     await waitFor(() => {
       expect(document.querySelector('#user-filter-options option[value="alice"]')).not.toBeNull();
@@ -90,6 +113,7 @@ describe('App – authenticated state', () => {
 
   it('shows active filter badges when inputs have values', () => {
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.change(screen.getByLabelText(/channel/i), { target: { value: 'general' } });
     fireEvent.change(screen.getByLabelText(/message content/i), { target: { value: 'hello' } });
@@ -99,18 +123,15 @@ describe('App – authenticated state', () => {
   });
 
   it('triggers search after typing in an input', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ messages: [], mentions: {}, total: 0 }),
-    });
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     await waitFor(() => expect(screen.getByText(/no messages found/i)).toBeInTheDocument(), { timeout: 2000 });
   });
 
   it('does not trigger search when no input values change', async () => {
     render(<App />);
+    navigateToSearch();
     fireEvent.keyDown(screen.getByLabelText(/user name/i), { key: 'a' });
     const messageSearchCalls = mockFetch.mock.calls.filter((call) => String(call[0]).includes('/search/messages'));
     expect(messageSearchCalls).toHaveLength(0);
@@ -119,6 +140,7 @@ describe('App – authenticated state', () => {
   it('does not send a search request when all filters are empty', async () => {
     setupAuthenticatedFetch();
     render(<App />);
+    navigateToSearch();
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
     const messageSearchCalls = mockFetch.mock.calls.filter((call) => String(call[0]).includes('/search/messages'));
     expect(messageSearchCalls).toHaveLength(0);
@@ -143,10 +165,14 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
       return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 1 }) });
     });
 
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
@@ -182,9 +208,13 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
       return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 2 }) });
     });
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
     await waitFor(() => expect(screen.getByText(/found 2 messages overall/i)).toBeInTheDocument());
@@ -219,10 +249,14 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
       return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 2 }) });
     });
 
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
@@ -266,10 +300,14 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
       return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 2 }) });
     });
 
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
@@ -294,6 +332,7 @@ describe('App – authenticated state', () => {
   it('shows "no messages found" when search returns an empty array', async () => {
     setupAuthenticatedFetch();
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
     await waitFor(() =>
@@ -307,6 +346,9 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
 
       return Promise.resolve({
         ok: false,
@@ -316,6 +358,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
@@ -340,6 +383,9 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
       return Promise.resolve({
         ok: true,
         status: 200,
@@ -348,6 +394,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
@@ -376,6 +423,9 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
       return Promise.resolve({
         ok: true,
         status: 200,
@@ -384,6 +434,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
@@ -400,10 +451,14 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
       return Promise.resolve({ ok: false, status: 401 });
     });
 
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
@@ -428,10 +483,14 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
       return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 50 }) });
     });
 
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
@@ -471,6 +530,9 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
       callCount++;
       if (callCount === 1) {
         return Promise.resolve({
@@ -487,6 +549,7 @@ describe('App – authenticated state', () => {
     });
 
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
@@ -520,10 +583,14 @@ describe('App – authenticated state', () => {
       if (url.includes('/search/filters')) {
         return Promise.resolve({ ok: true, status: 200, json: async () => filtersResponse });
       }
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => dashboardResponse });
+      }
       return Promise.resolve({ ok: true, status: 200, json: async () => ({ messages, mentions: {}, total: 1 }) });
     });
 
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
@@ -535,6 +602,7 @@ describe('App – authenticated state', () => {
   it('passes limit and offset query params to the search API', async () => {
     setupAuthenticatedFetch();
     render(<App />);
+    navigateToSearch();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
