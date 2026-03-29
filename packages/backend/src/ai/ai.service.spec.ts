@@ -669,6 +669,21 @@ describe('AIService', () => {
       expect(result).toBe('base');
     });
 
+    it('inserts memory context before <verification> tag', () => {
+      const base = 'some instructions\n<verification>\nchecklist\n</verification>';
+      const memory = '<memory_context>\ntest memory\n</memory_context>';
+      const result = (aiService as unknown as AiServicePrivate).appendMemoryContext(base, memory);
+      expect(result).toContain('test memory');
+      expect(result.indexOf('memory_context')).toBeLessThan(result.indexOf('<verification>'));
+    });
+
+    it('appends memory context at end when no <verification> tag', () => {
+      const base = 'simple instructions without verification';
+      const memory = '<memory_context>\ntest memory\n</memory_context>';
+      const result = (aiService as unknown as AiServicePrivate).appendMemoryContext(base, memory);
+      expect(result).toBe(`${base}\n\n${memory}`);
+    });
+
     it('selects relevant memories from model output ids', async () => {
       (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '[1,3]' }] }],

@@ -549,7 +549,14 @@ export class AIService {
       })
       .join('\n');
 
-    return `<memory_context>\nthings you remember about the people in this conversation:\n${lines}\n</memory_context>`;
+    const guidance = [
+      'use these memories naturally — do not announce them.',
+      'call back to things people have said when relevant.',
+      'catch contradictions or shifts in position.',
+      'a wrong or forced memory reference is worse than none.',
+    ].join(' ');
+
+    return `<memory_context>\n${guidance}\n\nthings you remember about the people in this conversation:\n${lines}\n</memory_context>`;
   }
 
   private extractParticipantSlackIds(
@@ -582,7 +589,7 @@ export class AIService {
     if (!memoryContext) return baseInstructions;
     // Insert memory data before <verification> so the verification checklist remains the last thing the model sees
     const verificationTag = '<verification>';
-    const insertionPoint = baseInstructions.indexOf(verificationTag);
+    const insertionPoint = baseInstructions.lastIndexOf(verificationTag);
     if (insertionPoint !== -1) {
       return `${baseInstructions.slice(0, insertionPoint)}${memoryContext}\n\n${baseInstructions.slice(insertionPoint)}`;
     }

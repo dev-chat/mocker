@@ -91,9 +91,6 @@ export const MOONBEAM_SLACK_ID = 'ULG8SJRFF';
 
 export const GATE_MODEL = 'gpt-4.1-nano';
 
-/** @deprecated Memory usage instructions are now embedded in MOONBEAM_SYSTEM_INSTRUCTIONS <memory_behavior> section */
-export const MEMORY_USAGE_INSTRUCTION = '';
-
 export const MEMORY_SELECTION_PROMPT = `You are selecting which stored memories are relevant to a conversation that is about to get a response.
 You are NOT responding — you are picking useful context.
 
