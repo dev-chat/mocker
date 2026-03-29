@@ -160,7 +160,7 @@ export class DashboardPersistenceService {
   private async timeQuery<T>(label: string, fn: () => Promise<T>): Promise<T> {
     const start = Date.now();
     const result = await fn();
-    this.logger.debug('query profile', { query: label, durationMs: Date.now() - start });
+    this.logger.info('query profile', { query: label, durationMs: Date.now() - start });
     return result;
   }
 }
