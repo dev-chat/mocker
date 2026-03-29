@@ -173,7 +173,7 @@ describe('DashboardPersistenceService', () => {
   it('logs a debug profile entry for each of the 6 queries', async () => {
     await service.getDashboardData('U1', 'T1');
 
-    expect(loggerMock.debug).toHaveBeenCalledTimes(6);
+    expect(loggerMock.info).toHaveBeenCalledTimes(6);
     for (const label of [
       'getMyStats',
       'getMyActivity',
@@ -182,7 +182,7 @@ describe('DashboardPersistenceService', () => {
       'getLeaderboards:activity',
       'getLeaderboards:rep',
     ]) {
-      expect(loggerMock.debug).toHaveBeenCalledWith(
+      expect(loggerMock.info).toHaveBeenCalledWith(
         'query profile',
         expect.objectContaining({ query: label, durationMs: expect.any(Number) }),
       );
