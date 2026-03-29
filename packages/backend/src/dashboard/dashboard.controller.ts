@@ -11,8 +11,7 @@ const dashboardPersistenceService = new DashboardPersistenceService();
 const dashboardLogger = logger.child({ module: 'DashboardController' });
 
 dashboardController.get('/', (req: RequestWithAuthSession, res) => {
-  const teamId = req.authSession?.teamId;
-  const userId = req.authSession?.userId;
+  const { teamId, userId } = req.authSession || {};
 
   if (!teamId || !userId) {
     res.status(401).json({ error: 'Unauthorized' });

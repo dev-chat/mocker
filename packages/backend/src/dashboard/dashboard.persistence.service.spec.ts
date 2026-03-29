@@ -1,4 +1,5 @@
 import { getRepository } from 'typeorm';
+import { loggerMock } from '../test/mocks/logger.mock';
 import { DashboardPersistenceService } from './dashboard.persistence.service';
 import { ACTIVITY_DAYS, LEADERBOARD_LIMIT, SENTIMENT_WEEKS, TOP_CHANNELS_LIMIT } from './dashboard.const';
 
@@ -21,7 +22,8 @@ describe('DashboardPersistenceService', () => {
     if (sql.includes('DATE(m.createdAt) AS date')) return Promise.resolve([]);
     if (sql.includes('AS channel')) return Promise.resolve([]);
     if (sql.includes('ROUND(AVG(sentiment)')) return Promise.resolve([]);
-    if (sql.includes("'activity'")) return Promise.resolve([]);
+    if (sql.includes('isBot = 0')) return Promise.resolve([]);
+    if (sql.includes('SUM(r.value)')) return Promise.resolve([]);
     return Promise.resolve([]);
   }
 
@@ -52,11 +54,8 @@ describe('DashboardPersistenceService', () => {
       if (sql.includes('AS channel')) return Promise.resolve([{ channel: 'general', count: '9' }]);
       if (sql.includes('ROUND(AVG(sentiment)'))
         return Promise.resolve([{ weekStart: '2024-01-01', avgSentiment: '0.5' }]);
-      if (sql.includes("'activity'"))
-        return Promise.resolve([
-          { type: 'activity', name: 'alice', value: '100' },
-          { type: 'rep', name: 'bob', value: '50' },
-        ]);
+      if (sql.includes('isBot = 0')) return Promise.resolve([{ name: 'alice', value: '100' }]);
+      if (sql.includes('SUM(r.value)')) return Promise.resolve([{ name: 'bob', value: '50' }]);
       return Promise.resolve([]);
     });
 
@@ -145,8 +144,8 @@ describe('DashboardPersistenceService', () => {
     await service.getDashboardData('U1', 'T1');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
-    const leaderboardCalls = calls.filter(([sql]) => sql.includes("'activity'"));
-    expect(leaderboardCalls).toHaveLength(1);
+    const leaderboardCalls = calls.filter(([sql]) => sql.includes('isBot = 0') || sql.includes('SUM(r.value)'));
+    expect(leaderboardCalls).toHaveLength(2);
     leaderboardCalls.forEach(([, params]) => {
       expect(params).toContain(LEADERBOARD_LIMIT);
     });
@@ -156,33 +155,38 @@ describe('DashboardPersistenceService', () => {
     await service.getDashboardData('U1', 'T1');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
-    const leaderboardCall = calls.find(([sql]) => sql.includes("'activity'"));
+    const leaderboardCall = calls.find(([sql]) => sql.includes('isBot = 0'));
     expect(leaderboardCall).toBeDefined();
     expect(leaderboardCall![0]).toContain('isBot = 0');
   });
 
-  it('sorts leaderboard and repLeaderboard by value descending regardless of DB row order', async () => {
-    query.mockImplementation((sql: string) => {
-      if (sql.includes("'activity'"))
-        return Promise.resolve([
-          { type: 'activity', name: 'charlie', value: '50' },
-          { type: 'rep', name: 'dave', value: '30' },
-          { type: 'activity', name: 'alice', value: '100' },
-          { type: 'rep', name: 'bob', value: '80' },
-        ]);
-      return routeQuery(sql);
-    });
+  it('issues separate queries for activity and rep leaderboards, both with ORDER BY value DESC', async () => {
+    await service.getDashboardData('U1', 'T1');
 
-    const result = await service.getDashboardData('U1', 'T1');
+    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const activityCall = calls.find(([sql]) => sql.includes('isBot = 0'));
+    const repCall = calls.find(([sql]) => sql.includes('SUM(r.value)'));
+    expect(activityCall![0]).toContain('ORDER BY value DESC');
+    expect(repCall![0]).toContain('ORDER BY value DESC');
+  });
 
-    expect(result.leaderboard).toEqual([
-      { name: 'alice', count: 100 },
-      { name: 'charlie', count: 50 },
-    ]);
-    expect(result.repLeaderboard).toEqual([
-      { name: 'bob', rep: 80 },
-      { name: 'dave', rep: 30 },
-    ]);
+  it('logs a debug profile entry for each of the 6 queries', async () => {
+    await service.getDashboardData('U1', 'T1');
+
+    expect(loggerMock.debug).toHaveBeenCalledTimes(6);
+    for (const label of [
+      'getMyStats',
+      'getMyActivity',
+      'getMyTopChannels',
+      'getMySentimentTrend',
+      'getLeaderboards:activity',
+      'getLeaderboards:rep',
+    ]) {
+      expect(loggerMock.debug).toHaveBeenCalledWith(
+        expect.objectContaining({ query: label, durationMs: expect.any(Number) }),
+        'query profile',
+      );
+    }
   });
 
   it('propagates errors thrown by repo.query through getDashboardData', async () => {

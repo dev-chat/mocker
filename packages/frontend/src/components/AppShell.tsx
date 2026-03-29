@@ -24,7 +24,7 @@ function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
 }
 
 export function AppShell({ onLogout }: AppShellProps) {
-  const [currentPage, setCurrentPage] = useState<Page>('message-search');
+  const [currentPage, setCurrentPage] = useState<Page>('home');
 
   return (
     <div className="flex h-screen bg-background">
