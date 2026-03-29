@@ -69,7 +69,7 @@ export class DashboardPersistenceService {
     return {
       totalMessages: Number(msgRows[0]?.total ?? 0),
       rep: Number(repRows[0]?.rep ?? 0),
-      avgSentiment: avgRaw != null ? Math.round(Number(avgRaw) * 100) / 100 : null,
+      avgSentiment: avgRaw !== null ? Math.round(Number(avgRaw) * 100) / 100 : null,
     };
   }
 
