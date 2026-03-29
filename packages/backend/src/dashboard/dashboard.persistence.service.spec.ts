@@ -16,7 +16,8 @@ describe('DashboardPersistenceService', () => {
 
   /** Route mock query responses by SQL content so parallel calls resolve correctly. */
   function routeQuery(sql: string): Promise<unknown[]> {
-    if (sql.includes('totalMessages')) return Promise.resolve([{ totalMessages: '5', rep: '10', avgSentiment: '0.75' }]);
+    if (sql.includes('totalMessages'))
+      return Promise.resolve([{ totalMessages: '5', rep: '10', avgSentiment: '0.75' }]);
     if (sql.includes('DATE(m.createdAt) AS date')) return Promise.resolve([]);
     if (sql.includes('AS channel')) return Promise.resolve([]);
     if (sql.includes('ROUND(AVG(sentiment)')) return Promise.resolve([]);

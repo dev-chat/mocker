@@ -50,10 +50,10 @@ export class DashboardPersistenceService {
     );
 
     const row = rows[0];
-    const avgRaw = row?.avgSentiment ?? null;
+    const avgRaw = row.avgSentiment;
     return {
-      totalMessages: Number(row?.totalMessages ?? 0),
-      rep: Number(row?.rep ?? 0),
+      totalMessages: Number(row.totalMessages),
+      rep: Number(row.rep),
       avgSentiment: avgRaw !== null ? Math.round(Number(avgRaw) * 100) / 100 : null,
     };
   }
@@ -116,7 +116,7 @@ export class DashboardPersistenceService {
     repo: Repository<Message>,
     teamId: string,
   ): Promise<{ leaderboard: LeaderboardEntry[]; repLeaderboard: RepLeaderboardEntry[] }> {
-    const rows = await repo.query<{ type: string; name: string; value: string }[]>(
+    const rows = await repo.query<{ type: 'activity' | 'rep'; name: string; value: string }[]>(
       `(SELECT 'activity' AS type, u.name AS name, CAST(COUNT(*) AS SIGNED) AS value
         FROM message m
         INNER JOIN slack_user u ON u.id = m.userIdId
@@ -140,10 +140,17 @@ export class DashboardPersistenceService {
       repLeaderboard: RepLeaderboardEntry[];
     }>(
       (acc, r) => {
-        if (r.type === 'activity') {
-          acc.leaderboard.push({ name: r.name, count: Number(r.value) });
-        } else {
-          acc.repLeaderboard.push({ name: r.name, rep: Number(r.value) });
+        switch (r.type) {
+          case 'activity':
+            acc.leaderboard.push({ name: r.name, count: Number(r.value) });
+            break;
+          case 'rep':
+            acc.repLeaderboard.push({ name: r.name, rep: Number(r.value) });
+            break;
+          default: {
+            const exhaustive: never = r.type;
+            throw new Error(`Unexpected leaderboard type: ${exhaustive}`);
+          }
         }
         return acc;
       },
