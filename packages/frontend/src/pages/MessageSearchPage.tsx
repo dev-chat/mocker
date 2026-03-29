@@ -74,7 +74,12 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
         }
         setError(err instanceof Error ? err.message : 'An unexpected error occurred');
       } finally {
-        setIsLoading(false);
+        // Only update loading state if this is still the active request.
+        // An aborted (superseded) request must not clobber the loading indicator
+        // that belongs to the newer in-flight request.
+        if (abortController === abortControllerRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [userName, channel, content, onLogout],
@@ -113,6 +118,7 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
     };
   }, []);
 
