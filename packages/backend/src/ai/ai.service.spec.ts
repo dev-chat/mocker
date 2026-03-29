@@ -111,7 +111,9 @@ describe('AIService', () => {
 
       expect(aiService.redis.setInflight).toHaveBeenCalledWith('U1', 'T1');
       expect(aiService.redis.setDailyRequests).toHaveBeenCalledWith('U1', 'T1');
-      expect(createSpy).toHaveBeenCalled();
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ tools: [{ type: 'web_search_preview' }], tool_choice: 'auto' }),
+      );
       expect(aiService.redis.removeInflight).toHaveBeenCalledWith('U1', 'T1');
       expect(sendSpy).toHaveBeenCalledWith('Generated text', 'U1', 'T1', 'C1', 'hello');
     });
@@ -227,7 +229,9 @@ describe('AIService', () => {
       } as never);
 
       expect(aiService.historyService.getHistory).toHaveBeenCalled();
-      expect(aiService.openAi.responses.create).toHaveBeenCalled();
+      expect(aiService.openAi.responses.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tools: [{ type: 'web_search_preview' }], tool_choice: 'auto' }),
+      );
       expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Summarize', expect.any(Array));
     });
 
@@ -424,6 +428,9 @@ describe('AIService', () => {
       await aiService.participate('T1', 'C1', '<@moonbeam> hi');
       await Promise.resolve();
 
+      expect(aiService.openAi.responses.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tools: [{ type: 'web_search_preview' }], tool_choice: 'auto' }),
+      );
       expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Participation response', [
         { type: 'markdown', text: 'Participation response' },
       ]);
