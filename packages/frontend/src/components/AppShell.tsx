@@ -9,15 +9,16 @@ import type { Page, NavItemProps, AppShellProps } from '@/components/AppShell.mo
 function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
   return (
     <button
+      title={label}
+      aria-label={label}
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      className={`flex items-center justify-center rounded-md p-2 transition-colors ${
         active
           ? 'bg-accent text-accent-foreground'
           : 'text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground'
       }`}
     >
-      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-      {label}
+      <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
     </button>
   );
 }
@@ -28,12 +29,12 @@ export function AppShell({ onLogout }: AppShellProps) {
   return (
     <div className="flex h-screen bg-background">
       {/* Left sidebar */}
-      <aside className="flex w-56 shrink-0 flex-col border-r">
-        <div className="flex h-14 items-center px-4 border-b">
-          <span className="font-bold text-base tracking-tight">muzzle.lol</span>
+      <aside className="flex w-14 shrink-0 flex-col items-center border-r">
+        <div className="flex h-14 items-center justify-center border-b w-full">
+          <span className="font-bold text-sm tracking-tight">M</span>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto py-3 flex flex-col items-center space-y-1 w-full px-2">
           <NavItem icon={Home} label="Home" active={currentPage === 'home'} onClick={() => setCurrentPage('home')} />
           <NavItem
             icon={Search}
@@ -44,10 +45,9 @@ export function AppShell({ onLogout }: AppShellProps) {
         </nav>
 
         <Separator />
-        <div className="p-3">
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => onLogout()}>
-            <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
-            Sign out
+        <div className="py-3 flex justify-center w-full">
+          <Button variant="ghost" size="icon" aria-label="Sign out" onClick={() => onLogout()}>
+            <LogOut className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </aside>

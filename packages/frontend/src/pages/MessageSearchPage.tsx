@@ -109,6 +109,13 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
     void loadSearchFilters();
   }, [loadSearchFilters]);
 
+  // Abort any in-flight request on unmount to prevent state updates on an unmounted component
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   // Debounced search-as-you-type: skip the initial render, then trigger a search
   // 300ms after the user stops changing userName, channel, or content.
   const isFirstRender = useRef(true);
