@@ -11,12 +11,12 @@ import type {
   RepLeaderboardEntry,
   SentimentDataPoint,
 } from './dashboard.model';
-
-const ACTIVITY_DAYS = 30;
-const SENTIMENT_WEEKS = 12;
-const TOP_CHANNELS_LIMIT = 5;
-const LEADERBOARD_LIMIT = 10;
-
+import {
+  ACTIVITY_DAYS,
+  SENTIMENT_WEEKS,
+  TOP_CHANNELS_LIMIT,
+  LEADERBOARD_LIMIT,
+} from './dashboard.const';
 export class DashboardPersistenceService {
   private logger = logger.child({ module: 'DashboardPersistenceService' });
 
