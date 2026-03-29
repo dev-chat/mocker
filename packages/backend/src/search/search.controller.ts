@@ -38,9 +38,9 @@ searchController.get('/messages', (req: RequestWithAuthSession, res) => {
 
   const { userName, channel, content, limit, offset } = req.query;
 
-  const trimmedUserName = typeof userName === 'string' ? userName.trim() || undefined : undefined;
-  const trimmedChannel = typeof channel === 'string' ? channel.trim() || undefined : undefined;
-  const trimmedContent = typeof content === 'string' ? content.trim() || undefined : undefined;
+  const trimmedUserName = userName?.toString().trim() || undefined;
+  const trimmedChannel = channel?.toString().trim() || undefined;
+  const trimmedContent = content?.toString().trim() || undefined;
 
   if (!trimmedUserName && !trimmedChannel && !trimmedContent) {
     res.status(400).json({ error: 'At least one search parameter (userName, channel, or content) is required' });
