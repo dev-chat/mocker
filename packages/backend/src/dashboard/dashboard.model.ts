@@ -1,28 +1,3 @@
-export interface Message {
-  id: number;
-  message: string;
-  channel: string;
-  channelName?: string;
-  teamId: string;
-  createdAt: string;
-  name: string;
-  slackId: string;
-}
-
-export interface SearchMessagesResponse {
-  messages: Message[];
-  mentions: Record<string, string>;
-  total: number;
-}
-
-export interface SearchFiltersResponse {
-  users: string[];
-  channels: string[];
-}
-
-export type SortKey = 'name' | 'channel' | 'message' | 'createdAt';
-export type SortDirection = 'asc' | 'desc';
-
 export interface ActivityDataPoint {
   date: string;
   count: number;
@@ -48,14 +23,14 @@ export interface RepLeaderboardEntry {
   rep: number;
 }
 
-export interface DashboardMyStats {
+export interface MyStats {
   totalMessages: number;
   rep: number;
   avgSentiment: number | null;
 }
 
 export interface DashboardResponse {
-  myStats: DashboardMyStats;
+  myStats: MyStats;
   myActivity: ActivityDataPoint[];
   myTopChannels: ChannelDataPoint[];
   mySentimentTrend: SentimentDataPoint[];
