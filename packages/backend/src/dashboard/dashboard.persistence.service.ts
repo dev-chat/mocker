@@ -149,6 +149,8 @@ export class DashboardPersistenceService {
       },
       { leaderboard: [], repLeaderboard: [] },
     );
+    leaderboard.sort((a, b) => b.count - a.count);
+    repLeaderboard.sort((a, b) => b.rep - a.rep);
     return { leaderboard, repLeaderboard };
   }
 }

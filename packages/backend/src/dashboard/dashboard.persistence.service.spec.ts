@@ -160,6 +160,30 @@ describe('DashboardPersistenceService', () => {
     expect(leaderboardCall![0]).toContain('isBot = 0');
   });
 
+  it('sorts leaderboard and repLeaderboard by value descending regardless of DB row order', async () => {
+    query.mockImplementation((sql: string) => {
+      if (sql.includes("'activity'"))
+        return Promise.resolve([
+          { type: 'activity', name: 'charlie', value: '50' },
+          { type: 'rep', name: 'dave', value: '30' },
+          { type: 'activity', name: 'alice', value: '100' },
+          { type: 'rep', name: 'bob', value: '80' },
+        ]);
+      return routeQuery(sql);
+    });
+
+    const result = await service.getDashboardData('U1', 'T1');
+
+    expect(result.leaderboard).toEqual([
+      { name: 'alice', count: 100 },
+      { name: 'charlie', count: 50 },
+    ]);
+    expect(result.repLeaderboard).toEqual([
+      { name: 'bob', rep: 80 },
+      { name: 'dave', rep: 30 },
+    ]);
+  });
+
   it('propagates errors thrown by repo.query through getDashboardData', async () => {
     query.mockRejectedValue(new Error('DB connection lost'));
 
