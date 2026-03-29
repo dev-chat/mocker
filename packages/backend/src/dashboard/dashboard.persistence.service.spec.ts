@@ -16,14 +16,12 @@ describe('DashboardPersistenceService', () => {
 
   /** Route mock query responses by SQL content so parallel calls resolve correctly. */
   function routeQuery(sql: string): Promise<unknown[]> {
-    if (sql.includes('COUNT(*) AS total')) return Promise.resolve([{ total: '5' }]);
-    if (sql.includes('COALESCE(SUM(value)')) return Promise.resolve([{ rep: '10' }]);
-    if (sql.includes('AVG(sentiment) AS avg')) return Promise.resolve([{ avg: '0.75' }]);
+    if (sql.includes('totalMessages'))
+      return Promise.resolve([{ totalMessages: '5', rep: '10', avgSentiment: '0.75' }]);
     if (sql.includes('DATE(m.createdAt) AS date')) return Promise.resolve([]);
     if (sql.includes('AS channel')) return Promise.resolve([]);
     if (sql.includes('ROUND(AVG(sentiment)')) return Promise.resolve([]);
-    if (sql.includes('COUNT(*) AS count')) return Promise.resolve([]);
-    if (sql.includes('SUM(r.value) AS rep')) return Promise.resolve([]);
+    if (sql.includes("'activity'")) return Promise.resolve([]);
     return Promise.resolve([]);
   }
 
@@ -48,15 +46,17 @@ describe('DashboardPersistenceService', () => {
 
   it('converts string counts and rep values from DB rows to numbers', async () => {
     query.mockImplementation((sql: string) => {
-      if (sql.includes('COUNT(*) AS total')) return Promise.resolve([{ total: '42' }]);
-      if (sql.includes('COALESCE(SUM(value)')) return Promise.resolve([{ rep: '7' }]);
-      if (sql.includes('AVG(sentiment) AS avg')) return Promise.resolve([{ avg: null }]);
+      if (sql.includes('totalMessages'))
+        return Promise.resolve([{ totalMessages: '42', rep: '7', avgSentiment: null }]);
       if (sql.includes('DATE(m.createdAt) AS date')) return Promise.resolve([{ date: '2024-01-01', count: '3' }]);
       if (sql.includes('AS channel')) return Promise.resolve([{ channel: 'general', count: '9' }]);
       if (sql.includes('ROUND(AVG(sentiment)'))
         return Promise.resolve([{ weekStart: '2024-01-01', avgSentiment: '0.5' }]);
-      if (sql.includes('COUNT(*) AS count')) return Promise.resolve([{ name: 'alice', count: '100' }]);
-      if (sql.includes('SUM(r.value) AS rep')) return Promise.resolve([{ name: 'bob', rep: '50' }]);
+      if (sql.includes("'activity'"))
+        return Promise.resolve([
+          { type: 'activity', name: 'alice', value: '100' },
+          { type: 'rep', name: 'bob', value: '50' },
+        ]);
       return Promise.resolve([]);
     });
 
@@ -74,7 +74,8 @@ describe('DashboardPersistenceService', () => {
 
   it('returns null avgSentiment when the sentiment table has no rows', async () => {
     query.mockImplementation((sql: string) => {
-      if (sql.includes('AVG(sentiment) AS avg')) return Promise.resolve([]);
+      if (sql.includes('totalMessages'))
+        return Promise.resolve([{ totalMessages: '5', rep: '10', avgSentiment: null }]);
       return routeQuery(sql);
     });
 
@@ -84,7 +85,8 @@ describe('DashboardPersistenceService', () => {
 
   it('returns null avgSentiment when AVG returns null (no sentiment rows for user)', async () => {
     query.mockImplementation((sql: string) => {
-      if (sql.includes('AVG(sentiment) AS avg')) return Promise.resolve([{ avg: null }]);
+      if (sql.includes('totalMessages'))
+        return Promise.resolve([{ totalMessages: '5', rep: '10', avgSentiment: null }]);
       return routeQuery(sql);
     });
 
@@ -143,8 +145,8 @@ describe('DashboardPersistenceService', () => {
     await service.getDashboardData('U1', 'T1');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
-    const leaderboardCalls = calls.filter(([sql]) => sql.includes('isBot') || sql.includes('SUM(r.value)'));
-    expect(leaderboardCalls).toHaveLength(2);
+    const leaderboardCalls = calls.filter(([sql]) => sql.includes("'activity'"));
+    expect(leaderboardCalls).toHaveLength(1);
     leaderboardCalls.forEach(([, params]) => {
       expect(params).toContain(LEADERBOARD_LIMIT);
     });
@@ -154,9 +156,33 @@ describe('DashboardPersistenceService', () => {
     await service.getDashboardData('U1', 'T1');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
-    const leaderboardCall = calls.find(([sql]) => sql.includes('isBot'));
+    const leaderboardCall = calls.find(([sql]) => sql.includes("'activity'"));
     expect(leaderboardCall).toBeDefined();
     expect(leaderboardCall![0]).toContain('isBot = 0');
+  });
+
+  it('sorts leaderboard and repLeaderboard by value descending regardless of DB row order', async () => {
+    query.mockImplementation((sql: string) => {
+      if (sql.includes("'activity'"))
+        return Promise.resolve([
+          { type: 'activity', name: 'charlie', value: '50' },
+          { type: 'rep', name: 'dave', value: '30' },
+          { type: 'activity', name: 'alice', value: '100' },
+          { type: 'rep', name: 'bob', value: '80' },
+        ]);
+      return routeQuery(sql);
+    });
+
+    const result = await service.getDashboardData('U1', 'T1');
+
+    expect(result.leaderboard).toEqual([
+      { name: 'alice', count: 100 },
+      { name: 'charlie', count: 50 },
+    ]);
+    expect(result.repLeaderboard).toEqual([
+      { name: 'bob', rep: 80 },
+      { name: 'dave', rep: 30 },
+    ]);
   });
 
   it('propagates errors thrown by repo.query through getDashboardData', async () => {

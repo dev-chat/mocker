@@ -19,48 +19,41 @@ export class DashboardPersistenceService {
   async getDashboardData(userId: string, teamId: string): Promise<DashboardResponse> {
     const repo = getRepository(Message);
 
-    const [myStats, myActivity, myTopChannels, mySentimentTrend, leaderboard, repLeaderboard] = await Promise.all([
+    const [myStats, myActivity, myTopChannels, mySentimentTrend, leaderboards] = await Promise.all([
       this.getMyStats(repo, userId, teamId),
       this.getMyActivity(repo, userId, teamId),
       this.getMyTopChannels(repo, userId, teamId),
       this.getMySentimentTrend(repo, userId, teamId),
-      this.getLeaderboard(repo, teamId),
-      this.getRepLeaderboard(repo, teamId),
+      this.getLeaderboards(repo, teamId),
     ]).catch((e: unknown) => {
       logError(this.logger, 'Failed to load dashboard data', e, { userId, teamId });
       throw e;
     });
 
-    return { myStats, myActivity, myTopChannels, mySentimentTrend, leaderboard, repLeaderboard };
+    return { myStats, myActivity, myTopChannels, mySentimentTrend, ...leaderboards };
   }
 
   private async getMyStats(repo: Repository<Message>, userId: string, teamId: string): Promise<MyStats> {
-    const [msgRows, repRows, sentimentRows] = await Promise.all([
-      repo.query<{ total: string }[]>(
-        `SELECT COUNT(*) AS total
-         FROM message m
-         INNER JOIN slack_user u ON u.id = m.userIdId
-         WHERE u.slackId = ? AND m.teamId = ? AND u.teamId = m.teamId AND m.channel LIKE 'C%'`,
-        [userId, teamId],
-      ),
-      repo.query<{ rep: string }[]>(
-        `SELECT COALESCE(SUM(value), 0) AS rep
-         FROM reaction
-         WHERE affectedUser = ? AND teamId = ?`,
-        [userId, teamId],
-      ),
-      repo.query<{ avg: string | null }[]>(
-        `SELECT AVG(sentiment) AS avg
-         FROM sentiment
-         WHERE userId = ? AND teamId = ?`,
-        [userId, teamId],
-      ),
-    ]);
+    const rows = await repo.query<{ totalMessages: string; rep: string; avgSentiment: string | null }[]>(
+      `SELECT
+         (SELECT COUNT(*)
+          FROM message m
+          INNER JOIN slack_user u ON u.id = m.userIdId
+          WHERE u.slackId = ? AND m.teamId = ? AND u.teamId = m.teamId AND m.channel LIKE 'C%') AS totalMessages,
+         (SELECT COALESCE(SUM(value), 0)
+          FROM reaction
+          WHERE affectedUser = ? AND teamId = ?) AS rep,
+         (SELECT AVG(sentiment)
+          FROM sentiment
+          WHERE userId = ? AND teamId = ?) AS avgSentiment`,
+      [userId, teamId, userId, teamId, userId, teamId],
+    );
 
-    const avgRaw: string | null = sentimentRows[0]?.avg ?? null;
+    const row = rows[0];
+    const avgRaw = row.avgSentiment;
     return {
-      totalMessages: Number(msgRows[0]?.total ?? 0),
-      rep: Number(repRows[0]?.rep ?? 0),
+      totalMessages: Number(row.totalMessages),
+      rep: Number(row.rep),
       avgSentiment: avgRaw !== null ? Math.round(Number(avgRaw) * 100) / 100 : null,
     };
   }
@@ -119,31 +112,52 @@ export class DashboardPersistenceService {
     }));
   }
 
-  private async getLeaderboard(repo: Repository<Message>, teamId: string): Promise<LeaderboardEntry[]> {
-    const rows = await repo.query<{ name: string; count: string }[]>(
-      `SELECT u.name, COUNT(*) AS count
-       FROM message m
-       INNER JOIN slack_user u ON u.id = m.userIdId
-       WHERE m.teamId = ? AND u.isBot = 0 AND m.channel LIKE 'C%'
-       GROUP BY u.slackId, u.name
-       ORDER BY count DESC
-       LIMIT ?`,
-      [teamId, LEADERBOARD_LIMIT],
+  private async getLeaderboards(
+    repo: Repository<Message>,
+    teamId: string,
+  ): Promise<{ leaderboard: LeaderboardEntry[]; repLeaderboard: RepLeaderboardEntry[] }> {
+    const rows = await repo.query<{ type: 'activity' | 'rep'; name: string; value: string }[]>(
+      `(SELECT 'activity' AS type, u.name AS name, CAST(COUNT(*) AS SIGNED) AS value
+        FROM message m
+        INNER JOIN slack_user u ON u.id = m.userIdId
+        WHERE m.teamId = ? AND u.isBot = 0 AND m.channel LIKE 'C%'
+        GROUP BY u.slackId, u.name
+        ORDER BY value DESC
+        LIMIT ?)
+       UNION ALL
+       (SELECT 'rep' AS type, u.name AS name, CAST(SUM(r.value) AS SIGNED) AS value
+        FROM reaction r
+        INNER JOIN slack_user u ON u.slackId = r.affectedUser AND u.teamId = r.teamId
+        WHERE r.teamId = ?
+        GROUP BY r.affectedUser, u.name
+        ORDER BY value DESC
+        LIMIT ?)`,
+      [teamId, LEADERBOARD_LIMIT, teamId, LEADERBOARD_LIMIT],
     );
-    return rows.map((r) => ({ name: r.name, count: Number(r.count) }));
-  }
 
-  private async getRepLeaderboard(repo: Repository<Message>, teamId: string): Promise<RepLeaderboardEntry[]> {
-    const rows = await repo.query<{ name: string; rep: string }[]>(
-      `SELECT u.name, SUM(r.value) AS rep
-       FROM reaction r
-       INNER JOIN slack_user u ON u.slackId = r.affectedUser AND u.teamId = r.teamId
-       WHERE r.teamId = ?
-       GROUP BY r.affectedUser, u.name
-       ORDER BY rep DESC
-       LIMIT ?`,
-      [teamId, LEADERBOARD_LIMIT],
+    const { leaderboard, repLeaderboard } = rows.reduce<{
+      leaderboard: LeaderboardEntry[];
+      repLeaderboard: RepLeaderboardEntry[];
+    }>(
+      (acc, r) => {
+        switch (r.type) {
+          case 'activity':
+            acc.leaderboard.push({ name: r.name, count: Number(r.value) });
+            break;
+          case 'rep':
+            acc.repLeaderboard.push({ name: r.name, rep: Number(r.value) });
+            break;
+          default: {
+            const exhaustive: never = r.type;
+            throw new Error(`Unexpected leaderboard type: ${exhaustive}`);
+          }
+        }
+        return acc;
+      },
+      { leaderboard: [], repLeaderboard: [] },
     );
-    return rows.map((r) => ({ name: r.name, rep: Number(r.rep) }));
+    leaderboard.sort((a, b) => b.count - a.count);
+    repLeaderboard.sort((a, b) => b.rep - a.rep);
+    return { leaderboard, repLeaderboard };
   }
 }
