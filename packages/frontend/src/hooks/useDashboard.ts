@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AUTH_TOKEN_KEY } from '@/app.const';
 import { API_BASE_URL } from '@/config';
-import type { DashboardResponse } from '@/app.model';
+import type { DashboardResponse, TimePeriod } from '@/app.model';
 
 export interface UseDashboardReturn {
   data: DashboardResponse | null;
@@ -9,7 +9,7 @@ export interface UseDashboardReturn {
   error: string | null;
 }
 
-export function useDashboard(onLogout: () => void): UseDashboardReturn {
+export function useDashboard(onLogout: () => void, period: TimePeriod): UseDashboardReturn {
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export function useDashboard(onLogout: () => void): UseDashboardReturn {
 
       try {
         const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
-        const response = await fetch(`${API_BASE_URL}/dashboard`, {
+        const response = await fetch(`${API_BASE_URL}/dashboard?period=${encodeURIComponent(period)}`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: abortController.signal,
         });
@@ -58,7 +58,7 @@ export function useDashboard(onLogout: () => void): UseDashboardReturn {
     return () => {
       abortController.abort();
     };
-  }, []);
+  }, [period]);
 
   return { data, isLoading, error };
 }

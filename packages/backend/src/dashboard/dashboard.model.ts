@@ -1,3 +1,5 @@
+export type TimePeriod = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'allTime';
+
 export interface ActivityDataPoint {
   date: string;
   count: number;

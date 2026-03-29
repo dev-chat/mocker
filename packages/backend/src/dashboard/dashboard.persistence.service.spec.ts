@@ -1,7 +1,7 @@
 import { getRepository } from 'typeorm';
 import { loggerMock } from '../test/mocks/logger.mock';
 import { DashboardPersistenceService } from './dashboard.persistence.service';
-import { ACTIVITY_DAYS, LEADERBOARD_LIMIT, SENTIMENT_WEEKS, TOP_CHANNELS_LIMIT } from './dashboard.const';
+import { LEADERBOARD_LIMIT, PERIOD_DAYS, TOP_CHANNELS_LIMIT } from './dashboard.const';
 
 jest.mock('typeorm', () => {
   const actual = jest.requireActual('typeorm');
@@ -14,6 +14,11 @@ jest.mock('typeorm', () => {
 describe('DashboardPersistenceService', () => {
   let service: DashboardPersistenceService;
   const query = jest.fn();
+
+  const redis = {
+    getValue: jest.fn(),
+    setValueWithExpire: jest.fn(),
+  };
 
   /** Route mock query responses by SQL content so parallel calls resolve correctly. */
   function routeQuery(sql: string): Promise<unknown[]> {
@@ -32,10 +37,16 @@ describe('DashboardPersistenceService', () => {
     service = new DashboardPersistenceService();
     (getRepository as jest.Mock).mockReturnValue({ query });
     query.mockImplementation(routeQuery);
+    redis.getValue.mockResolvedValue(null);
+    redis.setValueWithExpire.mockResolvedValue('OK');
+    type DashboardServiceDependencies = DashboardPersistenceService & {
+      redisService: typeof redis;
+    };
+    (service as unknown as DashboardServiceDependencies).redisService = redis;
   });
 
   it('returns a complete DashboardResponse with the expected shape', async () => {
-    const result = await service.getDashboardData('U1', 'T1');
+    const result = await service.getDashboardData('U1', 'T1', 'weekly');
     expect(result).toMatchObject({
       myStats: { totalMessages: 5, rep: 10, avgSentiment: 0.75 },
       myActivity: [],
@@ -59,7 +70,7 @@ describe('DashboardPersistenceService', () => {
       return Promise.resolve([]);
     });
 
-    const result = await service.getDashboardData('U1', 'T1');
+    const result = await service.getDashboardData('U1', 'T1', 'weekly');
 
     expect(result.myStats.totalMessages).toBe(42);
     expect(result.myStats.rep).toBe(7);
@@ -78,7 +89,7 @@ describe('DashboardPersistenceService', () => {
       return routeQuery(sql);
     });
 
-    const result = await service.getDashboardData('U1', 'T1');
+    const result = await service.getDashboardData('U1', 'T1', 'weekly');
     expect(result.myStats.avgSentiment).toBeNull();
   });
 
@@ -89,12 +100,12 @@ describe('DashboardPersistenceService', () => {
       return routeQuery(sql);
     });
 
-    const result = await service.getDashboardData('U1', 'T1');
+    const result = await service.getDashboardData('U1', 'T1', 'weekly');
     expect(result.myStats.avgSentiment).toBeNull();
   });
 
   it('scopes all message queries to the given teamId', async () => {
-    await service.getDashboardData('U1', 'T42');
+    await service.getDashboardData('U1', 'T42', 'weekly');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
     const teamScopedCalls = calls.filter(([sql]) => sql.includes('teamId'));
@@ -105,7 +116,7 @@ describe('DashboardPersistenceService', () => {
   });
 
   it('scopes user queries to the given userId', async () => {
-    await service.getDashboardData('U99', 'T1');
+    await service.getDashboardData('U99', 'T1', 'weekly');
 
     // At least the stats, activity, top-channels, and sentiment-trend queries bind userId.
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
@@ -113,26 +124,36 @@ describe('DashboardPersistenceService', () => {
     expect(userScopedCalls.length).toBeGreaterThan(0);
   });
 
-  it('passes ACTIVITY_DAYS as the window for the activity query', async () => {
-    await service.getDashboardData('U1', 'T1');
+  it('passes the period interval as the window for the activity query', async () => {
+    await service.getDashboardData('U1', 'T1', 'monthly');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
     const activityCall = calls.find(([sql]) => sql.includes('DATE(m.createdAt) AS date'));
     expect(activityCall).toBeDefined();
-    expect(activityCall![1]).toContain(ACTIVITY_DAYS);
+    expect(activityCall![1]).toContain(PERIOD_DAYS['monthly']);
   });
 
-  it('passes SENTIMENT_WEEKS as the window for the sentiment trend query', async () => {
-    await service.getDashboardData('U1', 'T1');
+  it('passes the period interval as the window for the sentiment trend query', async () => {
+    await service.getDashboardData('U1', 'T1', 'monthly');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
     const sentimentCall = calls.find(([sql]) => sql.includes('ROUND(AVG(sentiment)'));
     expect(sentimentCall).toBeDefined();
-    expect(sentimentCall![1]).toContain(SENTIMENT_WEEKS);
+    expect(sentimentCall![1]).toContain(PERIOD_DAYS['monthly']);
+  });
+
+  it('does not include a date interval in queries for the allTime period', async () => {
+    await service.getDashboardData('U1', 'T1', 'allTime');
+
+    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const activityCall = calls.find(([sql]) => sql.includes('DATE(m.createdAt) AS date'));
+    expect(activityCall).toBeDefined();
+    expect(activityCall![1]).not.toContain(null);
+    expect(activityCall![1]).toHaveLength(2); // only userId and teamId
   });
 
   it('passes TOP_CHANNELS_LIMIT as the LIMIT for the top channels query', async () => {
-    await service.getDashboardData('U1', 'T1');
+    await service.getDashboardData('U1', 'T1', 'weekly');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
     const channelsCall = calls.find(([sql]) => sql.includes('AS channel'));
@@ -141,7 +162,7 @@ describe('DashboardPersistenceService', () => {
   });
 
   it('passes LEADERBOARD_LIMIT as the LIMIT for both leaderboard queries', async () => {
-    await service.getDashboardData('U1', 'T1');
+    await service.getDashboardData('U1', 'T1', 'weekly');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
     const leaderboardCalls = calls.filter(([sql]) => sql.includes('isBot = 0') || sql.includes('SUM(r.value)'));
@@ -152,7 +173,7 @@ describe('DashboardPersistenceService', () => {
   });
 
   it('excludes bot users from the activity leaderboard query', async () => {
-    await service.getDashboardData('U1', 'T1');
+    await service.getDashboardData('U1', 'T1', 'weekly');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
     const leaderboardCall = calls.find(([sql]) => sql.includes('isBot = 0'));
@@ -161,7 +182,7 @@ describe('DashboardPersistenceService', () => {
   });
 
   it('issues separate queries for activity and rep leaderboards, both with ORDER BY value DESC', async () => {
-    await service.getDashboardData('U1', 'T1');
+    await service.getDashboardData('U1', 'T1', 'weekly');
 
     const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
     const activityCall = calls.find(([sql]) => sql.includes('isBot = 0'));
@@ -171,9 +192,12 @@ describe('DashboardPersistenceService', () => {
   });
 
   it('logs a debug profile entry for each of the 6 queries', async () => {
-    await service.getDashboardData('U1', 'T1');
+    await service.getDashboardData('U1', 'T1', 'weekly');
 
-    expect(loggerMock.info).toHaveBeenCalledTimes(6);
+    expect(loggerMock.info).toHaveBeenCalledWith(
+      'query profile',
+      expect.objectContaining({ query: 'getMyStats', durationMs: expect.any(Number) }),
+    );
     for (const label of [
       'getMyStats',
       'getMyActivity',
@@ -192,6 +216,52 @@ describe('DashboardPersistenceService', () => {
   it('propagates errors thrown by repo.query through getDashboardData', async () => {
     query.mockRejectedValue(new Error('DB connection lost'));
 
-    await expect(service.getDashboardData('U1', 'T1')).rejects.toThrow('DB connection lost');
+    await expect(service.getDashboardData('U1', 'T1', 'weekly')).rejects.toThrow('DB connection lost');
+  });
+
+  it('returns cached data without querying the DB on a cache hit', async () => {
+    const cachedData = {
+      myStats: { totalMessages: 99, rep: 42, avgSentiment: 0.5 },
+      myActivity: [],
+      myTopChannels: [],
+      mySentimentTrend: [],
+      leaderboard: [],
+      repLeaderboard: [],
+    };
+    redis.getValue.mockResolvedValue(JSON.stringify(cachedData));
+
+    const result = await service.getDashboardData('U1', 'T1', 'weekly');
+
+    expect(result).toEqual(cachedData);
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('stores the result in Redis after a cache miss', async () => {
+    redis.getValue.mockResolvedValue(null);
+
+    await service.getDashboardData('U1', 'T1', 'weekly');
+
+    expect(redis.setValueWithExpire).toHaveBeenCalledWith(
+      'dashboard:T1:U1:weekly',
+      expect.any(String),
+      'PX',
+      expect.any(Number),
+    );
+    const stored = JSON.parse((redis.setValueWithExpire.mock.calls[0] as unknown[])[1] as string) as object;
+    expect(stored).toMatchObject({ myStats: { totalMessages: 5 } });
+  });
+
+  it('uses a cache key scoped to teamId, userId, and period', async () => {
+    redis.getValue.mockResolvedValue(null);
+
+    await service.getDashboardData('U7', 'T3', 'yearly');
+
+    expect(redis.getValue).toHaveBeenCalledWith('dashboard:T3:U7:yearly');
+    expect(redis.setValueWithExpire).toHaveBeenCalledWith(
+      'dashboard:T3:U7:yearly',
+      expect.any(String),
+      'PX',
+      expect.any(Number),
+    );
   });
 });
