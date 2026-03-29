@@ -17,7 +17,6 @@ import {
   REDPLOY_MOONBEAM_TEXT_PROMPT,
   GATE_MODEL,
   MOONBEAM_SLACK_ID,
-  MEMORY_USAGE_INSTRUCTION,
   MEMORY_SELECTION_PROMPT,
   MEMORY_EXTRACTION_PROMPT,
   GPT_MODEL,
@@ -550,7 +549,7 @@ export class AIService {
       })
       .join('\n');
 
-    return `${MEMORY_USAGE_INSTRUCTION}\n\nthings you remember about the people in this conversation:\n${lines}`;
+    return `<memory_context>\nthings you remember about the people in this conversation:\n${lines}\n</memory_context>`;
   }
 
   private extractParticipantSlackIds(
@@ -581,6 +580,13 @@ export class AIService {
 
   private appendMemoryContext(baseInstructions: string, memoryContext: string): string {
     if (!memoryContext) return baseInstructions;
+    // Insert memory data before <verification> so the verification checklist remains the last thing the model sees
+    const verificationTag = '<verification>';
+    const insertionPoint = baseInstructions.indexOf(verificationTag);
+    if (insertionPoint !== -1) {
+      return `${baseInstructions.slice(0, insertionPoint)}${memoryContext}\n\n${baseInstructions.slice(insertionPoint)}`;
+    }
+    // Fallback for non-standard instructions (e.g. custom prompts, GENERAL_TEXT_INSTRUCTIONS)
     return `${baseInstructions}\n\n${memoryContext}`;
   }
 
