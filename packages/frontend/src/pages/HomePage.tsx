@@ -41,15 +41,15 @@ interface StatCardProps {
   icon: React.ElementType;
   label: string;
   value: string | number;
-  iconColor?: string;
+  iconStyle?: React.CSSProperties;
 }
 
-function StatCard({ icon: Icon, label, value, iconColor = 'text-primary' }: StatCardProps) {
+function StatCard({ icon: Icon, label, value, iconStyle }: StatCardProps) {
   return (
     <Card>
       <CardContent className="flex items-center gap-4 pt-6">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-          <Icon className={`h-5 w-5 ${iconColor}`} aria-hidden="true" />
+          <Icon className="h-5 w-5 text-primary" style={iconStyle} aria-hidden="true" />
         </div>
         <div>
           <p className="text-2xl font-bold">{value}</p>
@@ -109,7 +109,7 @@ export function HomePage({ onLogout }: HomePageProps) {
             icon={Smile}
             label="Avg. sentiment"
             value={isLoading ? '…' : sentimentDisplay}
-            iconColor={`text-[${sentimentColor(avgSentiment)}]`}
+            iconStyle={{ color: sentimentColor(avgSentiment) }}
           />
         </div>
       </section>
