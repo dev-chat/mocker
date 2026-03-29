@@ -1,21 +1,13 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, Search, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Separator } from '@/components/ui/separator';
-import { MessageText } from '@/components/MessageText';
+import { Card, CardContent } from '@/components/ui/card';
+import { SearchFiltersCard } from '@/components/SearchFiltersCard';
+import { SearchResultsCard } from '@/components/SearchResultsCard';
 import type { Message, SearchFiltersResponse, SearchMessagesResponse, SortKey, SortDirection } from '@/app.model';
+import type { ActiveFilter } from '@/components/SearchFiltersCard.model';
 import { AUTH_TOKEN_KEY, PAGE_SIZE } from '@/app.const';
 import { API_BASE_URL } from '@/config';
 import { getDisplayedMessages } from '@/app.helpers';
-
-interface MessageSearchPageProps {
-  onLogout: () => void;
-}
+import type { MessageSearchPageProps } from '@/pages/MessageSearchPage.model';
 
 export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
   const [userName, setUserName] = useState('');
@@ -150,25 +142,11 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
     [sortKey],
   );
 
-  const sortIconFor = useCallback(
-    (column: SortKey) => {
-      if (sortKey !== column) {
-        return <ArrowUpDown className="ml-2 h-3.5 w-3.5" aria-hidden="true" />;
-      }
-      return sortDirection === 'asc' ? (
-        <ArrowUp className="ml-2 h-3.5 w-3.5" aria-hidden="true" />
-      ) : (
-        <ArrowDown className="ml-2 h-3.5 w-3.5" aria-hidden="true" />
-      );
-    },
-    [sortKey, sortDirection],
-  );
-
   const activeFilters = [
     userName.trim() && { label: 'User', value: userName.trim() },
     channel.trim() && { label: 'Channel', value: channel.trim() },
     content.trim() && { label: 'Content', value: content.trim() },
-  ].filter(Boolean) as { label: string; value: string }[];
+  ].filter(Boolean) as ActiveFilter[];
 
   return (
     <div className="p-8 max-w-6xl">
@@ -177,71 +155,19 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
         <p className="text-muted-foreground mt-2">Search through Slack messages by user, channel, or content.</p>
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Search Filters</CardTitle>
-          <CardDescription>Enter one or more filters to narrow your search. All filters are combined.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="userName">User Name</Label>
-              <Input
-                id="userName"
-                placeholder="e.g. john"
-                list="user-filter-options"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-              />
-              <datalist id="user-filter-options">
-                {searchFilterOptions.users.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="channel">Channel</Label>
-              <Input
-                id="channel"
-                placeholder="e.g. general"
-                list="channel-filter-options"
-                value={channel}
-                onChange={(e) => setChannel(e.target.value)}
-              />
-              <datalist id="channel-filter-options">
-                {searchFilterOptions.channels.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="content">Message Content</Label>
-              <Input
-                id="content"
-                placeholder="e.g. hello world"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-4">
-            <Button onClick={() => void handleSearch()} disabled={isLoading}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-              {isLoading ? 'Searching...' : 'Search'}
-            </Button>
-            {isFiltersLoading && <p className="text-muted-foreground text-xs">Loading user/channel suggestions...</p>}
-            {activeFilters.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {activeFilters.map((filter) => (
-                  <Badge key={filter.label} variant="secondary">
-                    {filter.label}: {filter.value}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <SearchFiltersCard
+        userName={userName}
+        channel={channel}
+        content={content}
+        searchFilterOptions={searchFilterOptions}
+        isLoading={isLoading}
+        isFiltersLoading={isFiltersLoading}
+        activeFilters={activeFilters}
+        onUserNameChange={setUserName}
+        onChannelChange={setChannel}
+        onContentChange={setContent}
+        onSearch={() => void handleSearch()}
+      />
 
       {error && (
         <Card className="mb-6 border-destructive">
@@ -251,128 +177,24 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
         </Card>
       )}
 
-      {hasSearched && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Results</CardTitle>
-            <CardDescription>
-              {isLoading
-                ? 'Loading results...'
-                : total === 0
-                  ? 'No messages found matching your search criteria.'
-                  : `Found ${total} message${total === 1 ? '' : 's'} overall${tableFilter.trim() ? ` (${displayedMessages.length} shown)` : ''}`}
-            </CardDescription>
-          </CardHeader>
-          {isLoading ? (
-            <CardContent className="pt-2">
-              <div className="text-muted-foreground flex min-h-[160px] items-center justify-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading results...
-              </div>
-            </CardContent>
-          ) : messages.length > 0 ? (
-            <>
-              <Separator />
-              <CardContent className="pt-4">
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <Input
-                    aria-label="Filter result rows"
-                    placeholder="Filter results by user, channel, or message"
-                    value={tableFilter}
-                    onChange={(e) => setTableFilter(e.target.value)}
-                    className="max-w-md"
-                  />
-                </div>
-                <div className="overflow-y-auto max-h-[50vh] rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[140px]">
-                          <Button variant="ghost" size="sm" onClick={() => toggleSort('name')}>
-                            User
-                            {sortIconFor('name')}
-                          </Button>
-                        </TableHead>
-                        <TableHead className="w-[140px]">
-                          <Button variant="ghost" size="sm" onClick={() => toggleSort('channel')}>
-                            Channel
-                            {sortIconFor('channel')}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button variant="ghost" size="sm" onClick={() => toggleSort('message')}>
-                            Message
-                            {sortIconFor('message')}
-                          </Button>
-                        </TableHead>
-                        <TableHead className="w-[180px]">
-                          <Button variant="ghost" size="sm" onClick={() => toggleSort('createdAt')}>
-                            Date
-                            {sortIconFor('createdAt')}
-                          </Button>
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {displayedMessages.map((msg) => (
-                        <TableRow key={msg.id}>
-                          <TableCell className="font-medium">{msg.name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">#{msg.channelName ?? msg.channel}</Badge>
-                          </TableCell>
-                          <TableCell className="max-w-md">
-                            <MessageText
-                              text={msg.message}
-                              mentions={mentions}
-                              onUserClick={(name) => setUserName(name)}
-                              onChannelClick={(name) => setChannel(name)}
-                            />
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-xs">
-                            {new Date(msg.createdAt).toLocaleString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                {displayedMessages.length === 0 && (
-                  <p className="text-muted-foreground mt-4 text-sm">No rows match your result filter.</p>
-                )}
-                {totalPages > 1 && (
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-muted-foreground text-sm">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void fetchPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        aria-label="Previous page"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void fetchPage(currentPage + 1)}
-                        disabled={currentPage >= totalPages}
-                        aria-label="Next page"
-                      >
-                        Next
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </>
-          ) : null}
-        </Card>
-      )}
+      <SearchResultsCard
+        hasSearched={hasSearched}
+        isLoading={isLoading}
+        total={total}
+        tableFilter={tableFilter}
+        displayedMessages={displayedMessages}
+        messages={messages}
+        mentions={mentions}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        sortKey={sortKey}
+        sortDirection={sortDirection}
+        onTableFilterChange={setTableFilter}
+        onToggleSort={toggleSort}
+        onUserClick={setUserName}
+        onChannelClick={setChannel}
+        onFetchPage={(page) => void fetchPage(page)}
+      />
     </div>
   );
 }

@@ -4,15 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { HomePage } from '@/pages/HomePage';
 import { MessageSearchPage } from '@/pages/MessageSearchPage';
-
-type Page = 'home' | 'message-search';
-
-interface NavItemProps {
-  icon: React.ElementType;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}
+import type { Page, NavItemProps, AppShellProps } from '@/components/AppShell.model';
 
 function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
   return (
@@ -28,10 +20,6 @@ function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
       {label}
     </button>
   );
-}
-
-interface AppShellProps {
-  onLogout: () => void;
 }
 
 export function AppShell({ onLogout }: AppShellProps) {
