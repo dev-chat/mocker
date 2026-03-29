@@ -1,4 +1,5 @@
 import { getRepository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { Message } from '../shared/db/models/Message';
 import { logger } from '../shared/logger/logger';
 import { logError } from '../shared/logger/error-logging';
@@ -11,12 +12,7 @@ import type {
   RepLeaderboardEntry,
   SentimentDataPoint,
 } from './dashboard.model';
-import {
-  ACTIVITY_DAYS,
-  SENTIMENT_WEEKS,
-  TOP_CHANNELS_LIMIT,
-  LEADERBOARD_LIMIT,
-} from './dashboard.const';
+import { ACTIVITY_DAYS, SENTIMENT_WEEKS, TOP_CHANNELS_LIMIT, LEADERBOARD_LIMIT } from './dashboard.const';
 export class DashboardPersistenceService {
   private logger = logger.child({ module: 'DashboardPersistenceService' });
 
@@ -38,11 +34,7 @@ export class DashboardPersistenceService {
     return { myStats, myActivity, myTopChannels, mySentimentTrend, leaderboard, repLeaderboard };
   }
 
-  private async getMyStats(
-    repo: ReturnType<typeof getRepository<Message>>,
-    userId: string,
-    teamId: string,
-  ): Promise<MyStats> {
+  private async getMyStats(repo: Repository<Message>, userId: string, teamId: string): Promise<MyStats> {
     const [msgRows, repRows, sentimentRows] = await Promise.all([
       repo.query<{ total: string }[]>(
         `SELECT COUNT(*) AS total
@@ -65,7 +57,7 @@ export class DashboardPersistenceService {
       ),
     ]);
 
-    const avgRaw = sentimentRows[0]?.avg;
+    const avgRaw: string | null = sentimentRows[0]?.avg ?? null;
     return {
       totalMessages: Number(msgRows[0]?.total ?? 0),
       rep: Number(repRows[0]?.rep ?? 0),
@@ -73,11 +65,7 @@ export class DashboardPersistenceService {
     };
   }
 
-  private async getMyActivity(
-    repo: ReturnType<typeof getRepository<Message>>,
-    userId: string,
-    teamId: string,
-  ): Promise<ActivityDataPoint[]> {
+  private async getMyActivity(repo: Repository<Message>, userId: string, teamId: string): Promise<ActivityDataPoint[]> {
     const rows = await repo.query<{ date: string; count: string }[]>(
       `SELECT DATE(m.createdAt) AS date, COUNT(*) AS count
        FROM message m
@@ -92,7 +80,7 @@ export class DashboardPersistenceService {
   }
 
   private async getMyTopChannels(
-    repo: ReturnType<typeof getRepository<Message>>,
+    repo: Repository<Message>,
     userId: string,
     teamId: string,
   ): Promise<ChannelDataPoint[]> {
@@ -111,7 +99,7 @@ export class DashboardPersistenceService {
   }
 
   private async getMySentimentTrend(
-    repo: ReturnType<typeof getRepository<Message>>,
+    repo: Repository<Message>,
     userId: string,
     teamId: string,
   ): Promise<SentimentDataPoint[]> {
@@ -131,10 +119,7 @@ export class DashboardPersistenceService {
     }));
   }
 
-  private async getLeaderboard(
-    repo: ReturnType<typeof getRepository<Message>>,
-    teamId: string,
-  ): Promise<LeaderboardEntry[]> {
+  private async getLeaderboard(repo: Repository<Message>, teamId: string): Promise<LeaderboardEntry[]> {
     const rows = await repo.query<{ name: string; count: string }[]>(
       `SELECT u.name, COUNT(*) AS count
        FROM message m
@@ -148,10 +133,7 @@ export class DashboardPersistenceService {
     return rows.map((r) => ({ name: r.name, count: Number(r.count) }));
   }
 
-  private async getRepLeaderboard(
-    repo: ReturnType<typeof getRepository<Message>>,
-    teamId: string,
-  ): Promise<RepLeaderboardEntry[]> {
+  private async getRepLeaderboard(repo: Repository<Message>, teamId: string): Promise<RepLeaderboardEntry[]> {
     const rows = await repo.query<{ name: string; rep: string }[]>(
       `SELECT u.name, SUM(r.value) AS rep
        FROM reaction r

@@ -1,3 +1,4 @@
+import type { CSSProperties, ElementType } from 'react';
 import {
   BarChart,
   Bar,
@@ -38,10 +39,10 @@ function formatDayLabel(isoDate: string): string {
 }
 
 interface StatCardProps {
-  icon: React.ElementType;
+  icon: ElementType;
   label: string;
   value: string | number;
-  iconStyle?: React.CSSProperties;
+  iconStyle?: CSSProperties;
 }
 
 function StatCard({ icon: Icon, label, value, iconStyle }: StatCardProps) {
@@ -292,11 +293,7 @@ export function HomePage({ onLogout }: HomePageProps) {
                 <EmptyState message="No leaderboard data available yet." />
               ) : (
                 <ResponsiveContainer width="100%" height={280}>
-                  <BarChart
-                    data={data.leaderboard}
-                    layout="vertical"
-                    margin={{ top: 4, right: 8, left: 8, bottom: 0 }}
-                  >
+                  <BarChart data={data.leaderboard} layout="vertical" margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
                     <XAxis
                       type="number"
@@ -385,4 +382,3 @@ export function HomePage({ onLogout }: HomePageProps) {
     </div>
   );
 }
-
