@@ -64,6 +64,9 @@ export class FunFactJob {
       const response = await Axios.get<Array<{ fact: string }>>(API_NINJAS_URL, {
         headers: { 'X-Api-Key': process.env.API_NINJA_KEY },
       });
+      if (!response.data.length) {
+        throw new Error('API Ninjas returned an empty facts array');
+      }
       return { fact: response.data[0].fact, source: API_NINJAS_URL };
     }
   }
@@ -136,9 +139,12 @@ export class FunFactJob {
   private async fetchQuote(): Promise<QuotePayload> {
     try {
       const response = await Axios.get<{
-        contents: { quotes: Array<{ quote: string; author: string; id: string }> };
+        contents?: { quotes?: Array<{ quote: string; author: string; id: string }> };
       }>(QUOTE_URL);
-      const quote = response.data.contents.quotes[0];
+      const quote = response.data.contents?.quotes?.[0];
+      if (!quote) {
+        return { text: '', error: 'Quote API returned no quotes' };
+      }
       return { text: `${quote.quote} - ${quote.author}` };
     } catch {
       return { text: '', error: 'Issue with quote API - non 200 status code' };
@@ -150,9 +156,9 @@ export class FunFactJob {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     const response = await Axios.get<{
-      selected: Array<{
+      selected?: Array<{
         text: string;
-        pages: Array<{
+        pages?: Array<{
           content_urls: { desktop: { page: string } };
           thumbnail?: { source: string };
           title: string;
@@ -160,8 +166,14 @@ export class FunFactJob {
       }>;
     }>(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/${month}/${day}`);
 
-    const selected = response.data.selected[0];
-    const page = selected.pages[0];
+    const selected = response.data.selected?.[0];
+    if (!selected) {
+      throw new Error('Wikipedia OnThisDay API returned no "selected" events');
+    }
+    const page = selected.pages?.[0];
+    if (!page) {
+      throw new Error('Wikipedia OnThisDay API returned no pages for the selected event');
+    }
     return {
       text: selected.text,
       url: page.content_urls.desktop.page,
