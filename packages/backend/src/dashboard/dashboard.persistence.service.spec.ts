@@ -242,7 +242,13 @@ describe('DashboardPersistenceService', () => {
     await service.getDashboardData('U1', 'T1', 'weekly');
 
     expect(redis.setValueWithExpire).toHaveBeenCalledWith(
-      'dashboard:T1:U1:weekly',
+      'dashboard:user:T1:U1:weekly',
+      expect.any(String),
+      'PX',
+      expect.any(Number),
+    );
+    expect(redis.setValueWithExpire).toHaveBeenCalledWith(
+      'dashboard:leaderboards:T1:weekly',
       expect.any(String),
       'PX',
       expect.any(Number),
@@ -251,17 +257,55 @@ describe('DashboardPersistenceService', () => {
     expect(stored).toMatchObject({ myStats: { totalMessages: 5 } });
   });
 
-  it('uses a cache key scoped to teamId, userId, and period', async () => {
+  it('uses user-scoped and team-scoped cache keys', async () => {
     redis.getValue.mockResolvedValue(null);
 
     await service.getDashboardData('U7', 'T3', 'yearly');
 
-    expect(redis.getValue).toHaveBeenCalledWith('dashboard:T3:U7:yearly');
+    expect(redis.getValue).toHaveBeenCalledWith('dashboard:user:T3:U7:yearly');
+    expect(redis.getValue).toHaveBeenCalledWith('dashboard:leaderboards:T3:yearly');
     expect(redis.setValueWithExpire).toHaveBeenCalledWith(
-      'dashboard:T3:U7:yearly',
+      'dashboard:user:T3:U7:yearly',
       expect.any(String),
       'PX',
       expect.any(Number),
     );
+    expect(redis.setValueWithExpire).toHaveBeenCalledWith(
+      'dashboard:leaderboards:T3:yearly',
+      expect.any(String),
+      'PX',
+      expect.any(Number),
+    );
+  });
+
+  it('returns merged payload from split cache entries without querying DB', async () => {
+    redis.getValue.mockImplementation((key: string) => {
+      if (key === 'dashboard:user:T1:U1:weekly') {
+        return Promise.resolve(
+          JSON.stringify({
+            myStats: { totalMessages: 10, rep: 20, avgSentiment: 0.8 },
+            myActivity: [],
+            myTopChannels: [],
+            mySentimentTrend: [],
+          }),
+        );
+      }
+      if (key === 'dashboard:leaderboards:T1:weekly') {
+        return Promise.resolve(JSON.stringify({ leaderboard: [{ name: 'alice', count: 1 }], repLeaderboard: [] }));
+      }
+      return Promise.resolve(null);
+    });
+
+    const result = await service.getDashboardData('U1', 'T1', 'weekly');
+
+    expect(query).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      myStats: { totalMessages: 10, rep: 20, avgSentiment: 0.8 },
+      myActivity: [],
+      myTopChannels: [],
+      mySentimentTrend: [],
+      leaderboard: [{ name: 'alice', count: 1 }],
+      repLeaderboard: [],
+    });
   });
 });
