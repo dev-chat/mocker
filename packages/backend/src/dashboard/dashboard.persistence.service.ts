@@ -77,12 +77,6 @@ export class DashboardPersistenceService {
       throw e;
     }
 
-    if (!userData) {
-      throw new Error('Failed to load dashboard data: missing user data');
-    }
-    if (!leaderboards) {
-      throw new Error('Failed to load dashboard data: missing leaderboards');
-    }
     const data: DashboardResponse = { ...userData, ...leaderboards };
     try {
       await this.redisService.setValueWithExpire(userCacheKey, JSON.stringify(userData), 'PX', CACHE_TTL_MS[period]);
