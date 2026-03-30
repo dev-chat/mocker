@@ -88,22 +88,21 @@ describe('FunFactJob', () => {
       await job.run();
 
       expect(sendMessage).toHaveBeenCalledTimes(1);
-      expect(sendMessage).toHaveBeenCalledWith(
-        FUN_FACT_SLACK_CHANNEL,
-        "SimpleTech's SimpleFacts",
-        expect.any(Array),
-      );
+      expect(sendMessage).toHaveBeenCalledWith(FUN_FACT_SLACK_CHANNEL, "SimpleTech's SimpleFacts", expect.any(Array));
 
       const blocks = sendMessage.mock.calls[0][2];
       expect(Array.isArray(blocks)).toBe(true);
       // Ensure no block appears to be a quote header/section when the quote fetch fails
       const hasQuoteBlock = blocks.some(
-        (block: any) =>
-          typeof block?.text?.text === 'string' &&
-          block.text.text.toLowerCase().includes('quote'),
+        (block: Record<string, unknown>) =>
+          block.text !== null &&
+          typeof block.text === 'object' &&
+          typeof (block.text as Record<string, unknown>).text === 'string' &&
+          ((block.text as Record<string, unknown>).text as string).toLowerCase().includes('quote'),
       );
       expect(hasQuoteBlock).toBe(false);
     });
+
     it('resolves without throwing and logs the error when a sub-job throws', async () => {
       jest.spyOn(harness, 'fetchOnThisDay').mockRejectedValue(new Error('Wikipedia is down'));
 
