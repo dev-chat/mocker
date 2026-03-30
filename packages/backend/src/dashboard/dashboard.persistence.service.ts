@@ -20,36 +20,72 @@ export class DashboardPersistenceService {
   private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
 
   async getDashboardData(userId: string, teamId: string, period: TimePeriod): Promise<DashboardResponse> {
-    const cacheKey = `dashboard:${teamId}:${userId}:${period}`;
+    const userCacheKey = `dashboard:user:${teamId}:${userId}:${period}`;
+    const leaderboardCacheKey = `dashboard:leaderboards:${teamId}:${period}`;
+
+    let cachedUserData: Pick<
+      DashboardResponse,
+      'myStats' | 'myActivity' | 'myTopChannels' | 'mySentimentTrend'
+    > | null = null;
+    let cachedLeaderboards: Pick<DashboardResponse, 'leaderboard' | 'repLeaderboard'> | null = null;
+
     try {
-      const cached = await this.redisService.getValue(cacheKey);
-      if (cached) {
-        this.logger.info('dashboard cache hit', { userId, teamId, period });
-        const data: DashboardResponse = JSON.parse(cached);
-        return data;
+      const cachedUser = await this.redisService.getValue(userCacheKey);
+      if (cachedUser) {
+        this.logger.info('dashboard user cache hit', { userId, teamId, period });
+        const parsedUserData: Pick<DashboardResponse, 'myStats' | 'myActivity' | 'myTopChannels' | 'mySentimentTrend'> =
+          JSON.parse(cachedUser);
+        cachedUserData = parsedUserData;
+      }
+
+      const cachedTeamLeaderboards = await this.redisService.getValue(leaderboardCacheKey);
+      if (cachedTeamLeaderboards) {
+        this.logger.info('dashboard leaderboard cache hit', { teamId, period });
+        const parsedLeaderboardData: Pick<DashboardResponse, 'leaderboard' | 'repLeaderboard'> =
+          JSON.parse(cachedTeamLeaderboards);
+        cachedLeaderboards = parsedLeaderboardData;
       }
     } catch (e: unknown) {
       logError(this.logger, 'Failed to read or parse dashboard cache', e, { userId, teamId, period });
       // Treat cache failures as a cache miss and continue to load data from the database.
     }
 
+    if (cachedUserData && cachedLeaderboards) {
+      return { ...cachedUserData, ...cachedLeaderboards };
+    }
+
     const intervalDays = PERIOD_DAYS[period];
     const repo = getRepository(Message);
 
-    const [myStats, myActivity, myTopChannels, mySentimentTrend, leaderboards] = await Promise.all([
-      this.getMyStats(repo, userId, teamId, intervalDays),
-      this.getMyActivity(repo, userId, teamId, intervalDays),
-      this.getMyTopChannels(repo, userId, teamId, intervalDays),
-      this.getMySentimentTrend(repo, userId, teamId, intervalDays),
-      this.getLeaderboards(repo, teamId, intervalDays),
-    ]).catch((e: unknown) => {
+    let userData = cachedUserData;
+    let leaderboards = cachedLeaderboards;
+
+    try {
+      if (!userData) {
+        const myStats = await this.getMyStats(repo, userId, teamId, intervalDays);
+        const myActivity = await this.getMyActivity(repo, userId, teamId, intervalDays);
+        const myTopChannels = await this.getMyTopChannels(repo, userId, teamId, intervalDays);
+        const mySentimentTrend = await this.getMySentimentTrend(repo, userId, teamId, intervalDays);
+        userData = { myStats, myActivity, myTopChannels, mySentimentTrend };
+      }
+
+      if (!leaderboards) {
+        leaderboards = await this.getLeaderboards(repo, teamId, intervalDays);
+      }
+    } catch (e: unknown) {
       logError(this.logger, 'Failed to load dashboard data', e, { userId, teamId });
       throw e;
-    });
+    }
 
-    const data: DashboardResponse = { myStats, myActivity, myTopChannels, mySentimentTrend, ...leaderboards };
+    const data: DashboardResponse = { ...userData, ...leaderboards };
     try {
-      await this.redisService.setValueWithExpire(cacheKey, JSON.stringify(data), 'PX', CACHE_TTL_MS[period]);
+      await this.redisService.setValueWithExpire(userCacheKey, JSON.stringify(userData), 'PX', CACHE_TTL_MS[period]);
+      await this.redisService.setValueWithExpire(
+        leaderboardCacheKey,
+        JSON.stringify(leaderboards),
+        'PX',
+        CACHE_TTL_MS[period],
+      );
     } catch (e: unknown) {
       logError(this.logger, 'Failed to write dashboard data to cache', e, { userId, teamId, period });
     }
@@ -199,34 +235,33 @@ export class DashboardPersistenceService {
     if (intervalDays !== null) repParams.push(intervalDays);
     repParams.push(LEADERBOARD_LIMIT);
 
-    const [activityRows, repRows] = await Promise.all([
-      this.timeQuery('getLeaderboards:activity', () =>
-        repo.query<{ name: string; value: string }[]>(
-          `SELECT u.name AS name, CAST(COUNT(*) AS SIGNED) AS value
-           FROM message m
-           INNER JOIN slack_user u ON u.id = m.userIdId
-           WHERE m.teamId = ? AND u.isBot = 0 AND m.channel LIKE 'C%'
-             ${activityInterval}
-           GROUP BY u.slackId, u.name
-           ORDER BY value DESC
-           LIMIT ?`,
-          activityParams,
-        ),
+    const activityRows = await this.timeQuery('getLeaderboards:activity', () =>
+      repo.query<{ name: string; value: string }[]>(
+        `SELECT u.name AS name, CAST(COUNT(*) AS SIGNED) AS value
+         FROM message m
+         INNER JOIN slack_user u ON u.id = m.userIdId
+         WHERE m.teamId = ? AND u.isBot = 0 AND m.channel LIKE 'C%'
+           ${activityInterval}
+         GROUP BY u.slackId, u.name
+         ORDER BY value DESC
+         LIMIT ?`,
+        activityParams,
       ),
-      this.timeQuery('getLeaderboards:rep', () =>
-        repo.query<{ name: string; value: string }[]>(
-          `SELECT u.name AS name, CAST(SUM(r.value) AS SIGNED) AS value
-           FROM reaction r
-           INNER JOIN slack_user u ON u.slackId = r.affectedUser AND u.teamId = r.teamId
-           WHERE r.teamId = ?
-             ${repInterval}
-           GROUP BY r.affectedUser, u.name
-           ORDER BY value DESC
-           LIMIT ?`,
-          repParams,
-        ),
+    );
+
+    const repRows = await this.timeQuery('getLeaderboards:rep', () =>
+      repo.query<{ name: string; value: string }[]>(
+        `SELECT u.name AS name, CAST(SUM(r.value) AS SIGNED) AS value
+         FROM reaction r
+         INNER JOIN slack_user u ON u.slackId = r.affectedUser AND u.teamId = r.teamId
+         WHERE r.teamId = ?
+           ${repInterval}
+         GROUP BY r.affectedUser, u.name
+         ORDER BY value DESC
+         LIMIT ?`,
+        repParams,
       ),
-    ]);
+    );
 
     return {
       leaderboard: activityRows.map((r) => ({ name: r.name, count: Number(r.value) })),
