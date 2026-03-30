@@ -81,6 +81,29 @@ describe('FunFactJob', () => {
       expect(sendMessage).toHaveBeenCalledWith(FUN_FACT_SLACK_CHANNEL, "SimpleTech's SimpleFacts", expect.any(Array));
     });
 
+    it('still posts to Slack and omits quote blocks when fetchQuote returns an error payload', async () => {
+      // Override the default successful quote with an error payload
+      (harness.fetchQuote as jest.Mock).mockResolvedValue({ text: '', error: 'Quote service unavailable' });
+
+      await job.run();
+
+      expect(sendMessage).toHaveBeenCalledTimes(1);
+      expect(sendMessage).toHaveBeenCalledWith(
+        FUN_FACT_SLACK_CHANNEL,
+        "SimpleTech's SimpleFacts",
+        expect.any(Array),
+      );
+
+      const blocks = sendMessage.mock.calls[0][2];
+      expect(Array.isArray(blocks)).toBe(true);
+      // Ensure no block appears to be a quote header/section when the quote fetch fails
+      const hasQuoteBlock = blocks.some(
+        (block: any) =>
+          typeof block?.text?.text === 'string' &&
+          block.text.text.toLowerCase().includes('quote'),
+      );
+      expect(hasQuoteBlock).toBe(false);
+    });
     it('resolves without throwing and logs the error when a sub-job throws', async () => {
       jest.spyOn(harness, 'fetchOnThisDay').mockRejectedValue(new Error('Wikipedia is down'));
 
