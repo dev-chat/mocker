@@ -64,7 +64,7 @@ export class FunFactJob {
       const response = await Axios.get<Array<{ fact: string }>>(API_NINJAS_URL, {
         headers: { 'X-Api-Key': process.env.API_NINJA_KEY },
       });
-      if (!response.data.length) {
+      if (!Array.isArray(response.data) || response.data.length === 0) {
         throw new Error('API Ninjas returned an empty facts array');
       }
       return { fact: response.data[0].fact, source: API_NINJAS_URL };
