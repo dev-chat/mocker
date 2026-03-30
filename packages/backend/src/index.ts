@@ -208,9 +208,7 @@ app.listen(PORT, (e?: Error) => {
         cron.schedule(
           '0 9 * * *',
           () => {
-            void funFactJob.run().catch((error) => {
-              indexLogger.error('Fun-fact job unhandled failure:', error);
-            });
+            void funFactJob.run();
           },
           { timezone: 'America/New_York' },
         );
