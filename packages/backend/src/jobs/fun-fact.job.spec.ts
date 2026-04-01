@@ -274,7 +274,17 @@ describe('FunFactJob', () => {
   // ---------------------------------------------------------------------------
 
   describe('fetchQuote()', () => {
-    it('returns formatted quote text on success', async () => {
+    it('returns formatted quote text on zenquotes success payload', async () => {
+      (Axios.get as jest.Mock).mockResolvedValue({
+        data: [{ q: 'Be yourself', a: 'Oscar Wilde' }],
+      });
+
+      const result = await harness.fetchQuote();
+
+      expect(result).toEqual({ text: 'Be yourself - Oscar Wilde' });
+    });
+
+    it('returns formatted quote text on legacy success payload', async () => {
       (Axios.get as jest.Mock).mockResolvedValue({
         data: {
           contents: { quotes: [{ quote: 'Be yourself', author: 'Oscar Wilde', id: '1' }] },
@@ -296,7 +306,7 @@ describe('FunFactJob', () => {
 
     it('returns error payload when the quotes array is empty', async () => {
       (Axios.get as jest.Mock).mockResolvedValue({
-        data: { contents: { quotes: [] } },
+        data: [],
       });
 
       const result = await harness.fetchQuote();

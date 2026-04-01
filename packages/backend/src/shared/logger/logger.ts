@@ -17,23 +17,42 @@ type LogInfo = {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
+const safeStringify = (value: unknown): string => {
+  const seen = new WeakSet<object>();
+  return JSON.stringify(value, (_key, nestedValue) => {
+    if (typeof nestedValue === 'object' && nestedValue !== null) {
+      if (seen.has(nestedValue)) {
+        return '[Circular]';
+      }
+      seen.add(nestedValue);
+    }
+    return nestedValue;
+  });
+};
+
 const serializeError = (error: unknown): Record<string, unknown> => {
   if (error instanceof Error) {
-    const details = Object.entries(error).reduce<Record<string, unknown>>((accumulator, [key, value]) => {
-      accumulator[key] = value;
-      return accumulator;
-    }, {});
-
-    return {
+    const serialized: Record<string, unknown> = {
       name: error.name,
       message: error.message,
       stack: error.stack,
-      ...details,
     };
+
+    const maybeCode = Reflect.get(error, 'code');
+    if (typeof maybeCode === 'string' || typeof maybeCode === 'number') {
+      serialized.code = maybeCode;
+    }
+
+    const maybeStatus = Reflect.get(error, 'status');
+    if (typeof maybeStatus === 'number') {
+      serialized.status = maybeStatus;
+    }
+
+    return serialized;
   }
 
   if (isRecord(error)) {
-    return { ...error };
+    return JSON.parse(safeStringify(error));
   }
 
   return { value: error };
@@ -62,7 +81,7 @@ const normalizeLogInfo = format((info: LogInfo) => {
     normalizedInfo.error = {
       name: normalizedInfo.name ?? 'Error',
       message:
-        typeof normalizedInfo.message === 'string' ? normalizedInfo.message : JSON.stringify(normalizedInfo.message),
+        typeof normalizedInfo.message === 'string' ? normalizedInfo.message : safeStringify(normalizedInfo.message),
       stack: normalizedInfo.stack,
     };
   }
@@ -78,6 +97,10 @@ const jsonLineFormat = printf((info: LogInfo) => {
       return accumulator;
     }
 
+    if (key === 'config' || key === 'request' || key === 'response') {
+      return accumulator;
+    }
+
     accumulator[key] = value;
     return accumulator;
   }, {});
@@ -86,7 +109,7 @@ const jsonLineFormat = printf((info: LogInfo) => {
     timestamp: loggedAt,
     level,
     module,
-    message: typeof message === 'string' ? message : JSON.stringify(message),
+    message: typeof message === 'string' ? message : safeStringify(message),
   };
 
   if (context && Object.keys(context).length > 0) {
@@ -109,7 +132,7 @@ const jsonLineFormat = printf((info: LogInfo) => {
     payload.meta = meta;
   }
 
-  return JSON.stringify(payload);
+  return safeStringify(payload);
 });
 
 export const logger = createLogger({
