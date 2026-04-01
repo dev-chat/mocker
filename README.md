@@ -100,6 +100,12 @@ mysql -u <username> -p mockerdbdev < DB_SEED.sql
 
 Create `.env` files in `packages/backend` and `packages/frontend` (or set them globally).
 
+For backend, start from the checked-in example:
+
+```bash
+cp packages/backend/.env.example packages/backend/.env
+```
+
 #### Backend (`packages/backend/.env`)
 
 ```bash
@@ -138,6 +144,12 @@ GOOGLE_TRANSLATE_API_KEY=your-google-translate-key
 ```
 
 #### Frontend (`packages/frontend/.env`)
+
+For frontend, start from the checked-in example:
+
+```bash
+cp packages/frontend/.env.example packages/frontend/.env
+```
 
 ```bash
 # Backend API URL

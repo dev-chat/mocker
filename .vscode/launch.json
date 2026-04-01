@@ -9,6 +9,16 @@
       "args": ["${workspaceFolder}/src/index.ts"]
     },
     {
+      "name": "Debug backend fun-fact job",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/packages/backend",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "program": "${workspaceFolder}/packages/backend/src/jobs/run-fun-fact-job.ts",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
       "name": "Attach",
       "type": "node",
       "request": "attach",
