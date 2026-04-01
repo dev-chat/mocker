@@ -19,15 +19,31 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 
 const safeStringify = (value: unknown): string => {
   const seen = new WeakSet<object>();
-  return JSON.stringify(value, (_key, nestedValue) => {
-    if (typeof nestedValue === 'object' && nestedValue !== null) {
-      if (seen.has(nestedValue)) {
-        return '[Circular]';
+
+  try {
+    const json = JSON.stringify(value, (_key, nestedValue) => {
+      if (typeof nestedValue === 'object' && nestedValue !== null) {
+        if (seen.has(nestedValue)) {
+          return '[Circular]';
+        }
+        seen.add(nestedValue);
       }
-      seen.add(nestedValue);
+      return nestedValue;
+    });
+
+    if (typeof json === 'string') {
+      return json;
     }
-    return nestedValue;
-  });
+  } catch {
+    // Fall through to the fallback below.
+  }
+
+  // Fallback: ensure we always return a string, even for unsupported values.
+  try {
+    return String(value);
+  } catch {
+    return '[Unserializable]';
+  }
 };
 
 const serializeError = (error: unknown): Record<string, unknown> => {
