@@ -138,14 +138,27 @@ export class FunFactJob {
 
   private async fetchQuote(): Promise<QuotePayload> {
     try {
-      const response = await Axios.get<{
-        contents?: { quotes?: Array<{ quote: string; author: string; id: string }> };
-      }>(QUOTE_URL);
-      const quote = response.data.contents?.quotes?.[0];
-      if (!quote) {
+      const response = await Axios.get<
+        Array<{ q?: string; a?: string }> | { contents?: { quotes?: Array<{ quote: string; author: string }> } }
+      >(QUOTE_URL);
+
+      if (Array.isArray(response.data)) {
+        if (response.data.length === 0) {
+          return { text: '', error: 'Quote API returned no quotes' };
+        }
+
+        const quote = response.data[0];
+        if (quote.q && quote.a) {
+          return { text: `${quote.q} - ${quote.a}` };
+        }
         return { text: '', error: 'Quote API returned no quotes' };
       }
-      return { text: `${quote.quote} - ${quote.author}` };
+
+      const legacyQuote = response.data.contents?.quotes?.[0];
+      if (!legacyQuote) {
+        return { text: '', error: 'Quote API returned no quotes' };
+      }
+      return { text: `${legacyQuote.quote} - ${legacyQuote.author}` };
     } catch {
       return { text: '', error: 'Issue with quote API - non 200 status code' };
     }
@@ -164,7 +177,11 @@ export class FunFactJob {
           title: string;
         }>;
       }>;
-    }>(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/${month}/${day}`);
+    }>(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/${month}/${day}`, {
+      headers: {
+        'User-Agent': 'mocker-fun-fact-job/1.0 (+https://muzzle.lol)',
+      },
+    });
 
     const selected = response.data.selected?.[0];
     if (!selected) {

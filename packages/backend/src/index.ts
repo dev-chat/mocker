@@ -33,6 +33,7 @@ import { AIService } from './ai/ai.service';
 import { DailyMemoryJob } from './ai/daily-memory.job';
 import { FunFactJob } from './jobs/fun-fact.job';
 import { PricingJob } from './jobs/pricing.job';
+import { resolveTypeOrmEntities } from './shared/db/typeorm-options';
 import { portfolioController } from './portfolio/portfolio.controller';
 import { hookController } from './hook/hook.controller';
 import { searchController } from './search/search.controller';
@@ -124,6 +125,7 @@ const connectToDb = async (): Promise<boolean> => {
     const overrideOptions = {
       ...options,
       charset: 'utf8mb4',
+      entities: resolveTypeOrmEntities(),
       synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
     };
     return createConnection(overrideOptions)
@@ -157,7 +159,6 @@ const checkForEnvVariables = (): void => {
       process.env.TYPEORM_USERNAME &&
       process.env.TYPEORM_PASSWORD &&
       process.env.TYPEORM_DATABASE &&
-      process.env.TYPEORM_ENTITIES &&
       process.env.TYPEORM_SYNCHRONIZE
     )
   ) {
