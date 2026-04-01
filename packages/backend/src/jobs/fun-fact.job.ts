@@ -143,6 +143,10 @@ export class FunFactJob {
       >(QUOTE_URL);
 
       if (Array.isArray(response.data)) {
+        if (response.data.length === 0) {
+          return { text: '', error: 'Quote API returned no quotes' };
+        }
+
         const quote = response.data[0];
         if (quote.q && quote.a) {
           return { text: `${quote.q} - ${quote.a}` };
