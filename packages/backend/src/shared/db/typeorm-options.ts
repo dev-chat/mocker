@@ -11,10 +11,17 @@ const parseConfiguredEntities = (): string[] => {
 export const resolveTypeOrmEntities = (): string[] => {
   const configuredEntities = parseConfiguredEntities();
 
-  const defaultEntities = [
-    path.join(process.cwd(), 'src/shared/db/models/*.{ts,js}'),
-    path.join(process.cwd(), 'dist/shared/db/models/*.js'),
-  ];
+  // If TYPEORM_ENTITIES is configured, use it exclusively.
+  if (configuredEntities.length > 0) {
+    return Array.from(new Set(configuredEntities));
+  }
 
-  return Array.from(new Set([...configuredEntities, ...defaultEntities]));
+  // Otherwise, select either the src or dist pattern, but not both.
+  const isTsRuntime = __filename.endsWith('.ts');
+
+  if (isTsRuntime) {
+    return [path.join(process.cwd(), 'src/shared/db/models/*.{ts,js}')];
+  }
+
+  return [path.join(process.cwd(), 'dist/shared/db/models/*.js')];
 };
