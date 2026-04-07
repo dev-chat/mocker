@@ -21,7 +21,8 @@ export class StorePersistenceService {
     const itemsWithPrices = await Promise.all(
       items.map(async (item: Item) => {
         const price = await getManager().query(
-          `SELECT * FROM price WHERE itemId=${item.id} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${item.id} AND teamId='${teamId}');`,
+          `SELECT * FROM price WHERE itemId = ? AND teamId = ? AND createdAt = (SELECT MAX(createdAt) FROM price WHERE itemId = ? AND teamId = ?)`,
+          [item.id, teamId, item.id, teamId],
         );
         return { ...item, price: price[0]?.price };
       }),
@@ -35,9 +36,9 @@ export class StorePersistenceService {
     } else {
       const item = await getRepository(Item).findOne({ where: { id: itemId } });
       const price = await getManager().query(
-        `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
+        `SELECT * FROM price WHERE itemId = ? AND teamId = ? AND createdAt = (SELECT MAX(createdAt) FROM price WHERE itemId = ? AND teamId = ?)`,
+        [itemId, teamId, itemId, teamId],
       );
-      // Gargbage
       const itemWithPrice = item ? { ...item, price: price[0].price } : undefined;
       return itemWithPrice;
     }
@@ -113,12 +114,12 @@ export class StorePersistenceService {
     return this.redisService.removeKey(key);
   }
 
-  // TODO: Fix this query. This is so nasty.
   async buyItem(itemId: number, userId: string, teamId: string): Promise<string> {
     const itemById = await getRepository(Item).findOne({ where: { id: itemId } });
     const userById = await getRepository(SlackUser).findOne({ where: { slackId: userId, teamId } });
     const priceByTeam = await getManager().query(
-      `SELECT * FROM price WHERE itemId=${itemId} AND teamId='${teamId}' AND createdAt=(SELECT MAX(createdAt) FROM price WHERE itemId=${itemId} AND teamId='${teamId}');`,
+      `SELECT * FROM price WHERE itemId = ? AND teamId = ? AND createdAt = (SELECT MAX(createdAt) FROM price WHERE itemId = ? AND teamId = ?)`,
+      [itemId, teamId, itemId, teamId],
     );
     if (itemById && userById) {
       const purchase = new Purchase();
@@ -141,7 +142,6 @@ export class StorePersistenceService {
     return `Sorry, unable to buy your item at this time. Please try again later.`;
   }
 
-  // TODO: Fix this query.
   async useItem(itemId: number, userId: string, teamId: string, userIdForItem?: string): Promise<string> {
     const usingUser: SlackUser | null = await getRepository(SlackUser).findOne({
       where: { slackId: userId, teamId },

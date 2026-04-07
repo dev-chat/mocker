@@ -81,6 +81,8 @@ describe('StorePersistenceService', () => {
     const out = await service.getItems('T1');
 
     expect(out).toEqual([expect.objectContaining({ id: 1, price: 5 }), expect.objectContaining({ id: 2, price: 9 })]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('itemId = ?'), [1, 'T1', 1, 'T1']);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('itemId = ?'), [2, 'T1', 2, 'T1']);
   });
 
   it('returns undefined for NaN item id', async () => {
@@ -94,6 +96,7 @@ describe('StorePersistenceService', () => {
     itemRepo.findOne.mockResolvedValue({ id: 1, name: 'A' });
 
     await expect(service.getItem(1, 'T1')).resolves.toEqual(expect.objectContaining({ id: 1, price: 7 }));
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('itemId = ?'), [1, 'T1', 1, 'T1']);
   });
 
   it('checks item activity in redis', async () => {
@@ -159,6 +162,7 @@ describe('StorePersistenceService', () => {
 
     purchaseRepo.insert.mockResolvedValueOnce({});
     await expect(service.buyItem(1, 'U1', 'T1')).resolves.toContain('Congratulations!');
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('itemId = ?'), [1, 'T1', 1, 'T1']);
 
     purchaseRepo.insert.mockRejectedValueOnce(new Error('insert fail'));
     await expect(service.buyItem(1, 'U1', 'T1')).resolves.toContain('unable to buy A');
