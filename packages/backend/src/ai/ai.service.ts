@@ -17,7 +17,6 @@ import {
   REDPLOY_MOONBEAM_TEXT_PROMPT,
   GATE_MODEL,
   MOONBEAM_SLACK_ID,
-  MEMORY_USAGE_INSTRUCTION,
   MEMORY_SELECTION_PROMPT,
   MEMORY_EXTRACTION_PROMPT,
   GPT_MODEL,
@@ -98,16 +97,12 @@ export class AIService {
     await this.redis.setInflight(userId, teamId);
     await this.redis.setDailyRequests(userId, teamId);
 
-    // Fetch and select relevant memories for the requesting user
-    const memoryContext = await this.fetchMemoryContext([userId], teamId, `User prompt: ${text}`, []);
-    const instructions = this.appendMemoryContext(GENERAL_TEXT_INSTRUCTIONS, memoryContext);
-
     return this.openAi.responses
       .create({
         model: GPT_MODEL,
         tools: [{ type: 'web_search_preview' }],
         tool_choice: 'auto',
-        instructions,
+        instructions: GENERAL_TEXT_INSTRUCTIONS,
         input: text,
         user: `${userId}-DaBros2016`,
       })
@@ -550,7 +545,7 @@ export class AIService {
       })
       .join('\n');
 
-    return `${MEMORY_USAGE_INSTRUCTION}\n\nthings you remember about the people in this conversation:\n${lines}`;
+    return `<memory_context>\nthings you remember about the people in this conversation:\n${lines}\n</memory_context>`;
   }
 
   private extractParticipantSlackIds(
@@ -581,6 +576,13 @@ export class AIService {
 
   private appendMemoryContext(baseInstructions: string, memoryContext: string): string {
     if (!memoryContext) return baseInstructions;
+    // Insert memory data before <verification> so the verification checklist remains the last thing the model sees
+    const verificationTag = '<verification>';
+    const insertionPoint = baseInstructions.lastIndexOf(verificationTag);
+    if (insertionPoint !== -1) {
+      return `${baseInstructions.slice(0, insertionPoint)}${memoryContext}\n\n${baseInstructions.slice(insertionPoint)}`;
+    }
+    // Fallback for custom prompts that don't use the standard <verification> tag
     return `${baseInstructions}\n\n${memoryContext}`;
   }
 
