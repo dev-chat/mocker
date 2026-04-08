@@ -682,7 +682,7 @@ export class AIService {
           return metadata;
         }
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT') {
           continue;
         }
 
