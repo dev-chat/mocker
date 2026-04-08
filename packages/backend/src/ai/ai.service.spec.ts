@@ -49,6 +49,7 @@ const buildAiService = (): AIService => {
 
   ai.webService = {
     sendMessage: jest.fn().mockResolvedValue({ ok: true }),
+    setProfilePhoto: jest.fn().mockResolvedValue({ ok: true }),
   } as unknown as AIService['webService'];
 
   ai.slackService = {
@@ -193,22 +194,99 @@ describe('AIService', () => {
   });
 
   describe('redeployMoonbeam', () => {
-    it('publishes deployment message with quote and image', async () => {
+    it('publishes deployment message with quote, changelog, and profile photo update', async () => {
+      const validPngBuffer = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aF9kAAAAASUVORK5CYII=',
+        'base64',
+      );
+
       (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'A quote' }] }],
       });
       (aiService.gemini.models.generateContent as jest.Mock).mockResolvedValue({
-        candidates: [{ content: { parts: [{ inlineData: { data: Buffer.from('image').toString('base64') } }] } }],
+        candidates: [{ content: { parts: [{ inlineData: { data: validPngBuffer.toString('base64') } }] } }],
       });
-      jest.spyOn(aiService, 'writeToDiskAndReturnUrl').mockResolvedValue('https://muzzle.lol/deploy.png');
+      jest
+        .spyOn(aiService as never, 'getMoonbeamReleaseChangelog' as never)
+        .mockResolvedValue('*Release changelog*\n- tightened auth');
+
+      const diskSpy = jest
+        .spyOn(aiService as never, 'writeImageBufferToDiskAndReturnUrl' as never)
+        .mockResolvedValue('https://muzzle.lol/deploy.png');
 
       await aiService.redeployMoonbeam();
 
+      expect(diskSpy).toHaveBeenCalled();
+      expect(aiService.webService.setProfilePhoto).toHaveBeenCalledWith(expect.any(Buffer));
       expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
         '#muzzlefeedback',
         'Moonbeam has been deployed.',
-        expect.any(Array),
+        expect.arrayContaining([
+          expect.objectContaining({ type: 'image', image_url: 'https://muzzle.lol/deploy.png' }),
+          expect.objectContaining({ type: 'markdown', text: '"A quote"' }),
+          expect.objectContaining({ type: 'markdown', text: '*Release changelog*\n- tightened auth' }),
+        ]),
       );
+    });
+
+    it('returns an unavailable changelog when no metadata source is available', async () => {
+      jest.spyOn(aiService as never, 'readReleaseMetadataFromDisk' as never).mockResolvedValue(null);
+      jest.spyOn(aiService as never, 'readReleaseMetadataFromGit' as never).mockResolvedValue(null);
+
+      await expect((aiService as never).getMoonbeamReleaseChangelog()).resolves.toBe(
+        '*Release changelog*\n- Changelog unavailable for this deployment.',
+      );
+    });
+
+    it('formats changelog entries without a previous sha', async () => {
+      jest.spyOn(aiService as never, 'readReleaseMetadataFromDisk' as never).mockResolvedValue({
+        currentSha: 'current',
+        previousSha: null,
+        commits: [
+          { sha: '1', subject: 'first change' },
+          { sha: '2', subject: 'second change' },
+        ],
+      });
+
+      await expect((aiService as never).getMoonbeamReleaseChangelog()).resolves.toBe(
+        '*Release changelog*\nRecent shipped changes:\n- first change\n- second change',
+      );
+    });
+
+    it('reads release metadata from disk after skipping invalid candidates', async () => {
+      const readFileSpy = jest
+        .spyOn(fs.promises, 'readFile')
+        .mockRejectedValueOnce(new Error('missing'))
+        .mockResolvedValueOnce('not json' as never)
+        .mockResolvedValueOnce(
+          JSON.stringify({
+            currentSha: 'abc1234',
+            previousSha: 'def5678',
+            commits: [{ sha: 'abc1234', subject: 'ship it' }],
+          }) as never,
+        );
+
+      await expect((aiService as never).readReleaseMetadataFromDisk()).resolves.toEqual({
+        currentSha: 'abc1234',
+        previousSha: 'def5678',
+        commits: [{ sha: 'abc1234', subject: 'ship it' }],
+      });
+      expect(readFileSpy).toHaveBeenCalledTimes(3);
+    });
+
+    it('parses release metadata and filters invalid commits', () => {
+      expect((aiService as never).parseReleaseMetadata(null)).toBeNull();
+      expect(
+        (aiService as never).parseReleaseMetadata({
+          currentSha: 'abc1234',
+          previousSha: 'def5678',
+          commits: [{ sha: 'good', subject: 'usable' }, { nope: true }, null],
+        }),
+      ).toEqual({
+        currentSha: 'abc1234',
+        previousSha: 'def5678',
+        commits: [{ sha: 'good', subject: 'usable' }],
+      });
     });
   });
 

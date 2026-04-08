@@ -24,6 +24,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate release metadata
+        run: |
+          PREVIOUS_RELEASE_SHA="${{ github.event.before }}" \
+            node packages/backend/scripts/write-release-metadata.js packages/backend/release-metadata.json
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3

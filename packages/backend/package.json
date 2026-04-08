@@ -38,6 +38,7 @@
     "openai": "^4.103.0",
     "sentence-splitter": "^5.0.0",
     "sentiment": "^5.0.2",
+    "sharp": "^0.34.5",
     "typeorm": "^0.3.22",
     "uuid": "^9.0.1",
     "winston": "^3.17.0"

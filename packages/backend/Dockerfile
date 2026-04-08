@@ -1,4 +1,7 @@
 # Build from repo root: docker build -f packages/backend/Dockerfile .
+# Before building, generate release metadata:
+#   PREVIOUS_RELEASE_SHA="$(git rev-parse HEAD^ 2>/dev/null || true)" \
+#     node packages/backend/scripts/write-release-metadata.js packages/backend/release-metadata.json
 FROM node:20-alpine AS build
 WORKDIR /usr/src/app
 
@@ -6,9 +9,13 @@ WORKDIR /usr/src/app
 COPY package.json package-lock.json ./
 COPY tsconfig.base.json ./
 COPY packages/backend/package.json ./packages/backend/
+COPY packages/backend/scripts ./packages/backend/scripts
 COPY packages/backend/tsconfig.json ./packages/backend/
 COPY packages/backend/tsconfig.prod.json ./packages/backend/
 COPY packages/backend/src ./packages/backend/src
+
+# Copy pre-generated release metadata (produced by write-release-metadata.js before docker build).
+COPY packages/backend/release-metadata.json ./packages/backend/
 
 # Build backend artifact inside Docker.
 RUN npm ci \
@@ -24,6 +31,7 @@ WORKDIR /usr/src/app
 
 # Copy backend build artifacts. Runtime-generated images are written under /tmp.
 COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/dist ./dist
+COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/release-metadata.json ./release-metadata.json
 COPY --from=build --chown=65532:65532 /usr/src/app/node_modules ./node_modules
 
 EXPOSE 80
