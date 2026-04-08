@@ -264,10 +264,8 @@ export class AIService {
             image_url: imageUrl,
             alt_text: 'Moonbeam has been deployed.',
           },
-          { type: 'markdown', text: quote ? `"${quote}"` : '' },
-          {
-            type: 'divider',
-          },
+          ...(quote ? ([{ type: 'markdown', text: `_"${quote}"_` }] satisfies KnownBlock[]) : []),
+          { type: 'divider' },
           {
             type: 'markdown',
             text: changelog,

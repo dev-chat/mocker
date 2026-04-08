@@ -223,7 +223,7 @@ describe('AIService', () => {
         'Moonbeam has been deployed.',
         expect.arrayContaining([
           expect.objectContaining({ type: 'image', image_url: 'https://muzzle.lol/deploy.png' }),
-          expect.objectContaining({ type: 'markdown', text: '"A quote"' }),
+          expect.objectContaining({ type: 'markdown', text: '_"A quote"_' }),
           expect.objectContaining({ type: 'markdown', text: '*Release changelog*\n- tightened auth' }),
         ]),
       );
