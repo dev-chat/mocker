@@ -228,6 +228,66 @@ describe('AIService', () => {
         ]),
       );
     });
+
+    it('returns an unavailable changelog when no metadata source is available', async () => {
+      jest.spyOn(aiService as never, 'readReleaseMetadataFromDisk' as never).mockResolvedValue(null);
+      jest.spyOn(aiService as never, 'readReleaseMetadataFromGit' as never).mockResolvedValue(null);
+
+      await expect((aiService as never).getMoonbeamReleaseChangelog()).resolves.toBe(
+        '*Release changelog*\n- Changelog unavailable for this deployment.',
+      );
+    });
+
+    it('formats changelog entries without a previous sha', async () => {
+      jest.spyOn(aiService as never, 'readReleaseMetadataFromDisk' as never).mockResolvedValue({
+        currentSha: 'current',
+        previousSha: null,
+        commits: [
+          { sha: '1', subject: 'first change' },
+          { sha: '2', subject: 'second change' },
+        ],
+      });
+
+      await expect((aiService as never).getMoonbeamReleaseChangelog()).resolves.toBe(
+        '*Release changelog*\nRecent shipped changes:\n- first change\n- second change',
+      );
+    });
+
+    it('reads release metadata from disk after skipping invalid candidates', async () => {
+      const readFileSpy = jest
+        .spyOn(fs.promises, 'readFile')
+        .mockRejectedValueOnce(new Error('missing'))
+        .mockResolvedValueOnce('not json' as never)
+        .mockResolvedValueOnce(
+          JSON.stringify({
+            currentSha: 'abc1234',
+            previousSha: 'def5678',
+            commits: [{ sha: 'abc1234', subject: 'ship it' }],
+          }) as never,
+        );
+
+      await expect((aiService as never).readReleaseMetadataFromDisk()).resolves.toEqual({
+        currentSha: 'abc1234',
+        previousSha: 'def5678',
+        commits: [{ sha: 'abc1234', subject: 'ship it' }],
+      });
+      expect(readFileSpy).toHaveBeenCalledTimes(3);
+    });
+
+    it('parses release metadata and filters invalid commits', () => {
+      expect((aiService as never).parseReleaseMetadata(null)).toBeNull();
+      expect(
+        (aiService as never).parseReleaseMetadata({
+          currentSha: 'abc1234',
+          previousSha: 'def5678',
+          commits: [{ sha: 'good', subject: 'usable' }, { nope: true }, null],
+        }),
+      ).toEqual({
+        currentSha: 'abc1234',
+        previousSha: 'def5678',
+        commits: [{ sha: 'good', subject: 'usable' }],
+      });
+    });
   });
 
   describe('promptWithHistory', () => {

@@ -12,6 +12,7 @@ export class WebClient {
 
   users = {
     list: jest.fn().mockResolvedValue({ ok: true, members: [] }),
+    setPhoto: jest.fn().mockResolvedValue(okResult()),
   };
 
   conversations = {
