@@ -195,11 +195,16 @@ describe('AIService', () => {
 
   describe('redeployMoonbeam', () => {
     it('publishes deployment message with quote, changelog, and profile photo update', async () => {
+      const validPngBuffer = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aF9kAAAAASUVORK5CYII=',
+        'base64',
+      );
+
       (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'A quote' }] }],
       });
       (aiService.gemini.models.generateContent as jest.Mock).mockResolvedValue({
-        candidates: [{ content: { parts: [{ inlineData: { data: Buffer.from('image').toString('base64') } }] } }],
+        candidates: [{ content: { parts: [{ inlineData: { data: validPngBuffer.toString('base64') } }] } }],
       });
       jest
         .spyOn(aiService as never, 'getMoonbeamReleaseChangelog' as never)
