@@ -294,17 +294,24 @@ The script requires `bash`, `curl`, `grep`, `mktemp`, and `tr`. It reads environ
 
 From the root directory, you can run:
 
-| Command                                                                           | Description                          |
-| --------------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------------------- | ------------------------------ |
-| `npm run start`                                                                   | Start the backend development server |
-| `npm run start:prod`                                                              | Start the backend in production mode |
-| `npm run build`                                                                   | Build all workspaces                 |
-| `npm run build:backend`                                                           | Build only the backend               |
-| `npm run test`                                                                    | Run tests across all workspaces      |
-| `npm run test:backend`                                                            | Run tests for the backend only       |
-| `npm run lint`                                                                    | Lint all packages                    |
-| `npm run lint:fix`                                                                | Lint and auto-fix issues             |
-| `docker build --build-arg PREVIOUS_RELEASE_SHA="$(git rev-parse HEAD^ 2>/dev/null |                                      | true)" -f packages/backend/Dockerfile -t muzzle .` | Build the backend Docker image |
+| Command                   | Description                          |
+| ------------------------- | ------------------------------------ |
+| `npm run start`           | Start the backend development server |
+| `npm run start:prod`      | Start the backend in production mode |
+| `npm run build`           | Build all workspaces                 |
+| `npm run build:backend`   | Build only the backend               |
+| `npm run test`            | Run tests across all workspaces      |
+| `npm run test:backend`    | Run tests for the backend only       |
+| `npm run lint`            | Lint all packages                    |
+| `npm run lint:fix`        | Lint and auto-fix issues             |
+
+To build the backend Docker image locally, first generate the release metadata, then build:
+
+```bash
+PREVIOUS_RELEASE_SHA="$(git rev-parse HEAD^ 2>/dev/null || true)" \
+  node packages/backend/scripts/write-release-metadata.js packages/backend/release-metadata.json
+docker build -f packages/backend/Dockerfile -t muzzle .
+```
 
 You can also run workspace-specific commands using:
 

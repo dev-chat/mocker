@@ -250,7 +250,9 @@ export class AIService {
         const [imageBytes, quote, changelog] = results;
         const [imageUrl] = await Promise.all([
           this.writeImageBufferToDiskAndReturnUrl(imageBytes),
-          this.updateMoonbeamProfilePhoto(imageBytes),
+          this.updateMoonbeamProfilePhoto(imageBytes).catch((error) => {
+            logError(this.aiServiceLogger, 'Failed to update Moonbeam profile photo during redeploy', error);
+          }),
         ]);
 
         this.aiServiceLogger.info('Redeploy Moonbeam - generated quote and image successfully');
@@ -679,8 +681,15 @@ export class AIService {
         if (metadata) {
           return metadata;
         }
-      } catch {
-        continue;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          continue;
+        }
+
+        this.aiServiceLogger.debug('Failed to read release metadata from disk', {
+          candidatePath,
+          error,
+        });
       }
     }
 

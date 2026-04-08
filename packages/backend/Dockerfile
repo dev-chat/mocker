@@ -1,22 +1,24 @@
 # Build from repo root: docker build -f packages/backend/Dockerfile .
+# Before building, generate release metadata:
+#   PREVIOUS_RELEASE_SHA="$(git rev-parse HEAD^ 2>/dev/null || true)" \
+#     node packages/backend/scripts/write-release-metadata.js packages/backend/release-metadata.json
 FROM node:20-alpine AS build
 WORKDIR /usr/src/app
-ARG PREVIOUS_RELEASE_SHA
 
 # Copy workspace and backend files required for compilation and minification.
 COPY package.json package-lock.json ./
 COPY tsconfig.base.json ./
-COPY .git ./.git
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/backend/scripts ./packages/backend/scripts
 COPY packages/backend/tsconfig.json ./packages/backend/
 COPY packages/backend/tsconfig.prod.json ./packages/backend/
 COPY packages/backend/src ./packages/backend/src
 
+# Copy pre-generated release metadata (produced by write-release-metadata.js before docker build).
+COPY packages/backend/release-metadata.json ./packages/backend/
+
 # Build backend artifact inside Docker.
-RUN apk add --no-cache git \
-	&& npm ci \
-	&& PREVIOUS_RELEASE_SHA="$PREVIOUS_RELEASE_SHA" node ./packages/backend/scripts/write-release-metadata.js ./packages/backend/release-metadata.json \
+RUN npm ci \
 	&& npm run build:prod -w @mocker/backend \
 	&& npm prune --omit=dev
 

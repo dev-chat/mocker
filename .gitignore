@@ -8,6 +8,7 @@ coverage
 
 # Backend specific
 packages/backend/src/ormconfig.ts
+packages/backend/release-metadata.json
 
 # Legacy
 history-upload-job/data
