@@ -686,7 +686,7 @@ export class AIService {
           continue;
         }
 
-        this.aiServiceLogger.debug('Failed to read release metadata from disk', {
+        this.aiServiceLogger.info('Failed to read release metadata from disk', {
           candidatePath,
           error,
         });
