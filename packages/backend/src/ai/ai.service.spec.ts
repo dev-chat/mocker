@@ -49,6 +49,7 @@ const buildAiService = (): AIService => {
 
   ai.webService = {
     sendMessage: jest.fn().mockResolvedValue({ ok: true }),
+    setProfilePhoto: jest.fn().mockResolvedValue({ ok: true }),
   } as unknown as AIService['webService'];
 
   ai.slackService = {
@@ -193,21 +194,33 @@ describe('AIService', () => {
   });
 
   describe('redeployMoonbeam', () => {
-    it('publishes deployment message with quote and image', async () => {
+    it('publishes deployment message with quote, changelog, and profile photo update', async () => {
       (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'A quote' }] }],
       });
       (aiService.gemini.models.generateContent as jest.Mock).mockResolvedValue({
         candidates: [{ content: { parts: [{ inlineData: { data: Buffer.from('image').toString('base64') } }] } }],
       });
-      jest.spyOn(aiService, 'writeToDiskAndReturnUrl').mockResolvedValue('https://muzzle.lol/deploy.png');
+      jest
+        .spyOn(aiService as never, 'getMoonbeamReleaseChangelog' as never)
+        .mockResolvedValue('*Release changelog*\n- tightened auth');
+
+      const diskSpy = jest
+        .spyOn(aiService as never, 'writeImageBufferToDiskAndReturnUrl' as never)
+        .mockResolvedValue('https://muzzle.lol/deploy.png');
 
       await aiService.redeployMoonbeam();
 
+      expect(diskSpy).toHaveBeenCalled();
+      expect(aiService.webService.setProfilePhoto).toHaveBeenCalledWith(expect.any(Buffer));
       expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
         '#muzzlefeedback',
         'Moonbeam has been deployed.',
-        expect.any(Array),
+        expect.arrayContaining([
+          expect.objectContaining({ type: 'image', image_url: 'https://muzzle.lol/deploy.png' }),
+          expect.objectContaining({ type: 'markdown', text: '"A quote"' }),
+          expect.objectContaining({ type: 'markdown', text: '*Release changelog*\n- tightened auth' }),
+        ]),
       );
     });
   });

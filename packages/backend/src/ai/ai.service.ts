@@ -1,5 +1,7 @@
 import path from 'path';
 import fs from 'fs';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { HistoryPersistenceService } from '../shared/services/history.persistence.service';
@@ -37,6 +39,7 @@ import type {
 } from 'openai/resources/responses/responses';
 import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
+import sharp from 'sharp';
 
 interface ExtractionResult {
   slackId: string;
@@ -44,6 +47,19 @@ interface ExtractionResult {
   mode: 'NEW' | 'REINFORCE' | 'EVOLVE';
   existingMemoryId: number | null;
 }
+
+interface ReleaseCommit {
+  sha: string;
+  subject: string;
+}
+
+interface ReleaseMetadata {
+  currentSha: string | null;
+  previousSha: string | null;
+  commits: ReleaseCommit[];
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
 const isResponseOutputMessage = (block: ResponseOutputItem): block is ResponseOutputMessage => block.type === 'message';
 
@@ -57,6 +73,25 @@ const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): str
 };
 
 const DEFAULT_IMAGE_DIR = path.join('/tmp', 'mocker-images');
+const execFileAsync = promisify(execFile);
+const RELEASE_METADATA_PATHS = [
+  path.resolve(process.cwd(), 'release-metadata.json'),
+  path.resolve(process.cwd(), 'packages/backend/release-metadata.json'),
+  path.resolve(__dirname, '..', 'release-metadata.json'),
+  path.resolve(__dirname, '..', '..', 'release-metadata.json'),
+];
+const normalizeReleaseSha = (value?: string): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed || /^0+$/.test(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
+};
 
 export class AIService {
   redis = new AIPersistenceService();
@@ -132,14 +167,18 @@ export class AIService {
   }
 
   public async writeToDiskAndReturnUrl(base64Image: string): Promise<string> {
+    const base64Data = base64Image.replace(/^data:image\/png;base64,/, '');
+    return this.writeImageBufferToDiskAndReturnUrl(Buffer.from(base64Data, 'base64'));
+  }
+
+  private async writeImageBufferToDiskAndReturnUrl(imageBytes: Buffer): Promise<string> {
     const dir = process.env.IMAGE_DIR ?? DEFAULT_IMAGE_DIR;
     const filename = `${uuidv4()}.png`;
     const filePath = path.join(dir, filename);
-    const base64Data = base64Image.replace(/^data:image\/png;base64,/, '');
 
     try {
       await fs.promises.mkdir(dir, { recursive: true });
-      await fs.promises.writeFile(filePath, base64Data, 'base64');
+      await fs.promises.writeFile(filePath, imageBytes);
       return `https://muzzle.lol/images/${filename}`;
     } catch (error) {
       logError(this.aiServiceLogger, 'Failed to write AI image to disk', error, {
@@ -176,13 +215,13 @@ export class AIService {
         let imageBytes = Buffer.from([]);
         if (!response.candidates || response.candidates.length === 0) {
           this.aiServiceLogger.warn('No candidates in Gemini response');
-          return '';
+          return Buffer.from([]);
         }
 
         const parts = response.candidates[0].content?.parts;
         if (!parts || parts.length === 0) {
           this.aiServiceLogger.warn('No parts in first candidate');
-          return '';
+          return Buffer.from([]);
         }
 
         parts.forEach((part: Part) => {
@@ -193,23 +232,27 @@ export class AIService {
           }
         });
 
-        return imageBytes.toString('base64');
-      })
-      .then(async (x) => {
-        if (x) {
-          return this.writeToDiskAndReturnUrl(x);
-        } else {
+        if (imageBytes.length === 0) {
           const error = new Error(`No b64_json was returned for prompt: ${REDPLOY_MOONBEAM_IMAGE_PROMPT}`);
           logError(this.aiServiceLogger, 'Gemini redeploy image generation returned no image data', error, {
             prompt: REDPLOY_MOONBEAM_IMAGE_PROMPT,
           });
           throw error;
         }
+
+        return imageBytes;
       });
 
-    return Promise.all([aiImage, aiQuote])
-      .then((results) => {
-        const [imageUrl, quote] = results;
+    const releaseChangelog = this.getMoonbeamReleaseChangelog();
+
+    return Promise.all([aiImage, aiQuote, releaseChangelog])
+      .then(async (results) => {
+        const [imageBytes, quote, changelog] = results;
+        const [imageUrl] = await Promise.all([
+          this.writeImageBufferToDiskAndReturnUrl(imageBytes),
+          this.updateMoonbeamProfilePhoto(imageBytes),
+        ]);
+
         this.aiServiceLogger.info('Redeploy Moonbeam - generated quote and image successfully');
         this.aiServiceLogger.info('Redeploy Moonbeam - quote:', quote);
         this.aiServiceLogger.info('Redeploy Moonbeam - image URL:', imageUrl);
@@ -220,6 +263,13 @@ export class AIService {
             alt_text: 'Moonbeam has been deployed.',
           },
           { type: 'markdown', text: quote ? `"${quote}"` : '' },
+          {
+            type: 'divider',
+          },
+          {
+            type: 'markdown',
+            text: changelog,
+          },
         ];
         void this.webService.sendMessage('#muzzlefeedback', 'Moonbeam has been deployed.', blocks);
       })
@@ -594,10 +644,112 @@ export class AIService {
     const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
-
     if (participantSlackIds.length === 0) return;
 
     await this.extractMemories(teamId, channelId, history, participantSlackIds);
+  }
+
+  private async updateMoonbeamProfilePhoto(imageBytes: Buffer): Promise<void> {
+    const profileImage = await sharp(imageBytes)
+      .resize(512, 512, { fit: 'cover', position: 'centre' })
+      .png()
+      .toBuffer();
+    await this.webService.setProfilePhoto(profileImage);
+  }
+
+  private async getMoonbeamReleaseChangelog(): Promise<string> {
+    const metadata = (await this.readReleaseMetadataFromDisk()) ?? (await this.readReleaseMetadataFromGit());
+    if (!metadata || metadata.commits.length === 0) {
+      return '*Release changelog*\n- Changelog unavailable for this deployment.';
+    }
+
+    const comparison = metadata.previousSha
+      ? `Changes since ${metadata.previousSha.slice(0, 7)}:`
+      : 'Recent shipped changes:';
+    const lines = metadata.commits.slice(0, 8).map((commit) => `- ${commit.subject}`);
+    return ['*Release changelog*', comparison, ...lines].join('\n');
+  }
+
+  private async readReleaseMetadataFromDisk(): Promise<ReleaseMetadata | null> {
+    for (const candidatePath of RELEASE_METADATA_PATHS) {
+      try {
+        const raw = await fs.promises.readFile(candidatePath, 'utf8');
+        const parsed: unknown = JSON.parse(raw);
+        const metadata = this.parseReleaseMetadata(parsed);
+        if (metadata) {
+          return metadata;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  private async readReleaseMetadataFromGit(): Promise<ReleaseMetadata | null> {
+    try {
+      const currentSha = normalizeReleaseSha(
+        (await execFileAsync('git', ['rev-parse', 'HEAD'], { cwd: process.cwd() })).stdout,
+      );
+      if (!currentSha) {
+        return null;
+      }
+
+      const previousSha =
+        normalizeReleaseSha(process.env.PREVIOUS_RELEASE_SHA) ??
+        (await execFileAsync('git', ['rev-parse', 'HEAD^'], { cwd: process.cwd() })
+          .then(({ stdout }) => normalizeReleaseSha(stdout))
+          .catch(() => null));
+
+      const logArgs = previousSha
+        ? ['log', '--format=%H\t%s', `${previousSha}..HEAD`]
+        : ['log', '--format=%H\t%s', '-n', '8'];
+      const rawLog = (await execFileAsync('git', logArgs, { cwd: process.cwd() })).stdout;
+      const commits = rawLog
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [sha, subject] = line.split('\t');
+          return sha && subject ? { sha, subject } : null;
+        })
+        .filter((commit): commit is ReleaseCommit => commit !== null);
+
+      return {
+        currentSha,
+        previousSha,
+        commits,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private parseReleaseMetadata(metadata: unknown): ReleaseMetadata | null {
+    if (!isRecord(metadata)) {
+      return null;
+    }
+
+    const commits = Array.isArray(metadata.commits)
+      ? metadata.commits
+          .map((commit) => {
+            if (!isRecord(commit)) {
+              return null;
+            }
+
+            return typeof commit.sha === 'string' && typeof commit.subject === 'string'
+              ? { sha: commit.sha, subject: commit.subject }
+              : null;
+          })
+          .filter((commit): commit is ReleaseCommit => commit !== null)
+      : [];
+
+    return {
+      currentSha: typeof metadata.currentSha === 'string' ? metadata.currentSha : null,
+      previousSha: typeof metadata.previousSha === 'string' ? metadata.previousSha : null,
+      commits,
+    };
   }
 
   private async extractMemories(
