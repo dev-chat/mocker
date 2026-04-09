@@ -559,7 +559,15 @@ export class AIService {
 
       if (!raw) return [];
 
-      const parsed: unknown = JSON.parse(raw);
+      let parsed: number[];
+
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        this.aiServiceLogger.warn(`Memory selection returned malformed JSON: ${raw}`);
+        parsed = [];
+      }
+
       if (!Array.isArray(parsed)) return [];
       const selectedIds = parsed.map(Number).filter((n) => !isNaN(n));
 
