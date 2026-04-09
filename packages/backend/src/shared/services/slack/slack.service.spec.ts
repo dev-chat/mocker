@@ -516,16 +516,14 @@ describe('SlackService', () => {
   });
 
   describe('getAndSaveAllChannels()', () => {
-    it('should fetch and save all channels', (done) => {
+    it('should fetch and save all channels', async () => {
       const channels = [{ id: 'C1', name: 'general' }];
       mockWebService.getAllChannels.mockResolvedValue({ channels });
 
       slackService.getAndSaveAllChannels();
 
-      setTimeout(() => {
-        expect(mockPersistenceService.saveChannels).toHaveBeenCalledWith(channels);
-        done();
-      }, 50);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(mockPersistenceService.saveChannels).toHaveBeenCalledWith(channels);
     });
   });
 });
