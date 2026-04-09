@@ -2,7 +2,7 @@
 # Before building, generate release metadata:
 #   PREVIOUS_RELEASE_SHA="$(git rev-parse HEAD^ 2>/dev/null || true)" \
 #     node packages/backend/scripts/write-release-metadata.js packages/backend/release-metadata.json
-FROM node:24.14.1-alpine3.23 AS build
+FROM node:24.14.1-bookworm-slim AS build
 WORKDIR /usr/src/app
 
 # Copy workspace and backend files required for compilation and minification.

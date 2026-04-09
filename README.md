@@ -30,7 +30,7 @@ mocker/
 
 ### Prerequisites
 
-- **Node.js** 24.14.1 (current latest 24.x LTS at time of update, for backend and frontend development)
+- **Node.js** 24 LTS (>=24.14.1, for backend and frontend development)
 - **MySQL** 5.7+ (for storing messages, users, game state)
 - **Slack workspace** (for bot integration)
 - **Ngrok** (optional, for local tunneling during development)
