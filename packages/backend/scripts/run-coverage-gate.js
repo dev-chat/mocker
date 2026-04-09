@@ -53,10 +53,10 @@ function getServiceCoverageInventory() {
   };
 }
 
-function runJestCoverage(collectCoverageFrom) {
-  const args = ['jest', '--silent', '--coverage', '--runInBand'];
+function runVitestCoverage(collectCoverageFrom) {
+  const args = ['vitest', 'run', '--silent', '--coverage'];
   for (const file of collectCoverageFrom) {
-    args.push(`--collectCoverageFrom=${file}`);
+    args.push(`--coverage.include=${file}`);
   }
 
   const result = spawnSync('npx', args, {
@@ -84,7 +84,7 @@ function main() {
     );
   }
   console.log(`Running coverage for ${coverageTargets.length} service-like files...`);
-  const exitCode = runJestCoverage(coverageTargets);
+  const exitCode = runVitestCoverage(coverageTargets);
   process.exit(exitCode);
 }
 

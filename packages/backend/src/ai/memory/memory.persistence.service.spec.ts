@@ -1,34 +1,35 @@
+import { vi } from 'vitest';
 import { MemoryPersistenceService } from './memory.persistence.service';
 import { Memory } from '../../shared/db/models/Memory';
 import { SlackUser } from '../../shared/db/models/SlackUser';
 import { getRepository } from 'typeorm';
 
-jest.mock('typeorm', () => ({
-  getRepository: jest.fn(),
-  Entity: () => jest.fn(),
-  Column: () => jest.fn(),
-  PrimaryGeneratedColumn: () => jest.fn(),
-  ManyToOne: () => jest.fn(),
-  OneToMany: () => jest.fn(),
-  OneToOne: () => jest.fn(),
-  Unique: () => jest.fn(),
-  JoinColumn: () => jest.fn(),
+vi.mock('typeorm', async () => ({
+  getRepository: vi.fn(),
+  Entity: () => vi.fn(),
+  Column: () => vi.fn(),
+  PrimaryGeneratedColumn: () => vi.fn(),
+  ManyToOne: () => vi.fn(),
+  OneToMany: () => vi.fn(),
+  OneToOne: () => vi.fn(),
+  Unique: () => vi.fn(),
+  JoinColumn: () => vi.fn(),
 }));
 
-jest.mock('../../shared/logger/logger', () => ({
+vi.mock('../../shared/logger/logger', async () => ({
   logger: {
-    child: jest.fn().mockReturnValue({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
+    child: vi.fn().mockReturnValue({
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
     }),
   },
 }));
 
 describe('MemoryPersistenceService', () => {
   let service: MemoryPersistenceService;
-  let mockSlackUserRepo: Record<string, jest.Mock>;
-  let mockMemoryRepo: Record<string, jest.Mock>;
+  let mockSlackUserRepo: Record<string, Mock>;
+  let mockMemoryRepo: Record<string, Mock>;
 
   const mockUser: Partial<SlackUser> = {
     id: 1,
@@ -49,20 +50,20 @@ describe('MemoryPersistenceService', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new MemoryPersistenceService();
 
     mockSlackUserRepo = {
-      findOne: jest.fn(),
+      findOne: vi.fn(),
     };
 
     mockMemoryRepo = {
-      query: jest.fn(),
-      save: jest.fn(),
-      delete: jest.fn(),
+      query: vi.fn(),
+      save: vi.fn(),
+      delete: vi.fn(),
     };
 
-    (getRepository as jest.Mock).mockImplementation((entity) => {
+    (getRepository as Mock).mockImplementation((entity) => {
       if (entity === SlackUser) return mockSlackUserRepo;
       if (entity === Memory) return mockMemoryRepo;
       return {};

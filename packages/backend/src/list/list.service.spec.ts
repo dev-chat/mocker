@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { getManager } from 'typeorm';
 import { ListService } from './list.service';
 
@@ -11,23 +12,23 @@ type ListServiceDependencies = ListService & {
   listPersistenceService: { store: typeof store; remove: typeof remove };
 };
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getManager: jest.fn(),
+    getManager: vi.fn(),
   };
 });
 
 describe('ListService', () => {
   let service: ListService;
-  const uploadFile = jest.fn();
-  const sendResponse = jest.fn();
-  const store = jest.fn();
-  const remove = jest.fn();
+  const uploadFile = vi.fn();
+  const sendResponse = vi.fn();
+  const store = vi.fn();
+  const remove = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new ListService();
     const dependencyTarget = service as unknown as ListServiceDependencies;
     dependencyTarget.webService = { uploadFile };
@@ -36,8 +37,8 @@ describe('ListService', () => {
   });
 
   it('uploads a formatted list report', async () => {
-    (getManager as jest.Mock).mockReturnValue({
-      query: jest.fn().mockResolvedValue([
+    (getManager as Mock).mockReturnValue({
+      query: vi.fn().mockResolvedValue([
         { name: 'Steve', text: 'Do thing' },
         { name: 'Kim', text: 'Another thing' },
       ]),
@@ -81,7 +82,7 @@ describe('ListService', () => {
 
   it('logs and sends ephemeral error when remove fails', async () => {
     const err = new Error('remove failed');
-    const loggerSpy = jest.spyOn(service.logger, 'error').mockImplementation(() => undefined);
+    const loggerSpy = vi.spyOn(service.logger, 'error').mockImplementation(() => undefined);
     remove.mockRejectedValue(err);
 
     await service.remove({ text: 'x', response_url: 'https://resp' } as RemoveRequest);

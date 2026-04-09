@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { CounterService } from './counter.service';
 import { ABUSE_PENALTY_TIME, MAX_SUPPRESSIONS } from '../muzzle/constants';
 import type { EventRequest } from '../shared/models/slack/slack-models';
@@ -5,27 +6,27 @@ import type { EventRequest } from '../shared/models/slack/slack-models';
 describe('CounterService', () => {
   let service: CounterService;
   const mockCounterPersistenceService = {
-    getCounterByRequestorId: jest.fn(),
-    addCounter: jest.fn(),
-    getCounterMuzzle: jest.fn(),
-    setCounterMuzzle: jest.fn(),
-    removeCounter: jest.fn(),
-    counterMuzzle: jest.fn(),
-    isCounterMuzzled: jest.fn(),
-    addCounterMuzzleTime: jest.fn(),
+    getCounterByRequestorId: vi.fn(),
+    addCounter: vi.fn(),
+    getCounterMuzzle: vi.fn(),
+    setCounterMuzzle: vi.fn(),
+    removeCounter: vi.fn(),
+    counterMuzzle: vi.fn(),
+    isCounterMuzzled: vi.fn(),
+    addCounterMuzzleTime: vi.fn(),
   };
 
   const mockMuzzlePersistenceService = {
-    removeMuzzlePrivileges: jest.fn(),
+    removeMuzzlePrivileges: vi.fn(),
   };
 
   const mockWebService = {
-    sendMessage: jest.fn().mockResolvedValue({ ok: true }),
-    deleteMessage: jest.fn(),
+    sendMessage: vi.fn().mockResolvedValue({ ok: true }),
+    deleteMessage: vi.fn(),
   };
 
   const mockSlackService = {
-    containsTag: jest.fn(),
+    containsTag: vi.fn(),
   };
 
   type CounterServicePrivate = CounterService & {
@@ -33,12 +34,12 @@ describe('CounterService', () => {
     muzzlePersistenceService: typeof mockMuzzlePersistenceService;
     webService: typeof mockWebService;
     slackService: typeof mockSlackService;
-    sendSuppressedMessage: jest.Mock;
-    sendCounterMuzzledMessage: jest.Mock;
+    sendSuppressedMessage: Mock;
+    sendCounterMuzzledMessage: Mock;
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new CounterService();
 
     // Override dependencies
@@ -104,7 +105,7 @@ describe('CounterService', () => {
         removalFn: () => {},
       };
       mockCounterPersistenceService.getCounterMuzzle.mockReturnValue(counterMuzzle);
-      (service as unknown as CounterServicePrivate).sendSuppressedMessage = jest.fn();
+      (service as unknown as CounterServicePrivate).sendSuppressedMessage = vi.fn();
 
       await service.sendCounterMuzzledMessage('C123', 'U123', 'Hello', '1234567890');
 
@@ -118,7 +119,7 @@ describe('CounterService', () => {
 
     it('should not send message if counter does not exist', async () => {
       mockCounterPersistenceService.getCounterMuzzle.mockReturnValue(undefined);
-      (service as unknown as CounterServicePrivate).sendSuppressedMessage = jest.fn();
+      (service as unknown as CounterServicePrivate).sendSuppressedMessage = vi.fn();
 
       await service.sendCounterMuzzledMessage('C123', 'U123', 'Hello', '1234567890');
 
@@ -133,7 +134,7 @@ describe('CounterService', () => {
         removalFn: () => {},
       };
       mockCounterPersistenceService.getCounterMuzzle.mockReturnValue(counterMuzzle);
-      (service as unknown as CounterServicePrivate).sendSuppressedMessage = jest.fn();
+      (service as unknown as CounterServicePrivate).sendSuppressedMessage = vi.fn();
 
       await service.sendCounterMuzzledMessage('C123', 'U123', 'Hello', '1234567890');
 
@@ -173,7 +174,7 @@ describe('CounterService', () => {
 
     it('should handle sendMessage errors', async () => {
       mockWebService.sendMessage.mockRejectedValue(new Error('Send failed'));
-      const loggerSpy = jest.spyOn(service.logger, 'error');
+      const loggerSpy = vi.spyOn(service.logger, 'error');
 
       service.removeCounter(789, true, 'U123', 'U456', 'C123', 'T123');
 
@@ -194,7 +195,7 @@ describe('CounterService', () => {
 
       mockSlackService.containsTag.mockReturnValue(false);
       mockCounterPersistenceService.isCounterMuzzled.mockResolvedValue(false);
-      (service as unknown as CounterServicePrivate).sendCounterMuzzledMessage = jest.fn();
+      (service as unknown as CounterServicePrivate).sendCounterMuzzledMessage = vi.fn();
 
       await service.handle({ event } as EventRequest);
 
@@ -212,7 +213,7 @@ describe('CounterService', () => {
 
       mockSlackService.containsTag.mockReturnValue(false);
       mockCounterPersistenceService.isCounterMuzzled.mockResolvedValue(false);
-      (service as unknown as CounterServicePrivate).sendCounterMuzzledMessage = jest.fn();
+      (service as unknown as CounterServicePrivate).sendCounterMuzzledMessage = vi.fn();
 
       await service.handle({ event } as EventRequest);
 
@@ -230,7 +231,7 @@ describe('CounterService', () => {
 
       mockSlackService.containsTag.mockReturnValue(false);
       mockCounterPersistenceService.isCounterMuzzled.mockResolvedValue(true);
-      (service as unknown as CounterServicePrivate).sendCounterMuzzledMessage = jest.fn();
+      (service as unknown as CounterServicePrivate).sendCounterMuzzledMessage = vi.fn();
 
       await service.handle({ event } as EventRequest);
 
@@ -288,7 +289,7 @@ describe('CounterService', () => {
         text: 'Hello',
       };
 
-      (service as unknown as CounterServicePrivate).sendCounterMuzzledMessage = jest.fn();
+      (service as unknown as CounterServicePrivate).sendCounterMuzzledMessage = vi.fn();
       mockCounterPersistenceService.isCounterMuzzled.mockResolvedValue(false);
 
       await service.handle({ event } as EventRequest);

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { textMiddleware } from './textMiddleware';
 
 type TextReq = Parameters<typeof textMiddleware>[0];
@@ -7,9 +8,9 @@ type TextNext = Parameters<typeof textMiddleware>[2];
 describe('textMiddleware', () => {
   it('rejects missing text', async () => {
     const req = { body: { user_id: 'U1', team_id: 'T1' } } as TextReq;
-    const send = jest.fn();
+    const send = vi.fn();
     const res = { send } as TextRes;
-    const next = jest.fn() as TextNext;
+    const next = vi.fn() as TextNext;
 
     await textMiddleware(req, res, next);
 
@@ -19,9 +20,9 @@ describe('textMiddleware', () => {
 
   it('rejects too long text', async () => {
     const req = { body: { user_id: 'U1', team_id: 'T1', text: 'a'.repeat(801) } } as TextReq;
-    const send = jest.fn();
+    const send = vi.fn();
     const res = { send } as TextRes;
-    const next = jest.fn() as TextNext;
+    const next = vi.fn() as TextNext;
 
     await textMiddleware(req, res, next);
 
@@ -31,8 +32,8 @@ describe('textMiddleware', () => {
 
   it('calls next on valid text', async () => {
     const req = { body: { user_id: 'U1', team_id: 'T1', text: 'hello' } } as TextReq;
-    const res = { send: jest.fn() } as TextRes;
-    const next = jest.fn() as TextNext;
+    const res = { send: vi.fn() } as TextRes;
+    const next = vi.fn() as TextNext;
 
     await textMiddleware(req, res, next);
 

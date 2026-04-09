@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 export const MockWebService = {
   WebService: {
-    deleteMessage: jest.fn(),
-    sendEphemeral: jest.fn(),
-    sendMessage: jest.fn(),
-    editMessage: jest.fn(),
-    getAllUsers: jest.fn(),
-    getAllChannels: jest.fn(),
-    uploadFile: jest.fn(),
+    deleteMessage: vi.fn(),
+    sendEphemeral: vi.fn(),
+    sendMessage: vi.fn(),
+    editMessage: vi.fn(),
+    getAllUsers: vi.fn(),
+    getAllChannels: vi.fn(),
+    uploadFile: vi.fn(),
   },
 };

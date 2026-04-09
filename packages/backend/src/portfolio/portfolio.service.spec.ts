@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import Decimal from 'decimal.js';
 import { MessageHandlerEnum, PortfolioService } from './portfolio.service';
 import type { PortfolioSummaryItem } from './portfolio.persistence.service';
@@ -6,13 +7,13 @@ import { TransactionType } from './portfolio.persistence.service';
 describe('PortfolioService', () => {
   let service: PortfolioService;
 
-  const getQuote = jest.fn();
-  const getTotalRep = jest.fn();
-  const getPortfolioSummary = jest.fn();
-  const transact = jest.fn();
+  const getQuote = vi.fn();
+  const getTotalRep = vi.fn();
+  const getPortfolioSummary = vi.fn();
+  const transact = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new PortfolioService();
     type PortfolioServiceDependencies = PortfolioService & {
       quoteService: { getQuote: typeof getQuote };
@@ -63,21 +64,21 @@ describe('PortfolioService', () => {
   });
 
   it('returns false for weekend trading hours', () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-03-22T15:00:00Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-22T15:00:00Z'));
 
     expect(service.isTradingHours()).toBe(false);
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('returns true during weekday market hours', () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-03-23T14:00:00Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-23T14:00:00Z'));
     const privateService = service as unknown as { isInDST: (date: Date) => boolean };
-    jest.spyOn(privateService, 'isInDST').mockReturnValue(true);
+    vi.spyOn(privateService, 'isInDST').mockReturnValue(true);
 
     expect(service.isTradingHours()).toBe(true);
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('validates stock symbol and quantity inputs', async () => {
@@ -91,7 +92,7 @@ describe('PortfolioService', () => {
   });
 
   it('rejects transaction outside trading hours', async () => {
-    jest.spyOn(service, 'isTradingHours').mockReturnValue(false);
+    vi.spyOn(service, 'isTradingHours').mockReturnValue(false);
 
     const out = await service.transact('U1', 'T1', 'AAPL', 1, TransactionType.BUY);
 
@@ -100,7 +101,7 @@ describe('PortfolioService', () => {
   });
 
   it('returns private error when quote lookup fails', async () => {
-    jest.spyOn(service, 'isTradingHours').mockReturnValue(true);
+    vi.spyOn(service, 'isTradingHours').mockReturnValue(true);
     getQuote.mockRejectedValue(new Error('api fail'));
 
     const out = await service.transact('U1', 'T1', 'AAPL', 1, TransactionType.BUY);
@@ -110,7 +111,7 @@ describe('PortfolioService', () => {
   });
 
   it('handles BUY branches: insufficient rep, missing price, success, failure', async () => {
-    jest.spyOn(service, 'isTradingHours').mockReturnValue(true);
+    vi.spyOn(service, 'isTradingHours').mockReturnValue(true);
 
     getQuote.mockResolvedValueOnce({ c: 20 });
     getTotalRep.mockResolvedValueOnce({ totalRepAvailable: 10 });
@@ -138,7 +139,7 @@ describe('PortfolioService', () => {
   });
 
   it('handles SELL branches: insufficient shares, missing price, success, failure', async () => {
-    jest.spyOn(service, 'isTradingHours').mockReturnValue(true);
+    vi.spyOn(service, 'isTradingHours').mockReturnValue(true);
 
     getQuote.mockResolvedValueOnce({ c: 10 });
     getPortfolioSummary.mockResolvedValueOnce({ transactions: [], summary: [], rep: {} });
@@ -177,7 +178,7 @@ describe('PortfolioService', () => {
   });
 
   it('rejects unknown transaction type', async () => {
-    jest.spyOn(service, 'isTradingHours').mockReturnValue(true);
+    vi.spyOn(service, 'isTradingHours').mockReturnValue(true);
     getQuote.mockResolvedValue({ c: 10 });
 
     const out = await service.transact('U1', 'T1', 'AAPL', 1, 'NOPE' as unknown as TransactionType);

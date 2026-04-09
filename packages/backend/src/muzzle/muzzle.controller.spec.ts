@@ -1,28 +1,29 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const addUserToMuzzled = jest.fn();
-const getUserId = jest.fn();
-const isValidReportType = jest.fn();
-const getReportType = jest.fn();
-const getMuzzleReport = jest.fn();
-const getReportTitle = jest.fn();
-const uploadFile = jest.fn();
+const addUserToMuzzled = vi.fn();
+const getUserId = vi.fn();
+const isValidReportType = vi.fn();
+const getReportType = vi.fn();
+const getMuzzleReport = vi.fn();
+const getReportTitle = vi.fn();
+const uploadFile = vi.fn();
 
-jest.mock('./muzzle.service', () => ({
-  MuzzleService: jest.fn().mockImplementation(() => ({
+vi.mock('./muzzle.service', async () => ({
+  MuzzleService: classMock(() => ({
     addUserToMuzzled,
   })),
 }));
 
-jest.mock('../shared/services/slack/slack.service', () => ({
-  SlackService: jest.fn().mockImplementation(() => ({
+vi.mock('../shared/services/slack/slack.service', async () => ({
+  SlackService: classMock(() => ({
     getUserId,
   })),
 }));
 
-jest.mock('./muzzle.report.service', () => ({
-  MuzzleReportService: jest.fn().mockImplementation(() => ({
+vi.mock('./muzzle.report.service', async () => ({
+  MuzzleReportService: classMock(() => ({
     isValidReportType,
     getReportType,
     getMuzzleReport,
@@ -30,17 +31,17 @@ jest.mock('./muzzle.report.service', () => ({
   })),
 }));
 
-jest.mock('../shared/services/web/web.service', () => ({
-  WebService: jest.fn().mockImplementation(() => ({
+vi.mock('../shared/services/web/web.service', async () => ({
+  WebService: classMock(() => ({
     uploadFile,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-jest.mock('../shared/middleware/textMiddleware', () => ({
+vi.mock('../shared/middleware/textMiddleware', async () => ({
   textMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -52,7 +53,7 @@ describe('muzzleController', () => {
   app.use('/', muzzleController);
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     isValidReportType.mockReturnValue(true);
     getReportType.mockReturnValue('week');
     getMuzzleReport.mockResolvedValue('report');

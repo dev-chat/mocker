@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { WalkieService } from './walkie.service';
 
@@ -44,16 +45,16 @@ describe('slack-utils', () => {
 
   describe('walkieTalkie()', () => {
     // This code does work  but this test fails hrmrmrmr.
-    it('should send a message with the correct format when natoName is found', () => {
+    it('should send a message with the correct format when natoName is found', async () => {
       const request = {
         text: '<@U2YJQN2KB | jrjrjr> test',
         user_id: 'U12345',
         response_url: 'http://response.url',
       } as SlashCommandRequest;
 
-      const sendResponseSpy = jest.spyOn(walkieService.slackService, 'sendResponse').mockImplementation(() => {});
+      const sendResponseSpy = vi.spyOn(walkieService.slackService, 'sendResponse').mockImplementation(() => {});
 
-      walkieService.walkieTalkie(request);
+      await walkieService.walkieTalkie(request);
 
       expect(sendResponseSpy).toHaveBeenCalledWith(request.response_url, {
         attachments: [
@@ -66,15 +67,15 @@ describe('slack-utils', () => {
       });
     });
 
-    it('should send a message with the correct format even when natoName is not found', () => {
+    it('should send a message with the correct format even when natoName is not found', async () => {
       const request = {
         text: '<@U12345|JohnDoe> test',
         user_id: 'U12345',
         response_url: 'http://response.url',
       } as SlashCommandRequest;
-      const sendResponseSpy = jest.spyOn(walkieService.slackService, 'sendResponse').mockImplementation(() => {});
+      const sendResponseSpy = vi.spyOn(walkieService.slackService, 'sendResponse').mockImplementation(() => {});
 
-      walkieService.walkieTalkie(request);
+      await walkieService.walkieTalkie(request);
 
       expect(sendResponseSpy).toHaveBeenCalledWith(request.response_url, {
         attachments: [
@@ -87,15 +88,15 @@ describe('slack-utils', () => {
       });
     });
 
-    it('should do nothing if the text is empty', () => {
+    it('should do nothing if the text is empty', async () => {
       const request = {
         text: '',
         user_id: 'U12345',
         response_url: 'http://response.url',
       } as SlashCommandRequest;
-      const sendResponseSpy = jest.spyOn(walkieService.slackService, 'sendResponse').mockImplementation(() => {});
+      const sendResponseSpy = vi.spyOn(walkieService.slackService, 'sendResponse').mockImplementation(() => {});
 
-      walkieService.walkieTalkie(request);
+      await walkieService.walkieTalkie(request);
 
       expect(sendResponseSpy).not.toHaveBeenCalled();
     });

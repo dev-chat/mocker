@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ABUSE_PENALTY_TIME } from '../muzzle/constants';
 import type { EventRequest } from '../shared/models/slack/slack-models';
 import { BackfireService } from './backfire.service';
@@ -12,25 +13,25 @@ describe('BackfireService', () => {
   };
 
   const backfirePersistenceService = {
-    addBackfireTime: jest.fn(),
-    getBackfireByUserId: jest.fn(),
-    getSuppressions: jest.fn(),
-    addSuppression: jest.fn(),
-    trackDeletedMessage: jest.fn(),
-    isBackfire: jest.fn(),
+    addBackfireTime: vi.fn(),
+    getBackfireByUserId: vi.fn(),
+    getSuppressions: vi.fn(),
+    addSuppression: vi.fn(),
+    trackDeletedMessage: vi.fn(),
+    isBackfire: vi.fn(),
   };
 
   const webService = {
-    deleteMessage: jest.fn(),
-    sendMessage: jest.fn(),
+    deleteMessage: vi.fn(),
+    sendMessage: vi.fn(),
   };
 
   const slackService = {
-    containsTag: jest.fn(),
+    containsTag: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new BackfireService();
     const dependencyTarget = service as unknown as BackfireServiceDependencies;
     dependencyTarget.backfirePersistenceService = backfirePersistenceService;
@@ -47,7 +48,7 @@ describe('BackfireService', () => {
   it('sends suppressed message when backfire exists and suppressions are below max', async () => {
     backfirePersistenceService.getBackfireByUserId.mockResolvedValue(10);
     backfirePersistenceService.getSuppressions.mockResolvedValue('1');
-    const sendSuppressedSpy = jest.spyOn(service, 'sendSuppressedMessage').mockImplementation(async () => undefined);
+    const sendSuppressedSpy = vi.spyOn(service, 'sendSuppressedMessage').mockImplementation(async () => undefined);
 
     await service.sendBackfiredMessage('C1', 'U1', 'hello', '1.23', 'T1');
 
@@ -75,7 +76,7 @@ describe('BackfireService', () => {
   });
 
   it('handles backfired message without tag by deleting and sending suppressed flow', async () => {
-    const sendBackfiredSpy = jest.spyOn(service, 'sendBackfiredMessage').mockResolvedValue(undefined);
+    const sendBackfiredSpy = vi.spyOn(service, 'sendBackfiredMessage').mockResolvedValue(undefined);
     backfirePersistenceService.isBackfire.mockResolvedValue(true);
     slackService.containsTag.mockReturnValue(false);
 
@@ -113,7 +114,7 @@ describe('BackfireService', () => {
   });
 
   it('logs warning when backfire id is missing for tagged flow', async () => {
-    const warnSpy = jest.spyOn(service.logger, 'warn').mockImplementation(() => undefined);
+    const warnSpy = vi.spyOn(service.logger, 'warn').mockImplementation(() => undefined);
     backfirePersistenceService.isBackfire.mockResolvedValue(true);
     slackService.containsTag.mockReturnValue(true);
     backfirePersistenceService.getBackfireByUserId.mockResolvedValue(undefined);
@@ -127,7 +128,7 @@ describe('BackfireService', () => {
   });
 
   it('logs errors when tag warning sendMessage fails', async () => {
-    const errSpy = jest.spyOn(service.logger, 'error').mockImplementation(() => undefined);
+    const errSpy = vi.spyOn(service.logger, 'error').mockImplementation(() => undefined);
     backfirePersistenceService.isBackfire.mockResolvedValue(true);
     slackService.containsTag.mockReturnValue(true);
     backfirePersistenceService.getBackfireByUserId.mockResolvedValue(7);

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ItemService } from './item.service';
 
 describe('ItemService', () => {
@@ -15,14 +16,14 @@ describe('ItemService', () => {
     };
   };
 
-  const sendMessage = jest.fn();
-  const isSuppressed = jest.fn();
-  const removeSuppression = jest.fn();
-  const storeUseItem = jest.fn();
-  const isItemActive = jest.fn();
+  const sendMessage = vi.fn();
+  const isSuppressed = vi.fn();
+  const removeSuppression = vi.fn();
+  const storeUseItem = vi.fn();
+  const isItemActive = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new ItemService();
 
     (service as unknown as ItemServiceDependencies).webService = { sendMessage };

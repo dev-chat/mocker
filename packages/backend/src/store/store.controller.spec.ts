@@ -1,16 +1,17 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const listItems = jest.fn();
-const isValidItem = jest.fn();
-const canAfford = jest.fn();
-const isUserRequired = jest.fn();
-const buyItem = jest.fn();
-const useItem = jest.fn();
-const getUserId = jest.fn();
+const listItems = vi.fn();
+const isValidItem = vi.fn();
+const canAfford = vi.fn();
+const isUserRequired = vi.fn();
+const buyItem = vi.fn();
+const useItem = vi.fn();
+const getUserId = vi.fn();
 
-jest.mock('./store.service', () => ({
-  StoreService: jest.fn().mockImplementation(() => ({
+vi.mock('./store.service', async () => ({
+  StoreService: classMock(() => ({
     listItems,
     isValidItem,
     canAfford,
@@ -19,19 +20,19 @@ jest.mock('./store.service', () => ({
   })),
 }));
 
-jest.mock('./item.service', () => ({
-  ItemService: jest.fn().mockImplementation(() => ({
+vi.mock('./item.service', async () => ({
+  ItemService: classMock(() => ({
     useItem,
   })),
 }));
 
-jest.mock('../shared/services/suppressor.service', () => ({
-  SuppressorService: jest.fn().mockImplementation(() => ({
+vi.mock('../shared/services/suppressor.service', async () => ({
+  SuppressorService: classMock(() => ({
     slackService: { getUserId },
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -43,7 +44,7 @@ describe('storeController', () => {
   app.use('/', storeController);
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     listItems.mockResolvedValue('items');
     isValidItem.mockResolvedValue(true);
     canAfford.mockResolvedValue(true);

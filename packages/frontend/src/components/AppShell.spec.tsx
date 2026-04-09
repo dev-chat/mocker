@@ -5,11 +5,7 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 beforeEach(() => {
-  mockFetch.mockResolvedValue({
-    ok: true,
-    status: 200,
-    json: async () => ({ users: [], channels: [] }),
-  });
+  mockFetch.mockReturnValue(new Promise(() => {}));
 });
 
 describe('AppShell', () => {

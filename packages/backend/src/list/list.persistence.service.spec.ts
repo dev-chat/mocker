@@ -1,24 +1,25 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { ListPersistenceService } from './list.persistence.service';
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
 describe('ListPersistenceService', () => {
   let service: ListPersistenceService;
-  const save = jest.fn();
-  const findOne = jest.fn();
-  const remove = jest.fn();
+  const save = vi.fn();
+  const findOne = vi.fn();
+  const remove = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new ListPersistenceService();
-    (getRepository as jest.Mock).mockReturnValue({ save, findOne, remove });
+    (getRepository as Mock).mockReturnValue({ save, findOne, remove });
   });
 
   it('stores list item', async () => {

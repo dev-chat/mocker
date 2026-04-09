@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { BackFirePersistenceService } from './backfire.persistence.service';
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
@@ -16,23 +17,23 @@ describe('BackFirePersistenceService', () => {
     redis: typeof redis;
   };
 
-  const save = jest.fn();
-  const increment = jest.fn();
+  const save = vi.fn();
+  const increment = vi.fn();
 
   const redis = {
-    setValueWithExpire: jest.fn(),
-    removeKey: jest.fn(),
-    getValue: jest.fn(),
-    setValue: jest.fn(),
-    getTimeRemaining: jest.fn(),
-    expire: jest.fn(),
+    setValueWithExpire: vi.fn(),
+    removeKey: vi.fn(),
+    getValue: vi.fn(),
+    setValue: vi.fn(),
+    getTimeRemaining: vi.fn(),
+    expire: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new BackFirePersistenceService();
     (service as unknown as BackfirePersistenceDependencies).redis = redis;
-    (getRepository as jest.Mock).mockReturnValue({ save, increment });
+    (getRepository as Mock).mockReturnValue({ save, increment });
   });
 
   it('adds backfire and stores redis keys with expiry', async () => {
@@ -72,11 +73,11 @@ describe('BackFirePersistenceService', () => {
   });
 
   it('adds backfire time and increments db duration when active', async () => {
-    jest.spyOn(service, 'isBackfire').mockResolvedValue(true);
+    vi.spyOn(service, 'isBackfire').mockResolvedValue(true);
     redis.getTimeRemaining.mockResolvedValue(10);
     redis.expire.mockResolvedValue(1);
     redis.getValue.mockResolvedValue('9');
-    const incrementSpy = jest.spyOn(service, 'incrementBackfireTime').mockResolvedValue({ affected: 1 } as never);
+    const incrementSpy = vi.spyOn(service, 'incrementBackfireTime').mockResolvedValue({ affected: 1 } as never);
 
     await service.addBackfireTime('U1', 'T1', 5000);
 
@@ -86,7 +87,7 @@ describe('BackFirePersistenceService', () => {
   });
 
   it('skips addBackfireTime when no active backfire', async () => {
-    jest.spyOn(service, 'isBackfire').mockResolvedValue(false);
+    vi.spyOn(service, 'isBackfire').mockResolvedValue(false);
 
     await service.addBackfireTime('U1', 'T1', 5000);
 
@@ -101,9 +102,9 @@ describe('BackFirePersistenceService', () => {
   });
 
   it('tracks deleted message stats when text is provided', () => {
-    const msgSpy = jest.spyOn(service, 'incrementMessageSuppressions').mockResolvedValue({ affected: 1 } as never);
-    const wordSpy = jest.spyOn(service, 'incrementWordSuppressions').mockResolvedValue({ affected: 1 } as never);
-    const charSpy = jest.spyOn(service, 'incrementCharacterSuppressions').mockResolvedValue({ affected: 1 } as never);
+    const msgSpy = vi.spyOn(service, 'incrementMessageSuppressions').mockResolvedValue({ affected: 1 } as never);
+    const wordSpy = vi.spyOn(service, 'incrementWordSuppressions').mockResolvedValue({ affected: 1 } as never);
+    const charSpy = vi.spyOn(service, 'incrementCharacterSuppressions').mockResolvedValue({ affected: 1 } as never);
 
     service.trackDeletedMessage(7, 'hello world');
 
@@ -113,7 +114,7 @@ describe('BackFirePersistenceService', () => {
   });
 
   it('does not track deleted message stats when text is empty', () => {
-    const msgSpy = jest.spyOn(service, 'incrementMessageSuppressions').mockResolvedValue({ affected: 1 } as never);
+    const msgSpy = vi.spyOn(service, 'incrementMessageSuppressions').mockResolvedValue({ affected: 1 } as never);
 
     service.trackDeletedMessage(7);
 

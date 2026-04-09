@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const searchMessagesMock = jest.fn();
-const getSearchFiltersMock = jest.fn();
+const searchMessagesMock = vi.fn();
+const getSearchFiltersMock = vi.fn();
 
-jest.mock('./search.persistence.service', () => ({
-  SearchPersistenceService: jest.fn().mockImplementation(() => ({
+vi.mock('./search.persistence.service', async () => ({
+  SearchPersistenceService: classMock(() => ({
     searchMessages: searchMessagesMock,
     getSearchFilters: getSearchFiltersMock,
   })),
@@ -26,7 +27,7 @@ describe('searchController', () => {
   });
   app.use('/', searchController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('returns 200 with filter options when loading filters succeeds', async () => {
     getSearchFiltersMock.mockResolvedValue({ users: ['alice'], channels: ['general'] });

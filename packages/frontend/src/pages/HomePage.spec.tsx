@@ -43,9 +43,10 @@ beforeEach(() => {
 });
 
 describe('HomePage', () => {
-  it('shows the Home heading', () => {
+  it('shows the Home heading', async () => {
     mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
     render(<HomePage onLogout={vi.fn()} />);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
     expect(screen.getByRole('heading', { name: /^home$/i })).toBeInTheDocument();
   });
 
@@ -117,9 +118,10 @@ describe('HomePage', () => {
     await waitFor(() => expect(onLogout).toHaveBeenCalledOnce());
   });
 
-  it('renders all five period selector buttons with Weekly active by default', () => {
+  it('renders all five period selector buttons with Weekly active by default', async () => {
     mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
     render(<HomePage onLogout={vi.fn()} />);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
     for (const label of ['Daily', 'Weekly', 'Monthly', 'Yearly', 'All Time']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     }

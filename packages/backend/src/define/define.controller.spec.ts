@@ -1,19 +1,20 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const define = jest.fn().mockResolvedValue(undefined);
+const define = vi.fn().mockResolvedValue(undefined);
 
-jest.mock('./define.service', () => ({
-  DefineService: jest.fn().mockImplementation(() => ({
+vi.mock('./define.service', async () => ({
+  DefineService: classMock(() => ({
     define,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-jest.mock('../shared/middleware/textMiddleware', () => ({
+vi.mock('../shared/middleware/textMiddleware', async () => ({
   textMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -24,7 +25,7 @@ describe('defineController', () => {
   app.use(express.json());
   app.use('/', defineController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('handles post and calls define', async () => {
     await request(app).post('/').send({ user_id: 'U1', channel_id: 'C1', text: 'word' }).expect(200);

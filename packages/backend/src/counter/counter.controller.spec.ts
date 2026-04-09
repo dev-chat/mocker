@@ -1,24 +1,27 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const canCounter = jest.fn();
-const createCounter = jest.fn();
+const { canCounter, createCounter } = vi.hoisted(() => ({
+  canCounter: vi.fn(),
+  createCounter: vi.fn(),
+}));
 
-jest.mock('./counter.persistence.service', () => ({
+vi.mock('./counter.persistence.service', async () => ({
   CounterPersistenceService: {
-    getInstance: jest.fn(() => ({
+    getInstance: vi.fn(() => ({
       canCounter,
     })),
   },
 }));
 
-jest.mock('./counter.service', () => ({
-  CounterService: jest.fn().mockImplementation(() => ({
+vi.mock('./counter.service', async () => ({
+  CounterService: classMock(() => ({
     createCounter,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -30,7 +33,7 @@ describe('counterController', () => {
   app.use('/', counterController);
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     canCounter.mockReturnValue(true);
     createCounter.mockResolvedValue('Counter created');
   });

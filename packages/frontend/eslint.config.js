@@ -17,7 +17,10 @@ export default tseslint.config(
       'react-refresh': reactRefresh,
     },
     rules: {
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true, allowExportNames: ['parseMessageSegments', 'badgeVariants', 'buttonVariants'] },
+      ],
     },
   },
 );

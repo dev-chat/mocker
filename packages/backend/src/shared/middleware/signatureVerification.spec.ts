@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import crypto from 'crypto';
 import { signatureVerificationMiddleware } from './signatureVerification';
 
@@ -9,7 +10,7 @@ describe('signatureVerificationMiddleware', () => {
   const OLD_ENV = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...OLD_ENV };
     process.env.MUZZLE_BOT_SIGNING_SECRET = 'secret';
     process.env.CLAPPER_TOKEN = 'clap';
@@ -39,8 +40,8 @@ describe('signatureVerificationMiddleware', () => {
       body: {},
       hostname: 'example.com',
     } as SignatureReq;
-    const res = { status: jest.fn().mockReturnThis(), send: jest.fn() } as SignatureRes;
-    const next = jest.fn() as SignatureNext;
+    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as SignatureRes;
+    const next = vi.fn() as SignatureNext;
 
     signatureVerificationMiddleware(req, res, next);
     expect(next).toHaveBeenCalled();
@@ -53,8 +54,8 @@ describe('signatureVerificationMiddleware', () => {
       body: {},
       hostname: 'example.com',
     } as SignatureReq;
-    const res = { status: jest.fn().mockReturnThis(), send: jest.fn() } as SignatureRes;
-    const next = jest.fn() as SignatureNext;
+    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as SignatureRes;
+    const next = vi.fn() as SignatureNext;
 
     signatureVerificationMiddleware(req, res, next);
     expect(next).toHaveBeenCalled();
@@ -69,8 +70,8 @@ describe('signatureVerificationMiddleware', () => {
       ip: '1.2.3.4',
       ips: ['1.2.3.4'],
     } as SignatureReq;
-    const res = { status: jest.fn().mockReturnThis(), send: jest.fn() } as SignatureRes;
-    const next = jest.fn() as SignatureNext;
+    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as SignatureRes;
+    const next = vi.fn() as SignatureNext;
 
     signatureVerificationMiddleware(req, res, next);
 

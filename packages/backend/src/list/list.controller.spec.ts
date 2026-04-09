@@ -1,23 +1,24 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const getListReport = jest.fn();
-const list = jest.fn();
-const remove = jest.fn();
+const getListReport = vi.fn();
+const list = vi.fn();
+const remove = vi.fn();
 
-jest.mock('./list.service', () => ({
-  ListService: jest.fn().mockImplementation(() => ({
+vi.mock('./list.service', async () => ({
+  ListService: classMock(() => ({
     getListReport,
     list,
     remove,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-jest.mock('../shared/middleware/textMiddleware', () => ({
+vi.mock('../shared/middleware/textMiddleware', async () => ({
   textMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -28,7 +29,7 @@ describe('listController', () => {
   app.use(express.json());
   app.use('/', listController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('handles retrieve', async () => {
     const body = { user_id: 'U1', team_id: 'T1', text: '' };

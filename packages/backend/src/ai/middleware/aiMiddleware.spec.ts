@@ -1,19 +1,20 @@
+import { vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import { aiMiddleware } from './aiMiddleware';
 import { StoreService } from '../../store/store.service';
 import { AIService } from '../ai.service';
 
-jest.mock('openai');
-jest.mock('../ai.persistence', () => {
+vi.mock('openai');
+vi.mock('../ai.persistence', async () => {
   return {
-    AIPersistenceService: jest.fn().mockImplementation(() => {
+    AIPersistenceService: classMock(() => {
       return {
-        removeInflight: jest.fn(),
-        setInflight: jest.fn(),
-        getInflight: jest.fn(),
-        setDailyRequests: jest.fn(),
-        decrementDailyRequests: jest.fn(),
-        getDailyRequests: jest.fn(),
+        removeInflight: vi.fn(),
+        setInflight: vi.fn(),
+        getInflight: vi.fn(),
+        setDailyRequests: vi.fn(),
+        decrementDailyRequests: vi.fn(),
+        getDailyRequests: vi.fn(),
       };
     }),
   };
@@ -26,7 +27,7 @@ describe('aiMiddleware', () => {
   const flushPromises = () => new Promise<void>((resolve) => setImmediate(resolve));
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     req = {
       body: {
         user_id: 'user123',
@@ -34,15 +35,15 @@ describe('aiMiddleware', () => {
       },
     };
     res = {
-      send: jest.fn(),
+      send: vi.fn(),
     };
-    next = jest.fn();
+    next = vi.fn();
   });
 
   it('should not call next() if the user has reached max requests without a Moon Token', async () => {
-    const isItemActiveSpy = jest.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(false);
-    const isAlreadyAtMaxRequestsSpy = jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(true);
-    const isAlreadyInFlightSpy = jest.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(false);
+    const isItemActiveSpy = vi.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(false);
+    const isAlreadyAtMaxRequestsSpy = vi.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(true);
+    const isAlreadyInFlightSpy = vi.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(false);
 
     aiMiddleware(req as Request, res as Response, next);
     await flushPromises();
@@ -57,9 +58,9 @@ describe('aiMiddleware', () => {
   });
 
   it('should not call next() if the user has an in-flight request', async () => {
-    jest.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(false);
-    jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(false);
-    const isAlreadyInFlightSpy = jest.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(true);
+    vi.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(false);
+    vi.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(false);
+    const isAlreadyInFlightSpy = vi.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(true);
 
     aiMiddleware(req as Request, res as Response, next);
     await flushPromises();
@@ -72,10 +73,10 @@ describe('aiMiddleware', () => {
   });
 
   it('should remove the Moon Token effect if the user has reached max requests but has a Moon Token, and then call next()', async () => {
-    const isItemActiveSpy = jest.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(true);
-    const removeEffectSpy = jest.spyOn(StoreService.prototype, 'removeEffect').mockResolvedValue(1);
-    jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(true);
-    jest.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(false);
+    const isItemActiveSpy = vi.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(true);
+    const removeEffectSpy = vi.spyOn(StoreService.prototype, 'removeEffect').mockResolvedValue(1);
+    vi.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(true);
+    vi.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(false);
 
     aiMiddleware(req as Request, res as Response, next);
     await flushPromises();
@@ -86,9 +87,9 @@ describe('aiMiddleware', () => {
   });
 
   it('should call next if the user has not reached max requests and has no in-flight requests', async () => {
-    jest.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(false);
-    jest.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(false);
-    jest.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(false);
+    vi.spyOn(StoreService.prototype, 'isItemActive').mockResolvedValue(false);
+    vi.spyOn(AIService.prototype, 'isAlreadyAtMaxRequests').mockResolvedValue(false);
+    vi.spyOn(AIService.prototype, 'isAlreadyInflight').mockResolvedValue(false);
 
     aiMiddleware(req as Request, res as Response, next);
     await flushPromises();

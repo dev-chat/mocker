@@ -1,20 +1,21 @@
+import { vi } from 'vitest';
 import { ReactionService } from './reaction.service';
 import type { EventRequest } from '../shared/models/slack/slack-models';
 
 type ReactionDependencies = ReactionService & {
   reactionPersistenceService: {
-    saveReaction: jest.Mock;
-    removeReaction: jest.Mock;
+    saveReaction: Mock;
+    removeReaction: Mock;
   };
 };
 
 describe('ReactionService', () => {
   let service: ReactionService;
-  const saveReaction = jest.fn();
-  const removeReaction = jest.fn();
+  const saveReaction = vi.fn();
+  const removeReaction = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new ReactionService();
     (service as unknown as ReactionDependencies).reactionPersistenceService = { saveReaction, removeReaction };
     saveReaction.mockResolvedValue(undefined);
@@ -61,7 +62,7 @@ describe('ReactionService', () => {
 
   it('logs persistence errors on added reactions', async () => {
     const err = new Error('db error');
-    const loggerSpy = jest.spyOn(service.logger, 'error').mockImplementation(() => undefined);
+    const loggerSpy = vi.spyOn(service.logger, 'error').mockImplementation(() => undefined);
     saveReaction.mockRejectedValue(err);
 
     service.handle({

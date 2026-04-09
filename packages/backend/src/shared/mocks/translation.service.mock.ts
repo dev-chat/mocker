@@ -1,4 +1,5 @@
+import { vi } from 'vitest';
 export const MockTranslationService = {
-  translate: jest.fn(),
-  getRandomLanguage: jest.fn(),
+  translate: vi.fn(),
+  getRandomLanguage: vi.fn(),
 };

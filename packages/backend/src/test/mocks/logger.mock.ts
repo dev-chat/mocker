@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 type LoggerLike = {
   child: (meta?: Record<string, unknown>) => LoggerLike;
   info: (...args: unknown[]) => void;
@@ -7,14 +8,14 @@ type LoggerLike = {
 };
 
 /**
- * Shared jest.fn() spies for all logger instances created by this mock.
+ * Shared vi.fn() spies for all logger instances created by this mock.
  * Tests can import these directly to assert on logger calls.
  */
 export const loggerMock = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
 };
 
 const buildLogger = (): LoggerLike => ({

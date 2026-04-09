@@ -1,24 +1,25 @@
+import { vi } from 'vitest';
 import { ReactionReportService } from './reaction.report.service';
 
 type ReactionReportDependencies = ReactionReportService & {
   reactionPersistenceService: {
-    getTotalRep: jest.Mock;
-    getRepByUser: jest.Mock;
+    getTotalRep: Mock;
+    getRepByUser: Mock;
   };
   slackService: {
-    getUserNameById: jest.Mock;
+    getUserNameById: Mock;
   };
   getSentiment: (rep: number, totalRep: number) => string;
 };
 
 describe('ReactionReportService', () => {
   let service: ReactionReportService;
-  const getTotalRep = jest.fn();
-  const getRepByUser = jest.fn();
-  const getUserNameById = jest.fn();
+  const getTotalRep = vi.fn();
+  const getRepByUser = vi.fn();
+  const getUserNameById = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new ReactionReportService();
     const dependencyTarget = service as unknown as ReactionReportDependencies;
     dependencyTarget.reactionPersistenceService = { getTotalRep, getRepByUser };

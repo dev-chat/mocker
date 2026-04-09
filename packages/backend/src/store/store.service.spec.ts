@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { StoreService } from './store.service';
 
 describe('StoreService', () => {
@@ -9,22 +10,22 @@ describe('StoreService', () => {
   };
 
   const storePersistenceService = {
-    getItems: jest.fn(),
-    getItem: jest.fn(),
-    buyItem: jest.fn(),
-    isUserRequired: jest.fn(),
-    useItem: jest.fn(),
-    isItemActive: jest.fn(),
-    getRedisKeyName: jest.fn(),
-    removeKey: jest.fn(),
+    getItems: vi.fn(),
+    getItem: vi.fn(),
+    buyItem: vi.fn(),
+    isUserRequired: vi.fn(),
+    useItem: vi.fn(),
+    isItemActive: vi.fn(),
+    getRedisKeyName: vi.fn(),
+    removeKey: vi.fn(),
   };
 
   const reactionPersistenceService = {
-    getTotalRep: jest.fn(),
+    getTotalRep: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new StoreService();
     const dependencyTarget = service as unknown as StoreServiceDependencies;
     dependencyTarget.storePersistenceService = storePersistenceService;

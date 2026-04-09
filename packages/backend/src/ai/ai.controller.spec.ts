@@ -1,15 +1,19 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const generateText = jest.fn().mockResolvedValue(undefined);
-const generateImage = jest.fn().mockResolvedValue(undefined);
-const promptWithHistory = jest.fn().mockResolvedValue(undefined);
-const sendEphemeral = jest.fn().mockResolvedValue({ ok: true });
-const setCustomPrompt = jest.fn().mockResolvedValue(true);
-const clearCustomPrompt = jest.fn().mockResolvedValue(true);
+const { generateText, generateImage, promptWithHistory, sendEphemeral, setCustomPrompt, clearCustomPrompt } =
+  vi.hoisted(() => ({
+    generateText: vi.fn().mockResolvedValue(undefined),
+    generateImage: vi.fn().mockResolvedValue(undefined),
+    promptWithHistory: vi.fn().mockResolvedValue(undefined),
+    sendEphemeral: vi.fn().mockResolvedValue({ ok: true }),
+    setCustomPrompt: vi.fn().mockResolvedValue(true),
+    clearCustomPrompt: vi.fn().mockResolvedValue(true),
+  }));
 
-jest.mock('./ai.service', () => ({
-  AIService: jest.fn().mockImplementation(() => ({
+vi.mock('./ai.service', async () => ({
+  AIService: classMock(() => ({
     generateText,
     generateImage,
     promptWithHistory,
@@ -18,21 +22,21 @@ jest.mock('./ai.service', () => ({
   })),
 }));
 
-jest.mock('../shared/services/web/web.service', () => ({
-  WebService: jest.fn().mockImplementation(() => ({
+vi.mock('../shared/services/web/web.service', async () => ({
+  WebService: classMock(() => ({
     sendEphemeral,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-jest.mock('../shared/middleware/textMiddleware', () => ({
+vi.mock('../shared/middleware/textMiddleware', async () => ({
   textMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-jest.mock('./middleware/aiMiddleware', () => ({
+vi.mock('./middleware/aiMiddleware', async () => ({
   aiMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -44,7 +48,7 @@ describe('aiController', () => {
   app.use('/', aiController);
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     setCustomPrompt.mockResolvedValue(true);
     clearCustomPrompt.mockResolvedValue(true);
   });

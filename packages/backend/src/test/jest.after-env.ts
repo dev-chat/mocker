@@ -1,8 +1,10 @@
+import { vi, beforeEach, afterEach } from 'vitest';
+
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 afterEach(() => {
-  // Safely restore mocks - Jest handles timer cleanup automatically
-  jest.restoreAllMocks();
+  // Restore all spies/mocks between tests.
+  vi.restoreAllMocks();
 });

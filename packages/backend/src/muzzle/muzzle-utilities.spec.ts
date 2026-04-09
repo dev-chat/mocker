@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { Timeout } from './muzzle-utilities';
 import {
   getMsForSpecifiedRange,
@@ -31,12 +32,12 @@ describe('muzzle-utilities', () => {
       const mockTimeout: Timeout = {
         _idleStart: 1000,
         _idleTimeout: 5000,
-        hasRef: jest.fn(),
-        ref: jest.fn(),
-        unref: jest.fn(),
+        hasRef: vi.fn(),
+        ref: vi.fn(),
+        unref: vi.fn(),
       } as unknown as Timeout;
 
-      jest.spyOn(process, 'uptime').mockReturnValue(2); // Mock process uptime to 2 seconds
+      vi.spyOn(process, 'uptime').mockReturnValue(2); // Mock process uptime to 2 seconds
 
       const remainingTime = getRemainingTime(mockTimeout);
       expect(remainingTime).toBe(4000);
@@ -79,12 +80,12 @@ describe('muzzle-utilities', () => {
 
   describe('isRandomEven', () => {
     it('should return true for even numbers', () => {
-      jest.spyOn(Math, 'random').mockReturnValue(0.4); // Mock random to return 0.4
+      vi.spyOn(Math, 'random').mockReturnValue(0.4); // Mock random to return 0.4
       expect(isRandomEven()).toBe(true);
     });
 
     it('should return false for odd numbers', () => {
-      jest.spyOn(Math, 'random').mockReturnValue(0.7); // Mock random to return 0.7
+      vi.spyOn(Math, 'random').mockReturnValue(0.7); // Mock random to return 0.7
       expect(isRandomEven()).toBe(false);
     });
   });

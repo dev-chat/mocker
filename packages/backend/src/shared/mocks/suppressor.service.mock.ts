@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { MockAIService } from './ai.service.mock';
 import { MockBackFirePersistenceService } from './backfire.persistence.service.mock';
 import { MockCounterPersistenceService } from './counter.persistence.service.mock';
@@ -7,7 +8,7 @@ import { MockTranslationService } from './translation.service.mock';
 import { MockWebService } from './web.service.mock';
 
 export const mockSuppressorService = {
-  SuppressorService: jest.fn().mockImplementation(() => ({
+  SuppressorService: vi.fn().mockImplementation(() => ({
     webService: MockWebService,
     slackService: MockSlackService,
     translationService: MockTranslationService,
@@ -15,17 +16,17 @@ export const mockSuppressorService = {
     muzzlePersistenceService: MuzzlePersistenceServiceMock,
     counterPersistenceService: MockCounterPersistenceService,
     aiService: MockAIService,
-    isBot: jest.fn(),
-    findUserIdInBlocks: jest.fn(),
-    findUserInBlocks: jest.fn(),
-    isSuppressed: jest.fn(),
-    removeSuppression: jest.fn(),
-    shouldBotMessageBeMuzzled: jest.fn(),
-    getFallbackReplacementWord: jest.fn(),
-    logTranslateSuppression: jest.fn(),
-    sendSuppressedMessage: jest.fn(),
-    sendFallbackSuppressedMessage: jest.fn(),
-    shouldBackfire: jest.fn(),
-    handleBotMessage: jest.fn(),
+    isBot: vi.fn(),
+    findUserIdInBlocks: vi.fn(),
+    findUserInBlocks: vi.fn(),
+    isSuppressed: vi.fn(),
+    removeSuppression: vi.fn(),
+    shouldBotMessageBeMuzzled: vi.fn(),
+    getFallbackReplacementWord: vi.fn(),
+    logTranslateSuppression: vi.fn(),
+    sendSuppressedMessage: vi.fn(),
+    sendFallbackSuppressedMessage: vi.fn(),
+    shouldBackfire: vi.fn(),
+    handleBotMessage: vi.fn(),
   })),
 };

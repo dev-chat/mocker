@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { getManager, getRepository } from 'typeorm';
 import { Item } from '../shared/db/models/Item';
 import { ItemKill } from '../shared/db/models/ItemKill';
@@ -6,57 +7,57 @@ import { SlackUser } from '../shared/db/models/SlackUser';
 import { UsedItem } from '../shared/db/models/UsedItem';
 import { StorePersistenceService } from './store.persistence.service';
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
-    getManager: jest.fn(),
+    getRepository: vi.fn(),
+    getManager: vi.fn(),
   };
 });
 
-jest.mock('../muzzle/muzzle-utilities', () => ({
-  ...jest.requireActual('../muzzle/muzzle-utilities'),
-  getMsForSpecifiedRange: jest.fn().mockReturnValue(1000),
+vi.mock('../muzzle/muzzle-utilities', async () => ({
+  ...(await vi.importActual('../muzzle/muzzle-utilities')),
+  getMsForSpecifiedRange: vi.fn().mockReturnValue(1000),
 }));
 
 describe('StorePersistenceService', () => {
   let service: StorePersistenceService;
 
   const itemRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
+    find: vi.fn(),
+    findOne: vi.fn(),
   };
   const userRepo = {
-    findOne: jest.fn(),
+    findOne: vi.fn(),
   };
   const purchaseRepo = {
-    insert: jest.fn(),
+    insert: vi.fn(),
   };
   const usedItemRepo = {
-    insert: jest.fn(),
+    insert: vi.fn(),
   };
   const itemKillRepo = {
-    insert: jest.fn(),
+    insert: vi.fn(),
   };
 
   const redis = {
-    getValue: jest.fn(),
-    setValue: jest.fn(),
-    setValueWithExpire: jest.fn(),
-    getPattern: jest.fn(),
-    removeKey: jest.fn(),
+    getValue: vi.fn(),
+    setValue: vi.fn(),
+    setValueWithExpire: vi.fn(),
+    getPattern: vi.fn(),
+    removeKey: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new StorePersistenceService();
     type StoreServiceDependencies = StorePersistenceService & {
       redisService: typeof redis;
     };
     (service as unknown as StoreServiceDependencies).redisService = redis;
 
-    (getRepository as jest.Mock).mockImplementation((model: unknown) => {
+    (getRepository as Mock).mockImplementation((model: unknown) => {
       if (model === Item) return itemRepo;
       if (model === SlackUser) return userRepo;
       if (model === Purchase) return purchaseRepo;
@@ -64,15 +65,15 @@ describe('StorePersistenceService', () => {
       if (model === ItemKill) return itemKillRepo;
       return {};
     });
-    (getManager as jest.Mock).mockReturnValue({ query: jest.fn() });
+    (getManager as Mock).mockReturnValue({ query: vi.fn() });
   });
 
   it('gets all items with latest prices', async () => {
-    const query = jest
+    const query = vi
       .fn()
       .mockResolvedValueOnce([{ price: 5 }])
       .mockResolvedValueOnce([{ price: 9 }]);
-    (getManager as jest.Mock).mockReturnValue({ query });
+    (getManager as Mock).mockReturnValue({ query });
     itemRepo.find.mockResolvedValue([
       { id: 1, name: 'A' },
       { id: 2, name: 'B' },
@@ -91,8 +92,8 @@ describe('StorePersistenceService', () => {
   });
 
   it('returns item with price for valid id', async () => {
-    const query = jest.fn().mockResolvedValue([{ price: 7 }]);
-    (getManager as jest.Mock).mockReturnValue({ query });
+    const query = vi.fn().mockResolvedValue([{ price: 7 }]);
+    (getManager as Mock).mockReturnValue({ query });
     itemRepo.findOne.mockResolvedValue({ id: 1, name: 'A' });
 
     await expect(service.getItem(1, 'T1')).resolves.toEqual(expect.objectContaining({ id: 1, price: 7 }));
@@ -155,8 +156,8 @@ describe('StorePersistenceService', () => {
   });
 
   it('buys item successfully and handles purchase insert errors', async () => {
-    const query = jest.fn().mockResolvedValue([{ price: 9 }]);
-    (getManager as jest.Mock).mockReturnValue({ query });
+    const query = vi.fn().mockResolvedValue([{ price: 9 }]);
+    (getManager as Mock).mockReturnValue({ query });
     itemRepo.findOne.mockResolvedValue({ id: 1, name: 'A' });
     userRepo.findOne.mockResolvedValue({ slackId: 'U1' });
 
@@ -169,8 +170,8 @@ describe('StorePersistenceService', () => {
   });
 
   it('returns generic buy error when item or user is missing', async () => {
-    const query = jest.fn().mockResolvedValue([{ price: 9 }]);
-    (getManager as jest.Mock).mockReturnValue({ query });
+    const query = vi.fn().mockResolvedValue([{ price: 9 }]);
+    (getManager as Mock).mockReturnValue({ query });
     itemRepo.findOne.mockResolvedValue(null);
     userRepo.findOne.mockResolvedValue({ slackId: 'U1' });
 

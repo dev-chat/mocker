@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { MockService } from './mock.service';
 
@@ -7,9 +8,13 @@ describe('MockService', () => {
     mockService = new MockService();
   });
   describe('mock()', () => {
-    it('should mock a users input (single word)', () => {
-      const messageSpy = jest.spyOn(mockService.slackService, 'sendResponse').mockImplementation(() => {});
-      mockService.mock({ text: 'test', user_id: 'U12345', response_url: 'http://response.url' } as SlashCommandRequest);
+    it('should mock a users input (single word)', async () => {
+      const messageSpy = vi.spyOn(mockService.slackService, 'sendResponse').mockImplementation(() => {});
+      await mockService.mock({
+        text: 'test',
+        user_id: 'U12345',
+        response_url: 'http://response.url',
+      } as SlashCommandRequest);
       expect(messageSpy).toHaveBeenCalledWith('http://response.url', {
         attachments: [
           {
@@ -21,9 +26,9 @@ describe('MockService', () => {
       });
     });
 
-    it('should mock a users input (sentence)', () => {
-      const messageSpy = jest.spyOn(mockService.slackService, 'sendResponse').mockImplementation(() => {});
-      mockService.mock({
+    it('should mock a users input (sentence)', async () => {
+      const messageSpy = vi.spyOn(mockService.slackService, 'sendResponse').mockImplementation(() => {});
+      await mockService.mock({
         text: 'test this out',
         user_id: 'U12345',
         response_url: 'http://response.url',
@@ -39,9 +44,13 @@ describe('MockService', () => {
       });
     });
 
-    it('should do nothing if request.text is an empty string', () => {
-      const messageSpy = jest.spyOn(mockService.slackService, 'sendResponse').mockImplementation(() => {});
-      mockService.mock({ text: '', user_id: 'U12345', response_url: 'http://response.url' } as SlashCommandRequest);
+    it('should do nothing if request.text is an empty string', async () => {
+      const messageSpy = vi.spyOn(mockService.slackService, 'sendResponse').mockImplementation(() => {});
+      await mockService.mock({
+        text: '',
+        user_id: 'U12345',
+        response_url: 'http://response.url',
+      } as SlashCommandRequest);
       expect(messageSpy).not.toHaveBeenCalled();
     });
   });
