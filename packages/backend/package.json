@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Mock your friends - Backend API",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=24.14.1 <25"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "build:prod": "tsc -p tsconfig.prod.json",
@@ -10,7 +13,7 @@
     "lint:fix": "eslint --cache --cache-location ../../node_modules/.cache/eslint/backend/.eslintcache './**/*.{js,ts}' --quiet --fix",
     "format:check": "prettier --cache --ignore-path ../../.prettierignore --check \"**/*.{ts,js,json,md,yml,yaml}\"",
     "format:fix": "prettier --cache --ignore-path ../../.prettierignore --write \"**/*.{ts,js,json,md,yml,yaml}\"",
-    "minify": "esbuild dist/**.js dist/**/*.js --bundle --minify --target=node18 --platform=node --outdir=dist --allow-overwrite --packages=external --external:dist/shared/db/models/*",
+    "minify": "esbuild dist/**.js dist/**/*.js --bundle --minify --target=node24 --platform=node --outdir=dist --allow-overwrite --packages=external --external:dist/shared/db/models/*",
     "start": "npm run start:dev",
     "start:prod": "node dist/index.js",
     "start:dev": "nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.spec.ts' --exec 'ts-node' src/index.ts",
