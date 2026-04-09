@@ -1,23 +1,24 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { loggerMock } from '../test/mocks/logger.mock';
 import { DashboardPersistenceService } from './dashboard.persistence.service';
 import { LEADERBOARD_LIMIT, PERIOD_DAYS, TOP_CHANNELS_LIMIT } from './dashboard.const';
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
 describe('DashboardPersistenceService', () => {
   let service: DashboardPersistenceService;
-  const query = jest.fn();
+  const query = vi.fn();
 
   const redis = {
-    getValue: jest.fn(),
-    setValueWithExpire: jest.fn(),
+    getValue: vi.fn(),
+    setValueWithExpire: vi.fn(),
   };
 
   /** Route mock query responses by SQL content so parallel calls resolve correctly. */
@@ -33,9 +34,9 @@ describe('DashboardPersistenceService', () => {
   }
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     service = new DashboardPersistenceService();
-    (getRepository as jest.Mock).mockReturnValue({ query });
+    (getRepository as Mock).mockReturnValue({ query });
     query.mockImplementation(routeQuery);
     redis.getValue.mockResolvedValue(null);
     redis.setValueWithExpire.mockResolvedValue('OK');
@@ -107,7 +108,7 @@ describe('DashboardPersistenceService', () => {
   it('scopes all message queries to the given teamId', async () => {
     await service.getDashboardData('U1', 'T42', 'weekly');
 
-    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const calls = (query as Mock).mock.calls as [string, unknown[]][];
     const teamScopedCalls = calls.filter(([sql]) => sql.includes('teamId'));
     expect(teamScopedCalls.length).toBeGreaterThan(0);
     teamScopedCalls.forEach(([, params]) => {
@@ -119,7 +120,7 @@ describe('DashboardPersistenceService', () => {
     await service.getDashboardData('U99', 'T1', 'weekly');
 
     // At least the stats, activity, top-channels, and sentiment-trend queries bind userId.
-    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const calls = (query as Mock).mock.calls as [string, unknown[]][];
     const userScopedCalls = calls.filter(([, params]) => (params as unknown[]).includes('U99'));
     expect(userScopedCalls.length).toBeGreaterThan(0);
   });
@@ -127,7 +128,7 @@ describe('DashboardPersistenceService', () => {
   it('passes the period interval as the window for the activity query', async () => {
     await service.getDashboardData('U1', 'T1', 'monthly');
 
-    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const calls = (query as Mock).mock.calls as [string, unknown[]][];
     const activityCall = calls.find(([sql]) => sql.includes('DATE(m.createdAt) AS date'));
     expect(activityCall).toBeDefined();
     expect(activityCall![1]).toContain(PERIOD_DAYS['monthly']);
@@ -136,7 +137,7 @@ describe('DashboardPersistenceService', () => {
   it('passes the period interval as the window for the sentiment trend query', async () => {
     await service.getDashboardData('U1', 'T1', 'monthly');
 
-    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const calls = (query as Mock).mock.calls as [string, unknown[]][];
     const sentimentCall = calls.find(([sql]) => sql.includes('ROUND(AVG(sentiment)'));
     expect(sentimentCall).toBeDefined();
     expect(sentimentCall![1]).toContain(PERIOD_DAYS['monthly']);
@@ -145,7 +146,7 @@ describe('DashboardPersistenceService', () => {
   it('does not include a date interval in queries for the allTime period', async () => {
     await service.getDashboardData('U1', 'T1', 'allTime');
 
-    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const calls = (query as Mock).mock.calls as [string, unknown[]][];
     const activityCall = calls.find(([sql]) => sql.includes('DATE(m.createdAt) AS date'));
     expect(activityCall).toBeDefined();
     expect(activityCall![1]).not.toContain(null);
@@ -155,7 +156,7 @@ describe('DashboardPersistenceService', () => {
   it('passes TOP_CHANNELS_LIMIT as the LIMIT for the top channels query', async () => {
     await service.getDashboardData('U1', 'T1', 'weekly');
 
-    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const calls = (query as Mock).mock.calls as [string, unknown[]][];
     const channelsCall = calls.find(([sql]) => sql.includes('AS channel'));
     expect(channelsCall).toBeDefined();
     expect(channelsCall![1]).toContain(TOP_CHANNELS_LIMIT);
@@ -164,7 +165,7 @@ describe('DashboardPersistenceService', () => {
   it('passes LEADERBOARD_LIMIT as the LIMIT for both leaderboard queries', async () => {
     await service.getDashboardData('U1', 'T1', 'weekly');
 
-    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const calls = (query as Mock).mock.calls as [string, unknown[]][];
     const leaderboardCalls = calls.filter(([sql]) => sql.includes('isBot = 0') || sql.includes('SUM(r.value)'));
     expect(leaderboardCalls).toHaveLength(2);
     leaderboardCalls.forEach(([, params]) => {
@@ -175,7 +176,7 @@ describe('DashboardPersistenceService', () => {
   it('excludes bot users from the activity leaderboard query', async () => {
     await service.getDashboardData('U1', 'T1', 'weekly');
 
-    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const calls = (query as Mock).mock.calls as [string, unknown[]][];
     const leaderboardCall = calls.find(([sql]) => sql.includes('isBot = 0'));
     expect(leaderboardCall).toBeDefined();
     expect(leaderboardCall![0]).toContain('isBot = 0');
@@ -184,7 +185,7 @@ describe('DashboardPersistenceService', () => {
   it('issues separate queries for activity and rep leaderboards, both with ORDER BY value DESC', async () => {
     await service.getDashboardData('U1', 'T1', 'weekly');
 
-    const calls = (query as jest.Mock).mock.calls as [string, unknown[]][];
+    const calls = (query as Mock).mock.calls as [string, unknown[]][];
     const activityCall = calls.find(([sql]) => sql.includes('isBot = 0'));
     const repCall = calls.find(([sql]) => sql.includes('SUM(r.value)'));
     expect(activityCall![0]).toContain('ORDER BY value DESC');

@@ -1,25 +1,26 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { HistoryPersistenceService } from './history.persistence.service';
 import type { EventRequest, SlashCommandRequest } from '../models/slack/slack-models';
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
 describe('HistoryPersistenceService', () => {
   let service: HistoryPersistenceService;
-  const findOne = jest.fn();
-  const insert = jest.fn();
-  const query = jest.fn();
+  const findOne = vi.fn();
+  const insert = vi.fn();
+  const query = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new HistoryPersistenceService();
-    (getRepository as jest.Mock).mockReturnValue({ findOne, insert, query });
+    (getRepository as Mock).mockReturnValue({ findOne, insert, query });
   });
 
   it('skips history logging for invalid users and profile change events', async () => {

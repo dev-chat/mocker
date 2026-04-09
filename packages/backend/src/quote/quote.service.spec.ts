@@ -1,25 +1,26 @@
+import { vi } from 'vitest';
 import Axios from 'axios';
 import { QuoteService } from './quote.service';
 import type { CompanyProfile, MetricResponse, QuoteResponse } from './quote.models';
 
 type QuoteServiceDependencies = QuoteService & {
-  webService: { sendMessage: jest.Mock };
+  webService: { sendMessage: Mock };
 };
 
-jest.mock('axios');
+vi.mock('axios');
 
-jest.mock('../shared/services/web/web.service', () => ({
-  WebService: jest.fn().mockImplementation(() => ({
-    sendMessage: jest.fn(),
+vi.mock('../shared/services/web/web.service', async () => ({
+  WebService: classMock(() => ({
+    sendMessage: vi.fn(),
   })),
 }));
 
 describe('QuoteService', () => {
   let service: QuoteService;
-  let sendMessage: jest.Mock;
+  let sendMessage: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new QuoteService();
     sendMessage = (service as unknown as QuoteServiceDependencies).webService.sendMessage;
   });
@@ -78,7 +79,7 @@ describe('QuoteService', () => {
   });
 
   it('fetches quote, metrics and profile payloads', async () => {
-    (Axios.get as jest.Mock)
+    (Axios.get as Mock)
       .mockResolvedValueOnce({ data: { c: 1 } })
       .mockResolvedValueOnce({ data: { metric: {} } })
       .mockResolvedValueOnce({ data: { name: 'X' } });
@@ -90,13 +91,14 @@ describe('QuoteService', () => {
   });
 
   it('sends quote blocks on successful fetch', async () => {
-    jest.spyOn(service, 'getQuote').mockResolvedValue({ h: 50, l: 10, c: 20, dp: 2, d: 1, pc: 19 } as QuoteResponse);
-    jest
-      .spyOn(service, 'getMetrics')
-      .mockResolvedValue({ metric: { '52WeekHigh': 45, '52WeekLow': 12 } } as MetricResponse);
-    jest
-      .spyOn(service, 'getCompanyProfile')
-      .mockResolvedValue({ shareOutstanding: 1000, name: 'Acme' } as CompanyProfile);
+    vi.spyOn(service, 'getQuote').mockResolvedValue({ h: 50, l: 10, c: 20, dp: 2, d: 1, pc: 19 } as QuoteResponse);
+    vi.spyOn(service, 'getMetrics').mockResolvedValue({
+      metric: { '52WeekHigh': 45, '52WeekLow': 12 },
+    } as MetricResponse);
+    vi.spyOn(service, 'getCompanyProfile').mockResolvedValue({
+      shareOutstanding: 1000,
+      name: 'Acme',
+    } as CompanyProfile);
     sendMessage.mockResolvedValue({ ok: true });
 
     await service.quote('aapl', 'C1', 'U1');
@@ -105,13 +107,14 @@ describe('QuoteService', () => {
   });
 
   it('sends DM fallback when channel send fails', async () => {
-    jest.spyOn(service, 'getQuote').mockResolvedValue({ h: 50, l: 10, c: 20, dp: 2, d: 1, pc: 19 } as QuoteResponse);
-    jest
-      .spyOn(service, 'getMetrics')
-      .mockResolvedValue({ metric: { '52WeekHigh': 45, '52WeekLow': 12 } } as MetricResponse);
-    jest
-      .spyOn(service, 'getCompanyProfile')
-      .mockResolvedValue({ shareOutstanding: 1000, name: 'Acme' } as CompanyProfile);
+    vi.spyOn(service, 'getQuote').mockResolvedValue({ h: 50, l: 10, c: 20, dp: 2, d: 1, pc: 19 } as QuoteResponse);
+    vi.spyOn(service, 'getMetrics').mockResolvedValue({
+      metric: { '52WeekHigh': 45, '52WeekLow': 12 },
+    } as MetricResponse);
+    vi.spyOn(service, 'getCompanyProfile').mockResolvedValue({
+      shareOutstanding: 1000,
+      name: 'Acme',
+    } as CompanyProfile);
     sendMessage.mockRejectedValueOnce(new Error('slack fail')).mockResolvedValueOnce({ ok: true });
 
     await service.quote('aapl', 'C1', 'U1');
@@ -122,13 +125,14 @@ describe('QuoteService', () => {
   });
 
   it('sends generic failure message when fetch fails', async () => {
-    jest.spyOn(service, 'getQuote').mockRejectedValue(new Error('api down'));
-    jest
-      .spyOn(service, 'getMetrics')
-      .mockResolvedValue({ metric: { '52WeekHigh': 45, '52WeekLow': 12 } } as MetricResponse);
-    jest
-      .spyOn(service, 'getCompanyProfile')
-      .mockResolvedValue({ shareOutstanding: 1000, name: 'Acme' } as CompanyProfile);
+    vi.spyOn(service, 'getQuote').mockRejectedValue(new Error('api down'));
+    vi.spyOn(service, 'getMetrics').mockResolvedValue({
+      metric: { '52WeekHigh': 45, '52WeekLow': 12 },
+    } as MetricResponse);
+    vi.spyOn(service, 'getCompanyProfile').mockResolvedValue({
+      shareOutstanding: 1000,
+      name: 'Acme',
+    } as CompanyProfile);
     sendMessage.mockResolvedValue({ ok: true });
 
     await service.quote('aapl', 'C1', 'U1');

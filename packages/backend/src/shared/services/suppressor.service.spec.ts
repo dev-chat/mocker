@@ -1,64 +1,65 @@
+import { vi } from 'vitest';
 import { SuppressorService } from './suppressor.service';
 
 describe('SuppressorService', () => {
   let suppressorService: SuppressorService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     suppressorService = new SuppressorService();
 
     suppressorService.webService = {
-      sendMessage: jest.fn().mockResolvedValue({ ok: true }),
-      deleteMessage: jest.fn(),
+      sendMessage: vi.fn().mockResolvedValue({ ok: true }),
+      deleteMessage: vi.fn(),
     } as never;
 
     suppressorService.translationService = {
-      translate: jest.fn().mockResolvedValue('translated'),
+      translate: vi.fn().mockResolvedValue('translated'),
     } as never;
 
     suppressorService.aiService = {
-      generateCorpoSpeak: jest.fn().mockResolvedValue('corpo'),
+      generateCorpoSpeak: vi.fn().mockResolvedValue('corpo'),
     } as never;
 
     suppressorService.muzzlePersistenceService = {
-      incrementMessageSuppressions: jest.fn(),
-      incrementCharacterSuppressions: jest.fn(),
-      incrementWordSuppressions: jest.fn(),
-      isUserMuzzled: jest.fn().mockResolvedValue(false),
-      removeMuzzle: jest.fn().mockResolvedValue(true),
-      getMuzzle: jest.fn().mockResolvedValue(null),
-      trackDeletedMessage: jest.fn(),
-      getMuzzlesByTimePeriod: jest.fn().mockResolvedValue(0),
+      incrementMessageSuppressions: vi.fn(),
+      incrementCharacterSuppressions: vi.fn(),
+      incrementWordSuppressions: vi.fn(),
+      isUserMuzzled: vi.fn().mockResolvedValue(false),
+      removeMuzzle: vi.fn().mockResolvedValue(true),
+      getMuzzle: vi.fn().mockResolvedValue(null),
+      trackDeletedMessage: vi.fn(),
+      getMuzzlesByTimePeriod: vi.fn().mockResolvedValue(0),
     } as never;
 
     suppressorService.backfirePersistenceService = {
-      isBackfire: jest.fn().mockResolvedValue(false),
-      removeBackfire: jest.fn().mockResolvedValue(true),
-      getBackfireByUserId: jest.fn().mockResolvedValue(null),
-      trackDeletedMessage: jest.fn(),
+      isBackfire: vi.fn().mockResolvedValue(false),
+      removeBackfire: vi.fn().mockResolvedValue(true),
+      getBackfireByUserId: vi.fn().mockResolvedValue(null),
+      trackDeletedMessage: vi.fn(),
     } as never;
 
     suppressorService.counterPersistenceService = {
-      isCounterMuzzled: jest.fn().mockResolvedValue(false),
-      removeCounterMuzzle: jest.fn().mockResolvedValue(true),
-      getCounterMuzzle: jest.fn().mockResolvedValue(null),
-      incrementMessageSuppressions: jest.fn(),
-      getInstance: jest.fn(),
+      isCounterMuzzled: vi.fn().mockResolvedValue(false),
+      removeCounterMuzzle: vi.fn().mockResolvedValue(true),
+      getCounterMuzzle: vi.fn().mockResolvedValue(null),
+      incrementMessageSuppressions: vi.fn(),
+      getInstance: vi.fn(),
     } as never;
 
     suppressorService.slackService = {
-      containsTag: jest.fn().mockReturnValue(false),
-      getBotByBotId: jest.fn().mockResolvedValue({ name: 'other-bot' }),
-      getUserId: jest.fn(),
-      getUserIdByCallbackId: jest.fn(),
-      getBotId: jest.fn(),
-      getAllUsers: jest.fn().mockResolvedValue([{ id: 'U1', name: 'alice' }]),
-      getUserById: jest.fn().mockResolvedValue({ isBot: false }),
+      containsTag: vi.fn().mockReturnValue(false),
+      getBotByBotId: vi.fn().mockResolvedValue({ name: 'other-bot' }),
+      getUserId: vi.fn(),
+      getUserIdByCallbackId: vi.fn(),
+      getBotId: vi.fn(),
+      getAllUsers: vi.fn().mockResolvedValue([{ id: 'U1', name: 'alice' }]),
+      getUserById: vi.fn().mockResolvedValue({ isBot: false }),
     } as never;
   });
 
   it('isBot returns true when user is bot', async () => {
-    (suppressorService.slackService.getUserById as jest.Mock).mockResolvedValue({ isBot: true });
+    (suppressorService.slackService.getUserById as Mock).mockResolvedValue({ isBot: true });
     await expect(suppressorService.isBot('U1', 'T1')).resolves.toBe(true);
   });
 
@@ -78,14 +79,14 @@ describe('SuppressorService', () => {
   it('isSuppressed checks all suppression sources', async () => {
     await expect(suppressorService.isSuppressed('U1', 'T1')).resolves.toBe(false);
 
-    (suppressorService.backfirePersistenceService.isBackfire as jest.Mock).mockResolvedValue(true);
+    (suppressorService.backfirePersistenceService.isBackfire as Mock).mockResolvedValue(true);
     await expect(suppressorService.isSuppressed('U1', 'T1')).resolves.toBe(true);
   });
 
   it('removeSuppression removes from all active suppression types', async () => {
-    (suppressorService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(true);
-    (suppressorService.backfirePersistenceService.isBackfire as jest.Mock).mockResolvedValue(true);
-    (suppressorService.counterPersistenceService.isCounterMuzzled as jest.Mock).mockResolvedValue(true);
+    (suppressorService.muzzlePersistenceService.isUserMuzzled as Mock).mockResolvedValue(true);
+    (suppressorService.backfirePersistenceService.isBackfire as Mock).mockResolvedValue(true);
+    (suppressorService.counterPersistenceService.isCounterMuzzled as Mock).mockResolvedValue(true);
 
     await suppressorService.removeSuppression('U1', 'T1');
 
@@ -108,10 +109,10 @@ describe('SuppressorService', () => {
   });
 
   it('logTranslateSuppression catches persistence errors', () => {
-    (suppressorService.muzzlePersistenceService.incrementMessageSuppressions as jest.Mock).mockImplementation(() => {
+    (suppressorService.muzzlePersistenceService.incrementMessageSuppressions as Mock).mockImplementation(() => {
       throw new Error('db fail');
     });
-    const loggerSpy = jest.spyOn(suppressorService.logger, 'error');
+    const loggerSpy = vi.spyOn(suppressorService.logger, 'error');
 
     suppressorService.logTranslateSuppression('some text', 1, suppressorService.muzzlePersistenceService as never);
     expect(loggerSpy).toHaveBeenCalled();
@@ -148,7 +149,7 @@ describe('SuppressorService', () => {
   });
 
   it('sendSuppressedMessage falls back when translation fails', async () => {
-    (suppressorService.translationService.translate as jest.Mock).mockRejectedValue(new Error('translate fail'));
+    (suppressorService.translationService.translate as Mock).mockRejectedValue(new Error('translate fail'));
 
     await suppressorService.sendSuppressedMessage(
       'C123',
@@ -178,8 +179,8 @@ describe('SuppressorService', () => {
   });
 
   it('shouldBackfire calculates chance from historical muzzles', async () => {
-    (suppressorService.muzzlePersistenceService.getMuzzlesByTimePeriod as jest.Mock).mockResolvedValue(3);
-    jest.spyOn(Math, 'random').mockReturnValue(0.1);
+    (suppressorService.muzzlePersistenceService.getMuzzlesByTimePeriod as Mock).mockResolvedValue(3);
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
 
     await expect(suppressorService.shouldBackfire('U1', 'T1')).resolves.toBe(true);
   });
@@ -191,7 +192,7 @@ describe('SuppressorService', () => {
   });
 
   it('shouldBotMessageBeMuzzled returns false for muzzle bot', async () => {
-    (suppressorService.slackService.getBotByBotId as jest.Mock).mockResolvedValue({ name: 'muzzle' });
+    (suppressorService.slackService.getBotByBotId as Mock).mockResolvedValue({ name: 'muzzle' });
 
     await expect(
       suppressorService.shouldBotMessageBeMuzzled({ team_id: 'T1', event: { bot_id: 'B1', text: '<@U1>' } } as never),
@@ -199,9 +200,9 @@ describe('SuppressorService', () => {
   });
 
   it('shouldBotMessageBeMuzzled returns user id when suppressed', async () => {
-    (suppressorService.slackService.getUserId as jest.Mock).mockReturnValue('U1');
-    (suppressorService.slackService.getBotId as jest.Mock).mockReturnValue('U1');
-    (suppressorService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(true);
+    (suppressorService.slackService.getUserId as Mock).mockReturnValue('U1');
+    (suppressorService.slackService.getBotId as Mock).mockReturnValue('U1');
+    (suppressorService.muzzlePersistenceService.isUserMuzzled as Mock).mockResolvedValue(true);
 
     await expect(
       suppressorService.shouldBotMessageBeMuzzled({
@@ -212,8 +213,8 @@ describe('SuppressorService', () => {
   });
 
   it('handleBotMessage deletes and tracks muzzle deletion', async () => {
-    jest.spyOn(suppressorService, 'shouldBotMessageBeMuzzled').mockResolvedValue('U1');
-    (suppressorService.muzzlePersistenceService.getMuzzle as jest.Mock).mockResolvedValue(9);
+    vi.spyOn(suppressorService, 'shouldBotMessageBeMuzzled').mockResolvedValue('U1');
+    (suppressorService.muzzlePersistenceService.getMuzzle as Mock).mockResolvedValue(9);
 
     await suppressorService.handleBotMessage({
       team_id: 'T1',
@@ -225,9 +226,9 @@ describe('SuppressorService', () => {
   });
 
   it('handleBotMessage tracks backfire when no muzzle exists', async () => {
-    jest.spyOn(suppressorService, 'shouldBotMessageBeMuzzled').mockResolvedValue('U1');
-    (suppressorService.muzzlePersistenceService.getMuzzle as jest.Mock).mockResolvedValue(null);
-    (suppressorService.backfirePersistenceService.getBackfireByUserId as jest.Mock).mockResolvedValue(7);
+    vi.spyOn(suppressorService, 'shouldBotMessageBeMuzzled').mockResolvedValue('U1');
+    (suppressorService.muzzlePersistenceService.getMuzzle as Mock).mockResolvedValue(null);
+    (suppressorService.backfirePersistenceService.getBackfireByUserId as Mock).mockResolvedValue(7);
 
     await suppressorService.handleBotMessage({
       team_id: 'T1',
@@ -241,10 +242,10 @@ describe('SuppressorService', () => {
   });
 
   it('handleBotMessage increments counter suppression when countered', async () => {
-    jest.spyOn(suppressorService, 'shouldBotMessageBeMuzzled').mockResolvedValue('U1');
-    (suppressorService.muzzlePersistenceService.getMuzzle as jest.Mock).mockResolvedValue(null);
-    (suppressorService.backfirePersistenceService.getBackfireByUserId as jest.Mock).mockResolvedValue(null);
-    (suppressorService.counterPersistenceService.getCounterMuzzle as jest.Mock).mockResolvedValue({ counterId: 22 });
+    vi.spyOn(suppressorService, 'shouldBotMessageBeMuzzled').mockResolvedValue('U1');
+    (suppressorService.muzzlePersistenceService.getMuzzle as Mock).mockResolvedValue(null);
+    (suppressorService.backfirePersistenceService.getBackfireByUserId as Mock).mockResolvedValue(null);
+    (suppressorService.counterPersistenceService.getCounterMuzzle as Mock).mockResolvedValue({ counterId: 22 });
 
     await suppressorService.handleBotMessage({
       team_id: 'T1',

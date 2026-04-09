@@ -48,6 +48,12 @@ const navigateToSearch = () => {
   fireEvent.click(screen.getByRole('button', { name: /message search/i }));
 };
 
+const waitForSearchFiltersLoaded = async () => {
+  await waitFor(() => {
+    expect(document.querySelector('#user-filter-options option[value="alice"]')).not.toBeNull();
+  });
+};
+
 beforeEach(() => {
   localStorage.clear();
   mockFetch.mockReset();
@@ -68,13 +74,14 @@ describe('App – unauthenticated state', () => {
 });
 
 describe('App – token in URL hash', () => {
-  it('stores the token from the hash, clears the hash, and shows the search UI', () => {
+  it('stores the token from the hash, clears the hash, and shows the search UI', async () => {
     setupAuthenticatedFetch();
     window.history.replaceState({}, '', '/#token=test-token-123');
     render(<App />);
     expect(localStorage.getItem('muzzle.lol-auth-token')).toBe('test-token-123');
     expect(window.location.hash).toBe('');
     navigateToSearch();
+    await waitForSearchFiltersLoaded();
     expect(screen.getByRole('heading', { name: /message search/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/user name/i)).toBeInTheDocument();
   });
@@ -86,9 +93,10 @@ describe('App – authenticated state', () => {
     setupAuthenticatedFetch();
   });
 
-  it('shows the search UI when a token is already stored', () => {
+  it('shows the search UI when a token is already stored', async () => {
     render(<App />);
     navigateToSearch();
+    await waitForSearchFiltersLoaded();
     expect(screen.getByLabelText(/user name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/channel/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/message content/i)).toBeInTheDocument();
@@ -111,9 +119,10 @@ describe('App – authenticated state', () => {
     expect(screen.getByRole('link', { name: /sign in with slack/i })).toBeInTheDocument();
   });
 
-  it('shows active filter badges when inputs have values', () => {
+  it('shows active filter badges when inputs have values', async () => {
     render(<App />);
     navigateToSearch();
+    await waitForSearchFiltersLoaded();
     fireEvent.change(screen.getByLabelText(/user name/i), { target: { value: 'alice' } });
     fireEvent.change(screen.getByLabelText(/channel/i), { target: { value: 'general' } });
     fireEvent.change(screen.getByLabelText(/message content/i), { target: { value: 'hello' } });
@@ -132,6 +141,7 @@ describe('App – authenticated state', () => {
   it('does not trigger search when no input values change', async () => {
     render(<App />);
     navigateToSearch();
+    await waitForSearchFiltersLoaded();
     fireEvent.keyDown(screen.getByLabelText(/user name/i), { key: 'a' });
     const messageSearchCalls = mockFetch.mock.calls.filter((call) => String(call[0]).includes('/search/messages'));
     expect(messageSearchCalls).toHaveLength(0);
@@ -141,6 +151,10 @@ describe('App – authenticated state', () => {
     setupAuthenticatedFetch();
     render(<App />);
     navigateToSearch();
+
+    // Wait for mount-time filter loading to settle so state updates complete within the test lifecycle.
+    await waitForSearchFiltersLoaded();
+
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }));
     const messageSearchCalls = mockFetch.mock.calls.filter((call) => String(call[0]).includes('/search/messages'));
     expect(messageSearchCalls).toHaveLength(0);

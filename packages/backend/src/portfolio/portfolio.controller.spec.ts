@@ -1,31 +1,32 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import Decimal from 'decimal.js';
 
-const transact = jest.fn();
-const getPortfolioSummaryWithQuotes = jest.fn();
-const sendMessage = jest.fn();
-const sendEphemeral = jest.fn();
+const transact = vi.fn();
+const getPortfolioSummaryWithQuotes = vi.fn();
+const sendMessage = vi.fn();
+const sendEphemeral = vi.fn();
 
-jest.mock('./portfolio.service', () => ({
-  PortfolioService: jest.fn().mockImplementation(() => ({
+vi.mock('./portfolio.service', async () => ({
+  PortfolioService: classMock(() => ({
     transact,
     getPortfolioSummaryWithQuotes,
   })),
 }));
 
-jest.mock('../shared/services/web/web.service', () => ({
-  WebService: jest.fn().mockImplementation(() => ({
+vi.mock('../shared/services/web/web.service', async () => ({
+  WebService: classMock(() => ({
     sendMessage,
     sendEphemeral,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-jest.mock('../shared/middleware/textMiddleware', () => ({
+vi.mock('../shared/middleware/textMiddleware', async () => ({
   textMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -37,7 +38,7 @@ describe('portfolioController', () => {
   app.use('/', portfolioController);
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     transact.mockResolvedValue({ classification: 'PUBLIC', message: 'done' });
     getPortfolioSummaryWithQuotes.mockResolvedValue({
       summary: [

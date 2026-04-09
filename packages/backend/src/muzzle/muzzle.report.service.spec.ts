@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { getManager, getRepository } from 'typeorm';
 import { Muzzle } from '../shared/db/models/Muzzle';
 import type { MuzzleReport, ReportRange } from '../shared/models/report/report.model';
@@ -6,7 +7,7 @@ import { MuzzleReportService } from './muzzle.report.service';
 
 type MuzzleReportPrivateMethods = MuzzleReportService & {
   slackService: {
-    getUserNameById: jest.Mock;
+    getUserNameById: Mock;
   };
   formatReport: (report: MuzzleReport, teamId: string) => Promise<Record<string, unknown>>;
   getMostMuzzledByInstances: (range: ReportRange, teamId: string) => Promise<unknown[]>;
@@ -26,34 +27,34 @@ type MuzzleReportPrivateMethods = MuzzleReportService & {
   getBackfireData: (range: ReportRange, teamId: string) => Promise<unknown[]>;
 };
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
-    getManager: jest.fn(),
+    getRepository: vi.fn(),
+    getManager: vi.fn(),
   };
 });
 
 describe('MuzzleReportService', () => {
   let service: MuzzleReportService;
-  const repoQuery = jest.fn();
-  const managerQuery = jest.fn();
+  const repoQuery = vi.fn();
+  const managerQuery = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new MuzzleReportService();
     const dependencyTarget = service as unknown as MuzzleReportPrivateMethods;
     dependencyTarget.slackService = {
-      getUserNameById: jest.fn().mockResolvedValue('user-name'),
+      getUserNameById: vi.fn().mockResolvedValue('user-name'),
     };
-    (getRepository as jest.Mock).mockImplementation((model: unknown) => {
+    (getRepository as Mock).mockImplementation((model: unknown) => {
       if (model === Muzzle) {
         return { query: repoQuery };
       }
       return {};
     });
-    (getManager as jest.Mock).mockReturnValue({ query: managerQuery });
+    (getManager as Mock).mockReturnValue({ query: managerQuery });
   });
 
   it('builds report title for each type', () => {
@@ -66,7 +67,7 @@ describe('MuzzleReportService', () => {
   });
 
   it('getMuzzleReport composes retrieved report into formatted output', async () => {
-    const retrieveSpy = jest.spyOn(service, 'retrieveMuzzleReport').mockResolvedValue({
+    const retrieveSpy = vi.spyOn(service, 'retrieveMuzzleReport').mockResolvedValue({
       muzzled: { byInstances: [], byMessages: [], byWords: [], byChars: [], byTime: [] },
       muzzlers: { byInstances: [], byMessages: [], byWords: [], byChars: [], byTime: [] },
       accuracy: [],
@@ -85,21 +86,21 @@ describe('MuzzleReportService', () => {
 
   it('retrieveMuzzleReport aggregates all helper query outputs', async () => {
     const privateService = service as unknown as MuzzleReportPrivateMethods;
-    jest.spyOn(privateService, 'getMostMuzzledByInstances').mockResolvedValue([{ slackId: 'U1', count: 1 }]);
-    jest.spyOn(privateService, 'getMostMuzzledByMessages').mockResolvedValue([{ slackId: 'U1', count: 1 }]);
-    jest.spyOn(privateService, 'getMostMuzzledByWords').mockResolvedValue([{ slackId: 'U1', count: 1 }]);
-    jest.spyOn(privateService, 'getMostMuzzledByChars').mockResolvedValue([{ slackId: 'U1', count: 1 }]);
-    jest.spyOn(privateService, 'getMostMuzzledByTime').mockResolvedValue([{ slackId: 'U1', count: 1 }]);
-    jest.spyOn(privateService, 'getMuzzlerByInstances').mockResolvedValue([{ slackId: 'U2', count: 2 }]);
-    jest.spyOn(privateService, 'getMuzzlerByMessages').mockResolvedValue([{ slackId: 'U2', count: 2 }]);
-    jest.spyOn(privateService, 'getMuzzlerByWords').mockResolvedValue([{ slackId: 'U2', count: 2 }]);
-    jest.spyOn(privateService, 'getMuzzlerByChars').mockResolvedValue([{ slackId: 'U2', count: 2 }]);
-    jest.spyOn(privateService, 'getMuzzlerByTime').mockResolvedValue([{ slackId: 'U2', count: 2 }]);
-    jest.spyOn(privateService, 'getAccuracy').mockResolvedValue([{ requestorId: 'U2', accuracy: 1 }]);
-    jest.spyOn(privateService, 'getKdr').mockResolvedValue([{ requestorId: 'U2', kdr: 1 }]);
-    jest.spyOn(privateService, 'getNemesisByRaw').mockResolvedValue([{ requestorId: 'U2', muzzledId: 'U1' }]);
-    jest.spyOn(privateService, 'getNemesisBySuccessful').mockResolvedValue([{ requestorId: 'U2', muzzledId: 'U1' }]);
-    jest.spyOn(privateService, 'getBackfireData').mockResolvedValue([{ muzzledId: 'U2', backfires: 1 }]);
+    vi.spyOn(privateService, 'getMostMuzzledByInstances').mockResolvedValue([{ slackId: 'U1', count: 1 }]);
+    vi.spyOn(privateService, 'getMostMuzzledByMessages').mockResolvedValue([{ slackId: 'U1', count: 1 }]);
+    vi.spyOn(privateService, 'getMostMuzzledByWords').mockResolvedValue([{ slackId: 'U1', count: 1 }]);
+    vi.spyOn(privateService, 'getMostMuzzledByChars').mockResolvedValue([{ slackId: 'U1', count: 1 }]);
+    vi.spyOn(privateService, 'getMostMuzzledByTime').mockResolvedValue([{ slackId: 'U1', count: 1 }]);
+    vi.spyOn(privateService, 'getMuzzlerByInstances').mockResolvedValue([{ slackId: 'U2', count: 2 }]);
+    vi.spyOn(privateService, 'getMuzzlerByMessages').mockResolvedValue([{ slackId: 'U2', count: 2 }]);
+    vi.spyOn(privateService, 'getMuzzlerByWords').mockResolvedValue([{ slackId: 'U2', count: 2 }]);
+    vi.spyOn(privateService, 'getMuzzlerByChars').mockResolvedValue([{ slackId: 'U2', count: 2 }]);
+    vi.spyOn(privateService, 'getMuzzlerByTime').mockResolvedValue([{ slackId: 'U2', count: 2 }]);
+    vi.spyOn(privateService, 'getAccuracy').mockResolvedValue([{ requestorId: 'U2', accuracy: 1 }]);
+    vi.spyOn(privateService, 'getKdr').mockResolvedValue([{ requestorId: 'U2', kdr: 1 }]);
+    vi.spyOn(privateService, 'getNemesisByRaw').mockResolvedValue([{ requestorId: 'U2', muzzledId: 'U1' }]);
+    vi.spyOn(privateService, 'getNemesisBySuccessful').mockResolvedValue([{ requestorId: 'U2', muzzledId: 'U1' }]);
+    vi.spyOn(privateService, 'getBackfireData').mockResolvedValue([{ muzzledId: 'U2', backfires: 1 }]);
 
     const out = await service.retrieveMuzzleReport({ reportType: ReportType.AllTime }, 'T1');
 

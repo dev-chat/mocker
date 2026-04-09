@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import { WebService } from './web.service';
 
 type MockWebClient = {
   chat: {
-    postMessage: jest.Mock;
-    delete: jest.Mock;
-    postEphemeral: jest.Mock;
-    update: jest.Mock;
+    postMessage: Mock;
+    delete: Mock;
+    postEphemeral: Mock;
+    update: Mock;
   };
-  users: { list: jest.Mock; setPhoto: jest.Mock };
-  conversations: { list: jest.Mock };
-  files: { upload: jest.Mock };
+  users: { list: Mock; setPhoto: Mock };
+  conversations: { list: Mock };
+  files: { upload: Mock };
 };
 
 type WebServicePrivate = WebService & { web: MockWebClient };
@@ -21,7 +22,7 @@ describe('WebService', () => {
   let mockWebClient: MockWebClient;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     webService = new WebService();
     mockWebClient = (webService as unknown as WebServicePrivate).web;
   });
@@ -40,7 +41,7 @@ describe('WebService', () => {
     it('throws and logs when postMessage fails', async () => {
       const error = new Error('boom');
       (error as SlackApiError).data = { error: 'bad' };
-      const loggerSpy = jest.spyOn(webService.logger, 'error');
+      const loggerSpy = vi.spyOn(webService.logger, 'error');
       mockWebClient.chat.postMessage.mockRejectedValue(error);
 
       await expect(webService.sendMessage('C1', 'hello')).rejects.toThrow('boom');
@@ -79,8 +80,8 @@ describe('WebService', () => {
     });
 
     it('logs and schedules retry for non-message_not_found errors', async () => {
-      const loggerSpy = jest.spyOn(webService.logger, 'error');
-      const timeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(() => 0 as never);
+      const loggerSpy = vi.spyOn(webService.logger, 'error');
+      const timeoutSpy = vi.spyOn(global, 'setTimeout').mockImplementation(() => 0 as never);
       const error = new Error('rate');
       (error as SlackApiError).data = { error: 'rate_limited' };
       mockWebClient.chat.delete.mockRejectedValue(error);
@@ -94,7 +95,7 @@ describe('WebService', () => {
     });
 
     it('logs slack api error in successful delete response', async () => {
-      const loggerSpy = jest.spyOn(webService.logger, 'error');
+      const loggerSpy = vi.spyOn(webService.logger, 'error');
       mockWebClient.chat.delete.mockResolvedValue({ ok: false, error: 'cant_delete_message' });
 
       webService.deleteMessage('C1', '1.23', 'U1');
@@ -144,7 +145,7 @@ describe('WebService', () => {
     });
 
     it('throws and logs when Slack responds with ok false', async () => {
-      const loggerSpy = jest.spyOn(webService.logger, 'error');
+      const loggerSpy = vi.spyOn(webService.logger, 'error');
       mockWebClient.users.setPhoto.mockResolvedValue({ ok: false, error: 'bad_image' });
 
       await expect(webService.setProfilePhoto(Buffer.from('png-bytes'))).rejects.toThrow('bad_image');
@@ -152,7 +153,7 @@ describe('WebService', () => {
     });
 
     it('throws and logs when the upload rejects', async () => {
-      const loggerSpy = jest.spyOn(webService.logger, 'error');
+      const loggerSpy = vi.spyOn(webService.logger, 'error');
       const error = new Error('upload failed');
       (error as SlackApiError).data = { error: 'ratelimited' };
       mockWebClient.users.setPhoto.mockRejectedValue(error);
@@ -200,7 +201,7 @@ describe('WebService', () => {
     });
 
     it('logs if fallback postEphemeral also fails', async () => {
-      const loggerSpy = jest.spyOn(webService.logger, 'error');
+      const loggerSpy = vi.spyOn(webService.logger, 'error');
       const error = new Error('upload fail');
       (error as SlackApiError).data = { error: 'not_in_channel' };
       mockWebClient.files.upload.mockRejectedValue(error);

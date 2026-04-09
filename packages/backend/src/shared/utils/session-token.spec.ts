@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import crypto from 'crypto';
 import { createSessionToken, verifySessionToken } from './session-token';
 
@@ -5,7 +6,7 @@ describe('session-token', () => {
   const OLD_ENV = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...OLD_ENV, SEARCH_AUTH_SECRET: 'test-secret' };
   });
 
@@ -76,11 +77,11 @@ describe('session-token', () => {
     });
 
     it('returns null for an expired token', () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       const token = createSessionToken('U1', 'team');
-      jest.advanceTimersByTime(25 * 60 * 60 * 1000); // 25 hours
+      vi.advanceTimersByTime(25 * 60 * 60 * 1000); // 25 hours
       expect(verifySessionToken(token)).toBeNull();
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('returns null for a payload that is valid JSON but missing required fields', () => {

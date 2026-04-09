@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { Portfolio } from '../shared/db/models/Portfolio';
 import { PortfolioTransactions } from '../shared/db/models/PortfolioTransaction';
@@ -5,17 +6,17 @@ import { SlackUser } from '../shared/db/models/SlackUser';
 import { PortfolioPersistenceService, TransactionType } from './portfolio.persistence.service';
 
 type QueryRunnerLike = {
-  query: jest.Mock;
-  createQueryBuilder?: jest.Mock;
+  query: Mock;
+  createQueryBuilder?: Mock;
 };
 
 type TransactionCallback = (entityManager: QueryRunnerLike) => Promise<unknown>;
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
@@ -23,43 +24,43 @@ describe('PortfolioPersistenceService', () => {
   let service: PortfolioPersistenceService;
 
   const userQb = {
-    leftJoinAndSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    getOne: jest.fn(),
+    leftJoinAndSelect: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    andWhere: vi.fn().mockReturnThis(),
+    getOne: vi.fn(),
   };
 
   const userRepo = {
-    createQueryBuilder: jest.fn(() => userQb),
-    save: jest.fn(),
+    createQueryBuilder: vi.fn(() => userQb),
+    save: vi.fn(),
   };
 
   const portfolioRepo = {
-    save: jest.fn(),
+    save: vi.fn(),
   };
 
   const txQb = {
-    where: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    getMany: jest.fn(),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    getMany: vi.fn(),
   };
 
   const txRepo = {
-    createQueryBuilder: jest.fn(() => txQb),
+    createQueryBuilder: vi.fn(() => txQb),
     manager: {
-      transaction: jest.fn(),
+      transaction: vi.fn(),
     },
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new PortfolioPersistenceService();
     type PortfolioPersistenceDependencies = PortfolioPersistenceService & {
-      reactionPersistenceService: { getTotalRep: jest.Mock };
+      reactionPersistenceService: { getTotalRep: Mock };
     };
-    (service as unknown as PortfolioPersistenceDependencies).reactionPersistenceService = { getTotalRep: jest.fn() };
+    (service as unknown as PortfolioPersistenceDependencies).reactionPersistenceService = { getTotalRep: vi.fn() };
 
-    (getRepository as jest.Mock).mockImplementation((model: unknown) => {
+    (getRepository as Mock).mockImplementation((model: unknown) => {
       if (model === SlackUser) return userRepo;
       if (model === Portfolio) return portfolioRepo;
       if (model === PortfolioTransactions) return txRepo;
@@ -94,7 +95,7 @@ describe('PortfolioPersistenceService', () => {
     txRepo.manager.transaction.mockImplementation(async (callback: unknown) => {
       const cb = callback as TransactionCallback;
       const em = {
-        query: jest.fn().mockResolvedValue([{ "GET_LOCK('portfolio_lock_U1', 10)": 0 }]),
+        query: vi.fn().mockResolvedValue([{ "GET_LOCK('portfolio_lock_U1', 10)": 0 }]),
       };
       return cb(em);
     });
@@ -105,23 +106,23 @@ describe('PortfolioPersistenceService', () => {
   });
 
   it('transact fails SELL when shares are insufficient', async () => {
-    jest.spyOn(service, 'getPortfolio').mockResolvedValue({ id: 5 } as Portfolio);
+    vi.spyOn(service, 'getPortfolio').mockResolvedValue({ id: 5 } as Portfolio);
     txRepo.manager.transaction.mockImplementation(async (callback: unknown) => {
       const cb = callback as TransactionCallback;
       const shareQb = {
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        setParameter: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue({ netQuantity: 1 }),
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        setParameter: vi.fn().mockReturnThis(),
+        getRawOne: vi.fn().mockResolvedValue({ netQuantity: 1 }),
       };
 
       const em = {
-        query: jest
+        query: vi
           .fn()
           .mockResolvedValueOnce([{ "GET_LOCK('portfolio_lock_U1', 10)": 1 }])
           .mockResolvedValueOnce([{ release: 1 }]),
-        createQueryBuilder: jest.fn(() => shareQb),
+        createQueryBuilder: vi.fn(() => shareQb),
       };
       return cb(em);
     });
@@ -132,22 +133,22 @@ describe('PortfolioPersistenceService', () => {
   });
 
   it('transact inserts and releases lock on success', async () => {
-    jest.spyOn(service, 'getPortfolio').mockResolvedValue({ id: 5 } as Portfolio);
+    vi.spyOn(service, 'getPortfolio').mockResolvedValue({ id: 5 } as Portfolio);
     txRepo.manager.transaction.mockImplementation(async (callback: unknown) => {
       const cb = callback as TransactionCallback;
       const insertQb = {
-        insert: jest.fn().mockReturnThis(),
-        into: jest.fn().mockReturnThis(),
-        values: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue({ identifiers: [{ id: 1 }] }),
+        insert: vi.fn().mockReturnThis(),
+        into: vi.fn().mockReturnThis(),
+        values: vi.fn().mockReturnThis(),
+        execute: vi.fn().mockResolvedValue({ identifiers: [{ id: 1 }] }),
       };
 
       const em = {
-        query: jest
+        query: vi
           .fn()
           .mockResolvedValueOnce([{ "GET_LOCK('portfolio_lock_U1', 10)": 1 }])
           .mockResolvedValueOnce([{ release: 1 }]),
-        createQueryBuilder: jest.fn(() => insertQb),
+        createQueryBuilder: vi.fn(() => insertQb),
       };
       return cb(em);
     });
@@ -157,10 +158,10 @@ describe('PortfolioPersistenceService', () => {
   });
 
   it('returns empty summary when no transactions exist', async () => {
-    jest.spyOn(service, 'getPortfolio').mockResolvedValue({ id: 5 } as Portfolio);
+    vi.spyOn(service, 'getPortfolio').mockResolvedValue({ id: 5 } as Portfolio);
     txQb.getMany.mockResolvedValue([]);
     type PortfolioPersistenceDependencies = PortfolioPersistenceService & {
-      reactionPersistenceService: { getTotalRep: jest.Mock };
+      reactionPersistenceService: { getTotalRep: Mock };
     };
     (service as unknown as PortfolioPersistenceDependencies).reactionPersistenceService.getTotalRep.mockResolvedValue({
       totalRepAvailable: 4,
@@ -174,14 +175,14 @@ describe('PortfolioPersistenceService', () => {
   });
 
   it('aggregates BUY and SELL transactions into positive holdings', async () => {
-    jest.spyOn(service, 'getPortfolio').mockResolvedValue({ id: 5 } as Portfolio);
+    vi.spyOn(service, 'getPortfolio').mockResolvedValue({ id: 5 } as Portfolio);
     txQb.getMany.mockResolvedValue([
       { assetSymbol: 'AAPL', type: 'BUY', quantity: 5, price: 10 },
       { assetSymbol: 'AAPL', type: 'SELL', quantity: 2, price: 12 },
       { assetSymbol: 'MSFT', type: 'BUY', quantity: 1, price: 30 },
     ]);
     type PortfolioPersistenceDependencies = PortfolioPersistenceService & {
-      reactionPersistenceService: { getTotalRep: jest.Mock };
+      reactionPersistenceService: { getTotalRep: Mock };
     };
     (service as unknown as PortfolioPersistenceDependencies).reactionPersistenceService.getTotalRep.mockResolvedValue({
       totalRepAvailable: 4,

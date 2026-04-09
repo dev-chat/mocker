@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ClapService } from './clap.service';
 
 describe('ClapService', () => {
@@ -8,9 +9,9 @@ describe('ClapService', () => {
   });
 
   describe('clap()', () => {
-    it('should clap a users input with multiple words', () => {
-      const messageSpy = jest.spyOn(clapService.slackService, 'sendResponse').mockImplementation(() => {});
-      clapService.clap('test this out', 'U12345', 'http://response.url');
+    it('should clap a users input with multiple words', async () => {
+      const messageSpy = vi.spyOn(clapService.slackService, 'sendResponse').mockImplementation(() => {});
+      await clapService.clap('test this out', 'U12345', 'http://response.url');
       expect(messageSpy).toHaveBeenCalledWith('http://response.url', {
         attachments: [
           {
@@ -22,9 +23,9 @@ describe('ClapService', () => {
       });
     });
 
-    it('shoudl not clap if no text is passed in', () => {
-      const messageSpy = jest.spyOn(clapService.slackService, 'sendResponse').mockImplementation(() => {});
-      clapService.clap('', 'U12345', 'http://response.url');
+    it('shoudl not clap if no text is passed in', async () => {
+      const messageSpy = vi.spyOn(clapService.slackService, 'sendResponse').mockImplementation(() => {});
+      await clapService.clap('', 'U12345', 'http://response.url');
       expect(messageSpy).not.toHaveBeenCalled();
     });
   });

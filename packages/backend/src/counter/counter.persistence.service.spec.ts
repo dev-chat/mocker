@@ -1,12 +1,13 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { CounterPersistenceService } from './counter.persistence.service';
 import { Counter } from '../shared/db/models/Counter';
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
@@ -14,22 +15,22 @@ describe('CounterPersistenceService', () => {
   let service: CounterPersistenceService;
 
   const repo = {
-    save: jest.fn(),
-    findOne: jest.fn(),
-    increment: jest.fn(),
+    save: vi.fn(),
+    findOne: vi.fn(),
+    increment: vi.fn(),
   };
 
   const muzzlePersistenceService = {
-    removeMuzzlePrivileges: jest.fn(),
+    removeMuzzlePrivileges: vi.fn(),
   };
 
   const webService = {
-    sendMessage: jest.fn(),
+    sendMessage: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
     service = new CounterPersistenceService();
     type CounterServiceDependencies = CounterPersistenceService & {
       muzzlePersistenceService: typeof muzzlePersistenceService;
@@ -40,7 +41,7 @@ describe('CounterPersistenceService', () => {
     dependencyTarget.muzzlePersistenceService = muzzlePersistenceService;
     dependencyTarget.webService = webService;
 
-    (getRepository as jest.Mock).mockImplementation((model: unknown) => {
+    (getRepository as Mock).mockImplementation((model: unknown) => {
       if (model === Counter) {
         return repo;
       }
@@ -49,7 +50,7 @@ describe('CounterPersistenceService', () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('adds counter and stores in in-memory map', async () => {
@@ -113,7 +114,7 @@ describe('CounterPersistenceService', () => {
       requestorId: 'U1',
       removalFn: setTimeout(() => undefined, 5000),
     });
-    const setCounteredSpy = jest.spyOn(service, 'setCounteredToTrue').mockResolvedValue({ id: 10 } as Counter);
+    const setCounteredSpy = vi.spyOn(service, 'setCounteredToTrue').mockResolvedValue({ id: 10 } as Counter);
 
     await service.removeCounter(10, true, 'C1', 'T1', 'U2');
 

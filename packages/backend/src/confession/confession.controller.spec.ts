@@ -1,19 +1,20 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const confess = jest.fn();
+const confess = vi.fn();
 
-jest.mock('./confession.service', () => ({
-  ConfessionService: jest.fn().mockImplementation(() => ({
+vi.mock('./confession.service', async () => ({
+  ConfessionService: classMock(() => ({
     confess,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-jest.mock('../shared/middleware/textMiddleware', () => ({
+vi.mock('../shared/middleware/textMiddleware', async () => ({
   textMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -24,7 +25,7 @@ describe('confessionController', () => {
   app.use(express.json());
   app.use('/', confessionController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('handles post and calls confess', async () => {
     await request(app).post('/').send({ user_id: 'U1', channel_id: 'C1', text: 'secret' }).expect(200);

@@ -1,12 +1,13 @@
+import { vi } from 'vitest';
 export const OpenAIMock = {
-  OpenAI: jest.fn().mockImplementation(() => ({
+  OpenAI: vi.fn().mockImplementation(() => ({
     chat: {
       completions: {
-        create: jest.fn(),
+        create: vi.fn(),
       },
     },
     images: {
-      generate: jest.fn(),
+      generate: vi.fn(),
     },
   })),
 };

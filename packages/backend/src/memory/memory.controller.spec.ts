@@ -1,25 +1,26 @@
-const mockGetAllMemoriesForUser = jest.fn();
-const mockSendEphemeral = jest.fn();
+import { vi } from 'vitest';
+const mockGetAllMemoriesForUser = vi.fn();
+const mockSendEphemeral = vi.fn();
 
-jest.mock('../ai/memory/memory.persistence.service', () => ({
-  MemoryPersistenceService: jest.fn().mockImplementation(() => ({
+vi.mock('../ai/memory/memory.persistence.service', async () => ({
+  MemoryPersistenceService: classMock(() => ({
     getAllMemoriesForUser: mockGetAllMemoriesForUser,
   })),
 }));
 
-jest.mock('../shared/services/web/web.service', () => ({
-  WebService: jest.fn().mockImplementation(() => ({
+vi.mock('../shared/services/web/web.service', async () => ({
+  WebService: classMock(() => ({
     sendEphemeral: mockSendEphemeral,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   suppressedMiddleware: (_req: any, _res: any, next: any) => next(),
 }));
 
-jest.mock('../shared/logger/logger', () => ({
-  logger: { child: () => ({ error: jest.fn(), info: jest.fn(), warn: jest.fn() }) },
+vi.mock('../shared/logger/logger', async () => ({
+  logger: { child: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }) },
 }));
 
 import http from 'http';
@@ -30,19 +31,31 @@ import { memoryController } from './memory.controller';
 let server: http.Server;
 let port: number;
 
-beforeAll((done) => {
+beforeAll(async () => {
   const app = express();
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use('/memory', memoryController);
-  server = app.listen(0, () => {
-    port = (server.address() as AddressInfo).port;
-    done();
+
+  await new Promise<void>((resolve) => {
+    server = app.listen(0, () => {
+      port = (server.address() as AddressInfo).port;
+      resolve();
+    });
   });
 });
 
-afterAll((done) => {
-  server.close(done);
+afterAll(async () => {
+  await new Promise<void>((resolve, reject) => {
+    server.close((err) => {
+      if (err !== undefined) {
+        reject(err);
+        return;
+      }
+
+      resolve();
+    });
+  });
 });
 
 function postMemory(body: Record<string, string>): Promise<number> {
@@ -69,7 +82,7 @@ function postMemory(body: Record<string, string>): Promise<number> {
 
 describe('MemoryController', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should respond 200 and send ephemeral with formatted memories', async () => {

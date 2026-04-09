@@ -1,28 +1,29 @@
+import { vi } from 'vitest';
 import { DailyMemoryJob } from './daily-memory.job';
 import type { SlackChannel } from '../shared/db/models/SlackChannel';
 import { DAILY_MEMORY_JOB_CONCURRENCY } from './ai.constants';
 
-jest.mock('typeorm', () => ({
-  getRepository: jest.fn().mockReturnValue({
-    find: jest.fn(),
+vi.mock('typeorm', async () => ({
+  getRepository: vi.fn().mockReturnValue({
+    find: vi.fn(),
   }),
-  Entity: () => jest.fn(),
-  Column: () => jest.fn(),
-  PrimaryGeneratedColumn: () => jest.fn(),
-  ManyToOne: () => jest.fn(),
-  OneToMany: () => jest.fn(),
-  OneToOne: () => jest.fn(),
-  Unique: () => jest.fn(),
-  JoinColumn: () => jest.fn(),
+  Entity: () => vi.fn(),
+  Column: () => vi.fn(),
+  PrimaryGeneratedColumn: () => vi.fn(),
+  ManyToOne: () => vi.fn(),
+  OneToMany: () => vi.fn(),
+  OneToOne: () => vi.fn(),
+  Unique: () => vi.fn(),
+  JoinColumn: () => vi.fn(),
 }));
 
-jest.mock('../shared/logger/logger', () => ({
+vi.mock('../shared/logger/logger', async () => ({
   logger: {
-    child: jest.fn().mockReturnValue({
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
+    child: vi.fn().mockReturnValue({
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
     }),
   },
 }));
@@ -33,14 +34,14 @@ const buildJob = (): DailyMemoryJob => {
   const job = new DailyMemoryJob();
 
   job.aiService = {
-    extractMemoriesForChannel: jest.fn().mockResolvedValue(undefined),
+    extractMemoriesForChannel: vi.fn().mockResolvedValue(undefined),
   } as unknown as DailyMemoryJob['aiService'];
 
-  (job as unknown as { jobLogger: Record<string, jest.Mock> }).jobLogger = {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
+  (job as unknown as { jobLogger: Record<string, Mock> }).jobLogger = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   };
 
   return job;
@@ -48,12 +49,15 @@ const buildJob = (): DailyMemoryJob => {
 
 describe('DailyMemoryJob', () => {
   let job: DailyMemoryJob;
-  let findMock: jest.Mock;
+  let findMock: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    (getRepository as Mock).mockReturnValue({
+      find: vi.fn(),
+    });
     job = buildJob();
-    findMock = (getRepository as jest.Mock)().find as jest.Mock;
+    findMock = (getRepository as Mock)().find as Mock;
   });
 
   it('calls extractMemoriesForChannel for each channel', async () => {
@@ -76,7 +80,7 @@ describe('DailyMemoryJob', () => {
       { channelId: 'C2', teamId: 'T1' },
     ];
     findMock.mockResolvedValue(channels);
-    (job.aiService.extractMemoriesForChannel as jest.Mock)
+    (job.aiService.extractMemoriesForChannel as Mock)
       .mockRejectedValueOnce(new Error('fail'))
       .mockResolvedValueOnce(undefined);
 
@@ -114,7 +118,7 @@ describe('DailyMemoryJob', () => {
 
     let maxInflight = 0;
     let currentInflight = 0;
-    (job.aiService.extractMemoriesForChannel as jest.Mock).mockImplementation(
+    (job.aiService.extractMemoriesForChannel as Mock).mockImplementation(
       () =>
         new Promise<void>((resolve) => {
           currentInflight++;

@@ -1,19 +1,20 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const quote = jest.fn();
+const quote = vi.fn();
 
-jest.mock('./quote.service', () => ({
-  QuoteService: jest.fn().mockImplementation(() => ({
+vi.mock('./quote.service', async () => ({
+  QuoteService: classMock(() => ({
     quote,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-jest.mock('../shared/middleware/textMiddleware', () => ({
+vi.mock('../shared/middleware/textMiddleware', async () => ({
   textMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -24,7 +25,7 @@ describe('quoteController', () => {
   app.use(express.json());
   app.use('/', quoteController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('handles post and calls quote service with uppercase symbol', async () => {
     await request(app).post('/').send({ text: 'aapl', channel_id: 'C1', user_id: 'U1' }).expect(200);

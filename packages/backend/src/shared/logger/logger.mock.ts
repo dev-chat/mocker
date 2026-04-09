@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 export const mockLogger: IMockLogger = {
-  Logger: jest.fn().mockImplementation(() => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    trace: jest.fn(),
-    fatal: jest.fn(),
-    child: jest.fn().mockImplementation(() => mockLogger),
+  Logger: vi.fn().mockImplementation(() => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+    child: vi.fn().mockImplementation(() => mockLogger),
   })),
 };
 
 interface IMockLogger {
-  Logger: jest.Mock<Record<string, () => void>>;
+  Logger: Mock<Record<string, () => void>>;
 }

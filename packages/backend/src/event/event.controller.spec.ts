@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const handle = jest.fn().mockResolvedValue(undefined);
+const handle = vi.fn().mockResolvedValue(undefined);
 
-jest.mock('./event.service', () => ({
-  EventService: jest.fn().mockImplementation(() => ({
+vi.mock('./event.service', async () => ({
+  EventService: classMock(() => ({
     handle,
   })),
 }));
@@ -16,7 +17,7 @@ describe('eventController', () => {
   app.use(express.json());
   app.use('/', eventController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('responds to challenge', async () => {
     const res = await request(app).post('/handle').send({ challenge: 'abc' }).expect(200);

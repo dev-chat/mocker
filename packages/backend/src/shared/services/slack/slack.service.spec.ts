@@ -1,40 +1,41 @@
+import { vi } from 'vitest';
 import { SlackService } from './slack.service';
 import * as axios from 'axios';
 import type { EventRequest } from '../../models/slack/slack-models';
 
 type SlackServicePrivate = SlackService & {
   web: {
-    getAllChannels: jest.Mock;
-    getAllUsers: jest.Mock;
+    getAllChannels: Mock;
+    getAllUsers: Mock;
   };
   persistenceService: {
-    getUserByUserName: jest.Mock;
-    getUserById: jest.Mock;
-    saveChannels: jest.Mock;
-    saveUsers: jest.Mock;
-    getCachedUsers: jest.Mock;
-    getChannelById: jest.Mock;
-    getBotByBotId: jest.Mock;
+    getUserByUserName: Mock;
+    getUserById: Mock;
+    saveChannels: Mock;
+    saveUsers: Mock;
+    getCachedUsers: Mock;
+    getChannelById: Mock;
+    getBotByBotId: Mock;
   };
 };
 
-jest.mock('axios');
-jest.mock('./slack.persistence.service', () => ({
-  SlackPersistenceService: jest.fn().mockImplementation(() => ({
-    getUserByUserName: jest.fn(),
-    getUserById: jest.fn(),
-    saveChannels: jest.fn(),
-    saveUsers: jest.fn(),
-    getCachedUsers: jest.fn(),
-    getChannelById: jest.fn(),
-    getBotByBotId: jest.fn(),
+vi.mock('axios');
+vi.mock('./slack.persistence.service', async () => ({
+  SlackPersistenceService: classMock(() => ({
+    getUserByUserName: vi.fn(),
+    getUserById: vi.fn(),
+    saveChannels: vi.fn(),
+    saveUsers: vi.fn(),
+    getCachedUsers: vi.fn(),
+    getChannelById: vi.fn(),
+    getBotByBotId: vi.fn(),
   })),
 }));
 
-jest.mock('../web/web.service', () => ({
-  WebService: jest.fn().mockImplementation(() => ({
-    getAllChannels: jest.fn(),
-    getAllUsers: jest.fn(),
+vi.mock('../web/web.service', async () => ({
+  WebService: classMock(() => ({
+    getAllChannels: vi.fn(),
+    getAllUsers: vi.fn(),
   })),
 }));
 
@@ -44,7 +45,7 @@ describe('SlackService', () => {
   let mockPersistenceService: SlackServicePrivate['persistenceService'];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     slackService = new SlackService();
     const privateService = slackService as unknown as SlackServicePrivate;
     mockWebService = privateService.web;
@@ -286,7 +287,7 @@ describe('SlackService', () => {
 
   describe('sendResponse()', () => {
     it('should post response to responseUrl', async () => {
-      const mockPost = jest.spyOn(axios.default, 'post').mockResolvedValue({ data: { ok: true } });
+      const mockPost = vi.spyOn(axios.default, 'post').mockResolvedValue({ data: { ok: true } });
 
       slackService.sendResponse('https://hooks.slack.com/test', { response_type: 'in_channel', text: 'test' });
 
@@ -298,8 +299,8 @@ describe('SlackService', () => {
     });
 
     it('should handle errors silently', async () => {
-      const mockPost = jest.spyOn(axios.default, 'post').mockRejectedValue(new Error('Network error'));
-      const loggerSpy = jest.spyOn(slackService.logger, 'error');
+      const mockPost = vi.spyOn(axios.default, 'post').mockRejectedValue(new Error('Network error'));
+      const loggerSpy = vi.spyOn(slackService.logger, 'error');
 
       slackService.sendResponse('https://hooks.slack.com/test', { response_type: 'in_channel', text: 'test' });
 
@@ -394,10 +395,10 @@ describe('SlackService', () => {
     });
 
     it('should retry on web fetch error', async () => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
       mockPersistenceService.getCachedUsers.mockResolvedValue(null);
       mockWebService.getAllUsers.mockRejectedValue(new Error('API Error'));
-      const loggerSpy = jest.spyOn(slackService.logger, 'error');
+      const loggerSpy = vi.spyOn(slackService.logger, 'error');
 
       const promise = slackService.getAllUsers();
 
@@ -409,7 +410,7 @@ describe('SlackService', () => {
         }),
       );
 
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('should handle save error', async () => {
@@ -463,7 +464,7 @@ describe('SlackService', () => {
 
   describe('handle()', () => {
     it('should call getAllUsers on team_join event', async () => {
-      const getAllUsersSpy = jest.spyOn(slackService, 'getAllUsers').mockResolvedValue([]);
+      const getAllUsersSpy = vi.spyOn(slackService, 'getAllUsers').mockResolvedValue([]);
 
       slackService.handle({
         event: { type: 'team_join', user: { id: 'U123' } },
@@ -474,7 +475,7 @@ describe('SlackService', () => {
     });
 
     it('should call getAndSaveAllChannels on channel_created event', () => {
-      const getAndSaveChannelsSpy = jest.spyOn(slackService, 'getAndSaveAllChannels').mockImplementation();
+      const getAndSaveChannelsSpy = vi.spyOn(slackService, 'getAndSaveAllChannels').mockImplementation(() => undefined);
 
       slackService.handle({
         event: { type: 'channel_created', channel: { id: 'C123' } },
@@ -484,8 +485,8 @@ describe('SlackService', () => {
     });
 
     it('should do nothing for other event types', () => {
-      const getAllUsersSpy = jest.spyOn(slackService, 'getAllUsers');
-      const getAndSaveChannelsSpy = jest.spyOn(slackService, 'getAndSaveAllChannels');
+      const getAllUsersSpy = vi.spyOn(slackService, 'getAllUsers');
+      const getAndSaveChannelsSpy = vi.spyOn(slackService, 'getAndSaveAllChannels');
 
       slackService.handle({
         event: { type: 'app_mention', text: 'test' },
@@ -496,8 +497,8 @@ describe('SlackService', () => {
     });
 
     it('should handle getAllUsers error gracefully', async () => {
-      jest.spyOn(slackService, 'getAllUsers').mockRejectedValue(new Error('API Error'));
-      const loggerSpy = jest.spyOn(slackService.logger, 'error');
+      vi.spyOn(slackService, 'getAllUsers').mockRejectedValue(new Error('API Error'));
+      const loggerSpy = vi.spyOn(slackService.logger, 'error');
 
       slackService.handle({
         event: { type: 'team_join', user: { id: 'U123' } },
@@ -515,16 +516,14 @@ describe('SlackService', () => {
   });
 
   describe('getAndSaveAllChannels()', () => {
-    it('should fetch and save all channels', (done) => {
+    it('should fetch and save all channels', async () => {
       const channels = [{ id: 'C1', name: 'general' }];
       mockWebService.getAllChannels.mockResolvedValue({ channels });
 
       slackService.getAndSaveAllChannels();
 
-      setTimeout(() => {
-        expect(mockPersistenceService.saveChannels).toHaveBeenCalledWith(channels);
-        done();
-      }, 50);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(mockPersistenceService.saveChannels).toHaveBeenCalledWith(channels);
     });
   });
 });

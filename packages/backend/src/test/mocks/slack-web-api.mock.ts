@@ -1,26 +1,27 @@
+import { vi } from 'vitest';
 type SlackResult = Record<string, unknown> & { ok: boolean };
 
 const okResult = (): SlackResult => ({ ok: true });
 
 export class WebClient {
   chat = {
-    delete: jest.fn().mockResolvedValue(okResult()),
-    postEphemeral: jest.fn().mockResolvedValue(okResult()),
-    postMessage: jest.fn().mockResolvedValue(okResult()),
-    update: jest.fn().mockResolvedValue(okResult()),
+    delete: vi.fn().mockResolvedValue(okResult()),
+    postEphemeral: vi.fn().mockResolvedValue(okResult()),
+    postMessage: vi.fn().mockResolvedValue(okResult()),
+    update: vi.fn().mockResolvedValue(okResult()),
   };
 
   users = {
-    list: jest.fn().mockResolvedValue({ ok: true, members: [] }),
-    setPhoto: jest.fn().mockResolvedValue(okResult()),
+    list: vi.fn().mockResolvedValue({ ok: true, members: [] }),
+    setPhoto: vi.fn().mockResolvedValue(okResult()),
   };
 
   conversations = {
-    list: jest.fn().mockResolvedValue({ ok: true, channels: [] }),
+    list: vi.fn().mockResolvedValue({ ok: true, channels: [] }),
   };
 
   files = {
-    upload: jest.fn().mockResolvedValue(okResult()),
+    upload: vi.fn().mockResolvedValue(okResult()),
   };
 
   constructor(_token?: string) {

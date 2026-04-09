@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import Axios from 'axios';
 
-jest.mock('axios');
-jest.mock('../shared/utils/session-token', () => ({
-  createSessionToken: jest.fn().mockReturnValue('mock-session-token'),
+vi.mock('axios');
+vi.mock('../shared/utils/session-token', async () => ({
+  createSessionToken: vi.fn().mockReturnValue('mock-session-token'),
 }));
 
 import { authController } from './auth.controller';
@@ -20,7 +21,7 @@ describe('authController', () => {
   const OLD_ENV = process.env;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env = {
       ...OLD_ENV,
       SLACK_CLIENT_ID: 'test-client-id',
@@ -72,10 +73,10 @@ describe('authController', () => {
     });
 
     it('redirects to frontend with token in hash on successful OAuth', async () => {
-      (Axios.post as jest.Mock).mockResolvedValue({
+      (Axios.post as Mock).mockResolvedValue({
         data: { ok: true, authed_user: { id: 'U123', access_token: 'xoxp-token' } },
       });
-      (Axios.get as jest.Mock).mockResolvedValue({
+      (Axios.get as Mock).mockResolvedValue({
         data: {
           ok: true,
           user: { id: 'U123', name: 'alice' },
@@ -147,7 +148,7 @@ describe('authController', () => {
     });
 
     it('redirects with auth_error=token_exchange_failed when Slack token response is not ok', async () => {
-      (Axios.post as jest.Mock).mockResolvedValue({ data: { ok: false } });
+      (Axios.post as Mock).mockResolvedValue({ data: { ok: false } });
 
       const res = await request(app)
         .get('/slack/callback')
@@ -158,7 +159,7 @@ describe('authController', () => {
     });
 
     it('redirects with auth_error=token_exchange_failed when authed_user is missing', async () => {
-      (Axios.post as jest.Mock).mockResolvedValue({ data: { ok: true } });
+      (Axios.post as Mock).mockResolvedValue({ data: { ok: true } });
 
       const res = await request(app)
         .get('/slack/callback')
@@ -169,10 +170,10 @@ describe('authController', () => {
     });
 
     it('redirects with auth_error=unauthorized_workspace when team id is wrong', async () => {
-      (Axios.post as jest.Mock).mockResolvedValue({
+      (Axios.post as Mock).mockResolvedValue({
         data: { ok: true, authed_user: { id: 'U999', access_token: 'xoxp-other' } },
       });
-      (Axios.get as jest.Mock).mockResolvedValue({
+      (Axios.get as Mock).mockResolvedValue({
         data: { ok: true, user: { id: 'U999', name: 'bob' }, team: { name: 'otherworkspace', id: 'T999' } },
       });
 
@@ -185,10 +186,10 @@ describe('authController', () => {
     });
 
     it('redirects with auth_error=unauthorized_workspace when identity response is not ok', async () => {
-      (Axios.post as jest.Mock).mockResolvedValue({
+      (Axios.post as Mock).mockResolvedValue({
         data: { ok: true, authed_user: { id: 'U123', access_token: 'xoxp-token' } },
       });
-      (Axios.get as jest.Mock).mockResolvedValue({
+      (Axios.get as Mock).mockResolvedValue({
         data: { ok: false },
       });
 
@@ -201,7 +202,7 @@ describe('authController', () => {
     });
 
     it('redirects with auth_error=server_error when an unexpected exception is thrown', async () => {
-      (Axios.post as jest.Mock).mockRejectedValue(new Error('Network failure'));
+      (Axios.post as Mock).mockRejectedValue(new Error('Network failure'));
 
       const res = await request(app)
         .get('/slack/callback')

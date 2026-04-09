@@ -1,27 +1,29 @@
-const mockRedisInstance = {
-  on: jest.fn(),
-  get: jest.fn(),
-  set: jest.fn(),
-  setex: jest.fn(),
-  psetex: jest.fn(),
-  ttl: jest.fn(),
-  expire: jest.fn(),
-  subscribe: jest.fn(),
-  keys: jest.fn(),
-  del: jest.fn(),
+import { vi } from 'vitest';
+import { RedisPersistenceService } from './redis.persistence.service';
+
+type RedisLike = {
+  on: Mock;
+  get: Mock;
+  set: Mock;
+  setex: Mock;
+  psetex: Mock;
+  ttl: Mock;
+  expire: Mock;
+  subscribe: Mock;
+  keys: Mock;
+  del: Mock;
 };
 
-jest.mock('ioredis', () => {
-  return {
-    Redis: jest.fn().mockImplementation(() => mockRedisInstance),
-  };
-});
+const getRedis = (): RedisLike => (RedisPersistenceService as unknown as { redis: RedisLike }).redis;
 
-import { RedisPersistenceService } from './redis.persistence.service';
+const resetSingleton = () => {
+  (RedisPersistenceService as unknown as { instance?: RedisPersistenceService }).instance = undefined;
+};
 
 describe('RedisPersistenceService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    resetSingleton();
   });
 
   it('returns singleton instance', () => {
@@ -32,54 +34,56 @@ describe('RedisPersistenceService', () => {
   });
 
   it('registers connect handler in constructor', () => {
+    const onSpy = vi.spyOn(getRedis(), 'on');
+
     new RedisPersistenceService();
 
-    expect(mockRedisInstance.on).toHaveBeenCalledWith('connect', expect.any(Function));
+    expect(onSpy).toHaveBeenCalledWith('connect', expect.any(Function));
   });
 
   it('gets value by key', async () => {
-    mockRedisInstance.get.mockResolvedValue('v');
+    vi.spyOn(getRedis(), 'get').mockResolvedValue('v');
     const service = RedisPersistenceService.getInstance();
 
     await expect(service.getValue('k')).resolves.toBe('v');
   });
 
   it('sets value with keep ttl', async () => {
-    mockRedisInstance.set.mockResolvedValue('OK');
+    const setSpy = vi.spyOn(getRedis(), 'set').mockResolvedValue('OK');
     const service = RedisPersistenceService.getInstance();
 
     await expect(service.setValue('k', 'v')).resolves.toBe('OK');
-    expect(mockRedisInstance.set).toHaveBeenCalledWith('k', 'v', 'KEEPTTL');
+    expect(setSpy).toHaveBeenCalledWith('k', 'v', 'KEEPTTL');
   });
 
   it('sets value with EX expiry mode', async () => {
-    mockRedisInstance.setex.mockResolvedValue('OK');
+    const setexSpy = vi.spyOn(getRedis(), 'setex').mockResolvedValue('OK');
     const service = RedisPersistenceService.getInstance();
 
     await expect(service.setValueWithExpire('k', 'v', 'EX', 10)).resolves.toBe('OK');
-    expect(mockRedisInstance.setex).toHaveBeenCalledWith('k', 10, 'v');
+    expect(setexSpy).toHaveBeenCalledWith('k', 10, 'v');
   });
 
   it('sets value with PX expiry mode', async () => {
-    mockRedisInstance.psetex.mockResolvedValue('OK');
+    const psetexSpy = vi.spyOn(getRedis(), 'psetex').mockResolvedValue('OK');
     const service = RedisPersistenceService.getInstance();
 
     await expect(service.setValueWithExpire('k', 'v', 'PX', 50)).resolves.toBe('OK');
-    expect(mockRedisInstance.psetex).toHaveBeenCalledWith('k', 50, 'v');
+    expect(psetexSpy).toHaveBeenCalledWith('k', 50, 'v');
   });
 
-  it('throws for unknown expiry mode', async () => {
+  it('throws for unknown expiry mode', () => {
     const service = RedisPersistenceService.getInstance();
 
     expect(() => service.setValueWithExpire('k', 'v', 'BAD', 1)).toThrow('Unknown expiryMode');
   });
 
   it('wraps ttl, expire, subscribe, keys and del', async () => {
-    mockRedisInstance.ttl.mockResolvedValue(42);
-    mockRedisInstance.expire.mockResolvedValue(1);
-    mockRedisInstance.subscribe.mockResolvedValue(1);
-    mockRedisInstance.keys.mockResolvedValue(['store.item.user']);
-    mockRedisInstance.del.mockResolvedValue(1);
+    const ttlSpy = vi.spyOn(getRedis(), 'ttl').mockResolvedValue(42);
+    const expireSpy = vi.spyOn(getRedis(), 'expire').mockResolvedValue(1);
+    const subscribeSpy = vi.spyOn(getRedis(), 'subscribe').mockResolvedValue(1);
+    const keysSpy = vi.spyOn(getRedis(), 'keys').mockResolvedValue(['store.item.user']);
+    const delSpy = vi.spyOn(getRedis(), 'del').mockResolvedValue(1);
     const service = RedisPersistenceService.getInstance();
 
     await expect(service.getTimeRemaining('k')).resolves.toBe(42);
@@ -88,6 +92,10 @@ describe('RedisPersistenceService', () => {
     await expect(service.getPattern('store.item')).resolves.toEqual(['store.item.user']);
     await expect(service.removeKey('k')).resolves.toBe(1);
 
-    expect(mockRedisInstance.keys).toHaveBeenCalledWith('*store.item*');
+    expect(ttlSpy).toHaveBeenCalledWith('k');
+    expect(expireSpy).toHaveBeenCalledWith('k', 3);
+    expect(subscribeSpy).toHaveBeenCalledWith('updates');
+    expect(keysSpy).toHaveBeenCalledWith('*store.item*');
+    expect(delSpy).toHaveBeenCalledWith('k');
   });
 });

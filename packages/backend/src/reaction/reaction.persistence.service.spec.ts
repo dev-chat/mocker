@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { Purchase } from '../shared/db/models/Purchase';
 import { Rep } from '../shared/db/models/Rep';
@@ -7,11 +8,11 @@ import { Reaction } from '../shared/db/models/Reaction';
 import type { Event } from '../shared/models/slack/slack-models';
 import { ReactionPersistenceService } from './reaction.persistence.service';
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
@@ -19,47 +20,47 @@ describe('ReactionPersistenceService', () => {
   let service: ReactionPersistenceService;
 
   const reactionRepo = {
-    save: jest.fn(),
-    delete: jest.fn(),
-    query: jest.fn(),
-    createQueryBuilder: jest.fn(),
+    save: vi.fn(),
+    delete: vi.fn(),
+    query: vi.fn(),
+    createQueryBuilder: vi.fn(),
   };
 
   const repRepo = {
-    increment: jest.fn(),
+    increment: vi.fn(),
   };
 
   const userQb = {
-    leftJoinAndSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    getOne: jest.fn(),
+    leftJoinAndSelect: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    andWhere: vi.fn().mockReturnThis(),
+    getOne: vi.fn(),
   };
   const userRepo = {
-    createQueryBuilder: jest.fn(() => userQb),
+    createQueryBuilder: vi.fn(() => userQb),
   };
 
   const makeAggQb = (sum: number) => ({
-    select: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    getSql: jest.fn().mockReturnValue('SELECT ...'),
-    getRawOne: jest.fn().mockResolvedValue({ sum }),
+    select: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    andWhere: vi.fn().mockReturnThis(),
+    getSql: vi.fn().mockReturnValue('SELECT ...'),
+    getRawOne: vi.fn().mockResolvedValue({ sum }),
   });
 
   const purchaseRepo = {
-    createQueryBuilder: jest.fn(),
+    createQueryBuilder: vi.fn(),
   };
 
   const portfolioRepo = {
-    createQueryBuilder: jest.fn(),
+    createQueryBuilder: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new ReactionPersistenceService();
 
-    (getRepository as jest.Mock).mockImplementation((model: unknown) => {
+    (getRepository as Mock).mockImplementation((model: unknown) => {
       if (model === Reaction) {
         return reactionRepo;
       }

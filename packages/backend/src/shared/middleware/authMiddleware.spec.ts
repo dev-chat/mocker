@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import { authMiddleware } from './authMiddleware';
 import { createSessionToken } from '../utils/session-token';
@@ -9,8 +10,8 @@ const makeReq = (authorization?: string): AuthReq => ({ headers: { authorization
 
 const makeRes = (): AuthRes => {
   const res = {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
   } as unknown as AuthRes;
   return res;
 };
@@ -19,7 +20,7 @@ describe('authMiddleware', () => {
   const OLD_ENV = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...OLD_ENV, SEARCH_AUTH_SECRET: 'test-secret' };
   });
 
@@ -31,7 +32,7 @@ describe('authMiddleware', () => {
     const token = createSessionToken('U1', 'T1');
     const req = makeReq(`Bearer ${token}`);
     const res = makeRes();
-    const next = jest.fn() as unknown as NextFunction;
+    const next = vi.fn() as unknown as NextFunction;
 
     authMiddleware(req as Request, res as Response, next);
 
@@ -44,7 +45,7 @@ describe('authMiddleware', () => {
     const token = createSessionToken('U1', '');
     const req = makeReq(`Bearer ${token}`);
     const res = makeRes();
-    const next = jest.fn() as unknown as NextFunction;
+    const next = vi.fn() as unknown as NextFunction;
 
     authMiddleware(req as Request, res as Response, next);
 
@@ -55,7 +56,7 @@ describe('authMiddleware', () => {
   it('returns 401 when Authorization header is missing', () => {
     const req = makeReq(undefined);
     const res = makeRes();
-    const next = jest.fn() as unknown as NextFunction;
+    const next = vi.fn() as unknown as NextFunction;
 
     authMiddleware(req as Request, res as Response, next);
 
@@ -66,7 +67,7 @@ describe('authMiddleware', () => {
   it('returns 401 when Authorization header does not start with Bearer', () => {
     const req = makeReq('Basic sometoken');
     const res = makeRes();
-    const next = jest.fn() as unknown as NextFunction;
+    const next = vi.fn() as unknown as NextFunction;
 
     authMiddleware(req as Request, res as Response, next);
 
@@ -77,7 +78,7 @@ describe('authMiddleware', () => {
   it('returns 401 for an invalid token', () => {
     const req = makeReq('Bearer invalid.token');
     const res = makeRes();
-    const next = jest.fn() as unknown as NextFunction;
+    const next = vi.fn() as unknown as NextFunction;
 
     authMiddleware(req as Request, res as Response, next);
 
@@ -92,7 +93,7 @@ describe('authMiddleware', () => {
     try {
       const req = makeReq('Bearer sometoken.withsig');
       const res = makeRes();
-      const next = jest.fn() as unknown as NextFunction;
+      const next = vi.fn() as unknown as NextFunction;
 
       authMiddleware(req as Request, res as Response, next);
 

@@ -1,3 +1,4 @@
+import { vi, it, describe, expect, beforeEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -9,67 +10,67 @@ const buildAiService = (): AIService => {
   const ai = new AIService();
 
   ai.redis = {
-    setInflight: jest.fn().mockResolvedValue('OK'),
-    setDailyRequests: jest.fn().mockResolvedValue('OK'),
-    getInflight: jest.fn().mockResolvedValue(null),
-    getDailyRequests: jest.fn().mockResolvedValue('0'),
-    removeInflight: jest.fn().mockResolvedValue(1),
-    decrementDailyRequests: jest.fn().mockResolvedValue('0'),
-    setParticipationInFlight: jest.fn().mockResolvedValue('OK'),
-    removeParticipationInFlight: jest.fn().mockResolvedValue(1),
-    setHasParticipated: jest.fn().mockResolvedValue('OK'),
-    getExtractionLock: jest.fn().mockResolvedValue(null),
-    setExtractionLock: jest.fn().mockResolvedValue('OK'),
+    setInflight: vi.fn().mockResolvedValue('OK'),
+    setDailyRequests: vi.fn().mockResolvedValue('OK'),
+    getInflight: vi.fn().mockResolvedValue(null),
+    getDailyRequests: vi.fn().mockResolvedValue('0'),
+    removeInflight: vi.fn().mockResolvedValue(1),
+    decrementDailyRequests: vi.fn().mockResolvedValue('0'),
+    setParticipationInFlight: vi.fn().mockResolvedValue('OK'),
+    removeParticipationInFlight: vi.fn().mockResolvedValue(1),
+    setHasParticipated: vi.fn().mockResolvedValue('OK'),
+    getExtractionLock: vi.fn().mockResolvedValue(null),
+    setExtractionLock: vi.fn().mockResolvedValue('OK'),
   } as unknown as AIService['redis'];
 
   ai.openAi = {
     responses: {
-      create: jest.fn(),
+      create: vi.fn(),
     },
   } as unknown as AIService['openAi'];
 
   ai.gemini = {
     models: {
-      generateContent: jest.fn(),
+      generateContent: vi.fn(),
     },
   } as unknown as AIService['gemini'];
 
   ai.memoryPersistenceService = {
-    getAllMemoriesForUsers: jest.fn().mockResolvedValue(new Map()),
-    saveMemories: jest.fn().mockResolvedValue([]),
-    reinforceMemory: jest.fn().mockResolvedValue(true),
-    deleteMemory: jest.fn().mockResolvedValue(true),
+    getAllMemoriesForUsers: vi.fn().mockResolvedValue(new Map()),
+    saveMemories: vi.fn().mockResolvedValue([]),
+    reinforceMemory: vi.fn().mockResolvedValue(true),
+    deleteMemory: vi.fn().mockResolvedValue(true),
   } as unknown as AIService['memoryPersistenceService'];
 
   ai.historyService = {
-    getHistory: jest.fn().mockResolvedValue([]),
-    getHistoryWithOptions: jest.fn().mockResolvedValue([]),
-    getLast24HoursForChannel: jest.fn().mockResolvedValue([]),
+    getHistory: vi.fn().mockResolvedValue([]),
+    getHistoryWithOptions: vi.fn().mockResolvedValue([]),
+    getLast24HoursForChannel: vi.fn().mockResolvedValue([]),
   } as unknown as AIService['historyService'];
 
   ai.webService = {
-    sendMessage: jest.fn().mockResolvedValue({ ok: true }),
-    setProfilePhoto: jest.fn().mockResolvedValue({ ok: true }),
+    sendMessage: vi.fn().mockResolvedValue({ ok: true }),
+    setProfilePhoto: vi.fn().mockResolvedValue({ ok: true }),
   } as unknown as AIService['webService'];
 
   ai.slackService = {
-    containsTag: jest.fn(),
-    isUserMentioned: jest.fn(),
+    containsTag: vi.fn(),
+    isUserMentioned: vi.fn(),
   } as unknown as AIService['slackService'];
 
   ai.muzzlePersistenceService = {
-    isUserMuzzled: jest.fn().mockResolvedValue(false),
+    isUserMuzzled: vi.fn().mockResolvedValue(false),
   } as unknown as AIService['muzzlePersistenceService'];
 
   ai.slackPersistenceService = {
-    getCustomPrompt: jest.fn().mockResolvedValue(null),
+    getCustomPrompt: vi.fn().mockResolvedValue(null),
   } as unknown as AIService['slackPersistenceService'];
 
   ai.aiServiceLogger = {
-    error: jest.fn(),
-    warn: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
   } as unknown as AIService['aiServiceLogger'];
 
   return ai;
@@ -79,7 +80,7 @@ describe('AIService', () => {
   let aiService: AIService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     aiService = buildAiService();
   });
 
@@ -102,11 +103,11 @@ describe('AIService', () => {
 
   describe('generateText', () => {
     it('tracks inflight state, calls OpenAI responses API, and sends output', async () => {
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      const createSpy = aiService.openAi.responses.create as Mock;
       createSpy.mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Generated text' }] }],
       });
-      const sendSpy = jest.spyOn(aiService, 'sendGptText').mockImplementation();
+      const sendSpy = vi.spyOn(aiService, 'sendGptText').mockImplementation();
 
       await aiService.generateText('U1', 'T1', 'C1', 'hello');
 
@@ -120,7 +121,7 @@ describe('AIService', () => {
     });
 
     it('decrements requests when OpenAI call fails', async () => {
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      const createSpy = aiService.openAi.responses.create as Mock;
       createSpy.mockRejectedValue(new Error('boom'));
 
       await expect(aiService.generateText('U1', 'T1', 'C1', 'hello')).rejects.toThrow('boom');
@@ -132,7 +133,7 @@ describe('AIService', () => {
 
   describe('generateImage', () => {
     it('sends generated image after writing it to disk', async () => {
-      const generateContentSpy = aiService.gemini.models.generateContent as jest.Mock;
+      const generateContentSpy = aiService.gemini.models.generateContent as Mock;
       generateContentSpy.mockResolvedValue({
         candidates: [
           {
@@ -143,10 +144,8 @@ describe('AIService', () => {
         ],
       });
 
-      const diskSpy = jest
-        .spyOn(aiService, 'writeToDiskAndReturnUrl')
-        .mockResolvedValue('https://muzzle.lol/image.png');
-      const sendSpy = jest.spyOn(aiService, 'sendImage').mockImplementation();
+      const diskSpy = vi.spyOn(aiService, 'writeToDiskAndReturnUrl').mockResolvedValue('https://muzzle.lol/image.png');
+      const sendSpy = vi.spyOn(aiService, 'sendImage').mockImplementation();
 
       await aiService.generateImage('U1', 'T1', 'C1', 'draw cat');
 
@@ -156,10 +155,10 @@ describe('AIService', () => {
     });
 
     it('logs and throws when gemini returns no image data', async () => {
-      (aiService.gemini.models.generateContent as jest.Mock).mockResolvedValue({
+      (aiService.gemini.models.generateContent as Mock).mockResolvedValue({
         candidates: [{ content: { parts: [] } }],
       });
-      const errSpy = jest.spyOn(aiService.aiServiceLogger, 'error');
+      const errSpy = vi.spyOn(aiService.aiServiceLogger, 'error');
 
       await expect(aiService.generateImage('U1', 'T1', 'C1', 'draw cat')).rejects.toThrow();
       expect(errSpy).toHaveBeenCalled();
@@ -200,17 +199,17 @@ describe('AIService', () => {
         'base64',
       );
 
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'A quote' }] }],
       });
-      (aiService.gemini.models.generateContent as jest.Mock).mockResolvedValue({
+      (aiService.gemini.models.generateContent as Mock).mockResolvedValue({
         candidates: [{ content: { parts: [{ inlineData: { data: validPngBuffer.toString('base64') } }] } }],
       });
-      jest
-        .spyOn(aiService as never, 'getMoonbeamReleaseChangelog' as never)
-        .mockResolvedValue('*Release changelog*\n- tightened auth');
+      vi.spyOn(aiService as never, 'getMoonbeamReleaseChangelog' as never).mockResolvedValue(
+        '*Release changelog*\n- tightened auth',
+      );
 
-      const diskSpy = jest
+      const diskSpy = vi
         .spyOn(aiService as never, 'writeImageBufferToDiskAndReturnUrl' as never)
         .mockResolvedValue('https://muzzle.lol/deploy.png');
 
@@ -230,8 +229,8 @@ describe('AIService', () => {
     });
 
     it('returns an unavailable changelog when no metadata source is available', async () => {
-      jest.spyOn(aiService as never, 'readReleaseMetadataFromDisk' as never).mockResolvedValue(null);
-      jest.spyOn(aiService as never, 'readReleaseMetadataFromGit' as never).mockResolvedValue(null);
+      vi.spyOn(aiService as never, 'readReleaseMetadataFromDisk' as never).mockResolvedValue(null);
+      vi.spyOn(aiService as never, 'readReleaseMetadataFromGit' as never).mockResolvedValue(null);
 
       await expect((aiService as never).getMoonbeamReleaseChangelog()).resolves.toBe(
         '*Release changelog*\n- Changelog unavailable for this deployment.',
@@ -239,7 +238,7 @@ describe('AIService', () => {
     });
 
     it('formats changelog entries without a previous sha', async () => {
-      jest.spyOn(aiService as never, 'readReleaseMetadataFromDisk' as never).mockResolvedValue({
+      vi.spyOn(aiService as never, 'readReleaseMetadataFromDisk' as never).mockResolvedValue({
         currentSha: 'current',
         previousSha: null,
         commits: [
@@ -254,7 +253,7 @@ describe('AIService', () => {
     });
 
     it('reads release metadata from disk after skipping invalid candidates', async () => {
-      const readFileSpy = jest
+      const readFileSpy = vi
         .spyOn(fs.promises, 'readFile')
         .mockRejectedValueOnce(new Error('missing'))
         .mockResolvedValueOnce('not json' as never)
@@ -292,10 +291,10 @@ describe('AIService', () => {
 
   describe('promptWithHistory', () => {
     it('fetches history and posts a prompt response', async () => {
-      (aiService.historyService.getHistory as jest.Mock).mockResolvedValue([
+      (aiService.historyService.getHistory as Mock).mockResolvedValue([
         { name: 'Jane', slackId: 'U2', message: 'Hi there' },
       ]);
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Response text' }] }],
       });
 
@@ -314,9 +313,9 @@ describe('AIService', () => {
     });
 
     it('warns when prompt response is empty', async () => {
-      (aiService.historyService.getHistory as jest.Mock).mockResolvedValue([]);
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({ output: [] });
-      const warnSpy = jest.spyOn(aiService.aiServiceLogger, 'warn');
+      (aiService.historyService.getHistory as Mock).mockResolvedValue([]);
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({ output: [] });
+      const warnSpy = vi.spyOn(aiService.aiServiceLogger, 'warn');
 
       await aiService.promptWithHistory({ user_id: 'U1', team_id: 'T1', channel_id: 'C1', text: 'Summarize' } as never);
 
@@ -324,11 +323,11 @@ describe('AIService', () => {
     });
 
     it('sends fallback DM if posting to channel fails', async () => {
-      (aiService.historyService.getHistory as jest.Mock).mockResolvedValue([]);
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.historyService.getHistory as Mock).mockResolvedValue([]);
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Response text' }] }],
       });
-      const send = aiService.webService.sendMessage as jest.Mock;
+      const send = aiService.webService.sendMessage as Mock;
       send.mockRejectedValueOnce(new Error('channel fail')).mockResolvedValueOnce({ ok: true });
 
       await aiService.promptWithHistory({ user_id: 'U1', team_id: 'T1', channel_id: 'C1', text: 'Summarize' } as never);
@@ -344,10 +343,10 @@ describe('AIService', () => {
 
   describe('handle', () => {
     it('participates when Moonbeam is tagged and user is not muzzled', async () => {
-      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
-      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
-      (aiService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(false);
-      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
+      (aiService.slackService.containsTag as Mock).mockReturnValue(true);
+      (aiService.slackService.isUserMentioned as Mock).mockReturnValue(true);
+      (aiService.muzzlePersistenceService.isUserMuzzled as Mock).mockResolvedValue(false);
+      const participateSpy = vi.spyOn(aiService, 'participate').mockResolvedValue();
 
       await aiService.handle({
         team_id: 'T1',
@@ -362,10 +361,10 @@ describe('AIService', () => {
     });
 
     it('does not participate if requesting user is muzzled', async () => {
-      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(true);
-      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(true);
-      (aiService.muzzlePersistenceService.isUserMuzzled as jest.Mock).mockResolvedValue(true);
-      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
+      (aiService.slackService.containsTag as Mock).mockReturnValue(true);
+      (aiService.slackService.isUserMentioned as Mock).mockReturnValue(true);
+      (aiService.muzzlePersistenceService.isUserMuzzled as Mock).mockResolvedValue(true);
+      const participateSpy = vi.spyOn(aiService, 'participate').mockResolvedValue();
 
       await aiService.handle({
         team_id: 'T1',
@@ -380,9 +379,9 @@ describe('AIService', () => {
     });
 
     it('does not participate if Moonbeam is not mentioned', async () => {
-      (aiService.slackService.containsTag as jest.Mock).mockReturnValue(false);
-      (aiService.slackService.isUserMentioned as jest.Mock).mockReturnValue(false);
-      const participateSpy = jest.spyOn(aiService, 'participate').mockResolvedValue();
+      (aiService.slackService.containsTag as Mock).mockReturnValue(false);
+      (aiService.slackService.isUserMentioned as Mock).mockReturnValue(false);
+      const participateSpy = vi.spyOn(aiService, 'participate').mockResolvedValue();
 
       await aiService.handle({
         team_id: 'T1',
@@ -399,7 +398,7 @@ describe('AIService', () => {
 
   describe('decrementDaiyRequests', () => {
     it('decrements daily requests for user', async () => {
-      (aiService.redis.decrementDailyRequests as jest.Mock).mockResolvedValue('4');
+      (aiService.redis.decrementDailyRequests as Mock).mockResolvedValue('4');
 
       const result = await aiService.decrementDaiyRequests('U1', 'T1');
 
@@ -408,7 +407,7 @@ describe('AIService', () => {
     });
 
     it('returns null when decrement fails', async () => {
-      (aiService.redis.decrementDailyRequests as jest.Mock).mockResolvedValue(null);
+      (aiService.redis.decrementDailyRequests as Mock).mockResolvedValue(null);
 
       const result = await aiService.decrementDaiyRequests('U1', 'T1');
 
@@ -418,7 +417,7 @@ describe('AIService', () => {
 
   describe('isAlreadyInflight', () => {
     it('returns true if request is inflight', async () => {
-      (aiService.redis.getInflight as jest.Mock) = jest.fn().mockResolvedValue('some-request-id');
+      (aiService.redis.getInflight as Mock) = vi.fn().mockResolvedValue('some-request-id');
 
       const result = await aiService.isAlreadyInflight('U1', 'T1');
 
@@ -426,7 +425,7 @@ describe('AIService', () => {
     });
 
     it('returns false if no inflight request', async () => {
-      (aiService.redis.getInflight as jest.Mock) = jest.fn().mockResolvedValue(null);
+      (aiService.redis.getInflight as Mock) = vi.fn().mockResolvedValue(null);
 
       const result = await aiService.isAlreadyInflight('U1', 'T1');
 
@@ -436,7 +435,7 @@ describe('AIService', () => {
 
   describe('isAlreadyAtMaxRequests', () => {
     it('returns true if daily requests at max', async () => {
-      (aiService.redis.getDailyRequests as jest.Mock) = jest.fn().mockResolvedValue('5');
+      (aiService.redis.getDailyRequests as Mock) = vi.fn().mockResolvedValue('5');
 
       const result = await aiService.isAlreadyAtMaxRequests('U1', 'T1');
 
@@ -444,7 +443,7 @@ describe('AIService', () => {
     });
 
     it('returns false if under max requests', async () => {
-      (aiService.redis.getDailyRequests as jest.Mock) = jest.fn().mockResolvedValue('3');
+      (aiService.redis.getDailyRequests as Mock) = vi.fn().mockResolvedValue('3');
 
       const result = await aiService.isAlreadyAtMaxRequests('U1', 'T1');
 
@@ -452,7 +451,7 @@ describe('AIService', () => {
     });
 
     it('returns false for zero requests', async () => {
-      (aiService.redis.getDailyRequests as jest.Mock) = jest.fn().mockResolvedValue('0');
+      (aiService.redis.getDailyRequests as Mock) = vi.fn().mockResolvedValue('0');
 
       const result = await aiService.isAlreadyAtMaxRequests('U1', 'T1');
 
@@ -462,7 +461,7 @@ describe('AIService', () => {
 
   describe('generateCorpoSpeak', () => {
     it('generates corporate speak text', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Synergistic solutions' }] }],
       });
 
@@ -473,13 +472,13 @@ describe('AIService', () => {
     });
 
     it('throws if OpenAI call fails', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockRejectedValue(new Error('API error'));
+      (aiService.openAi.responses.create as Mock).mockRejectedValue(new Error('API error'));
 
       await expect(aiService.generateCorpoSpeak('hire more people')).rejects.toThrow('API error');
     });
 
     it('returns undefined if response structure is unexpected', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [],
       });
 
@@ -495,13 +494,13 @@ describe('AIService', () => {
     });
 
     it('sends participation response and sets participation marker', async () => {
-      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([
         { slackId: 'U2', name: 'Jane', message: 'Hello' },
       ]);
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Participation response' }] }],
       });
-      (aiService.webService.sendMessage as jest.Mock).mockResolvedValue({ ok: true });
+      (aiService.webService.sendMessage as Mock).mockResolvedValue({ ok: true });
 
       await aiService.participate('T1', 'C1', '<@moonbeam> hi');
       await Promise.resolve();
@@ -517,8 +516,8 @@ describe('AIService', () => {
     });
 
     it('throws when participate model call fails', async () => {
-      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
-      (aiService.openAi.responses.create as jest.Mock).mockRejectedValue(new Error('model fail'));
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([]);
+      (aiService.openAi.responses.create as Mock).mockRejectedValue(new Error('model fail'));
 
       await expect(aiService.participate('T1', 'C1', 'hi')).rejects.toThrow('model fail');
       expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
@@ -527,9 +526,9 @@ describe('AIService', () => {
 
   describe('participate with custom prompt', () => {
     it('uses custom prompt as system instructions when userId is provided and user has a custom prompt', async () => {
-      (aiService.slackPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue('always respond in haiku');
-      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      (aiService.slackPersistenceService.getCustomPrompt as Mock).mockResolvedValue('always respond in haiku');
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([]);
+      const createSpy = aiService.openAi.responses.create as Mock;
       createSpy.mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'A haiku response' }] }],
       });
@@ -541,8 +540,8 @@ describe('AIService', () => {
     });
 
     it('uses MOONBEAM_SYSTEM_INSTRUCTIONS when userId is not provided', async () => {
-      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([]);
+      const createSpy = aiService.openAi.responses.create as Mock;
       createSpy.mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Default response' }] }],
       });
@@ -555,9 +554,9 @@ describe('AIService', () => {
     });
 
     it('uses MOONBEAM_SYSTEM_INSTRUCTIONS when user has no custom prompt', async () => {
-      (aiService.slackPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(null);
-      (aiService.historyService.getHistoryWithOptions as jest.Mock).mockResolvedValue([]);
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      (aiService.slackPersistenceService.getCustomPrompt as Mock).mockResolvedValue(null);
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([]);
+      const createSpy = aiService.openAi.responses.create as Mock;
       createSpy.mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Default response' }] }],
       });
@@ -571,8 +570,8 @@ describe('AIService', () => {
 
   describe('promptWithHistory with custom prompt', () => {
     it('prepends custom prompt to history instructions when user has one set', async () => {
-      (aiService.slackPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue('always be brief');
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      (aiService.slackPersistenceService.getCustomPrompt as Mock).mockResolvedValue('always be brief');
+      const createSpy = aiService.openAi.responses.create as Mock;
       createSpy.mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Brief reply' }] }],
       });
@@ -585,8 +584,8 @@ describe('AIService', () => {
     });
 
     it('uses only history instructions when no custom prompt is set', async () => {
-      (aiService.slackPersistenceService.getCustomPrompt as jest.Mock).mockResolvedValue(null);
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      (aiService.slackPersistenceService.getCustomPrompt as Mock).mockResolvedValue(null);
+      const createSpy = aiService.openAi.responses.create as Mock;
       createSpy.mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'Reply' }] }],
       });
@@ -601,7 +600,7 @@ describe('AIService', () => {
 
   describe('generateText error cases', () => {
     it('handles missing response output gracefully', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: undefined,
       });
 
@@ -609,7 +608,7 @@ describe('AIService', () => {
     });
 
     it('handles empty output array', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [],
       });
 
@@ -619,13 +618,13 @@ describe('AIService', () => {
 
   describe('generateImage error cases', () => {
     it('handles Gemini API errors', async () => {
-      (aiService.gemini.models.generateContent as jest.Mock).mockRejectedValue(new Error('Gemini error'));
+      (aiService.gemini.models.generateContent as Mock).mockRejectedValue(new Error('Gemini error'));
 
       await expect(aiService.generateImage('U1', 'T1', 'C1', 'draw cat')).rejects.toThrow();
     });
 
     it('handles missing image data in response', async () => {
-      (aiService.gemini.models.generateContent as jest.Mock).mockResolvedValue({
+      (aiService.gemini.models.generateContent as Mock).mockResolvedValue({
         candidates: [{ content: { parts: [] } }],
       });
 
@@ -635,7 +634,7 @@ describe('AIService', () => {
 
   describe('promptWithHistory error cases', () => {
     it('handles history fetch errors', async () => {
-      (aiService.historyService.getHistory as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (aiService.historyService.getHistory as Mock).mockRejectedValue(new Error('DB error'));
 
       await expect(
         aiService.promptWithHistory({
@@ -648,8 +647,8 @@ describe('AIService', () => {
     });
 
     it('handles OpenAI errors in promptWithHistory', async () => {
-      (aiService.historyService.getHistory as jest.Mock).mockResolvedValue([]);
-      (aiService.openAi.responses.create as jest.Mock).mockRejectedValue(new Error('OpenAI error'));
+      (aiService.historyService.getHistory as Mock).mockResolvedValue([]);
+      (aiService.openAi.responses.create as Mock).mockRejectedValue(new Error('OpenAI error'));
 
       await expect(
         aiService.promptWithHistory({
@@ -763,7 +762,7 @@ describe('AIService', () => {
     });
 
     it('selects relevant memories from model output ids', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '[1,3]' }] }],
       });
       const map = new Map([
@@ -777,7 +776,7 @@ describe('AIService', () => {
     });
 
     it('returns empty memory selection when model response is malformed', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '{not-json}' }] }],
       });
 
@@ -789,7 +788,7 @@ describe('AIService', () => {
     });
 
     it('returns empty array without calling model when memoriesMap is empty', async () => {
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      const createSpy = aiService.openAi.responses.create as Mock;
 
       const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories('conv', new Map());
 
@@ -798,7 +797,7 @@ describe('AIService', () => {
     });
 
     it('passes conversation as input and memories as instructions (not duplicated)', async () => {
-      const createSpy = aiService.openAi.responses.create as jest.Mock;
+      const createSpy = aiService.openAi.responses.create as Mock;
       createSpy.mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '[1]' }] }],
       });
@@ -815,8 +814,8 @@ describe('AIService', () => {
     });
 
     it('returns empty array and warns when model call throws', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockRejectedValue(new Error('model error'));
-      const warnSpy = jest.spyOn(aiService.aiServiceLogger, 'warn');
+      (aiService.openAi.responses.create as Mock).mockRejectedValue(new Error('model error'));
+      const warnSpy = vi.spyOn(aiService.aiServiceLogger, 'warn');
 
       const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories(
         'conv',
@@ -828,7 +827,7 @@ describe('AIService', () => {
     });
 
     it('returns empty array when model returns non-array JSON', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '{"ids":[1,2]}' }] }],
       });
 
@@ -841,7 +840,7 @@ describe('AIService', () => {
     });
 
     it('returns empty array when model returns empty array', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
       });
 
@@ -854,7 +853,7 @@ describe('AIService', () => {
     });
 
     it('filters out IDs from model response that do not exist in memoriesMap', async () => {
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: '[1, 99]' }] }],
       });
       const map = new Map([['U1', [{ id: 1, slackId: 'U1', content: 'likes tea' }]]]);
@@ -866,12 +865,12 @@ describe('AIService', () => {
     });
 
     it('fetches memory context end-to-end', async () => {
-      (aiService.memoryPersistenceService.getAllMemoriesForUsers as jest.Mock).mockResolvedValue(
+      (aiService.memoryPersistenceService.getAllMemoriesForUsers as Mock).mockResolvedValue(
         new Map([['U1', [{ id: 1, slackId: 'U1', content: 'likes tea' }]]]),
       );
-      jest
-        .spyOn(aiService as unknown as AiServicePrivate, 'selectRelevantMemories')
-        .mockResolvedValue([{ id: 1, slackId: 'U1', content: 'likes tea' }]);
+      vi.spyOn(aiService as unknown as AiServicePrivate, 'selectRelevantMemories').mockResolvedValue([
+        { id: 1, slackId: 'U1', content: 'likes tea' },
+      ]);
 
       const context = await (aiService as unknown as AiServicePrivate).fetchMemoryContext(
         ['U1'],
@@ -884,8 +883,8 @@ describe('AIService', () => {
     });
 
     it('extractMemories returns early when lock exists', async () => {
-      (aiService.redis.getExtractionLock as jest.Mock).mockResolvedValue('1');
-      const infoSpy = jest.spyOn(aiService.aiServiceLogger, 'info');
+      (aiService.redis.getExtractionLock as Mock).mockResolvedValue('1');
+      const infoSpy = vi.spyOn(aiService.aiServiceLogger, 'info');
 
       await (aiService as unknown as AiServicePrivate).extractMemories('T1', 'C1', 'history', ['U1']);
 
@@ -893,8 +892,8 @@ describe('AIService', () => {
     });
 
     it('extractMemories handles NONE response', async () => {
-      (aiService.redis.getExtractionLock as jest.Mock).mockResolvedValue(null);
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.redis.getExtractionLock as Mock).mockResolvedValue(null);
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [{ type: 'message', content: [{ type: 'output_text', text: 'NONE' }] }],
       });
 
@@ -904,8 +903,8 @@ describe('AIService', () => {
     });
 
     it('extractMemories processes NEW, REINFORCE and EVOLVE modes', async () => {
-      (aiService.redis.getExtractionLock as jest.Mock).mockResolvedValue(null);
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.redis.getExtractionLock as Mock).mockResolvedValue(null);
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [
           {
             type: 'message',
@@ -931,9 +930,9 @@ describe('AIService', () => {
     });
 
     it('extractMemories skips malformed extraction items', async () => {
-      (aiService.redis.getExtractionLock as jest.Mock).mockResolvedValue(null);
-      const warnSpy = jest.spyOn(aiService.aiServiceLogger, 'warn');
-      (aiService.openAi.responses.create as jest.Mock).mockResolvedValue({
+      (aiService.redis.getExtractionLock as Mock).mockResolvedValue(null);
+      const warnSpy = vi.spyOn(aiService.aiServiceLogger, 'warn');
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
         output: [
           {
             type: 'message',
@@ -959,7 +958,7 @@ describe('AIService', () => {
 
   describe('extractMemoriesForChannel', () => {
     it('returns early when there are no messages in the last 24 hours', async () => {
-      (aiService.historyService.getLast24HoursForChannel as jest.Mock).mockResolvedValue([]);
+      (aiService.historyService.getLast24HoursForChannel as Mock).mockResolvedValue([]);
 
       await aiService.extractMemoriesForChannel('T1', 'C1');
 
@@ -967,7 +966,7 @@ describe('AIService', () => {
     });
 
     it('returns early when there are no non-Moonbeam participants', async () => {
-      (aiService.historyService.getLast24HoursForChannel as jest.Mock).mockResolvedValue([
+      (aiService.historyService.getLast24HoursForChannel as Mock).mockResolvedValue([
         { slackId: MOONBEAM_SLACK_ID, name: 'Moonbeam', message: 'Hello there' },
       ]);
 
@@ -977,11 +976,11 @@ describe('AIService', () => {
     });
 
     it('calls extractMemories with formatted history when valid messages exist', async () => {
-      (aiService.historyService.getLast24HoursForChannel as jest.Mock).mockResolvedValue([
+      (aiService.historyService.getLast24HoursForChannel as Mock).mockResolvedValue([
         { slackId: 'U1', name: 'Alice', message: 'Hello' },
         { slackId: MOONBEAM_SLACK_ID, name: 'Moonbeam', message: 'Hi Alice' },
       ]);
-      (aiService.redis.getExtractionLock as jest.Mock).mockResolvedValue('1');
+      (aiService.redis.getExtractionLock as Mock).mockResolvedValue('1');
 
       await aiService.extractMemoriesForChannel('T1', 'C1');
 
@@ -989,7 +988,7 @@ describe('AIService', () => {
     });
 
     it('propagates errors from getLast24HoursForChannel', async () => {
-      (aiService.historyService.getLast24HoursForChannel as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (aiService.historyService.getLast24HoursForChannel as Mock).mockRejectedValue(new Error('DB error'));
 
       await expect(aiService.extractMemoriesForChannel('T1', 'C1')).rejects.toThrow('DB error');
     });
@@ -997,7 +996,7 @@ describe('AIService', () => {
 
   describe('send helpers', () => {
     it('sendImage posts image block and fallback on slack error', async () => {
-      const sendMock = aiService.webService.sendMessage as jest.Mock;
+      const sendMock = aiService.webService.sendMessage as Mock;
       sendMock.mockRejectedValueOnce(new Error('slack fail')).mockResolvedValueOnce({ ok: true });
 
       aiService.sendImage('https://img', 'U1', 'T1', 'C1', 'draw cat');
@@ -1009,7 +1008,7 @@ describe('AIService', () => {
     });
 
     it('sendGptText posts markdown and fallback on slack error', async () => {
-      const sendMock = aiService.webService.sendMessage as jest.Mock;
+      const sendMock = aiService.webService.sendMessage as Mock;
       sendMock.mockRejectedValueOnce(new Error('slack fail')).mockResolvedValueOnce({ ok: true });
 
       aiService.sendGptText('hello world', 'U1', 'T1', 'C1', 'query');

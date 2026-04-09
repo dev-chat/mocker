@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const getRep = jest.fn().mockResolvedValue('rep-value');
+const getRep = vi.fn().mockResolvedValue('rep-value');
 
-jest.mock('./reaction.report.service', () => ({
-  ReactionReportService: jest.fn().mockImplementation(() => ({
+vi.mock('./reaction.report.service', async () => ({
+  ReactionReportService: classMock(() => ({
     getRep,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -20,7 +21,7 @@ describe('reactionController', () => {
   app.use(express.json());
   app.use('/', reactionController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('returns rep value', async () => {
     getRep.mockResolvedValueOnce('rep-value');

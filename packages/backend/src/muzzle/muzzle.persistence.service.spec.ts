@@ -1,13 +1,14 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { SINGLE_DAY_MS } from '../counter/constants';
 import { MuzzlePersistenceService } from './muzzle.persistence.service';
 import { ABUSE_PENALTY_TIME, MAX_MUZZLES, MuzzleRedisTypeEnum } from './constants';
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
@@ -15,27 +16,27 @@ describe('MuzzlePersistenceService', () => {
   let service: MuzzlePersistenceService;
 
   const repo = {
-    save: jest.fn(),
-    increment: jest.fn(),
-    query: jest.fn(),
+    save: vi.fn(),
+    increment: vi.fn(),
+    query: vi.fn(),
   };
 
   const redis = {
-    setValue: jest.fn(),
-    setValueWithExpire: jest.fn(),
-    getValue: jest.fn(),
-    removeKey: jest.fn(),
-    getTimeRemaining: jest.fn(),
-    expire: jest.fn(),
+    setValue: vi.fn(),
+    setValueWithExpire: vi.fn(),
+    getValue: vi.fn(),
+    removeKey: vi.fn(),
+    getTimeRemaining: vi.fn(),
+    expire: vi.fn(),
   };
 
   const storePersistenceService = {
-    getActiveItems: jest.fn(),
-    setItemKill: jest.fn(),
+    getActiveItems: vi.fn(),
+    setItemKill: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new MuzzlePersistenceService();
     type MuzzlePersistenceDependencies = MuzzlePersistenceService & {
       redis: typeof redis;
@@ -50,7 +51,7 @@ describe('MuzzlePersistenceService', () => {
     const dependencyTarget = service as unknown as MuzzlePersistenceDependencies;
     dependencyTarget.redis = redis;
     dependencyTarget.storePersistenceService = storePersistenceService;
-    (getRepository as jest.Mock).mockReturnValue(repo);
+    (getRepository as Mock).mockReturnValue(repo);
   });
 
   it('adds and removes perma muzzle keys', async () => {
@@ -69,7 +70,7 @@ describe('MuzzlePersistenceService', () => {
   it('adds muzzle, sets redis keys, requestor count, and item kills', async () => {
     storePersistenceService.getActiveItems.mockResolvedValue(['1', '2']);
     repo.save.mockResolvedValue({ id: 13 });
-    const countSpy = jest.spyOn(service, 'setRequestorCount').mockResolvedValue(undefined);
+    const countSpy = vi.spyOn(service, 'setRequestorCount').mockResolvedValue(undefined);
 
     const out = await service.addMuzzle('U1', 'U2', 'T1', 10000);
 
@@ -83,7 +84,7 @@ describe('MuzzlePersistenceService', () => {
   it('adds defensive item kill and skips requestor count when defensive item provided', async () => {
     storePersistenceService.getActiveItems.mockResolvedValue([]);
     repo.save.mockResolvedValue({ id: 14 });
-    const countSpy = jest.spyOn(service, 'setRequestorCount').mockResolvedValue(undefined);
+    const countSpy = vi.spyOn(service, 'setRequestorCount').mockResolvedValue(undefined);
 
     await service.addMuzzle('U1', 'U2', 'T1', 10000, '99');
 
@@ -123,7 +124,7 @@ describe('MuzzlePersistenceService', () => {
   it('adds muzzle time when muzzled id exists', async () => {
     redis.getValue.mockResolvedValue('12');
     redis.getTimeRemaining.mockResolvedValue(10);
-    const incSpy = jest.spyOn(service, 'incrementMuzzleTime').mockResolvedValue({ affected: 1 } as never);
+    const incSpy = vi.spyOn(service, 'incrementMuzzleTime').mockResolvedValue({ affected: 1 } as never);
 
     await service.addMuzzleTime('U1', 'T1', 5000);
 
@@ -176,9 +177,9 @@ describe('MuzzlePersistenceService', () => {
     expect(repo.increment).toHaveBeenCalledWith({ id: 1 }, 'wordsSuppressed', 3);
     expect(repo.increment).toHaveBeenCalledWith({ id: 1 }, 'charactersSuppressed', 10);
 
-    const msgSpy = jest.spyOn(service, 'incrementMessageSuppressions').mockResolvedValue({ affected: 1 } as never);
-    const wordSpy = jest.spyOn(service, 'incrementWordSuppressions').mockResolvedValue({ affected: 1 } as never);
-    const charSpy = jest.spyOn(service, 'incrementCharacterSuppressions').mockResolvedValue({ affected: 1 } as never);
+    const msgSpy = vi.spyOn(service, 'incrementMessageSuppressions').mockResolvedValue({ affected: 1 } as never);
+    const wordSpy = vi.spyOn(service, 'incrementWordSuppressions').mockResolvedValue({ affected: 1 } as never);
+    const charSpy = vi.spyOn(service, 'incrementCharacterSuppressions').mockResolvedValue({ affected: 1 } as never);
 
     service.trackDeletedMessage(7, 'hello world');
     expect(msgSpy).toHaveBeenCalledWith(7);

@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const walkieTalkie = jest.fn();
+const walkieTalkie = vi.fn();
 
-jest.mock('./walkie.service', () => ({
-  WalkieService: jest.fn().mockImplementation(() => ({
+vi.mock('./walkie.service', async () => ({
+  WalkieService: classMock(() => ({
     walkieTalkie,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -20,7 +21,7 @@ describe('walkieController', () => {
   app.use(express.json());
   app.use('/', walkieController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('handles post and calls walkie service', async () => {
     const body = { user_id: 'U1', team_id: 'T1', text: 'hello' };

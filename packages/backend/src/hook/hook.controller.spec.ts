@@ -1,14 +1,17 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const sendMessage = jest.fn().mockResolvedValue({ ok: true });
-const info = jest.fn();
+const { sendMessage, info } = vi.hoisted(() => ({
+  sendMessage: vi.fn().mockResolvedValue({ ok: true }),
+  info: vi.fn(),
+}));
 
-jest.mock('../shared/services/web/web.service', () => ({
-  WebService: jest.fn().mockImplementation(() => ({
+vi.mock('../shared/services/web/web.service', async () => ({
+  WebService: classMock(() => ({
     sendMessage,
     logger: {
-      child: jest.fn().mockReturnValue({ info }),
+      child: vi.fn().mockReturnValue({ info }),
     },
   })),
 }));
@@ -20,7 +23,7 @@ describe('hookController', () => {
   app.use(express.json());
   app.use('/', hookController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('rejects invalid payload', async () => {
     await request(app).post('/').send({}).expect(400);

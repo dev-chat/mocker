@@ -21,7 +21,7 @@ beforeEach(() => {
 
 describe('useDashboard', () => {
   it('starts in loading state with null data and no error', () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => mockData });
+    mockFetch.mockReturnValue(new Promise(() => {}));
     const { result } = renderHook(() => useDashboard(vi.fn(), 'weekly'));
     expect(result.current.isLoading).toBe(true);
     expect(result.current.data).toBeNull();

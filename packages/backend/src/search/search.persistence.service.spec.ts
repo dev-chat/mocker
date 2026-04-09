@@ -1,24 +1,25 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { SearchPersistenceService } from './search.persistence.service';
 import { SlackChannel } from '../shared/db/models/SlackChannel';
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
 describe('SearchPersistenceService', () => {
   let service: SearchPersistenceService;
-  const query = jest.fn();
-  const find = jest.fn();
+  const query = vi.fn();
+  const find = vi.fn();
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     service = new SearchPersistenceService();
-    (getRepository as jest.Mock).mockReturnValue({ query, find });
+    (getRepository as Mock).mockReturnValue({ query, find });
     find.mockResolvedValue([]);
     // Default: count query returns 0 total, data query returns empty rows,
     // and any subsequent mention-resolution query also returns empty rows.
@@ -28,10 +29,10 @@ describe('SearchPersistenceService', () => {
   });
 
   it('gets and de-duplicates users/channels for search filters', async () => {
-    const userFind = jest.fn().mockResolvedValue([{ name: 'alice' }, { name: 'alice' }, { name: 'bob' }]);
-    const channelFind = jest.fn().mockResolvedValue([{ name: 'general' }, { name: 'random' }, { name: 'general' }]);
+    const userFind = vi.fn().mockResolvedValue([{ name: 'alice' }, { name: 'alice' }, { name: 'bob' }]);
+    const channelFind = vi.fn().mockResolvedValue([{ name: 'general' }, { name: 'random' }, { name: 'general' }]);
 
-    (getRepository as jest.Mock).mockReturnValueOnce({ find: userFind }).mockReturnValueOnce({ find: channelFind });
+    (getRepository as Mock).mockReturnValueOnce({ find: userFind }).mockReturnValueOnce({ find: channelFind });
 
     const result = await service.getSearchFilters('T1');
 
@@ -48,8 +49,8 @@ describe('SearchPersistenceService', () => {
     const result = await service.searchMessages({ teamId: 'T1' });
 
     // calls[0] = count query, calls[1] = data query
-    const [countSql, countParams] = (query as jest.Mock).mock.calls[0] as [string, unknown[]];
-    const [dataSql, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [countSql, countParams] = (query as Mock).mock.calls[0] as [string, unknown[]];
+    const [dataSql, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
 
     expect(countSql).toContain("message.message != ''");
     expect(countSql).toContain('message.teamId = ?');
@@ -69,10 +70,10 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', userName: 'alice' });
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams).toEqual(['T1', 'T1', '%alice%', 100, 0]);
 
-    const [countSql] = (query as jest.Mock).mock.calls[0] as [string, unknown[]];
+    const [countSql] = (query as Mock).mock.calls[0] as [string, unknown[]];
     expect(countSql).toContain('slack_user.name LIKE ?');
   });
 
@@ -81,11 +82,11 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', channel: 'general' });
 
-    const [countSql, countParams] = (query as jest.Mock).mock.calls[0] as [string, unknown[]];
+    const [countSql, countParams] = (query as Mock).mock.calls[0] as [string, unknown[]];
     expect(countSql).toContain('(message.channel LIKE ? OR slack_channel.name LIKE ?)');
     expect(countParams).toEqual(['T1', 'T1', '%general%', '%general%']);
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams).toEqual(['T1', 'T1', '%general%', '%general%', 100, 0]);
   });
 
@@ -94,11 +95,11 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', content: 'hello' });
 
-    const [countSql, countParams] = (query as jest.Mock).mock.calls[0] as [string, unknown[]];
+    const [countSql, countParams] = (query as Mock).mock.calls[0] as [string, unknown[]];
     expect(countSql).toContain('message.message LIKE ?');
     expect(countParams).toEqual(['T1', 'T1', '%hello%']);
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams).toEqual(['T1', 'T1', '%hello%', 100, 0]);
   });
 
@@ -107,13 +108,13 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', userName: 'alice', channel: 'general', content: 'hello' });
 
-    const [countSql, countParams] = (query as jest.Mock).mock.calls[0] as [string, unknown[]];
+    const [countSql, countParams] = (query as Mock).mock.calls[0] as [string, unknown[]];
     expect(countSql).toContain('slack_user.name LIKE ?');
     expect(countSql).toContain('(message.channel LIKE ? OR slack_channel.name LIKE ?)');
     expect(countSql).toContain('message.message LIKE ?');
     expect(countParams).toEqual(['T1', 'T1', '%alice%', '%general%', '%general%', '%hello%']);
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams).toEqual(['T1', 'T1', '%alice%', '%general%', '%general%', '%hello%', 100, 0]);
   });
 
@@ -122,7 +123,7 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', limit: 25 });
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams).toEqual(['T1', 'T1', 25, 0]);
   });
 
@@ -131,7 +132,7 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', limit: 9999 });
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams[dataParams.length - 2]).toBe(1000);
   });
 
@@ -140,7 +141,7 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', limit: 0 });
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams[dataParams.length - 2]).toBe(100);
   });
 
@@ -149,7 +150,7 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', limit: NaN });
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams[dataParams.length - 2]).toBe(100);
   });
 
@@ -158,7 +159,7 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', offset: 25 });
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams[dataParams.length - 1]).toBe(25);
   });
 
@@ -167,7 +168,7 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1' });
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams[dataParams.length - 1]).toBe(0);
   });
 
@@ -176,7 +177,7 @@ describe('SearchPersistenceService', () => {
 
     await service.searchMessages({ teamId: 'T1', offset: -10 });
 
-    const [, dataParams] = (query as jest.Mock).mock.calls[1] as [string, unknown[]];
+    const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams[dataParams.length - 1]).toBe(0);
   });
 
@@ -208,7 +209,7 @@ describe('SearchPersistenceService', () => {
 
     expect(result.mentions).toEqual({ U123: 'alice', C456: 'general' });
 
-    const [mentionSql, mentionParams] = (query as jest.Mock).mock.calls[2] as [string, unknown[]];
+    const [mentionSql, mentionParams] = (query as Mock).mock.calls[2] as [string, unknown[]];
     expect(mentionSql).toContain('UNION ALL');
     expect(mentionSql).toContain('slack_user');
     expect(mentionSql).toContain('slack_channel');
@@ -230,7 +231,7 @@ describe('SearchPersistenceService', () => {
 
     expect(result.mentions).toEqual({ U123: 'alice' });
     // Third query call should only contain one occurrence of U123
-    const [mentionSql, mentionParams] = (query as jest.Mock).mock.calls[2] as [string, unknown[]];
+    const [mentionSql, mentionParams] = (query as Mock).mock.calls[2] as [string, unknown[]];
     expect(mentionParams.filter((p) => p === 'U123')).toHaveLength(1);
     expect(mentionSql).not.toContain('UNION ALL');
   });
@@ -266,7 +267,7 @@ describe('SearchPersistenceService', () => {
     const result = await service.searchMessages({ teamId: 'T1' });
 
     expect(result.mentions).toEqual({ U111: 'alice' });
-    const [mentionSql] = (query as jest.Mock).mock.calls[2] as [string, unknown[]];
+    const [mentionSql] = (query as Mock).mock.calls[2] as [string, unknown[]];
     expect(mentionSql).toContain('slack_user');
     expect(mentionSql).not.toContain('UNION ALL');
   });
@@ -284,7 +285,7 @@ describe('SearchPersistenceService', () => {
 
     expect(result.mentions).toEqual({ U111: 'alice', C222: 'random' });
     expect(query).toHaveBeenCalledTimes(3);
-    const [mentionSql] = (query as jest.Mock).mock.calls[2] as [string, unknown[]];
+    const [mentionSql] = (query as Mock).mock.calls[2] as [string, unknown[]];
     expect(mentionSql).toContain('UNION ALL');
   });
 });

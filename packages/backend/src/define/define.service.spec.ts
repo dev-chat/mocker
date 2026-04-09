@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import type { Definition } from '../shared/models/define/define-models';
 import { DefineService } from './define.service';
 import * as axios from 'axios';
 
-jest.mock('axios');
-jest.mock('../shared/services/web/web.service', () => ({
-  WebService: jest.fn().mockImplementation(() => ({
-    sendMessage: jest.fn().mockResolvedValue({ ok: true }),
+vi.mock('axios');
+vi.mock('../shared/services/web/web.service', async () => ({
+  WebService: classMock(() => ({
+    sendMessage: vi.fn().mockResolvedValue({ ok: true }),
   })),
 }));
 
@@ -79,10 +80,10 @@ const testArray: Definition[] = [
 
 describe('DefineService', () => {
   let defineService: DefineService;
-  let mockWebService: { sendMessage: jest.Mock };
+  let mockWebService: { sendMessage: Mock };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     defineService = new DefineService();
     mockWebService = defineService.webService;
   });
@@ -119,7 +120,7 @@ describe('DefineService', () => {
       const mockData = {
         list: testArray.slice(0, 3),
       };
-      (axios.default.get as jest.Mock).mockResolvedValue({
+      (axios.default.get as Mock).mockResolvedValue({
         data: mockData,
       });
 
@@ -131,7 +132,7 @@ describe('DefineService', () => {
 
     it('should format word with spaces correctly', async () => {
       const mockData = { list: [] };
-      (axios.default.get as jest.Mock).mockResolvedValue({
+      (axios.default.get as Mock).mockResolvedValue({
         data: mockData,
       });
 
@@ -141,20 +142,20 @@ describe('DefineService', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      (axios.default.get as jest.Mock).mockRejectedValue(new Error('Network error'));
+      (axios.default.get as Mock).mockRejectedValue(new Error('Network error'));
 
       await expect(defineService.define('test', 'U123', 'C123')).rejects.toThrow('Network error');
     });
 
     it('should handle empty definitions list', async () => {
       const mockData = { list: [] };
-      (axios.default.get as jest.Mock).mockResolvedValue({
+      (axios.default.get as Mock).mockResolvedValue({
         data: mockData,
       });
 
       await defineService.define('test', 'U123', 'C123');
 
-      const blocks = (mockWebService.sendMessage as jest.Mock).mock.calls[0][2];
+      const blocks = (mockWebService.sendMessage as Mock).mock.calls[0][2];
       expect(blocks).toContainEqual(
         expect.objectContaining({
           text: expect.objectContaining({
@@ -166,7 +167,7 @@ describe('DefineService', () => {
 
     it('should handle webService.sendMessage errors', async () => {
       const mockData = { list: testArray.slice(0, 1) };
-      (axios.default.get as jest.Mock).mockResolvedValue({
+      (axios.default.get as Mock).mockResolvedValue({
         data: mockData,
       });
       mockWebService.sendMessage.mockRejectedValue(new Error('Slack error'));

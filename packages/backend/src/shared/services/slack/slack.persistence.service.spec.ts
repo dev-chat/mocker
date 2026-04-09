@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { SlackPersistenceService } from './slack.persistence.service';
 import { SlackChannel } from '../../../shared/db/models/SlackChannel';
@@ -11,11 +12,11 @@ type SlackPersistenceDependencies = SlackPersistenceService & {
   redis: typeof redis;
 };
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
@@ -23,28 +24,28 @@ describe('SlackPersistenceService', () => {
   let service: SlackPersistenceService;
 
   const channelRepo = {
-    findOne: jest.fn(),
-    update: jest.fn(),
-    save: jest.fn(),
+    findOne: vi.fn(),
+    update: vi.fn(),
+    save: vi.fn(),
   };
 
   const userRepo = {
-    findOne: jest.fn(),
-    save: jest.fn(),
-    update: jest.fn().mockResolvedValue({ affected: 1 }),
+    findOne: vi.fn(),
+    save: vi.fn(),
+    update: vi.fn().mockResolvedValue({ affected: 1 }),
   };
 
   const redis = {
-    getValue: jest.fn(),
-    setValueWithExpire: jest.fn(),
+    getValue: vi.fn(),
+    setValueWithExpire: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new SlackPersistenceService();
     (service as unknown as SlackPersistenceDependencies).redis = redis;
 
-    (getRepository as jest.Mock).mockImplementation((model: unknown) => {
+    (getRepository as Mock).mockImplementation((model: unknown) => {
       if (model === SlackChannel) {
         return channelRepo;
       }

@@ -1,19 +1,20 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const mockFn = jest.fn();
+const mockFn = vi.fn();
 
-jest.mock('./mock.service', () => ({
-  MockService: jest.fn().mockImplementation(() => ({
+vi.mock('./mock.service', async () => ({
+  MockService: classMock(() => ({
     mock: mockFn,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-jest.mock('../shared/middleware/textMiddleware', () => ({
+vi.mock('../shared/middleware/textMiddleware', async () => ({
   textMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -24,7 +25,7 @@ describe('mockController', () => {
   app.use(express.json());
   app.use('/', mockController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('handles post and calls mock service', async () => {
     const body = { user_id: 'U1', team_id: 'T1', text: 'hello' };

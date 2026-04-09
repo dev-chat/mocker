@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EventService } from './event.service';
 import type { EventRequest } from '../shared/models/slack/slack-models';
 
@@ -17,22 +18,22 @@ describe('EventService', () => {
   let service: EventService;
 
   const eventPersistenceService = {
-    performSentimentAnalysis: jest.fn(),
-    logActivity: jest.fn(),
+    performSentimentAnalysis: vi.fn(),
+    logActivity: vi.fn(),
   };
   const historyPersistenceService = {
-    logHistory: jest.fn(),
+    logHistory: vi.fn(),
   };
-  const slackService = { handle: jest.fn() };
-  const muzzleService = { handle: jest.fn() };
-  const backfireService = { handle: jest.fn() };
-  const reactionService = { handle: jest.fn() };
-  const counterService = { handle: jest.fn() };
-  const aiService = { handle: jest.fn() };
-  const suppressorService = { handleBotMessage: jest.fn() };
+  const slackService = { handle: vi.fn() };
+  const muzzleService = { handle: vi.fn() };
+  const backfireService = { handle: vi.fn() };
+  const reactionService = { handle: vi.fn() };
+  const counterService = { handle: vi.fn() };
+  const aiService = { handle: vi.fn() };
+  const suppressorService = { handleBotMessage: vi.fn() };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new EventService();
     const dependencyTarget = service as unknown as EventServiceDependencies;
     dependencyTarget.eventPersistenceService = eventPersistenceService;
@@ -98,7 +99,7 @@ describe('EventService', () => {
 
   it('logs and rethrows when a handler fails', async () => {
     const err = new Error('handler failed');
-    const loggerSpy = jest.spyOn(service.logger, 'error').mockImplementation(() => undefined);
+    const loggerSpy = vi.spyOn(service.logger, 'error').mockImplementation(() => undefined);
     aiService.handle.mockRejectedValue(err);
 
     await expect(

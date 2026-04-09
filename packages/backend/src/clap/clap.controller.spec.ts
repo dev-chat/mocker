@@ -1,19 +1,20 @@
+import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const clap = jest.fn();
+const clap = vi.fn();
 
-jest.mock('./clap.service', () => ({
-  ClapService: jest.fn().mockImplementation(() => ({
+vi.mock('./clap.service', async () => ({
+  ClapService: classMock(() => ({
     clap,
   })),
 }));
 
-jest.mock('../shared/middleware/suppression', () => ({
+vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-jest.mock('../shared/middleware/textMiddleware', () => ({
+vi.mock('../shared/middleware/textMiddleware', async () => ({
   textMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
@@ -24,7 +25,7 @@ describe('clapController', () => {
   app.use(express.json());
   app.use('/', clapController);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('handles post and calls clap service', async () => {
     await request(app).post('/').send({ text: 'x', user_id: 'U1', response_url: 'url' }).expect(200);

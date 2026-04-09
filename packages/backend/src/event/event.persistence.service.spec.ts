@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { EventPersistenceService } from './event.persistence.service';
 import type { EventRequest } from '../shared/models/slack/slack-models';
@@ -6,23 +7,23 @@ type EventPersistencePrivate = EventPersistenceService & {
   analyzeSentimentAndStore: (userId: string, teamId: string, channelId: string, text: string) => Promise<unknown>;
 };
 
-jest.mock('typeorm', () => {
-  const actual = jest.requireActual('typeorm');
+vi.mock('typeorm', async () => {
+  const actual = await vi.importActual('typeorm');
   return {
     ...actual,
-    getRepository: jest.fn(),
+    getRepository: vi.fn(),
   };
 });
 
 describe('EventPersistenceService', () => {
   let service: EventPersistenceService;
-  const findOne = jest.fn();
-  const insert = jest.fn();
+  const findOne = vi.fn();
+  const insert = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new EventPersistenceService();
-    (getRepository as jest.Mock).mockReturnValue({ findOne, insert });
+    (getRepository as Mock).mockReturnValue({ findOne, insert });
   });
 
   it('skips activity logging for invalid user', async () => {
@@ -66,7 +67,7 @@ describe('EventPersistenceService', () => {
 
   it('delegates performSentimentAnalysis to analyze-and-store flow', () => {
     const privateService = service as unknown as EventPersistencePrivate;
-    const spy = jest.spyOn(privateService, 'analyzeSentimentAndStore').mockResolvedValue({});
+    const spy = vi.spyOn(privateService, 'analyzeSentimentAndStore').mockResolvedValue({});
 
     service.performSentimentAnalysis('U1', 'T1', 'C1', 'text');
 
@@ -74,7 +75,7 @@ describe('EventPersistenceService', () => {
   });
 
   it('stores sentiment analysis result', async () => {
-    const analyzeSpy = jest.spyOn(service.sentiment, 'analyze').mockReturnValue({ comparative: 1.5 } as never);
+    const analyzeSpy = vi.spyOn(service.sentiment, 'analyze').mockReturnValue({ comparative: 1.5 } as never);
     insert.mockResolvedValue({ identifiers: [{ id: 7 }] });
 
     const out = await (service as unknown as EventPersistencePrivate).analyzeSentimentAndStore(
