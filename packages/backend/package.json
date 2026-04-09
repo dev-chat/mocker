@@ -4,7 +4,7 @@
   "description": "Mock your friends - Backend API",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "build:prod": "tsc -p tsconfig.prod.json",
     "lint": "eslint --cache --cache-location ../../node_modules/.cache/eslint/backend/.eslintcache './**/*.{js,ts}'",
     "lint:fix": "eslint --cache --cache-location ../../node_modules/.cache/eslint/backend/.eslintcache './**/*.{js,ts}' --quiet --fix",
