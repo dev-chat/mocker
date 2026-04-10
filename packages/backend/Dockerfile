@@ -2,7 +2,7 @@
 # Before building, generate release metadata:
 #   PREVIOUS_RELEASE_SHA="$(git rev-parse HEAD^ 2>/dev/null || true)" \
 #     node packages/backend/scripts/write-release-metadata.js packages/backend/release-metadata.json
-FROM node:20-alpine AS build
+FROM node:24.14.1-bookworm-slim AS build
 WORKDIR /usr/src/app
 
 # Copy workspace and backend files required for compilation and minification.
@@ -22,7 +22,7 @@ RUN npm ci \
 	&& npm run build:prod -w @mocker/backend \
 	&& npm prune --omit=dev
 
-FROM gcr.io/distroless/nodejs20-debian12:nonroot AS release
+FROM gcr.io/distroless/nodejs24-debian13:nonroot AS release
 ENV NODE_ENV=production \
 	PORT=80 \
 	IMAGE_DIR=/tmp/mocker-images

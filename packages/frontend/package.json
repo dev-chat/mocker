@@ -4,6 +4,9 @@
   "description": "Mock your friends - Frontend",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24.14.1 <25"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
