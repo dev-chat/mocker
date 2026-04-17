@@ -122,9 +122,10 @@ describe('TraitPersistenceService', () => {
 
   describe('getAllTraitsForUsers', () => {
     it('returns grouped traits by slack id', async () => {
-      mockTraitRepo.query
-        .mockResolvedValueOnce([{ id: 1, content: 'likes TypeScript', slackId: 'U123' }])
-        .mockResolvedValueOnce([{ id: 2, content: 'hates Java', slackId: 'U789' }]);
+      mockTraitRepo.query.mockResolvedValueOnce([
+        { id: 1, content: 'likes TypeScript', slackId: 'U123' },
+        { id: 2, content: 'hates Java', slackId: 'U789' },
+      ]);
 
       const result = await service.getAllTraitsForUsers(['U123', 'U789'], 'T456');
 
