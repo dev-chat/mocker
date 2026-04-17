@@ -12,6 +12,10 @@ const { generateText, generateImage, promptWithHistory, sendEphemeral, setCustom
     clearCustomPrompt: vi.fn().mockResolvedValue(true),
   }));
 
+const { getAllTraitsForUser } = vi.hoisted(() => ({
+  getAllTraitsForUser: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock('./ai.service', async () => ({
   AIService: classMock(() => ({
     generateText,
@@ -25,6 +29,12 @@ vi.mock('./ai.service', async () => ({
 vi.mock('../shared/services/web/web.service', async () => ({
   WebService: classMock(() => ({
     sendEphemeral,
+  })),
+}));
+
+vi.mock('./trait/trait.persistence.service', async () => ({
+  TraitPersistenceService: classMock(() => ({
+    getAllTraitsForUser,
   })),
 }));
 
@@ -51,6 +61,7 @@ describe('aiController', () => {
     vi.clearAllMocks();
     setCustomPrompt.mockResolvedValue(true);
     clearCustomPrompt.mockResolvedValue(true);
+    getAllTraitsForUser.mockResolvedValue([]);
   });
 
   it('handles /text', async () => {
@@ -85,6 +96,48 @@ describe('aiController', () => {
 
     await Promise.resolve();
     expect(sendEphemeral).toHaveBeenCalled();
+  });
+
+  describe('/traits', () => {
+    it('returns immediate 200 and sends formatted traits ephemerally', async () => {
+      getAllTraitsForUser.mockResolvedValue([
+        {
+          content: 'JR-15 prefers TypeScript as his programming language',
+          updatedAt: new Date('2026-04-01T00:00:00.000Z'),
+        },
+      ]);
+
+      await request(app).post('/traits').send({ user_id: 'U1', team_id: 'T1', channel_id: 'C1' }).expect(200);
+
+      await Promise.resolve();
+
+      expect(getAllTraitsForUser).toHaveBeenCalledWith('U1', 'T1');
+      expect(sendEphemeral).toHaveBeenCalledWith(
+        'C1',
+        expect.stringContaining("Moonbeam's core traits about you:"),
+        'U1',
+      );
+    });
+
+    it('sends no-traits message when user has no traits', async () => {
+      getAllTraitsForUser.mockResolvedValue([]);
+
+      await request(app).post('/traits').send({ user_id: 'U1', team_id: 'T1', channel_id: 'C1' }).expect(200);
+
+      await Promise.resolve();
+
+      expect(sendEphemeral).toHaveBeenCalledWith('C1', "Moonbeam doesn't have any core traits about you yet.", 'U1');
+    });
+
+    it('sends fallback error message when trait retrieval fails', async () => {
+      getAllTraitsForUser.mockRejectedValueOnce(new Error('db fail'));
+
+      await request(app).post('/traits').send({ user_id: 'U1', team_id: 'T1', channel_id: 'C1' }).expect(200);
+
+      await Promise.resolve();
+
+      expect(sendEphemeral).toHaveBeenCalledWith('C1', 'Sorry, something went wrong fetching your traits.', 'U1');
+    });
   });
 
   describe('/set-prompt', () => {

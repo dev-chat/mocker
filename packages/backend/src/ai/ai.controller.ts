@@ -8,11 +8,13 @@ import { aiMiddleware } from './middleware/aiMiddleware';
 import type { SlashCommandRequest } from '../shared/models/slack/slack-models';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
+import { TraitPersistenceService } from './trait/trait.persistence.service';
 
 export const aiController: Router = express.Router();
 
 const webService = new WebService();
 const aiService = new AIService();
+const traitPersistenceService = new TraitPersistenceService();
 const aiLogger = logger.child({ module: 'AIController' });
 
 aiController.use(suppressedMiddleware);
@@ -88,4 +90,42 @@ aiController.post('/prompt-with-history', (req, res) => {
     void webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
     return undefined;
   });
+});
+
+aiController.post('/traits', (req, res) => {
+  const { user_id, team_id, channel_id } = req.body;
+
+  // Respond immediately — Slack requires a response within 3 seconds
+  res.status(200).send('');
+
+  void (async () => {
+    try {
+      const traits = await traitPersistenceService.getAllTraitsForUser(user_id, team_id);
+
+      if (traits.length === 0) {
+        void webService.sendEphemeral(channel_id, "Moonbeam doesn't have any core traits about you yet.", user_id);
+        return;
+      }
+
+      const formattedTraits = traits
+        .map((trait, index) => {
+          const date = new Date(trait.updatedAt).toLocaleDateString('en-US', {
+            month: 'short',
+            year: 'numeric',
+          });
+          return `${index + 1}. "${trait.content}" (${date.toLowerCase()})`;
+        })
+        .join('\n');
+
+      const message = `Moonbeam's core traits about you:\n${formattedTraits}`;
+      void webService.sendEphemeral(channel_id, message, user_id);
+    } catch (e) {
+      logError(aiLogger, 'Failed to fetch traits for /ai/traits command', e, {
+        userId: user_id,
+        teamId: team_id,
+        channelId: channel_id,
+      });
+      void webService.sendEphemeral(channel_id, 'Sorry, something went wrong fetching your traits.', user_id);
+    }
+  })();
 });
