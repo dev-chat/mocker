@@ -68,15 +68,37 @@ export class TraitPersistenceService {
 
   async getAllTraitsForUsers(slackIds: string[], teamId: string): Promise<Map<string, TraitWithSlackId[]>> {
     const result = new Map<string, TraitWithSlackId[]>();
+    const uniqueSlackIds = Array.from(new Set(slackIds));
 
-    const queries = slackIds.map(async (slackId) => {
-      const traits = await this.getAllTraitsForUser(slackId, teamId);
-      if (traits.length) {
-        result.set(slackId, traits);
-      }
-    });
+    if (uniqueSlackIds.length === 0) {
+      return result;
+    }
 
-    await Promise.all(queries);
-    return result;
+    const placeholders = uniqueSlackIds.map(() => '?').join(', ');
+
+    return getRepository(Trait)
+      .query(
+        `SELECT t.*, u.slackId FROM trait t
+         INNER JOIN slack_user u ON t.userIdId = u.id
+         WHERE u.teamId = ? AND u.slackId IN (${placeholders})
+         ORDER BY t.updatedAt DESC`,
+        [teamId, ...uniqueSlackIds],
+      )
+      .then((traits: TraitWithSlackId[]) => {
+        traits.forEach((trait) => {
+          const existingTraits = result.get(trait.slackId) ?? [];
+          existingTraits.push(trait);
+          result.set(trait.slackId, existingTraits);
+        });
+
+        return result;
+      })
+      .catch((e) => {
+        logError(this.traitLogger, 'Error fetching all traits for users', e, {
+          teamId,
+          slackIdCount: uniqueSlackIds.length,
+        });
+        return result;
+      });
   }
 }
