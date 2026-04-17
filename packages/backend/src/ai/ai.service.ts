@@ -753,16 +753,14 @@ export class AIService {
     let nextIndex = 0;
 
     const runners = Array.from({ length: effectiveConcurrency }, async () => {
-      while (true) {
-        const currentIndex = nextIndex;
-        nextIndex += 1;
+      const currentIndex = nextIndex;
+      nextIndex += 1;
 
-        if (currentIndex >= items.length) {
-          return;
-        }
-
-        await worker(items[currentIndex]);
+      if (currentIndex >= items.length) {
+        return;
       }
+
+      await worker(items[currentIndex]);
     });
 
     await Promise.all(runners);
