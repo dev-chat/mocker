@@ -19,12 +19,13 @@ import {
   REDPLOY_MOONBEAM_TEXT_PROMPT,
   GATE_MODEL,
   MOONBEAM_SLACK_ID,
-  MEMORY_SELECTION_PROMPT,
   MEMORY_EXTRACTION_PROMPT,
+  TRAIT_EXTRACTION_PROMPT,
   GPT_MODEL,
 } from './ai.constants';
 import { MemoryPersistenceService } from './memory/memory.persistence.service';
-import type { MemoryWithSlackId } from '../shared/db/models/Memory';
+import { TraitPersistenceService } from './trait/trait.persistence.service';
+import type { TraitWithSlackId } from '../shared/db/models/Trait';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
@@ -106,6 +107,7 @@ export class AIService {
   slackService = new SlackService();
   slackPersistenceService = new SlackPersistenceService();
   memoryPersistenceService = new MemoryPersistenceService();
+  traitPersistenceService = new TraitPersistenceService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
@@ -399,17 +401,15 @@ export class AIService {
     const customPrompt = await this.slackPersistenceService.getCustomPrompt(user_id, team_id);
     const normalizedCustomPrompt = customPrompt?.trim() || null;
 
-    // Fetch and select relevant memories
-    const memoryContext = await this.fetchMemoryContext(
+    const traitContext = await this.fetchTraitContext(
       this.extractParticipantSlackIds(history, { includeSlackId: user_id }),
       team_id,
-      `${formattedHistory}\n\nUser prompt: ${prompt}`,
       history,
     );
     const baseInstructions = normalizedCustomPrompt
       ? `${normalizedCustomPrompt}\n\n${getHistoryInstructions(formattedHistory)}`
       : getHistoryInstructions(formattedHistory);
-    const systemInstructions = this.appendMemoryContext(baseInstructions, memoryContext);
+    const systemInstructions = this.appendTraitContext(baseInstructions, traitContext);
 
     return this.openAi.responses
       .create({
@@ -487,13 +487,13 @@ export class AIService {
     const customPrompt = userId ? await this.slackPersistenceService.getCustomPrompt(userId, teamId) : null;
     const normalizedCustomPrompt = customPrompt?.trim() || null;
 
-    // Fetch and select relevant memories
+    // Fetch stable user traits instead of raw memories to reduce context size.
     const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
-    const memoryContext = await this.fetchMemoryContext(participantSlackIds, teamId, history, historyMessages);
+    const traitContext = await this.fetchTraitContext(participantSlackIds, teamId, historyMessages);
     const baseInstructions = normalizedCustomPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
-    const systemInstructions = this.appendMemoryContext(baseInstructions, memoryContext);
+    const systemInstructions = this.appendTraitContext(baseInstructions, traitContext);
 
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
@@ -533,77 +533,30 @@ export class AIService {
       });
   }
 
-  private async selectRelevantMemories(
-    conversation: string,
-    memoriesMap: Map<string, MemoryWithSlackId[]>,
-  ): Promise<MemoryWithSlackId[]> {
-    if (memoriesMap.size === 0) return [];
-
-    const formattedMemories = Array.from(memoriesMap.entries())
-      .map(([slackId, memories]) => {
-        const lines = memories.map((m) => `  [ID:${m.id}] "${m.content}"`).join('\n');
-        return `${slackId}:\n${lines}`;
-      })
-      .join('\n\n');
-
-    const prompt = MEMORY_SELECTION_PROMPT.replace('{all_memories_grouped_by_user}', formattedMemories);
-
-    try {
-      const raw = await this.openAi.responses
-        .create({
-          model: GATE_MODEL,
-          instructions: prompt,
-          input: conversation,
-        })
-        .then((x) => extractAndParseOpenAiResponse(x));
-
-      if (!raw) return [];
-
-      let parsed: number[];
-
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        this.aiServiceLogger.warn(`Memory selection returned malformed JSON: ${raw}`);
-        parsed = [];
-      }
-
-      if (!Array.isArray(parsed)) return [];
-      const selectedIds = parsed.map(Number).filter((n) => !isNaN(n));
-
-      return Array.from(memoriesMap.values())
-        .flat()
-        .filter((m) => selectedIds.includes(m.id));
-    } catch (e) {
-      this.aiServiceLogger.warn('Memory selection failed, proceeding without memories:', e);
-      return [];
-    }
-  }
-
-  private formatMemoryContext(memories: MemoryWithSlackId[], history: MessageWithName[]): string {
-    if (memories.length === 0) return '';
+  private formatTraitContext(traits: TraitWithSlackId[], history: MessageWithName[]): string {
+    if (traits.length === 0) return '';
 
     const nameMap = new Map<string, string>();
     history.forEach((msg) => {
       if (msg.slackId && msg.name) nameMap.set(msg.slackId, msg.name);
     });
 
-    const grouped = new Map<string, MemoryWithSlackId[]>();
-    for (const mem of memories) {
-      const slackId = mem.slackId || 'unknown';
+    const grouped = new Map<string, TraitWithSlackId[]>();
+    for (const trait of traits) {
+      const slackId = trait.slackId || 'unknown';
       if (!grouped.has(slackId)) grouped.set(slackId, []);
-      grouped.get(slackId)!.push(mem);
+      grouped.get(slackId)!.push(trait);
     }
 
     const lines = Array.from(grouped.entries())
-      .map(([slackId, mems]) => {
+      .map(([slackId, userTraits]) => {
         const name = nameMap.get(slackId) || slackId;
-        const memLines = mems.map((m) => `"${m.content}"`).join(', ');
-        return `- ${name}: ${memLines}`;
+        const traitLines = userTraits.map((trait) => `"${trait.content}"`).join(', ');
+        return `- ${name}: ${traitLines}`;
       })
       .join('\n');
 
-    return `<memory_context>\nthings you remember about the people in this conversation:\n${lines}\n</memory_context>`;
+    return `<traits_context>\ncore beliefs and stable traits for people in this conversation:\n${lines}\n</traits_context>`;
   }
 
   private extractParticipantSlackIds(
@@ -620,19 +573,18 @@ export class AIService {
     return ids;
   }
 
-  private async fetchMemoryContext(
+  private async fetchTraitContext(
     participantSlackIds: string[],
     teamId: string,
-    conversation: string,
     history: MessageWithName[],
   ): Promise<string> {
     if (participantSlackIds.length === 0) return '';
-    const memoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(participantSlackIds, teamId);
-    const selectedMemories = await this.selectRelevantMemories(conversation, memoriesMap);
-    return this.formatMemoryContext(selectedMemories, history);
+    const traitsMap = await this.traitPersistenceService.getAllTraitsForUsers(participantSlackIds, teamId);
+    const traits = Array.from(traitsMap.values()).flat();
+    return this.formatTraitContext(traits, history);
   }
 
-  private appendMemoryContext(baseInstructions: string, memoryContext: string): string {
+  private appendTraitContext(baseInstructions: string, memoryContext: string): string {
     if (!memoryContext) return baseInstructions;
     // Insert memory data before <verification> so the verification checklist remains the last thing the model sees
     const verificationTag = '<verification>';
@@ -767,6 +719,66 @@ export class AIService {
     };
   }
 
+  private parseTraitExtractionResult(raw: string | undefined): string[] {
+    if (!raw) {
+      return [];
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(raw.trim());
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return Array.from(
+        new Set(
+          parsed
+            .filter((value): value is string => typeof value === 'string')
+            .map((value) => value.trim())
+            .filter((value) => value.length > 0),
+        ),
+      ).slice(0, 10);
+    } catch {
+      this.aiServiceLogger.warn(`Trait extraction returned malformed JSON: ${raw}`);
+      return [];
+    }
+  }
+
+  private async regenerateTraitsForUsers(teamId: string, slackIds: string[]): Promise<void> {
+    const uniqueSlackIds = Array.from(new Set(slackIds.filter((id) => /^U[A-Z0-9]+$/.test(id))));
+    if (uniqueSlackIds.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      uniqueSlackIds.map(async (slackId) => {
+        const memories = await this.memoryPersistenceService.getAllMemoriesForUser(slackId, teamId);
+        if (memories.length === 0) {
+          await this.traitPersistenceService.replaceTraitsForUser(slackId, teamId, []);
+          return;
+        }
+
+        const memoryText = memories.map((memory, index) => `${index + 1}. ${memory.content}`).join('\n');
+        const input = `User Slack ID: ${slackId}\n\nMemories:\n${memoryText}`;
+
+        const rawTraits = await this.openAi.responses
+          .create({
+            model: GATE_MODEL,
+            instructions: TRAIT_EXTRACTION_PROMPT,
+            input,
+          })
+          .then((response) => extractAndParseOpenAiResponse(response))
+          .catch((error) => {
+            this.aiServiceLogger.warn(`Trait synthesis failed for ${slackId} in ${teamId}:`, error);
+            return undefined;
+          });
+
+        const traits = this.parseTraitExtractionResult(rawTraits);
+        await this.traitPersistenceService.replaceTraitsForUser(slackId, teamId, traits);
+      }),
+    );
+  }
+
   private async extractMemories(
     teamId: string,
     channelId: string,
@@ -824,6 +836,8 @@ export class AIService {
         return;
       }
 
+      const touchedUsers = new Set<string>();
+
       for (const extraction of extractions) {
         if (!extraction.slackId || !extraction.content || !extraction.mode) {
           this.aiServiceLogger.warn('Extraction missing required fields, skipping:', extraction);
@@ -838,11 +852,13 @@ export class AIService {
         switch (extraction.mode) {
           case 'NEW':
             await this.memoryPersistenceService.saveMemories(extraction.slackId, teamId, [extraction.content]);
+            touchedUsers.add(extraction.slackId);
             break;
 
           case 'REINFORCE':
             if (extraction.existingMemoryId) {
               await this.memoryPersistenceService.reinforceMemory(extraction.existingMemoryId);
+              touchedUsers.add(extraction.slackId);
             } else {
               this.aiServiceLogger.warn('REINFORCE extraction missing existingMemoryId, skipping');
             }
@@ -853,12 +869,15 @@ export class AIService {
               await this.memoryPersistenceService.deleteMemory(extraction.existingMemoryId);
             }
             await this.memoryPersistenceService.saveMemories(extraction.slackId, teamId, [extraction.content]);
+            touchedUsers.add(extraction.slackId);
             break;
 
           default:
             this.aiServiceLogger.warn(`Unknown extraction mode: ${String(extraction.mode)}`);
         }
       }
+
+      await this.regenerateTraitsForUsers(teamId, [...touchedUsers]);
 
       this.aiServiceLogger.info(`Extraction complete for ${channelId}: ${extractions.length} observations processed`);
     } catch (e) {

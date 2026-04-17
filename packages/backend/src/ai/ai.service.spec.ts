@@ -37,10 +37,16 @@ const buildAiService = (): AIService => {
 
   ai.memoryPersistenceService = {
     getAllMemoriesForUsers: vi.fn().mockResolvedValue(new Map()),
+    getAllMemoriesForUser: vi.fn().mockResolvedValue([]),
     saveMemories: vi.fn().mockResolvedValue([]),
     reinforceMemory: vi.fn().mockResolvedValue(true),
     deleteMemory: vi.fn().mockResolvedValue(true),
   } as unknown as AIService['memoryPersistenceService'];
+
+  ai.traitPersistenceService = {
+    getAllTraitsForUsers: vi.fn().mockResolvedValue(new Map()),
+    replaceTraitsForUser: vi.fn().mockResolvedValue([]),
+  } as unknown as AIService['traitPersistenceService'];
 
   ai.historyService = {
     getHistory: vi.fn().mockResolvedValue([]),
@@ -339,6 +345,25 @@ describe('AIService', () => {
         expect.stringContaining('unable to send the requested text to Slack'),
       );
     });
+
+    it('injects trait context when traits exist for participants', async () => {
+      (aiService.historyService.getHistory as Mock).mockResolvedValue([
+        { name: 'Jane', slackId: 'U2', message: 'Hi there' },
+      ]);
+      (aiService.traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
+        new Map([['U2', [{ slackId: 'U2', content: 'prefers typescript' }]]]),
+      );
+      const createSpy = aiService.openAi.responses.create as Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Response text' }] }],
+      });
+
+      await aiService.promptWithHistory({ user_id: 'U1', team_id: 'T1', channel_id: 'C1', text: 'Summarize' } as never);
+
+      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
+      expect(callArgs.instructions).toContain('traits_context');
+      expect(callArgs.instructions).toContain('prefers typescript');
+    });
   });
 
   describe('handle', () => {
@@ -522,6 +547,25 @@ describe('AIService', () => {
       await expect(aiService.participate('T1', 'C1', 'hi')).rejects.toThrow('model fail');
       expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
     });
+
+    it('injects trait context for participation prompts', async () => {
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([
+        { slackId: 'U2', name: 'Jane', message: 'hello' },
+      ]);
+      (aiService.traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
+        new Map([['U2', [{ slackId: 'U2', content: 'dislikes donald trump' }]]]),
+      );
+      const createSpy = aiService.openAi.responses.create as Mock;
+      createSpy.mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Participation response' }] }],
+      });
+
+      await aiService.participate('T1', 'C1', '<@moonbeam> hi');
+
+      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
+      expect(callArgs.instructions).toContain('traits_context');
+      expect(callArgs.instructions).toContain('dislikes donald trump');
+    });
   });
 
   describe('participate with custom prompt', () => {
@@ -687,27 +731,24 @@ describe('AIService', () => {
     });
   });
 
-  describe('memory helpers', () => {
+  describe('memory and trait helpers', () => {
     type AiServicePrivate = typeof aiService & {
       extractParticipantSlackIds: (
         messages: Array<{ slackId: string; name: string; message: string }>,
         options: { includeSlackId?: string; excludeSlackIds?: string[] },
       ) => string[];
-      formatMemoryContext: (
-        memories: Array<{ id: number; slackId: string; content: string }>,
+      formatTraitContext: (
+        traits: Array<{ slackId: string; content: string }>,
         messages: Array<{ slackId: string; name: string; message: string }>,
       ) => string;
-      appendMemoryContext: (base: string, context: string) => string;
-      selectRelevantMemories: (
-        conversation: string,
-        memoryMap: Map<string, Array<{ id: number }>>,
-      ) => Promise<unknown[]>;
-      fetchMemoryContext: (
+      appendTraitContext: (base: string, context: string) => string;
+      fetchTraitContext: (
         participantIds: string[],
         teamId: string,
-        conversation: string,
         messages: Array<{ slackId: string; name: string; message: string }>,
       ) => Promise<string>;
+      parseTraitExtractionResult: (raw: string | undefined) => string[];
+      regenerateTraitsForUsers: (teamId: string, slackIds: string[]) => Promise<void>;
       extractMemories: (teamId: string, channelId: string, history: string, participantIds: string[]) => Promise<void>;
     };
 
@@ -724,11 +765,11 @@ describe('AIService', () => {
       expect(ids).toEqual(['U2', 'U3']);
     });
 
-    it('formats memory context grouped by participant', () => {
-      const text = (aiService as unknown as AiServicePrivate).formatMemoryContext(
+    it('formats trait context grouped by participant', () => {
+      const text = (aiService as unknown as AiServicePrivate).formatTraitContext(
         [
-          { id: 1, slackId: 'U1', content: 'likes coffee' },
-          { id: 2, slackId: 'U2', content: 'works on backend' },
+          { slackId: 'U1', content: 'prefers typescript' },
+          { slackId: 'U2', content: 'dislikes donald trump' },
         ],
         [
           { slackId: 'U1', name: 'Alice', message: 'hi' },
@@ -736,150 +777,70 @@ describe('AIService', () => {
         ],
       );
 
+      expect(text).toContain('traits_context');
       expect(text).toContain('Alice');
-      expect(text).toContain('likes coffee');
+      expect(text).toContain('prefers typescript');
       expect(text).toContain('Bob');
     });
 
-    it('returns base instructions when no memory context', () => {
-      const result = (aiService as unknown as AiServicePrivate).appendMemoryContext('base', '');
+    it('returns base instructions when no context', () => {
+      const result = (aiService as unknown as AiServicePrivate).appendTraitContext('base', '');
       expect(result).toBe('base');
     });
 
-    it('inserts memory context before <verification> tag', () => {
+    it('inserts context before <verification> tag', () => {
       const base = 'some instructions\n<verification>\nchecklist\n</verification>';
-      const memory = '<memory_context>\ntest memory\n</memory_context>';
-      const result = (aiService as unknown as AiServicePrivate).appendMemoryContext(base, memory);
-      expect(result).toContain('test memory');
-      expect(result.indexOf('memory_context')).toBeLessThan(result.indexOf('<verification>'));
+      const traitContext = '<traits_context>\ntest trait\n</traits_context>';
+      const result = (aiService as unknown as AiServicePrivate).appendTraitContext(base, traitContext);
+      expect(result).toContain('test trait');
+      expect(result.indexOf('traits_context')).toBeLessThan(result.indexOf('<verification>'));
     });
 
-    it('appends memory context at end when no <verification> tag', () => {
-      const base = 'simple instructions without verification';
-      const memory = '<memory_context>\ntest memory\n</memory_context>';
-      const result = (aiService as unknown as AiServicePrivate).appendMemoryContext(base, memory);
-      expect(result).toBe(`${base}\n\n${memory}`);
-    });
+    it('fetches trait context end-to-end', async () => {
+      (aiService.traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
+        new Map([['U1', [{ id: 1, slackId: 'U1', content: 'prefers typescript' }]]]),
+      );
 
-    it('selects relevant memories from model output ids', async () => {
-      (aiService.openAi.responses.create as Mock).mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '[1,3]' }] }],
-      });
-      const map = new Map([
-        ['U1', [{ id: 1, slackId: 'U1', content: 'a' }]],
-        ['U2', [{ id: 3, slackId: 'U2', content: 'b' }]],
+      const context = await (aiService as unknown as AiServicePrivate).fetchTraitContext(['U1'], 'T1', [
+        { slackId: 'U1', name: 'Alice', message: 'msg' },
       ]);
 
-      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories('conv', map);
-
-      expect(selected).toHaveLength(2);
+      expect(context).toContain('prefers typescript');
     });
 
-    it('returns empty memory selection when model response is malformed', async () => {
+    it('parses, de-duplicates, and caps extracted traits', () => {
+      const traits = (aiService as unknown as AiServicePrivate).parseTraitExtractionResult(
+        JSON.stringify([...Array.from({ length: 12 }, (_, i) => `trait-${i}`), 'trait-1']),
+      );
+
+      expect(traits.length).toBe(10);
+      expect(new Set(traits).size).toBe(10);
+    });
+
+    it('returns empty trait list for malformed extraction payload', () => {
+      const traits = (aiService as unknown as AiServicePrivate).parseTraitExtractionResult('{nope');
+      expect(traits).toEqual([]);
+    });
+
+    it('regenerates traits for users based on current memories', async () => {
+      (aiService.memoryPersistenceService.getAllMemoriesForUser as Mock)
+        .mockResolvedValueOnce([{ content: 'JR-15 loves TypeScript' }])
+        .mockResolvedValueOnce([]);
       (aiService.openAi.responses.create as Mock).mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '{not-json}' }] }],
+        output: [
+          {
+            type: 'message',
+            content: [{ type: 'output_text', text: JSON.stringify(['JR-15 prefers TypeScript']) }],
+          },
+        ],
       });
 
-      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories(
-        'conv',
-        new Map([['U1', [{ id: 1 }]]]),
-      );
-      expect(selected).toEqual([]);
-    });
+      await (aiService as unknown as AiServicePrivate).regenerateTraitsForUsers('T1', ['U1', 'U2']);
 
-    it('returns empty array without calling model when memoriesMap is empty', async () => {
-      const createSpy = aiService.openAi.responses.create as Mock;
-
-      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories('conv', new Map());
-
-      expect(selected).toEqual([]);
-      expect(createSpy).not.toHaveBeenCalled();
-    });
-
-    it('passes conversation as input and memories as instructions (not duplicated)', async () => {
-      const createSpy = aiService.openAi.responses.create as Mock;
-      createSpy.mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '[1]' }] }],
-      });
-      const conversation = 'Alice: hey what is up';
-      const map = new Map([['U1', [{ id: 1, slackId: 'U1', content: 'likes tea' }]]]);
-
-      await (aiService as unknown as AiServicePrivate).selectRelevantMemories(conversation, map);
-
-      expect(createSpy).toHaveBeenCalledTimes(1);
-      const callArgs = createSpy.mock.calls[0][0] as { instructions: string; input: string };
-      expect(callArgs.input).toBe(conversation);
-      expect(callArgs.instructions).not.toBe(conversation);
-      expect(callArgs.instructions).not.toContain(conversation);
-    });
-
-    it('returns empty array and warns when model call throws', async () => {
-      (aiService.openAi.responses.create as Mock).mockRejectedValue(new Error('model error'));
-      const warnSpy = vi.spyOn(aiService.aiServiceLogger, 'warn');
-
-      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories(
-        'conv',
-        new Map([['U1', [{ id: 1 }]]]),
-      );
-
-      expect(selected).toEqual([]);
-      expect(warnSpy).toHaveBeenCalled();
-    });
-
-    it('returns empty array when model returns non-array JSON', async () => {
-      (aiService.openAi.responses.create as Mock).mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '{"ids":[1,2]}' }] }],
-      });
-
-      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories(
-        'conv',
-        new Map([['U1', [{ id: 1 }]]]),
-      );
-
-      expect(selected).toEqual([]);
-    });
-
-    it('returns empty array when model returns empty array', async () => {
-      (aiService.openAi.responses.create as Mock).mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
-      });
-
-      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories(
-        'conv',
-        new Map([['U1', [{ id: 1 }]]]),
-      );
-
-      expect(selected).toEqual([]);
-    });
-
-    it('filters out IDs from model response that do not exist in memoriesMap', async () => {
-      (aiService.openAi.responses.create as Mock).mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: '[1, 99]' }] }],
-      });
-      const map = new Map([['U1', [{ id: 1, slackId: 'U1', content: 'likes tea' }]]]);
-
-      const selected = await (aiService as unknown as AiServicePrivate).selectRelevantMemories('conv', map);
-
-      expect(selected).toHaveLength(1);
-      expect(selected[0]).toMatchObject({ id: 1 });
-    });
-
-    it('fetches memory context end-to-end', async () => {
-      (aiService.memoryPersistenceService.getAllMemoriesForUsers as Mock).mockResolvedValue(
-        new Map([['U1', [{ id: 1, slackId: 'U1', content: 'likes tea' }]]]),
-      );
-      vi.spyOn(aiService as unknown as AiServicePrivate, 'selectRelevantMemories').mockResolvedValue([
-        { id: 1, slackId: 'U1', content: 'likes tea' },
+      expect(aiService.traitPersistenceService.replaceTraitsForUser).toHaveBeenCalledWith('U1', 'T1', [
+        'JR-15 prefers TypeScript',
       ]);
-
-      const context = await (aiService as unknown as AiServicePrivate).fetchMemoryContext(
-        ['U1'],
-        'T1',
-        'conversation',
-        [{ slackId: 'U1', name: 'Alice', message: 'msg' }],
-      );
-
-      expect(context).toContain('likes tea');
+      expect(aiService.traitPersistenceService.replaceTraitsForUser).toHaveBeenCalledWith('U2', 'T1', []);
     });
 
     it('extractMemories returns early when lock exists', async () => {
@@ -900,6 +861,7 @@ describe('AIService', () => {
       await (aiService as unknown as AiServicePrivate).extractMemories('T1', 'C1', 'history', ['U1']);
 
       expect(aiService.memoryPersistenceService.saveMemories).not.toHaveBeenCalled();
+      expect(aiService.traitPersistenceService.replaceTraitsForUser).not.toHaveBeenCalled();
     });
 
     it('extractMemories processes NEW, REINFORCE and EVOLVE modes', async () => {
@@ -927,6 +889,7 @@ describe('AIService', () => {
       expect(aiService.memoryPersistenceService.saveMemories).toHaveBeenCalled();
       expect(aiService.memoryPersistenceService.reinforceMemory).toHaveBeenCalledWith(10);
       expect(aiService.memoryPersistenceService.deleteMemory).toHaveBeenCalledWith(11);
+      expect(aiService.traitPersistenceService.replaceTraitsForUser).toHaveBeenCalled();
     });
 
     it('extractMemories skips malformed extraction items', async () => {

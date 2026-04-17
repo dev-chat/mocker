@@ -56,22 +56,6 @@ unclear intent → make your best guess and commit. do not ask for clarification
 message doesn't need you → stay quiet.
 </response_strategy>
 
-<examples>
-these demonstrate your best responses — vary the language but match the feel:
-
-factual (concise, conversational, specific):
-- "short answer: no — they're different tools for different problems."
-- "because windows + active directory gives enterprises centralized identity, device management, and legacy app support at massive scale. it's boring, deeply unsexy, and extremely reliable."
-- "rsync + backblaze b2 is solid for unraid — cheap, reliable, and the plugin makes it pretty painless. duplicacy is worth a look too if you want versioning."
-
-taking a side (committed, specific, no hedging):
-- "jr is more factually correct about how llms actually work, but neal is more correct about the moral pressure to keep improving safety."
-
-humor (situational, cutting, uses real details):
-- "if you took mcdonalds napkins instead of buying them at the store for 25 years you'd probably save like $50 to $100 but you'd have to factor in the emotional cost of living like that for a quarter century."
-- "yes — but in the deeply spiritual way only a man personally betrayed by a typescript union type can overreact."
-</examples>
-
 <verification>
 before sending any response, check:
 1. does it start with the actual answer, not a name or greeting?
@@ -90,23 +74,6 @@ export const REDPLOY_MOONBEAM_IMAGE_PROMPT = `An image depicting yourself with t
 export const MOONBEAM_SLACK_ID = 'ULG8SJRFF';
 
 export const GATE_MODEL = 'gpt-4.1-nano';
-
-export const MEMORY_SELECTION_PROMPT = `You are selecting which stored memories are relevant to a conversation that is about to get a response.
-You are NOT responding — you are picking useful context.
-
-STORED MEMORIES:
-{all_memories_grouped_by_user}
-
-Return the IDs of memories that are relevant to what's being discussed, or that would enable:
-- A callback to something someone said before
-- Catching a contradiction or shift in position
-- Playing into a known dynamic between people
-- Adjusting tone based on how someone engages
-
-Return a JSON array of memory IDs: [1, 4, 17, 23]
-Or return an empty array [] if nothing is relevant.
-
-Most conversations will need 0-5 memories. Do not force relevance where there is none.`;
 
 export const MEMORY_EXTRACTION_PROMPT = `You are a memory extraction tool analyzing a Slack conversation. Your job is to identify notable observations
 about the people in this conversation that would be worth remembering for future interactions.
@@ -161,5 +128,36 @@ Return a JSON array, or the string NONE if nothing is worth extracting. Most of 
 Format: [{"slackId": "U12345", "content": "description of what they said or did", "mode": "NEW|REINFORCE|EVOLVE", "existingMemoryId": null}]
 
 Keep each memory to 1-2 sentences. Be specific — include what was actually said, not a summary of the topic.`;
+
+export const TRAIT_EXTRACTION_PROMPT = `You are a trait synthesis tool.
+
+You are given a set of stored memories about one specific user from a group chat.
+Your task is to infer that user's most stable, high-signal traits and beliefs.
+
+Goal:
+- Return up to 10 traits that capture enduring preferences, convictions, communication patterns, and relationship dynamics.
+- Focus on traits that would actually help produce better future responses in a chat context.
+
+Prioritize traits like:
+- clear preferences ("prefers TypeScript over Python")
+- recurring beliefs or stances ("strongly anti-Trump")
+- consistent social dynamics ("often challenges Moonbeam when it hedges")
+
+Do NOT include:
+- one-off events
+- low-signal trivia
+- private/sensitive details (addresses, medical details, workplaces, family names)
+- contradictions unless a new stance clearly replaced an old one
+
+Requirements:
+- Traits must be concise, concrete, and attributable to the user.
+- Write each trait in third person using their Slack ID placeholder if provided context supports it.
+- No duplicates or near-duplicates.
+- Prefer quality over quantity. If only 4 strong traits exist, return 4.
+
+Output format:
+- Return ONLY a JSON array of strings.
+- Example: ["JR-15 prefers TypeScript as his primary programming language", "JR-15 strongly dislikes Donald Trump"]
+- If no strong traits are present, return []`;
 
 export const DAILY_MEMORY_JOB_CONCURRENCY = 50;
