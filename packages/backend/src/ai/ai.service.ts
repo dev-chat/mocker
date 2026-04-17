@@ -744,39 +744,63 @@ export class AIService {
     }
   }
 
+  private async processWithConcurrencyLimit<T>(
+    items: T[],
+    concurrency: number,
+    worker: (item: T) => Promise<void>,
+  ): Promise<void> {
+    const effectiveConcurrency = Math.max(1, Math.min(concurrency, items.length));
+    let nextIndex = 0;
+
+    const runners = Array.from({ length: effectiveConcurrency }, async () => {
+      while (true) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+
+        if (currentIndex >= items.length) {
+          return;
+        }
+
+        await worker(items[currentIndex]);
+      }
+    });
+
+    await Promise.all(runners);
+  }
+
   private async regenerateTraitsForUsers(teamId: string, slackIds: string[]): Promise<void> {
     const uniqueSlackIds = Array.from(new Set(slackIds.filter((id) => /^U[A-Z0-9]+$/.test(id))));
     if (uniqueSlackIds.length === 0) {
       return;
     }
 
-    await Promise.all(
-      uniqueSlackIds.map(async (slackId) => {
-        const memories = await this.memoryPersistenceService.getAllMemoriesForUser(slackId, teamId);
-        if (memories.length === 0) {
-          await this.traitPersistenceService.replaceTraitsForUser(slackId, teamId, []);
-          return;
-        }
+    const traitRegenerationConcurrency = 3;
 
-        const memoryText = memories.map((memory, index) => `${index + 1}. ${memory.content}`).join('\n');
-        const input = `User Slack ID: ${slackId}\n\nMemories:\n${memoryText}`;
+    await this.processWithConcurrencyLimit(uniqueSlackIds, traitRegenerationConcurrency, async (slackId) => {
+      const memories = await this.memoryPersistenceService.getAllMemoriesForUser(slackId, teamId);
+      if (memories.length === 0) {
+        await this.traitPersistenceService.replaceTraitsForUser(slackId, teamId, []);
+        return;
+      }
 
-        const rawTraits = await this.openAi.responses
-          .create({
-            model: GATE_MODEL,
-            instructions: TRAIT_EXTRACTION_PROMPT,
-            input,
-          })
-          .then((response) => extractAndParseOpenAiResponse(response))
-          .catch((error) => {
-            this.aiServiceLogger.warn(`Trait synthesis failed for ${slackId} in ${teamId}:`, error);
-            return undefined;
-          });
+      const memoryText = memories.map((memory, index) => `${index + 1}. ${memory.content}`).join('\n');
+      const input = `User Slack ID: ${slackId}\n\nMemories:\n${memoryText}`;
 
-        const traits = this.parseTraitExtractionResult(rawTraits);
-        await this.traitPersistenceService.replaceTraitsForUser(slackId, teamId, traits);
-      }),
-    );
+      const rawTraits = await this.openAi.responses
+        .create({
+          model: GATE_MODEL,
+          instructions: TRAIT_EXTRACTION_PROMPT,
+          input,
+        })
+        .then((response) => extractAndParseOpenAiResponse(response))
+        .catch((error) => {
+          this.aiServiceLogger.warn(`Trait synthesis failed for ${slackId} in ${teamId}:`, error);
+          return undefined;
+        });
+
+      const traits = this.parseTraitExtractionResult(rawTraits);
+      await this.traitPersistenceService.replaceTraitsForUser(slackId, teamId, traits);
+    });
   }
 
   private async extractMemories(
