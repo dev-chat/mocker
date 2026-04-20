@@ -21,7 +21,6 @@ import {
   GPT_MODEL,
 } from './ai.constants';
 import { TraitService } from './trait/trait.service';
-import { MemoryService } from './memory/memory.service';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
@@ -37,6 +36,7 @@ import type {
 import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
+import { extractParticipantSlackIds } from './helpers/extractParticipantSlacKIds';
 
 interface ReleaseCommit {
   sha: string;
@@ -95,7 +95,6 @@ export class AIService {
   webService = new WebService();
   slackService = new SlackService();
   slackPersistenceService = new SlackPersistenceService();
-  memoryService = new MemoryService();
   traitService = new TraitService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
@@ -391,7 +390,7 @@ export class AIService {
     const normalizedCustomPrompt = customPrompt?.trim() || null;
 
     const traitContext = await this.traitService.fetchTraitContext(
-      this.traitService.extractParticipantSlackIds(history, { includeSlackId: user_id }),
+      extractParticipantSlackIds(history, { includeSlackId: user_id }),
       team_id,
       history,
     );
@@ -476,7 +475,7 @@ export class AIService {
     const customPrompt = userId ? await this.slackPersistenceService.getCustomPrompt(userId, teamId) : null;
     const normalizedCustomPrompt = customPrompt?.trim() || null;
 
-    const participantSlackIds = this.traitService.extractParticipantSlackIds(historyMessages, {
+    const participantSlackIds = extractParticipantSlackIds(historyMessages, {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
     const traitContext = await this.traitService.fetchTraitContext(participantSlackIds, teamId, historyMessages);

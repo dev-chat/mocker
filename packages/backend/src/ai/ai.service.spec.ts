@@ -6,7 +6,6 @@ import { AIService } from './ai.service';
 import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { MOONBEAM_SLACK_ID } from './ai.constants';
 import { TraitService } from './trait/trait.service';
-import { MemoryService } from './memory/memory.service';
 
 const buildAiService = (): AIService => {
   const ai = new AIService();
@@ -36,14 +35,6 @@ const buildAiService = (): AIService => {
       generateContent: vi.fn(),
     },
   } as unknown as AIService['gemini'];
-
-  const memoryPersistenceService = {
-    getAllMemoriesForUsers: vi.fn().mockResolvedValue(new Map()),
-    getAllMemoriesForUser: vi.fn().mockResolvedValue([]),
-    saveMemories: vi.fn().mockResolvedValue([]),
-    reinforceMemory: vi.fn().mockResolvedValue(true),
-    deleteMemory: vi.fn().mockResolvedValue(true),
-  } as never;
 
   const traitPersistenceService = {
     getAllTraitsForUsers: vi.fn().mockResolvedValue(new Map()),
@@ -81,13 +72,7 @@ const buildAiService = (): AIService => {
     debug: vi.fn(),
   } as unknown as AIService['aiServiceLogger'];
 
-  ai.traitService = new TraitService(
-    traitPersistenceService,
-    memoryPersistenceService,
-    ai.aiServiceLogger as never,
-  );
-
-  ai.memoryService = new MemoryService();
+  ai.traitService = new TraitService(traitPersistenceService as never);
 
   return ai;
 };
@@ -360,7 +345,9 @@ describe('AIService', () => {
       (aiService.historyService.getHistory as Mock).mockResolvedValue([
         { name: 'Jane', slackId: 'U2', message: 'Hi there' },
       ]);
-      const traitPersistenceService = (aiService.traitService as unknown as { traitPersistenceService: { getAllTraitsForUsers: unknown } }).traitPersistenceService;
+      const traitPersistenceService = (
+        aiService.traitService as unknown as { traitPersistenceService: { getAllTraitsForUsers: unknown } }
+      ).traitPersistenceService;
       (traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
         new Map([['U2', [{ slackId: 'U2', content: 'prefers typescript' }]]]),
       );
@@ -563,7 +550,9 @@ describe('AIService', () => {
       (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([
         { slackId: 'U2', name: 'Jane', message: 'hello' },
       ]);
-      const traitPersistenceService = (aiService.traitService as unknown as { traitPersistenceService: { getAllTraitsForUsers: unknown } }).traitPersistenceService;
+      const traitPersistenceService = (
+        aiService.traitService as unknown as { traitPersistenceService: { getAllTraitsForUsers: unknown } }
+      ).traitPersistenceService;
       (traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
         new Map([['U2', [{ slackId: 'U2', content: 'dislikes donald trump' }]]]),
       );

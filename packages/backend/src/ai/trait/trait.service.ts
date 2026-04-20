@@ -1,22 +1,12 @@
 import type { MessageWithName } from '../../shared/models/message/message-with-name';
 import type { TraitWithSlackId } from '../../shared/db/models/Trait';
 import { TraitPersistenceService } from './trait.persistence.service';
-import { MemoryPersistenceService } from '../memory/memory.persistence.service';
-import { logger } from '../../shared/logger/logger';
 
 export class TraitService {
-  private traitLogger: { warn: (...args: unknown[]) => void };
   private traitPersistenceService: TraitPersistenceService;
-  private memoryPersistenceService: MemoryPersistenceService;
 
-  constructor(
-    traitPersistenceService?: TraitPersistenceService,
-    memoryPersistenceService?: MemoryPersistenceService,
-    traitLogger?: { warn: (...args: unknown[]) => void },
-  ) {
+  constructor(traitPersistenceService?: TraitPersistenceService) {
     this.traitPersistenceService = traitPersistenceService ?? new TraitPersistenceService();
-    this.memoryPersistenceService = memoryPersistenceService ?? new MemoryPersistenceService();
-    this.traitLogger = traitLogger ?? logger.child({ module: 'AITraitService' });
   }
 
   public formatTraitContext(traits: TraitWithSlackId[], history: MessageWithName[]): string {
@@ -45,20 +35,6 @@ export class TraitService {
     return `<traits_context>\ncore beliefs and stable traits for people in this conversation:\n${lines}\n</traits_context>`;
   }
 
-  public extractParticipantSlackIds(
-    history: MessageWithName[],
-    options?: { includeSlackId?: string; excludeSlackIds?: string[] },
-  ): string[] {
-    const excludeSet = new Set(options?.excludeSlackIds || []);
-    const ids = [
-      ...new Set(history.filter((msg) => msg.slackId && !excludeSet.has(msg.slackId!)).map((msg) => msg.slackId!)),
-    ];
-    if (options?.includeSlackId && !ids.includes(options.includeSlackId)) {
-      ids.push(options.includeSlackId);
-    }
-    return ids;
-  }
-
   public async fetchTraitContext(
     participantSlackIds: string[],
     teamId: string,
@@ -81,86 +57,5 @@ export class TraitService {
     }
 
     return `${baseInstructions}\n\n${traitContext}`;
-  }
-
-  public parseTraitExtractionResult(raw: string | undefined): string[] {
-    if (!raw) {
-      return [];
-    }
-
-    try {
-      const parsed: unknown = JSON.parse(raw.trim());
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-
-      return Array.from(
-        new Set(
-          parsed
-            .filter((value): value is string => typeof value === 'string')
-            .map((value) => value.trim())
-            .filter((value) => value.length > 0),
-        ),
-      ).slice(0, 10);
-    } catch {
-      this.traitLogger.warn(`Trait extraction returned malformed JSON: ${raw}`);
-      return [];
-    }
-  }
-
-  public async regenerateTraitsForUsers(
-    teamId: string,
-    slackIds: string[],
-    synthesizeTraits: (input: string) => Promise<string | undefined>,
-  ): Promise<void> {
-    const uniqueSlackIds = Array.from(new Set(slackIds.filter((id) => /^U[A-Z0-9]+$/.test(id))));
-    if (uniqueSlackIds.length === 0) {
-      return;
-    }
-
-    const traitRegenerationConcurrency = 3;
-
-    await this.processWithConcurrencyLimit(uniqueSlackIds, traitRegenerationConcurrency, async (slackId) => {
-      const memories = await this.memoryPersistenceService.getAllMemoriesForUser(slackId, teamId);
-      if (memories.length === 0) {
-        await this.traitPersistenceService.replaceTraitsForUser(slackId, teamId, []);
-        return;
-      }
-
-      const memoryText = memories.map((memory, index) => `${index + 1}. ${memory.content}`).join('\n');
-      const input = `User Slack ID: ${slackId}\n\nMemories:\n${memoryText}`;
-
-      const rawTraits = await synthesizeTraits(input).catch((error) => {
-        this.traitLogger.warn(`Trait synthesis failed for ${slackId} in ${teamId}:`, error);
-        return undefined;
-      });
-
-      const traits = this.parseTraitExtractionResult(rawTraits);
-      await this.traitPersistenceService.replaceTraitsForUser(slackId, teamId, traits);
-    });
-  }
-
-  private async processWithConcurrencyLimit<T>(
-    items: T[],
-    concurrency: number,
-    worker: (item: T) => Promise<void>,
-  ): Promise<void> {
-    const effectiveConcurrency = Math.max(1, Math.min(concurrency, items.length));
-    let nextIndex = 0;
-
-    const runners = Array.from({ length: effectiveConcurrency }, async () => {
-      while (true) {
-        const currentIndex = nextIndex;
-        nextIndex += 1;
-
-        if (currentIndex >= items.length) {
-          return;
-        }
-
-        await worker(items[currentIndex]);
-      }
-    });
-
-    await Promise.all(runners);
   }
 }
