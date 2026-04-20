@@ -40,6 +40,7 @@ import { searchController } from './search/search.controller';
 import { authController } from './auth/auth.controller';
 import { authMiddleware } from './shared/middleware/authMiddleware';
 import { dashboardController } from './dashboard/dashboard.controller';
+import { traitController } from './trait/trait.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -109,6 +110,7 @@ app.use('/quote', quoteController);
 app.use('/rep', reactionController);
 app.use('/store', storeController);
 app.use('/summary', summaryController);
+app.use('traits', traitController);
 app.use('/walkie', walkieController);
 
 const slackService = new SlackService();
