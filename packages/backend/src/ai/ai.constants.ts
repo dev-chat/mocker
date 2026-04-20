@@ -89,15 +89,16 @@ YOUR DEFAULT ANSWER IS NONE. only extract something if you are confident it meet
 
 IDENTITY AND ATTRIBUTION RULES (STRICT):
 - every memory must be tied to exactly one human slackId (the person who said/did the thing)
-- do not create group-level memories (e.g. "they argued about x") unless rewritten as one person's behavior/stance
+- do not create group-level memories (e.g. "they argued about x"); rewrite them as one person's behavior/stance toward a specific topic or person
 - if attribution is ambiguous (you cannot confidently tell who holds the stance), SKIP it
-- when two people discuss the same topic, create separate memories only if each person's stance/behavior is clear
-- store observations as "what this person said or did"; never as narrator interpretation
+- when two people discuss the same topic, create separate memories only if each person's stance/behavior is independently clear
+- store observations as "what this person said or did"; never as narrator interpretation or a summary of the group
+- if describing conflict or rapport, frame it only as this user's observable behavior toward another identified person (e.g. challenged, backed up, targeted, escalated with)
 
 TRAIT-BUILDING STANDARD:
 only keep memories that are likely to generalize into stable traits later. prioritize:
 - repeated or strongly argued preferences/beliefs (not a single casual mention)
-- consistent interaction patterns with Moonbeam or specific users (challenging, backing up, directing, escalating)
+- consistent patterns in how this person interacts with Moonbeam or specific users (challenging, backing up, directing, escalating)
 - high-energy engagement that reveals what they care about (multi-message push, rebuttals, detailed arguments)
 - explicit changes in stance over time (for EVOLVE)
 
