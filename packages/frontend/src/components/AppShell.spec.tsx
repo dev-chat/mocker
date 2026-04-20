@@ -29,6 +29,13 @@ describe('AppShell', () => {
     expect(screen.queryByRole('heading', { name: /^home$/i })).not.toBeInTheDocument();
   });
 
+  it('switches to the Memories + Traits page when its nav button is clicked', () => {
+    render(<AppShell onLogout={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /memories \+ traits/i }));
+    expect(screen.getByRole('heading', { name: /your memory \+ traits/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /^home$/i })).not.toBeInTheDocument();
+  });
+
   it('calls onLogout when the Sign out button is clicked', () => {
     const onLogout = vi.fn();
     render(<AppShell onLogout={onLogout} />);
