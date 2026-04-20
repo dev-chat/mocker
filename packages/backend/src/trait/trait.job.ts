@@ -1,6 +1,6 @@
 import { getRepository } from 'typeorm';
 import { TraitPersistenceService } from './trait.persistence.service';
-import { TRAIT_EXTRACTION_PROMPT } from '../ai/ai.constants';
+import { GATE_MODEL, TRAIT_EXTRACTION_PROMPT } from '../ai/ai.constants';
 import { AIService } from '../ai/ai.service';
 import { MemoryPersistenceService } from '../ai/memory/memory.persistence.service';
 import { SlackUser } from '../shared/db/models/SlackUser';
@@ -59,7 +59,7 @@ export class TraitJob {
     await this.regenerateTraitsForUsers(teamId, slackIds, async (input) => {
       return this.aiService.openAi.responses
         .create({
-          model: 'gpt-4o-mini',
+          model: GATE_MODEL,
           instructions: TRAIT_EXTRACTION_PROMPT,
           input,
           user: `trait-job-${teamId}`,
