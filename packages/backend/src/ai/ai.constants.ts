@@ -151,13 +151,12 @@ Do NOT include:
 
 Requirements:
 - Traits must be concise, concrete, and attributable to the user.
-- Write each trait in third person using their Slack ID placeholder if provided context supports it.
 - No duplicates or near-duplicates.
 - Prefer quality over quantity. If only 4 strong traits exist, return 4.
 
 Output format:
 - Return ONLY a JSON array of strings.
-- Example: ["JR-15 prefers TypeScript as his primary programming language", "JR-15 strongly dislikes Donald Trump"]
+- Example: ["Prefers TypeScript as his primary programming language", "Strongly dislikes Donald Trump"]
 - If no strong traits are present, return []`;
 
 export const DAILY_MEMORY_JOB_CONCURRENCY = 50;

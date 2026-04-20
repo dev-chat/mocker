@@ -2,7 +2,6 @@ import 'reflect-metadata'; // Necessary for TypeORM entities.
 import 'dotenv/config';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import cron from 'node-cron';
 
 import type { Application } from 'express';
 import express from 'express';
@@ -30,9 +29,7 @@ import { signatureVerificationMiddleware } from './shared/middleware/signatureVe
 import { WebService } from './shared/services/web/web.service';
 import { logger } from './shared/logger/logger';
 import { AIService } from './ai/ai.service';
-import { DailyMemoryJob } from './ai/daily-memory.job';
-import { FunFactJob } from './jobs/fun-fact.job';
-import { PricingJob } from './jobs/pricing.job';
+import { JobService } from './job.service';
 import { resolveTypeOrmEntities } from './shared/db/typeorm-options';
 import { portfolioController } from './portfolio/portfolio.controller';
 import { hookController } from './hook/hook.controller';
@@ -40,6 +37,7 @@ import { searchController } from './search/search.controller';
 import { authController } from './auth/auth.controller';
 import { authMiddleware } from './shared/middleware/authMiddleware';
 import { dashboardController } from './dashboard/dashboard.controller';
+import { traitController } from './trait/trait.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -109,14 +107,13 @@ app.use('/quote', quoteController);
 app.use('/rep', reactionController);
 app.use('/store', storeController);
 app.use('/summary', summaryController);
+app.use('/traits', traitController);
 app.use('/walkie', walkieController);
 
 const slackService = new SlackService();
 const webService = new WebService();
 const aiService = new AIService();
-const dailyMemoryJob = new DailyMemoryJob(aiService);
-const funFactJob = new FunFactJob();
-const pricingJob = new PricingJob();
+const jobService = new JobService();
 const indexLogger = logger.child({ module: 'Index' });
 
 const connectToDb = async (): Promise<boolean> => {
@@ -198,32 +195,7 @@ app.listen(PORT, (e?: Error) => {
       } else {
         indexLogger.info('Database connection established successfully.');
         void aiService.redeployMoonbeam();
-        cron.schedule(
-          '0 3 * * *',
-          () => {
-            void dailyMemoryJob.run();
-          },
-          { timezone: 'America/New_York' },
-        );
-        indexLogger.info('Daily memory extraction job scheduled daily at 3AM America/New_York time.');
-        cron.schedule(
-          '0 9 * * *',
-          () => {
-            void funFactJob.run();
-          },
-          { timezone: 'America/New_York' },
-        );
-        indexLogger.info('Fun-fact job scheduled daily at 9AM America/New_York time.');
-        cron.schedule(
-          '10 * * * *',
-          () => {
-            void pricingJob.run().catch((error) => {
-              indexLogger.error('Pricing job failed:', error);
-            });
-          },
-          { timezone: 'America/New_York' },
-        );
-        indexLogger.info('Pricing job scheduled every hour at minute 10 America/New_York time.');
+        jobService.scheduleCronJobs();
       }
     })
     .catch((error) => {
