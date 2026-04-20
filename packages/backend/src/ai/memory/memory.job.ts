@@ -87,7 +87,7 @@ export class MemoryJob {
       this.jobLogger.info(`Extraction lock active for ${channelId}-${teamId}, skipping`);
       return;
     }
-    await this.redis.setValueWithExpire(lockKey, 1, 'PX', 60 * 5);
+    await this.redis.setValueWithExpire(lockKey, 1, 'EX', 300000); // 5 Minutes
 
     try {
       const existingMemoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(
