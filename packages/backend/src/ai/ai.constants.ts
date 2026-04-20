@@ -157,7 +157,7 @@ Requirements:
 
 Output format:
 - Return ONLY a JSON array of strings.
-- Example: ["JR-15 prefers TypeScript as his primary programming language", "JR-15 strongly dislikes Donald Trump"]
+- Example: ["Prefers TypeScript as his primary programming language", "Strongly dislikes Donald Trump"]
 - If no strong traits are present, return []`;
 
 export const DAILY_MEMORY_JOB_CONCURRENCY = 50;
