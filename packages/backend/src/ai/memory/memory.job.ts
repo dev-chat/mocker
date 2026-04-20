@@ -8,7 +8,7 @@ import { logger } from '../../shared/logger/logger';
 import { DAILY_MEMORY_JOB_CONCURRENCY, GATE_MODEL, MEMORY_EXTRACTION_PROMPT } from '../ai.constants';
 import { MOONBEAM_SLACK_ID } from '../ai.constants';
 import type OpenAI from 'openai';
-import { extractParticipantSlackIds } from '../helpers/extractParticipantSlacKIds';
+import { extractParticipantSlackIds } from '../helpers/extractParticipantSlackIds';
 
 interface ExtractionResult {
   slackId: string;

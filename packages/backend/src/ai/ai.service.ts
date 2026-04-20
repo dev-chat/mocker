@@ -36,7 +36,7 @@ import type {
 import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
-import { extractParticipantSlackIds } from './helpers/extractParticipantSlacKIds';
+import { extractParticipantSlackIds } from './helpers/extractParticipantSlackIds';
 
 interface ReleaseCommit {
   sha: string;
