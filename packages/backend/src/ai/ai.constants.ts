@@ -81,7 +81,30 @@ about the people in this conversation that would be worth remembering for future
 The participant named "Moonbeam" (or "muzzle3") is the bot. You can see its messages for context (to understand
 what humans were reacting to), but extract observations about the HUMANS only.
 
-YOUR DEFAULT ANSWER IS NONE. Only extract something if you are confident it meets the criteria below.
+PRIMARY GOAL:
+extract only user-attributable memories that will help infer stable future TRAITS (preferences, convictions,
+communication style, recurring social dynamics). if a memory would not improve future trait synthesis, skip it.
+
+YOUR DEFAULT ANSWER IS NONE. only extract something if you are confident it meets the criteria below.
+
+IDENTITY AND ATTRIBUTION RULES (STRICT):
+- every memory must be tied to exactly one human slackId (the person who said/did the thing)
+- do not create group-level memories (e.g. "they argued about x") unless rewritten as one person's behavior/stance
+- if attribution is ambiguous (you cannot confidently tell who holds the stance), SKIP it
+- when two people discuss the same topic, create separate memories only if each person's stance/behavior is clear
+- store observations as "what this person said or did"; never as narrator interpretation
+
+TRAIT-BUILDING STANDARD:
+only keep memories that are likely to generalize into stable traits later. prioritize:
+- repeated or strongly argued preferences/beliefs (not a single casual mention)
+- consistent interaction patterns with Moonbeam or specific users (challenging, backing up, directing, escalating)
+- high-energy engagement that reveals what they care about (multi-message push, rebuttals, detailed arguments)
+- explicit changes in stance over time (for EVOLVE)
+
+discard memories that are unlikely to matter for trait synthesis:
+- one-off trivia, fleeting moods, isolated jokes, or factual Q&A
+- weak topical mentions without conviction
+- details that are specific but not behaviorally useful later
 
 WHAT TO EXTRACT:
 - Specific statements or positions someone argued with conviction
@@ -102,12 +125,12 @@ WHAT TO SKIP:
 - Single statements dressed up as recurring opinions
 
 HOW TO DECIDE:
-Look for energy. Did someone care enough to write more than a sentence? Did they argue back and forth? Did they
-directly engage with Moonbeam or another person? If the conversation is just casual banter, the answer is NONE.
+look for signal + attribution + durability:
+1) signal: did they show conviction/behavior (not just mention a topic)?
+2) attribution: can you confidently attach it to one person?
+3) durability: is this likely useful for future trait inference?
 
-A single question to Moonbeam is NOT energy. Someone asking "what happened to chuck norris" is idle curiosity, not
-a memorable observation. You need to see sustained engagement — multiple messages, a debate, a strong reaction,
-someone going off about something they care about.
+if any answer is no, skip it.
 
 EXAMPLES OF NONE (do not extract from conversations like these):
 - Someone asks Moonbeam a factual question and gets an answer
@@ -123,11 +146,24 @@ For each observation, classify:
 - REINFORCE: an existing memory came up again — only if the conversation shows genuine sustained engagement with the topic, not just a passing mention
 - EVOLVE: contradicts or meaningfully updates an existing memory
 
+MODE GUIDANCE:
+- NEW: genuinely new, trait-relevant signal for that specific person
+- REINFORCE: clear repeated evidence of an existing memory for that same person
+- EVOLVE: same person shows a meaningful shift or contradiction vs a prior memory
+- never use REINFORCE/EVOLVE if person match is uncertain
+
 Return a JSON array, or the string NONE if nothing is worth extracting. Most of the time, NONE is the right answer.
 
 Format: [{"slackId": "U12345", "content": "description of what they said or did", "mode": "NEW|REINFORCE|EVOLVE", "existingMemoryId": null}]
 
-Keep each memory to 1-2 sentences. Be specific — include what was actually said, not a summary of the topic.`;
+CONTENT WRITING RULES:
+- keep each memory to 1-2 sentences
+- include concrete behavior/claim, ideally with a brief quoted phrase when useful
+- write in plain factual language tied to that user; avoid personality labels
+- do not include private/sensitive details (family names, medical, workplace, address)
+
+QUALITY BAR:
+if you are unsure whether a candidate memory is person-specific, durable, and trait-relevant, output NONE.`;
 
 export const TRAIT_EXTRACTION_PROMPT = `You are a trait synthesis tool.
 
