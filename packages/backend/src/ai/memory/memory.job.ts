@@ -145,7 +145,11 @@ export class MemoryJob {
   private parseExtractionResults(trimmedResult: string): Array<Partial<ExtractionResult>> | null {
     try {
       const parsed: Array<Partial<ExtractionResult>> = JSON.parse(trimmedResult);
-      return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+      this.jobLogger.warn(`Extraction returned JSON but it was not an array: ${trimmedResult}`);
+      return null;
     } catch {
       this.jobLogger.warn(`Extraction returned malformed JSON: ${trimmedResult}`);
       return null;
