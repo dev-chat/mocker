@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Home, Search, LogOut } from 'lucide-react';
+import { Home, Search, Brain, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { HomePage } from '@/pages/HomePage';
 import { MessageSearchPage } from '@/pages/MessageSearchPage';
+import { PersonalContextPage } from '@/pages/PersonalContextPage';
 import type { Page, NavItemProps, AppShellProps } from '@/components/AppShell.model';
 
 function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
@@ -42,6 +43,12 @@ export function AppShell({ onLogout }: AppShellProps) {
             active={currentPage === 'message-search'}
             onClick={() => setCurrentPage('message-search')}
           />
+          <NavItem
+            icon={Brain}
+            label="Memories + Traits"
+            active={currentPage === 'personal-context'}
+            onClick={() => setCurrentPage('personal-context')}
+          />
         </nav>
 
         <Separator />
@@ -54,7 +61,9 @@ export function AppShell({ onLogout }: AppShellProps) {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
-        {currentPage === 'home' ? <HomePage onLogout={onLogout} /> : <MessageSearchPage onLogout={onLogout} />}
+        {currentPage === 'home' && <HomePage onLogout={onLogout} />}
+        {currentPage === 'message-search' && <MessageSearchPage onLogout={onLogout} />}
+        {currentPage === 'personal-context' && <PersonalContextPage onLogout={onLogout} />}
       </main>
     </div>
   );

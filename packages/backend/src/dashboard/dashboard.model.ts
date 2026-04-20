@@ -39,3 +39,14 @@ export interface DashboardResponse {
   leaderboard: LeaderboardEntry[];
   repLeaderboard: RepLeaderboardEntry[];
 }
+
+export interface PersonalContextEntry {
+  id: number;
+  content: string;
+  updatedAt: string;
+}
+
+export interface PersonalContextResponse {
+  memories: PersonalContextEntry[];
+  traits: PersonalContextEntry[];
+}
