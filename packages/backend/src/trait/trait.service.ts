@@ -32,7 +32,7 @@ export class TraitService {
       const message = `Moonbeam's core traits about you:\n${formattedTraits}`;
       await this.webService.sendEphemeral(channelId, message, userId);
     } catch (e) {
-      logError(this.traitLogger, 'Failed to fetch traits for /ai/traits command', e, {
+      logError(this.traitLogger, 'Failed to fetch traits for /traits command', e, {
         userId,
         teamId,
         channelId,
