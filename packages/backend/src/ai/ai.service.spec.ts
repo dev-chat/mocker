@@ -741,44 +741,6 @@ describe('AIService', () => {
     });
   });
 
-  describe('extractMemoriesForChannel', () => {
-    it('returns early when there are no messages in the last 24 hours', async () => {
-      (aiService.historyService.getLast24HoursForChannel as Mock).mockResolvedValue([]);
-
-      await aiService.extractMemoriesForChannel('T1', 'C1');
-
-      expect(aiService.openAi.responses.create).not.toHaveBeenCalled();
-    });
-
-    it('returns early when there are no non-Moonbeam participants', async () => {
-      (aiService.historyService.getLast24HoursForChannel as Mock).mockResolvedValue([
-        { slackId: MOONBEAM_SLACK_ID, name: 'Moonbeam', message: 'Hello there' },
-      ]);
-
-      await aiService.extractMemoriesForChannel('T1', 'C1');
-
-      expect(aiService.openAi.responses.create).not.toHaveBeenCalled();
-    });
-
-    it('calls extractMemories with formatted history when valid messages exist', async () => {
-      (aiService.historyService.getLast24HoursForChannel as Mock).mockResolvedValue([
-        { slackId: 'U1', name: 'Alice', message: 'Hello' },
-        { slackId: MOONBEAM_SLACK_ID, name: 'Moonbeam', message: 'Hi Alice' },
-      ]);
-      (aiService.redis.getExtractionLock as Mock).mockResolvedValue('1');
-
-      await aiService.extractMemoriesForChannel('T1', 'C1');
-
-      expect(aiService.historyService.getLast24HoursForChannel).toHaveBeenCalledWith('T1', 'C1');
-    });
-
-    it('propagates errors from getLast24HoursForChannel', async () => {
-      (aiService.historyService.getLast24HoursForChannel as Mock).mockRejectedValue(new Error('DB error'));
-
-      await expect(aiService.extractMemoriesForChannel('T1', 'C1')).rejects.toThrow('DB error');
-    });
-  });
-
   describe('send helpers', () => {
     it('sendImage posts image block and fallback on slack error', async () => {
       const sendMock = aiService.webService.sendMessage as Mock;

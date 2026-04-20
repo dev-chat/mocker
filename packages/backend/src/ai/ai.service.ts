@@ -17,9 +17,7 @@ import {
   MAX_AI_REQUESTS_PER_DAY,
   REDPLOY_MOONBEAM_IMAGE_PROMPT,
   REDPLOY_MOONBEAM_TEXT_PROMPT,
-  GATE_MODEL,
   MOONBEAM_SLACK_ID,
-  TRAIT_EXTRACTION_PROMPT,
   GPT_MODEL,
 } from './ai.constants';
 import { TraitService } from './trait/trait.service';
@@ -523,19 +521,6 @@ export class AIService {
       });
   }
 
-  public async extractMemoriesForChannel(teamId: string, channelId: string): Promise<void> {
-    const historyMessages = await this.historyService.getLast24HoursForChannel(teamId, channelId);
-    if (historyMessages.length === 0) return;
-
-    const history = this.formatHistory(historyMessages);
-    const participantSlackIds = this.traitService.extractParticipantSlackIds(historyMessages, {
-      excludeSlackIds: [MOONBEAM_SLACK_ID],
-    });
-    if (participantSlackIds.length === 0) return;
-
-    await this.extractMemories(teamId, channelId, history, participantSlackIds);
-  }
-
   private async updateMoonbeamProfilePhoto(imageBytes: Buffer): Promise<void> {
     const profileImage = await sharp(imageBytes)
       .resize(512, 512, { fit: 'cover', position: 'centre' })
@@ -644,42 +629,6 @@ export class AIService {
       previousSha: typeof metadata.previousSha === 'string' ? metadata.previousSha : null,
       commits,
     };
-  }
-
-  private async regenerateTraitsForUsers(teamId: string, slackIds: string[]): Promise<void> {
-    return this.traitService.regenerateTraitsForUsers(teamId, slackIds, async (input) => {
-      return this.openAi.responses
-        .create({
-          model: GATE_MODEL,
-          instructions: TRAIT_EXTRACTION_PROMPT,
-          input,
-        })
-        .then((response) => extractAndParseOpenAiResponse(response));
-    });
-  }
-
-  private async extractMemories(
-    teamId: string,
-    channelId: string,
-    conversationHistory: string,
-    participantSlackIds: string[],
-  ): Promise<void> {
-    return this.memoryService.extractMemories(
-      teamId,
-      channelId,
-      conversationHistory,
-      participantSlackIds,
-      async (prompt, input) => {
-        return this.openAi.responses
-          .create({
-            model: GATE_MODEL,
-            instructions: prompt,
-            input,
-          })
-          .then((x) => extractAndParseOpenAiResponse(x));
-      },
-      async (regenTeamId, slackIds) => this.regenerateTraitsForUsers(regenTeamId, slackIds),
-    );
   }
 
   sendImage(image: string | undefined, userId: string, teamId: string, channel: string, text: string): void {

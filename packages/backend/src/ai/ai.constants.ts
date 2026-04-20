@@ -151,7 +151,6 @@ Do NOT include:
 
 Requirements:
 - Traits must be concise, concrete, and attributable to the user.
-- Write each trait in third person using their Slack ID placeholder if provided context supports it.
 - No duplicates or near-duplicates.
 - Prefer quality over quantity. If only 4 strong traits exist, return 4.
 
