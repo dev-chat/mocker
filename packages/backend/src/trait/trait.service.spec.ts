@@ -1,14 +1,16 @@
 import { vi } from 'vitest';
 import { TraitService } from './trait.service';
 
-const { getAllTraitsForUser, sendEphemeral } = vi.hoisted(() => ({
+const { getAllTraitsForUser, getAllTraitsForUsers, sendEphemeral } = vi.hoisted(() => ({
   getAllTraitsForUser: vi.fn().mockResolvedValue([]),
+  getAllTraitsForUsers: vi.fn().mockResolvedValue(new Map()),
   sendEphemeral: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
-vi.mock('../ai/trait/trait.persistence.service', async () => ({
+vi.mock('./trait.persistence.service', async () => ({
   TraitPersistenceService: classMock(() => ({
     getAllTraitsForUser,
+    getAllTraitsForUsers,
   })),
 }));
 
@@ -58,5 +60,45 @@ describe('TraitService', () => {
     await service.sendTraitsForUser('U1', 'T1', 'C1');
 
     expect(sendEphemeral).toHaveBeenCalledWith('C1', 'Sorry, something went wrong fetching your traits.', 'U1');
+  });
+
+  it('formats trait context grouped by participant name', () => {
+    const text = service.formatTraitContext(
+      [
+        { slackId: 'U1', content: 'prefers typescript' } as never,
+        { slackId: 'U2', content: 'dislikes donald trump' } as never,
+      ],
+      [
+        { slackId: 'U1', name: 'Alice', message: 'hi' } as never,
+        { slackId: 'U2', name: 'Bob', message: 'hello' } as never,
+      ],
+    );
+
+    expect(text).toContain('traits_context');
+    expect(text).toContain('Alice');
+    expect(text).toContain('prefers typescript');
+    expect(text).toContain('Bob');
+  });
+
+  it('returns base instructions when there is no trait context', () => {
+    expect(service.appendTraitContext('base', '')).toBe('base');
+  });
+
+  it('inserts trait context before verification section', () => {
+    const base = 'instructions\n<verification>\nchecklist\n</verification>';
+    const context = '<traits_context>\ntest trait\n</traits_context>';
+
+    const result = service.appendTraitContext(base, context);
+
+    expect(result).toContain('test trait');
+    expect(result.indexOf('traits_context')).toBeLessThan(result.indexOf('<verification>'));
+  });
+
+  it('fetches trait context from persistence layer', async () => {
+    getAllTraitsForUsers.mockResolvedValue(new Map([['U1', [{ slackId: 'U1', content: 'prefers typescript' }]]]));
+
+    const context = await service.fetchTraitContext(['U1'], 'T1', [{ slackId: 'U1', name: 'Alice' } as never]);
+
+    expect(context).toContain('prefers typescript');
   });
 });

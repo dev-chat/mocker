@@ -1,9 +1,8 @@
 import { getRepository } from 'typeorm';
-import type { TraitWithSlackId } from '../../shared/db/models/Trait';
-import { Trait } from '../../shared/db/models/Trait';
-import { SlackUser } from '../../shared/db/models/SlackUser';
-import { logError } from '../../shared/logger/error-logging';
-import { logger } from '../../shared/logger/logger';
+import { logger } from '../shared/logger/logger';
+import { SlackUser } from '../shared/db/models/SlackUser';
+import { Trait, type TraitWithSlackId } from '../shared/db/models/Trait';
+import { logError } from '../shared/logger/error-logging';
 
 const MAX_TRAITS_PER_USER = 10;
 

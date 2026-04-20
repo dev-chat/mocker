@@ -1,9 +1,9 @@
 import cron from 'node-cron';
 import { MemoryJob } from './ai/memory/memory.job';
-import { TraitJob } from './ai/trait/trait.job';
 import { FunFactJob } from './jobs/fun-fact.job';
 import { PricingJob } from './jobs/pricing.job';
 import { logger } from './shared/logger/logger';
+import { TraitJob } from './trait/trait.job';
 
 export class JobService {
   private memoryJob: MemoryJob;

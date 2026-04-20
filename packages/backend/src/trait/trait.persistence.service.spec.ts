@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { getRepository } from 'typeorm';
 import { TraitPersistenceService } from './trait.persistence.service';
-import { SlackUser } from '../../shared/db/models/SlackUser';
+import { SlackUser } from '../shared/db/models/SlackUser';
 import { Trait } from '../../shared/db/models/Trait';
 
 vi.mock('typeorm', async () => ({

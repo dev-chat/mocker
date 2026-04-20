@@ -5,7 +5,18 @@ import path from 'path';
 import { AIService } from './ai.service';
 import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { MOONBEAM_SLACK_ID } from './ai.constants';
-import { TraitService } from './trait/trait.service';
+import { TraitService } from '../trait/trait.service';
+
+const { getAllTraitsForUsers } = vi.hoisted(() => ({
+  getAllTraitsForUsers: vi.fn().mockResolvedValue(new Map()),
+}));
+
+vi.mock('../trait/trait.persistence.service', async () => ({
+  TraitPersistenceService: classMock(() => ({
+    getAllTraitsForUsers,
+    getAllTraitsForUser: vi.fn().mockResolvedValue([]),
+  })),
+}));
 
 const buildAiService = (): AIService => {
   const ai = new AIService();
@@ -35,11 +46,6 @@ const buildAiService = (): AIService => {
       generateContent: vi.fn(),
     },
   } as unknown as AIService['gemini'];
-
-  const traitPersistenceService = {
-    getAllTraitsForUsers: vi.fn().mockResolvedValue(new Map()),
-    replaceTraitsForUser: vi.fn().mockResolvedValue([]),
-  } as never;
 
   ai.historyService = {
     getHistory: vi.fn().mockResolvedValue([]),
@@ -72,7 +78,7 @@ const buildAiService = (): AIService => {
     debug: vi.fn(),
   } as unknown as AIService['aiServiceLogger'];
 
-  ai.traitService = new TraitService(traitPersistenceService as never);
+  ai.traitService = new TraitService();
 
   return ai;
 };

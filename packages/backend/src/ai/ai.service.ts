@@ -20,7 +20,6 @@ import {
   MOONBEAM_SLACK_ID,
   GPT_MODEL,
 } from './ai.constants';
-import { TraitService } from './trait/trait.service';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
@@ -37,6 +36,7 @@ import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
 import { extractParticipantSlackIds } from './helpers/extractParticipantSlackIds';
+import { TraitService } from '../trait/trait.service';
 
 interface ReleaseCommit {
   sha: string;

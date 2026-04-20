@@ -1,10 +1,10 @@
-import { SlackUser } from '../../shared/db/models/SlackUser';
 import { getRepository } from 'typeorm';
 import { TraitPersistenceService } from './trait.persistence.service';
-import { MemoryPersistenceService } from '../memory/memory.persistence.service';
-import { AIService } from '../ai.service';
-import { logger } from '../../shared/logger/logger';
-import { TRAIT_EXTRACTION_PROMPT } from '../ai.constants';
+import { TRAIT_EXTRACTION_PROMPT } from '../ai/ai.constants';
+import { AIService } from '../ai/ai.service';
+import { MemoryPersistenceService } from '../ai/memory/memory.persistence.service';
+import { SlackUser } from '../shared/db/models/SlackUser';
+import { logger } from '../shared/logger/logger';
 
 export class TraitJob {
   private traitPersistenceService = new TraitPersistenceService();
