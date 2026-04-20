@@ -19,13 +19,11 @@ import {
   REDPLOY_MOONBEAM_TEXT_PROMPT,
   GATE_MODEL,
   MOONBEAM_SLACK_ID,
-  MEMORY_EXTRACTION_PROMPT,
   TRAIT_EXTRACTION_PROMPT,
   GPT_MODEL,
 } from './ai.constants';
-import { MemoryPersistenceService } from './memory/memory.persistence.service';
-import { TraitPersistenceService } from './trait/trait.persistence.service';
-import type { TraitWithSlackId } from '../shared/db/models/Trait';
+import { TraitService } from './trait/trait.service';
+import { MemoryService } from './memory/memory.service';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { SlackService } from '../shared/services/slack/slack.service';
@@ -41,13 +39,6 @@ import type {
 import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
-
-interface ExtractionResult {
-  slackId: string;
-  content: string;
-  mode: 'NEW' | 'REINFORCE' | 'EVOLVE';
-  existingMemoryId: number | null;
-}
 
 interface ReleaseCommit {
   sha: string;
@@ -106,8 +97,8 @@ export class AIService {
   webService = new WebService();
   slackService = new SlackService();
   slackPersistenceService = new SlackPersistenceService();
-  memoryPersistenceService = new MemoryPersistenceService();
-  traitPersistenceService = new TraitPersistenceService();
+  memoryService = new MemoryService();
+  traitService = new TraitService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
@@ -401,15 +392,15 @@ export class AIService {
     const customPrompt = await this.slackPersistenceService.getCustomPrompt(user_id, team_id);
     const normalizedCustomPrompt = customPrompt?.trim() || null;
 
-    const traitContext = await this.fetchTraitContext(
-      this.extractParticipantSlackIds(history, { includeSlackId: user_id }),
+    const traitContext = await this.traitService.fetchTraitContext(
+      this.traitService.extractParticipantSlackIds(history, { includeSlackId: user_id }),
       team_id,
       history,
     );
     const baseInstructions = normalizedCustomPrompt
       ? `${normalizedCustomPrompt}\n\n${getHistoryInstructions(formattedHistory)}`
       : getHistoryInstructions(formattedHistory);
-    const systemInstructions = this.appendTraitContext(baseInstructions, traitContext);
+    const systemInstructions = this.traitService.appendTraitContext(baseInstructions, traitContext);
 
     return this.openAi.responses
       .create({
@@ -487,13 +478,12 @@ export class AIService {
     const customPrompt = userId ? await this.slackPersistenceService.getCustomPrompt(userId, teamId) : null;
     const normalizedCustomPrompt = customPrompt?.trim() || null;
 
-    // Fetch stable user traits instead of raw memories to reduce context size.
-    const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
+    const participantSlackIds = this.traitService.extractParticipantSlackIds(historyMessages, {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
-    const traitContext = await this.fetchTraitContext(participantSlackIds, teamId, historyMessages);
+    const traitContext = await this.traitService.fetchTraitContext(participantSlackIds, teamId, historyMessages);
     const baseInstructions = normalizedCustomPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
-    const systemInstructions = this.appendTraitContext(baseInstructions, traitContext);
+    const systemInstructions = this.traitService.appendTraitContext(baseInstructions, traitContext);
 
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
@@ -533,75 +523,12 @@ export class AIService {
       });
   }
 
-  private formatTraitContext(traits: TraitWithSlackId[], history: MessageWithName[]): string {
-    if (traits.length === 0) return '';
-
-    const nameMap = new Map<string, string>();
-    history.forEach((msg) => {
-      if (msg.slackId && msg.name) nameMap.set(msg.slackId, msg.name);
-    });
-
-    const grouped = new Map<string, TraitWithSlackId[]>();
-    for (const trait of traits) {
-      const slackId = trait.slackId || 'unknown';
-      if (!grouped.has(slackId)) grouped.set(slackId, []);
-      grouped.get(slackId)!.push(trait);
-    }
-
-    const lines = Array.from(grouped.entries())
-      .map(([slackId, userTraits]) => {
-        const name = nameMap.get(slackId) || slackId;
-        const traitLines = userTraits.map((trait) => `"${trait.content}"`).join(', ');
-        return `- ${name}: ${traitLines}`;
-      })
-      .join('\n');
-
-    return `<traits_context>\ncore beliefs and stable traits for people in this conversation:\n${lines}\n</traits_context>`;
-  }
-
-  private extractParticipantSlackIds(
-    history: MessageWithName[],
-    options?: { includeSlackId?: string; excludeSlackIds?: string[] },
-  ): string[] {
-    const excludeSet = new Set(options?.excludeSlackIds || []);
-    const ids = [
-      ...new Set(history.filter((msg) => msg.slackId && !excludeSet.has(msg.slackId!)).map((msg) => msg.slackId!)),
-    ];
-    if (options?.includeSlackId && !ids.includes(options.includeSlackId)) {
-      ids.push(options.includeSlackId);
-    }
-    return ids;
-  }
-
-  private async fetchTraitContext(
-    participantSlackIds: string[],
-    teamId: string,
-    history: MessageWithName[],
-  ): Promise<string> {
-    if (participantSlackIds.length === 0) return '';
-    const traitsMap = await this.traitPersistenceService.getAllTraitsForUsers(participantSlackIds, teamId);
-    const traits = Array.from(traitsMap.values()).flat();
-    return this.formatTraitContext(traits, history);
-  }
-
-  private appendTraitContext(baseInstructions: string, memoryContext: string): string {
-    if (!memoryContext) return baseInstructions;
-    // Insert memory data before <verification> so the verification checklist remains the last thing the model sees
-    const verificationTag = '<verification>';
-    const insertionPoint = baseInstructions.lastIndexOf(verificationTag);
-    if (insertionPoint !== -1) {
-      return `${baseInstructions.slice(0, insertionPoint)}${memoryContext}\n\n${baseInstructions.slice(insertionPoint)}`;
-    }
-    // Fallback for custom prompts that don't use the standard <verification> tag
-    return `${baseInstructions}\n\n${memoryContext}`;
-  }
-
   public async extractMemoriesForChannel(teamId: string, channelId: string): Promise<void> {
     const historyMessages = await this.historyService.getLast24HoursForChannel(teamId, channelId);
     if (historyMessages.length === 0) return;
 
     const history = this.formatHistory(historyMessages);
-    const participantSlackIds = this.extractParticipantSlackIds(historyMessages, {
+    const participantSlackIds = this.traitService.extractParticipantSlackIds(historyMessages, {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
     if (participantSlackIds.length === 0) return;
@@ -719,85 +646,15 @@ export class AIService {
     };
   }
 
-  private parseTraitExtractionResult(raw: string | undefined): string[] {
-    if (!raw) {
-      return [];
-    }
-
-    try {
-      const parsed: unknown = JSON.parse(raw.trim());
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-
-      return Array.from(
-        new Set(
-          parsed
-            .filter((value): value is string => typeof value === 'string')
-            .map((value) => value.trim())
-            .filter((value) => value.length > 0),
-        ),
-      ).slice(0, 10);
-    } catch {
-      this.aiServiceLogger.warn(`Trait extraction returned malformed JSON: ${raw}`);
-      return [];
-    }
-  }
-
-  private async processWithConcurrencyLimit<T>(
-    items: T[],
-    concurrency: number,
-    worker: (item: T) => Promise<void>,
-  ): Promise<void> {
-    const effectiveConcurrency = Math.max(1, Math.min(concurrency, items.length));
-    let nextIndex = 0;
-
-    const runners = Array.from({ length: effectiveConcurrency }, async () => {
-      const currentIndex = nextIndex;
-      nextIndex += 1;
-
-      if (currentIndex >= items.length) {
-        return;
-      }
-
-      await worker(items[currentIndex]);
-    });
-
-    await Promise.all(runners);
-  }
-
   private async regenerateTraitsForUsers(teamId: string, slackIds: string[]): Promise<void> {
-    const uniqueSlackIds = Array.from(new Set(slackIds.filter((id) => /^U[A-Z0-9]+$/.test(id))));
-    if (uniqueSlackIds.length === 0) {
-      return;
-    }
-
-    const traitRegenerationConcurrency = 3;
-
-    await this.processWithConcurrencyLimit(uniqueSlackIds, traitRegenerationConcurrency, async (slackId) => {
-      const memories = await this.memoryPersistenceService.getAllMemoriesForUser(slackId, teamId);
-      if (memories.length === 0) {
-        await this.traitPersistenceService.replaceTraitsForUser(slackId, teamId, []);
-        return;
-      }
-
-      const memoryText = memories.map((memory, index) => `${index + 1}. ${memory.content}`).join('\n');
-      const input = `User Slack ID: ${slackId}\n\nMemories:\n${memoryText}`;
-
-      const rawTraits = await this.openAi.responses
+    return this.traitService.regenerateTraitsForUsers(teamId, slackIds, async (input) => {
+      return this.openAi.responses
         .create({
           model: GATE_MODEL,
           instructions: TRAIT_EXTRACTION_PROMPT,
           input,
         })
-        .then((response) => extractAndParseOpenAiResponse(response))
-        .catch((error) => {
-          this.aiServiceLogger.warn(`Trait synthesis failed for ${slackId} in ${teamId}:`, error);
-          return undefined;
-        });
-
-      const traits = this.parseTraitExtractionResult(rawTraits);
-      await this.traitPersistenceService.replaceTraitsForUser(slackId, teamId, traits);
+        .then((response) => extractAndParseOpenAiResponse(response));
     });
   }
 
@@ -807,104 +664,22 @@ export class AIService {
     conversationHistory: string,
     participantSlackIds: string[],
   ): Promise<void> {
-    const locked = await this.redis.getExtractionLock(channelId, teamId);
-    if (locked) {
-      this.aiServiceLogger.info(`Extraction lock active for ${channelId}-${teamId}, skipping`);
-      return;
-    }
-    await this.redis.setExtractionLock(channelId, teamId);
-
-    try {
-      const existingMemoriesMap = await this.memoryPersistenceService.getAllMemoriesForUsers(
-        participantSlackIds,
-        teamId,
-      );
-
-      const existingMemoriesText =
-        existingMemoriesMap.size > 0
-          ? Array.from(existingMemoriesMap.entries())
-              .map(([slackId, memories]) => {
-                const lines = memories.map((m) => `  [ID:${m.id}] "${m.content}"`).join('\n');
-                return `${slackId}:\n${lines}`;
-              })
-              .join('\n\n')
-          : '(no existing memories)';
-
-      const extractionInput = conversationHistory;
-      const prompt = MEMORY_EXTRACTION_PROMPT.replace('{existing_memories}', existingMemoriesText);
-
-      const result = await this.openAi.responses
-        .create({
-          model: GATE_MODEL,
-          instructions: prompt,
-          input: extractionInput,
-        })
-        .then((x) => extractAndParseOpenAiResponse(x));
-
-      if (!result) {
-        this.aiServiceLogger.warn('Extraction returned no result');
-        return;
-      }
-
-      const trimmed = result.trim();
-      if (trimmed === 'NONE' || trimmed === '"NONE"') return;
-
-      let extractions: Array<Partial<ExtractionResult>>;
-      try {
-        const parsed: unknown = JSON.parse(trimmed);
-        extractions = Array.isArray(parsed) ? parsed : [parsed];
-      } catch {
-        this.aiServiceLogger.warn(`Extraction returned malformed JSON: ${trimmed}`);
-        return;
-      }
-
-      const touchedUsers = new Set<string>();
-
-      for (const extraction of extractions) {
-        if (!extraction.slackId || !extraction.content || !extraction.mode) {
-          this.aiServiceLogger.warn('Extraction missing required fields, skipping:', extraction);
-          continue;
-        }
-
-        if (!/^U[A-Z0-9]+$/.test(extraction.slackId)) {
-          this.aiServiceLogger.warn(`Invalid slackId format: ${extraction.slackId}`);
-          continue;
-        }
-
-        switch (extraction.mode) {
-          case 'NEW':
-            await this.memoryPersistenceService.saveMemories(extraction.slackId, teamId, [extraction.content]);
-            touchedUsers.add(extraction.slackId);
-            break;
-
-          case 'REINFORCE':
-            if (extraction.existingMemoryId) {
-              await this.memoryPersistenceService.reinforceMemory(extraction.existingMemoryId);
-              touchedUsers.add(extraction.slackId);
-            } else {
-              this.aiServiceLogger.warn('REINFORCE extraction missing existingMemoryId, skipping');
-            }
-            break;
-
-          case 'EVOLVE':
-            if (extraction.existingMemoryId) {
-              await this.memoryPersistenceService.deleteMemory(extraction.existingMemoryId);
-            }
-            await this.memoryPersistenceService.saveMemories(extraction.slackId, teamId, [extraction.content]);
-            touchedUsers.add(extraction.slackId);
-            break;
-
-          default:
-            this.aiServiceLogger.warn(`Unknown extraction mode: ${String(extraction.mode)}`);
-        }
-      }
-
-      await this.regenerateTraitsForUsers(teamId, [...touchedUsers]);
-
-      this.aiServiceLogger.info(`Extraction complete for ${channelId}: ${extractions.length} observations processed`);
-    } catch (e) {
-      this.aiServiceLogger.warn('Memory extraction failed:', e);
-    }
+    return this.memoryService.extractMemories(
+      teamId,
+      channelId,
+      conversationHistory,
+      participantSlackIds,
+      async (prompt, input) => {
+        return this.openAi.responses
+          .create({
+            model: GATE_MODEL,
+            instructions: prompt,
+            input,
+          })
+          .then((x) => extractAndParseOpenAiResponse(x));
+      },
+      async (regenTeamId, slackIds) => this.regenerateTraitsForUsers(regenTeamId, slackIds),
+    );
   }
 
   sendImage(image: string | undefined, userId: string, teamId: string, channel: string, text: string): void {

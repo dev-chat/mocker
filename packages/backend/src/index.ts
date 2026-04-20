@@ -110,7 +110,7 @@ app.use('/quote', quoteController);
 app.use('/rep', reactionController);
 app.use('/store', storeController);
 app.use('/summary', summaryController);
-app.use('traits', traitController);
+app.use('/traits', traitController);
 app.use('/walkie', walkieController);
 
 const slackService = new SlackService();
