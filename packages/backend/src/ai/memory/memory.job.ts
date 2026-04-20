@@ -20,13 +20,14 @@ const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): str
 
 export class MemoryJob {
   private historyService = new HistoryPersistenceService();
-  private memoryService = new MemoryService();
+  private memoryService: MemoryService;
   private traitService = new TraitService();
   private aiService: AIService;
   private jobLogger = logger.child({ module: 'MemoryJob' });
 
   constructor(aiService?: AIService) {
     this.aiService = aiService ?? new AIService();
+    this.memoryService = new MemoryService(undefined, this.aiService.redis);
   }
 
   async run(): Promise<void> {

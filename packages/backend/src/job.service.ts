@@ -4,6 +4,7 @@ import { TraitJob } from './ai/trait/trait.job';
 import { FunFactJob } from './jobs/fun-fact.job';
 import { PricingJob } from './jobs/pricing.job';
 import { logger } from './shared/logger/logger';
+import { AIService } from './ai/ai.service';
 
 export class JobService {
   private memoryJob: MemoryJob;
@@ -12,9 +13,9 @@ export class JobService {
   private pricingJob: PricingJob;
   private jobServiceLogger = logger.child({ module: 'JobService' });
 
-  constructor() {
-    this.memoryJob = new MemoryJob();
-    this.traitJob = new TraitJob();
+  constructor(aiService?: AIService) {
+    this.memoryJob = new MemoryJob(aiService);
+    this.traitJob = new TraitJob(undefined, aiService);
     this.funFactJob = new FunFactJob();
     this.pricingJob = new PricingJob();
   }

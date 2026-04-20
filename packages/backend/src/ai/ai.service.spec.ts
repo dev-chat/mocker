@@ -37,18 +37,18 @@ const buildAiService = (): AIService => {
     },
   } as unknown as AIService['gemini'];
 
-  ai.memoryPersistenceService = {
+  const memoryPersistenceService = {
     getAllMemoriesForUsers: vi.fn().mockResolvedValue(new Map()),
     getAllMemoriesForUser: vi.fn().mockResolvedValue([]),
     saveMemories: vi.fn().mockResolvedValue([]),
     reinforceMemory: vi.fn().mockResolvedValue(true),
     deleteMemory: vi.fn().mockResolvedValue(true),
-  } as unknown as AIService['memoryPersistenceService'];
+  } as never;
 
-  ai.traitPersistenceService = {
+  const traitPersistenceService = {
     getAllTraitsForUsers: vi.fn().mockResolvedValue(new Map()),
     replaceTraitsForUser: vi.fn().mockResolvedValue([]),
-  } as unknown as AIService['traitPersistenceService'];
+  } as never;
 
   ai.historyService = {
     getHistory: vi.fn().mockResolvedValue([]),
@@ -82,8 +82,8 @@ const buildAiService = (): AIService => {
   } as unknown as AIService['aiServiceLogger'];
 
   ai.traitService = new TraitService(
-    ai.traitPersistenceService as never,
-    ai.memoryPersistenceService as never,
+    traitPersistenceService,
+    memoryPersistenceService,
     ai.aiServiceLogger as never,
   );
 
@@ -360,7 +360,7 @@ describe('AIService', () => {
       (aiService.historyService.getHistory as Mock).mockResolvedValue([
         { name: 'Jane', slackId: 'U2', message: 'Hi there' },
       ]);
-      (aiService.traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
+      ((aiService.traitService as unknown as { traitPersistenceService: { getAllTraitsForUsers: unknown } }).traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
         new Map([['U2', [{ slackId: 'U2', content: 'prefers typescript' }]]]),
       );
       const createSpy = aiService.openAi.responses.create as Mock;
@@ -562,7 +562,7 @@ describe('AIService', () => {
       (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([
         { slackId: 'U2', name: 'Jane', message: 'hello' },
       ]);
-      (aiService.traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
+      ((aiService.traitService as unknown as { traitPersistenceService: { getAllTraitsForUsers: unknown } }).traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
         new Map([['U2', [{ slackId: 'U2', content: 'dislikes donald trump' }]]]),
       );
       const createSpy = aiService.openAi.responses.create as Mock;

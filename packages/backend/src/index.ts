@@ -113,7 +113,7 @@ app.use('/walkie', walkieController);
 const slackService = new SlackService();
 const webService = new WebService();
 const aiService = new AIService();
-const jobService = new JobService();
+const jobService = new JobService(aiService);
 const indexLogger = logger.child({ module: 'Index' });
 
 const connectToDb = async (): Promise<boolean> => {

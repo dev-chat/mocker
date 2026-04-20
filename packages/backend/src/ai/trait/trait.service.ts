@@ -149,14 +149,16 @@ export class TraitService {
     let nextIndex = 0;
 
     const runners = Array.from({ length: effectiveConcurrency }, async () => {
-      const currentIndex = nextIndex;
-      nextIndex += 1;
+      while (true) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
 
-      if (currentIndex >= items.length) {
-        return;
+        if (currentIndex >= items.length) {
+          return;
+        }
+
+        await worker(items[currentIndex]);
       }
-
-      await worker(items[currentIndex]);
     });
 
     await Promise.all(runners);
