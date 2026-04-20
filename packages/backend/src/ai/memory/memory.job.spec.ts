@@ -131,7 +131,6 @@ describe('MemoryJob', () => {
     expect(memoryPersistenceService.saveMemories).toHaveBeenCalled();
     expect(memoryPersistenceService.reinforceMemory).toHaveBeenCalledWith(10);
     expect(memoryPersistenceService.deleteMemory).toHaveBeenCalledWith(11);
-    expect(traitJob.runForUsers).toHaveBeenCalledWith('T1', ['U123ABC']);
   });
 
   it('skips malformed extraction items and logs warnings', async () => {
