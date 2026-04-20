@@ -29,7 +29,7 @@ const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): str
 export class MemoryJob {
   private historyService = new HistoryPersistenceService();
   private memoryPersistenceService = new MemoryPersistenceService();
-  private redis = new RedisPersistenceService();
+  private redis = RedisPersistenceService.getInstance();
   private aiService: AIService;
   private jobLogger = logger.child({ module: 'MemoryJob' });
 
