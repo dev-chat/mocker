@@ -75,3 +75,41 @@ export interface PersonalContextResponse {
   memories: PersonalContextEntry[];
   traits: PersonalContextEntry[];
 }
+
+export type FrontendRecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+export interface FrontendRecurrenceRule {
+  frequency: FrontendRecurrenceFrequency;
+  interval: number;
+  until?: string;
+}
+
+export interface CalendarEventSeries {
+  id: string;
+  teamId: string;
+  createdByUserId: string;
+  title: string;
+  location: string | null;
+  isAllDay: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  recurrence: FrontendRecurrenceRule | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CalendarEventOccurrence {
+  occurrenceId: string;
+  seriesId: string;
+  title: string;
+  location: string | null;
+  startsAt: string;
+  endsAt: string;
+  isAllDay: boolean;
+  isRecurring: boolean;
+}
+
+export interface CalendarEventsResponse {
+  series: CalendarEventSeries[];
+  occurrences: CalendarEventOccurrence[];
+}

@@ -4,6 +4,7 @@ import { Memory } from './Memory';
 import { Message } from './Message';
 import { Portfolio } from './Portfolio';
 import { Trait } from './Trait';
+import { CalendarEvent } from './CalendarEvent';
 
 @Entity()
 @Unique(['slackId', 'teamId'])
@@ -37,6 +38,9 @@ export class SlackUser {
 
   @OneToMany(() => Message, (message) => message.userId)
   public messages?: Message[];
+
+  @OneToMany(() => CalendarEvent, (calendarEvent) => calendarEvent.createdByUser)
+  public createdCalendarEvents?: CalendarEvent[];
 
   @OneToOne(() => Portfolio, (portfolio) => portfolio.user, { cascade: true })
   public portfolio?: Portfolio;
