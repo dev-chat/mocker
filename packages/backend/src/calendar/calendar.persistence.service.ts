@@ -1,4 +1,12 @@
 import { getRepository } from 'typeorm';
+import {
+  addMonths,
+  addYears,
+  differenceInCalendarMonths,
+  differenceInCalendarYears,
+  isAfter,
+  isBefore,
+} from 'date-fns';
 import { CalendarEvent } from '../shared/db/models/CalendarEvent';
 import { SlackUser } from '../shared/db/models/SlackUser';
 import type {
@@ -10,8 +18,7 @@ import type {
 } from './calendar.model';
 import { logger } from '../shared/logger/logger';
 import { logError } from '../shared/logger/error-logging';
-
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
+import { addUtcDays, DAY_IN_MS, fromUtcWallClock, parseIsoDate, toUtcWallClock } from './calendar.date';
 
 const toIso = (value: Date): string => value.toISOString();
 const toIsoNullable = (value: Date | null): string | null => (value ? value.toISOString() : null);
@@ -40,6 +47,12 @@ const parseRecurrenceRuleFromUnknown = (value: unknown): RecurrenceRule | null =
     return null;
   }
 
+  if (typeof until === 'string') {
+    if (!parseIsoDate(until)) {
+      return null;
+    }
+  }
+
   return {
     frequency,
     interval,
@@ -60,28 +73,23 @@ const parseRecurrenceRule = (value: string | null): RecurrenceRule | null => {
 };
 
 const addByFrequency = (source: Date, frequency: RecurrenceFrequency, interval: number): Date => {
-  const next = new Date(source);
   switch (frequency) {
     case 'daily':
-      next.setUTCDate(next.getUTCDate() + interval);
-      return next;
+      return new Date(source.getTime() + interval * DAY_IN_MS);
     case 'weekly':
-      next.setUTCDate(next.getUTCDate() + interval * 7);
-      return next;
+      return new Date(source.getTime() + interval * 7 * DAY_IN_MS);
     case 'monthly':
-      next.setUTCMonth(next.getUTCMonth() + interval);
-      return next;
+      return fromUtcWallClock(addMonths(toUtcWallClock(source), interval));
     case 'yearly':
-      next.setUTCFullYear(next.getUTCFullYear() + interval);
-      return next;
+      return fromUtcWallClock(addYears(toUtcWallClock(source), interval));
   }
 };
 
 const intersectsRange = (start: Date, end: Date, rangeStart: Date, rangeEnd: Date): boolean =>
-  start < rangeEnd && end > rangeStart;
+  isBefore(start, rangeEnd) && isAfter(end, rangeStart);
 
 const getMonthDifference = (start: Date, end: Date): number =>
-  (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + (end.getUTCMonth() - start.getUTCMonth());
+  differenceInCalendarMonths(toUtcWallClock(end), toUtcWallClock(start));
 
 const advanceBySteps = (source: Date, frequency: RecurrenceFrequency, interval: number, steps: number): Date => {
   if (steps <= 0) {
@@ -129,7 +137,7 @@ const getStepEstimate = (
       return diffMonths > 0 ? Math.max(0, Math.floor(diffMonths / interval) - 1) : 0;
     }
     case 'yearly': {
-      const diffYears = relevantStart.getUTCFullYear() - start.getUTCFullYear();
+      const diffYears = differenceInCalendarYears(toUtcWallClock(relevantStart), toUtcWallClock(start));
       return diffYears > 0 ? Math.max(0, Math.floor(diffYears / interval) - 1) : 0;
     }
   }
@@ -153,11 +161,11 @@ const findFirstRelevantOccurrenceStart = (
       return occurrenceStart;
     }
 
-    if (until && nextOccurrenceStart > until) {
+    if (until && isAfter(nextOccurrenceStart, until)) {
       return occurrenceStart;
     }
 
-    if (nextOccurrenceStart >= rangeEnd) {
+    if (!isBefore(nextOccurrenceStart, rangeEnd)) {
       return occurrenceStart;
     }
 
@@ -196,8 +204,13 @@ export class CalendarPersistenceService {
     rangeEnd: Date,
   ): CalendarEventOccurrence[] {
     // Legacy safety: if old rows exist without start/end, fall back to a one-day window.
-    const start = series.startsAt ? new Date(series.startsAt) : new Date(series.createdAt);
-    const end = series.endsAt ? new Date(series.endsAt) : new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    const start = series.startsAt ? parseIsoDate(series.startsAt) : parseIsoDate(series.createdAt);
+    if (!start) {
+      return [];
+    }
+
+    const parsedEnd = series.endsAt ? parseIsoDate(series.endsAt) : null;
+    const end = parsedEnd ?? addUtcDays(start, 1);
     const durationMs = end.getTime() - start.getTime();
     const recurrence = series.recurrence;
 
@@ -221,7 +234,7 @@ export class CalendarPersistenceService {
     }
 
     const interval = recurrence.interval;
-    const until = recurrence.until ? new Date(recurrence.until) : null;
+    const until = recurrence.until ? parseIsoDate(recurrence.until) : null;
 
     const items: CalendarEventOccurrence[] = [];
     let occurrenceStart = findFirstRelevantOccurrenceStart(
@@ -235,11 +248,11 @@ export class CalendarPersistenceService {
     );
 
     for (;;) {
-      if (until && occurrenceStart > until) {
+      if (until && isAfter(occurrenceStart, until)) {
         break;
       }
 
-      if (occurrenceStart >= rangeEnd) {
+      if (!isBefore(occurrenceStart, rangeEnd)) {
         break;
       }
 

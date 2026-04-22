@@ -1,4 +1,6 @@
 import type { CalendarEventInput, RecurrenceFrequency, RecurrenceRule } from './calendar.model';
+import { isBefore } from 'date-fns';
+import { addUtcDays, parseIsoDate, parseUtcDateOnly } from './calendar.date';
 
 const isRecurrenceFrequency = (value: unknown): value is RecurrenceFrequency =>
   value === 'daily' || value === 'weekly' || value === 'monthly' || value === 'yearly';
@@ -8,12 +10,7 @@ export const parseDate = (value: unknown): Date | null => {
     return null;
   }
 
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return parsed;
+  return parseIsoDate(value);
 };
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -23,33 +20,10 @@ const parseDateOnly = (value: unknown): Date | null => {
     return null;
   }
 
-  const [yearString, monthString, dayString] = value.split('-');
-  const year = Number(yearString);
-  const month = Number(monthString);
-  const day = Number(dayString);
-
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
-    return null;
-  }
-
-  const parsed = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-  if (
-    Number.isNaN(parsed.getTime()) ||
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    return null;
-  }
-
-  return parsed;
+  return parseUtcDateOnly(value);
 };
 
-const addDaysUtc = (source: Date, days: number): Date => {
-  const next = new Date(source);
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
-};
+const addDaysUtc = (source: Date, days: number): Date => addUtcDays(source, days);
 
 export const parseRecurringRule = (value: unknown, startsAt: Date): RecurrenceRule | null | 'invalid' => {
   if (value === null || value === undefined) {
@@ -79,7 +53,7 @@ export const parseRecurringRule = (value: unknown, startsAt: Date): RecurrenceRu
     }
 
     const untilDate = parseDate(untilValue);
-    if (!untilDate || untilDate < startsAt) {
+    if (!untilDate || isBefore(untilDate, startsAt)) {
       return 'invalid';
     }
 
@@ -138,7 +112,7 @@ export const parseBody = (payload: unknown): CalendarEventInput | null => {
 
     const parsedStartsAt = parseDate(startsAtRaw);
     const parsedEndsAt = parseDate(endsAtRaw);
-    if (!parsedStartsAt || !parsedEndsAt || parsedStartsAt >= parsedEndsAt) {
+    if (!parsedStartsAt || !parsedEndsAt || !isBefore(parsedStartsAt, parsedEndsAt)) {
       return null;
     }
 
@@ -167,7 +141,7 @@ export const parseRange = (startRaw: unknown, endRaw: unknown): { start: Date; e
   const parsedStart = parseDate(startRaw);
   const parsedEnd = parseDate(endRaw);
 
-  if (!parsedStart || !parsedEnd || parsedStart >= parsedEnd) {
+  if (!parsedStart || !parsedEnd || !isBefore(parsedStart, parsedEnd)) {
     return null;
   }
 
