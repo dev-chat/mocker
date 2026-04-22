@@ -314,10 +314,7 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
     const merged = [...localOccurrences, ...utcOccurrences];
     const deduped = Array.from(
       new Map(
-        merged.map((occurrence) => [
-          `${occurrence.seriesId}:${occurrence.startsAt}:${occurrence.endsAt}`,
-          occurrence,
-        ]),
+        merged.map((occurrence) => [`${occurrence.seriesId}:${occurrence.startsAt}:${occurrence.endsAt}`, occurrence]),
       ).values(),
     );
 
@@ -851,7 +848,12 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
                     </Button>
                   ))}
                 </div>
-                <Button variant="outline" size="icon" aria-label={`Previous ${viewMode}`} onClick={() => navigatePeriod(-1)}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label={`Previous ${viewMode}`}
+                  onClick={() => navigatePeriod(-1)}
+                >
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 </Button>
                 <Button
