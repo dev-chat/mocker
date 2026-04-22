@@ -785,7 +785,6 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
   }, [viewMode]);
 
   const today = new Date();
-  const navPeriodLabel = viewMode === 'day' ? 'day' : viewMode === 'week' ? 'week' : 'month';
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6 lg:p-8">
@@ -852,7 +851,7 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
                     </Button>
                   ))}
                 </div>
-                <Button variant="outline" size="icon" aria-label={`Previous ${navPeriodLabel}`} onClick={() => navigatePeriod(-1)}>
+                <Button variant="outline" size="icon" aria-label={`Previous ${viewMode}`} onClick={() => navigatePeriod(-1)}>
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 </Button>
                 <Button
@@ -866,7 +865,7 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
                 >
                   Today
                 </Button>
-                <Button variant="outline" size="icon" aria-label={`Next ${navPeriodLabel}`} onClick={() => navigatePeriod(1)}>
+                <Button variant="outline" size="icon" aria-label={`Next ${viewMode}`} onClick={() => navigatePeriod(1)}>
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
