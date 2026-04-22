@@ -244,7 +244,7 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
 
   const visibleDays = useMemo(() => {
     if (viewMode === 'day') {
-      return [new Date(selectedDate)];
+      return [new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())];
     }
 
     if (viewMode === 'week') {
@@ -302,10 +302,28 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
   }, [occurrences, seriesById]);
 
   const selectedDayKey = useMemo(() => keyFromDate(selectedDate), [selectedDate]);
-  const selectedDayOccurrences = useMemo(
-    () => occurrencesByDay[selectedDayKey] ?? [],
-    [occurrencesByDay, selectedDayKey],
-  );
+  const selectedDayUTCKey = useMemo(() => keyFromUTCDate(selectedDate), [selectedDate]);
+  const selectedDayOccurrences = useMemo(() => {
+    const localOccurrences = occurrencesByDay[selectedDayKey] ?? [];
+    const utcOccurrences = occurrencesByDay[selectedDayUTCKey] ?? [];
+
+    if (selectedDayKey === selectedDayUTCKey) {
+      return localOccurrences;
+    }
+
+    const merged = [...localOccurrences, ...utcOccurrences];
+    const deduped = Array.from(
+      new Map(
+        merged.map((occurrence) => [
+          `${occurrence.seriesId}:${occurrence.startsAt}:${occurrence.endsAt}`,
+          occurrence,
+        ]),
+      ).values(),
+    );
+
+    deduped.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+    return deduped;
+  }, [occurrencesByDay, selectedDayKey, selectedDayUTCKey]);
 
   const calendarTitle = useMemo(() => {
     if (viewMode === 'day') {
@@ -370,11 +388,16 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
         continue;
       }
 
-      const key = keyFromDate(new Date(occurrence.startsAt));
-      if (!grouped[key]) {
-        grouped[key] = [];
+      const cursor = new Date(occurrence.startsAt);
+      const endsAt = new Date(occurrence.endsAt);
+      while (cursor < endsAt) {
+        const key = keyFromUTCDate(cursor);
+        if (!grouped[key]) {
+          grouped[key] = [];
+        }
+        grouped[key].push(occurrence);
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
       }
-      grouped[key].push(occurrence);
     }
 
     return grouped;
@@ -761,6 +784,9 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
     setDragCurrentDate(null);
   }, [viewMode]);
 
+  const today = new Date();
+  const navPeriodLabel = viewMode === 'day' ? 'day' : viewMode === 'week' ? 'week' : 'month';
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6 lg:p-8">
       <div className="rounded-2xl border bg-card/80 p-5 shadow-sm backdrop-blur md:p-6">
@@ -826,7 +852,7 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
                     </Button>
                   ))}
                 </div>
-                <Button variant="outline" size="icon" aria-label="Previous month" onClick={() => navigatePeriod(-1)}>
+                <Button variant="outline" size="icon" aria-label={`Previous ${navPeriodLabel}`} onClick={() => navigatePeriod(-1)}>
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 </Button>
                 <Button
@@ -840,7 +866,7 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
                 >
                   Today
                 </Button>
-                <Button variant="outline" size="icon" aria-label="Next month" onClick={() => navigatePeriod(1)}>
+                <Button variant="outline" size="icon" aria-label={`Next ${navPeriodLabel}`} onClick={() => navigatePeriod(1)}>
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
@@ -867,7 +893,7 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
                     const dayKey = keyFromDate(day);
                     const dayOccurrences = occurrencesByDay[dayKey] ?? [];
                     const isCurrentMonth = day.getMonth() === displayMonth.getMonth();
-                    const isToday = isSameDay(day, new Date());
+                    const isToday = isSameDay(day, today);
                     const isSelected = isSameDay(day, selectedDate);
                     const isDraggingDay =
                       Boolean(dragRangeBounds) &&
@@ -950,7 +976,7 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
                 >
                   <div className="border-b border-r px-2 py-2 text-xs font-semibold text-muted-foreground">Time</div>
                   {visibleDays.map((day) => {
-                    const isToday = isSameDay(day, new Date());
+                    const isToday = isSameDay(day, today);
                     const isSelected = isSameDay(day, selectedDate);
 
                     return (
