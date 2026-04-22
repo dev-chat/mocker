@@ -41,6 +41,23 @@ describe('CalendarPage', () => {
     mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => sampleResponse });
   });
 
+  it('logs out on initial 401 response', async () => {
+    const onLogout = vi.fn();
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized', json: async () => ({}) });
+
+    render(<CalendarPage onLogout={onLogout} />);
+
+    await waitFor(() => expect(onLogout).toHaveBeenCalledOnce());
+  });
+
+  it('shows a load error message when initial fetch fails', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Server Error', json: async () => ({}) });
+
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByText('Failed to load calendar events: Server Error')).toBeInTheDocument());
+  });
+
   it('loads and renders event series', async () => {
     render(<CalendarPage onLogout={vi.fn()} />);
 
@@ -126,5 +143,120 @@ describe('CalendarPage', () => {
     expect(body.allDayEndDate).toBe('2026-04-23');
     expect(body.startsAt).toBeNull();
     expect(body.endsAt).toBeNull();
+  });
+
+  it('shows a validation error for empty title', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: /create event/i }));
+
+    expect(screen.getByText('Event title is required.')).toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a validation error when end is before start for timed events', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Bad Timing' } });
+    fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2026-04-21T12:00' } });
+    fireEvent.change(screen.getByLabelText('End'), { target: { value: '2026-04-21T11:00' } });
+    fireEvent.click(screen.getByRole('button', { name: /create event/i }));
+
+    expect(screen.getByText('Start and end date must be valid, and end must be after start.')).toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a validation error for invalid all-day date range', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'All Day Validation' } });
+    fireEvent.click(screen.getByLabelText('All day event'));
+    fireEvent.change(screen.getByLabelText('Start Date'), { target: { value: '2026-04-23' } });
+    fireEvent.change(screen.getByLabelText('End Date'), { target: { value: '2026-04-21' } });
+    fireEvent.click(screen.getByRole('button', { name: /create event/i }));
+
+    expect(
+      screen.getByText('All-day date range must be valid, and end date must be on or after start date.'),
+    ).toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a validation error for invalid recurrence interval', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Interval Validation' } });
+    fireEvent.change(screen.getByLabelText('Recurrence'), { target: { value: 'weekly' } });
+    fireEvent.change(screen.getByLabelText('Repeat Every'), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: /create event/i }));
+
+    expect(screen.getByText('Recurrence interval must be between 1 and 365.')).toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows editing, cancelling, and handling update failures', async () => {
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => sampleResponse })
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) });
+
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByRole('button', { name: /update event/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /update event/i }));
+    await waitFor(() => expect(screen.getByText('Failed to update event')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel edit/i }));
+    expect(screen.getByRole('button', { name: /create event/i })).toBeInTheDocument();
+  });
+
+  it('logs out on 401 when creating an event', async () => {
+    const onLogout = vi.fn();
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => sampleResponse })
+      .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized', json: async () => ({}) });
+
+    render(<CalendarPage onLogout={onLogout} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Needs Auth' } });
+    fireEvent.click(screen.getByRole('button', { name: /create event/i }));
+
+    await waitFor(() => expect(onLogout).toHaveBeenCalledOnce());
+  });
+
+  it('shows delete failure and handles month navigation controls', async () => {
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => sampleResponse })
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+      .mockResolvedValue({ ok: true, status: 200, json: async () => sampleResponse });
+
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(screen.getByText('Failed to delete event')).toBeInTheDocument());
+
+    const previousMonthButton = screen.getByRole('button', { name: 'Previous month' });
+    const nextMonthButton = screen.getByRole('button', { name: 'Next month' });
+    const todayButton = screen.getByRole('button', { name: 'Today' });
+
+    fireEvent.click(previousMonthButton);
+    fireEvent.click(nextMonthButton);
+    fireEvent.click(todayButton);
+
+    await waitFor(() => expect(mockFetch.mock.calls.length).toBeGreaterThan(1));
   });
 });
