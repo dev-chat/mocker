@@ -2,16 +2,14 @@ import express from 'express';
 import request from 'supertest';
 import { vi } from 'vitest';
 
-const listSeriesMock = vi.fn();
-const listOccurrencesMock = vi.fn();
+const listSeriesAndOccurrencesMock = vi.fn();
 const createSeriesMock = vi.fn();
 const updateSeriesMock = vi.fn();
 const deleteSeriesMock = vi.fn();
 
 vi.mock('./calendar.persistence.service', async () => ({
   CalendarPersistenceService: classMock(() => ({
-    listSeries: listSeriesMock,
-    listOccurrences: listOccurrencesMock,
+    listSeriesAndOccurrences: listSeriesAndOccurrencesMock,
     createSeries: createSeriesMock,
     updateSeries: updateSeriesMock,
     deleteSeries: deleteSeriesMock,
@@ -39,19 +37,21 @@ describe('calendarController', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('lists calendar series and occurrences', async () => {
-    listSeriesMock.mockResolvedValue([{ id: eventId, title: 'Sprint Planning 🚀' }]);
-    listOccurrencesMock.mockResolvedValue([
-      {
-        occurrenceId: `${eventId}:2026-04-21T12:00:00.000Z`,
-        seriesId: eventId,
-        title: 'Sprint Planning 🚀',
-        location: null,
-        startsAt: '2026-04-21T12:00:00.000Z',
-        endsAt: '2026-04-21T13:00:00.000Z',
-        isAllDay: false,
-        isRecurring: false,
-      },
-    ]);
+    listSeriesAndOccurrencesMock.mockResolvedValue({
+      series: [{ id: eventId, title: 'Sprint Planning 🚀' }],
+      occurrences: [
+        {
+          occurrenceId: `${eventId}:2026-04-21T12:00:00.000Z`,
+          seriesId: eventId,
+          title: 'Sprint Planning 🚀',
+          location: null,
+          startsAt: '2026-04-21T12:00:00.000Z',
+          endsAt: '2026-04-21T13:00:00.000Z',
+          isAllDay: false,
+          isRecurring: false,
+        },
+      ],
+    });
 
     const res = await request(app)
       .get('/events')
@@ -60,15 +60,14 @@ describe('calendarController', () => {
     expect(res.status).toBe(200);
     expect(res.body.series).toHaveLength(1);
     expect(res.body.occurrences).toHaveLength(1);
-    expect(listSeriesMock).toHaveBeenCalledWith('T1');
-    expect(listOccurrencesMock).toHaveBeenCalledWith('T1', expect.any(Date), expect.any(Date));
+    expect(listSeriesAndOccurrencesMock).toHaveBeenCalledWith('T1', expect.any(Date), expect.any(Date));
   });
 
   it('returns 400 when event range is invalid', async () => {
     const res = await request(app).get('/events').query({ start: 'bad', end: 'also-bad' });
 
     expect(res.status).toBe(400);
-    expect(listSeriesMock).not.toHaveBeenCalled();
+    expect(listSeriesAndOccurrencesMock).not.toHaveBeenCalled();
   });
 
   it('creates an event with recurrence', async () => {

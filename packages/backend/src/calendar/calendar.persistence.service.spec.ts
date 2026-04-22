@@ -446,7 +446,7 @@ describe('CalendarPersistenceService', () => {
     await expect(service.deleteSeries('T1', 'series-existing')).rejects.toThrow('delete-find-fail');
   });
 
-  it('lists upcoming occurrences from all teams and sorts by startsAt', async () => {
+  it('lists upcoming occurrences grouped by teamId and sorted by startsAt', async () => {
     const service = new CalendarPersistenceService();
     calendarRepo.find.mockResolvedValue([
       {
@@ -481,8 +481,10 @@ describe('CalendarPersistenceService', () => {
     );
 
     expect(upcoming).toHaveLength(2);
-    expect(upcoming[0].title).toBe('Sooner');
-    expect(upcoming[1].title).toBe('Later');
+    const t1 = upcoming.find(({ teamId }) => teamId === 'T1');
+    const t2 = upcoming.find(({ teamId }) => teamId === 'T2');
+    expect(t1?.occurrences[0].title).toBe('Later');
+    expect(t2?.occurrences[0].title).toBe('Sooner');
   });
 
   it('throws when listUpcomingOccurrences repository fails', async () => {
@@ -492,5 +494,29 @@ describe('CalendarPersistenceService', () => {
     await expect(
       service.listUpcomingOccurrences(new Date('2026-04-21T00:00:00.000Z'), new Date('2026-04-22T00:00:00.000Z')),
     ).rejects.toThrow('upcoming-failure');
+  });
+
+  it('listSeriesAndOccurrences returns series and expanded occurrences in one call', async () => {
+    const service = new CalendarPersistenceService();
+    vi.spyOn(service, 'listSeries').mockResolvedValue([
+      baseSeries({
+        id: 'series-c',
+        title: 'Combined',
+        startsAt: '2026-04-21T10:00:00.000Z',
+        endsAt: '2026-04-21T11:00:00.000Z',
+        recurrence: null,
+      }),
+    ]);
+
+    const result = await service.listSeriesAndOccurrences(
+      'T1',
+      new Date('2026-04-21T00:00:00.000Z'),
+      new Date('2026-04-22T00:00:00.000Z'),
+    );
+
+    expect(result.series).toHaveLength(1);
+    expect(result.series[0].title).toBe('Combined');
+    expect(result.occurrences).toHaveLength(1);
+    expect(result.occurrences[0].seriesId).toBe('series-c');
   });
 });

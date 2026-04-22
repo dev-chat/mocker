@@ -25,11 +25,9 @@ calendarController.get('/events', (req: RequestWithAuthSession, res) => {
     return;
   }
 
-  Promise.all([
-    calendarPersistenceService.listSeries(teamId),
-    calendarPersistenceService.listOccurrences(teamId, range.start, range.end),
-  ])
-    .then(([series, occurrences]) => {
+  calendarPersistenceService
+    .listSeriesAndOccurrences(teamId, range.start, range.end)
+    .then(({ series, occurrences }) => {
       res.status(200).json({ series, occurrences });
     })
     .catch((error: unknown) => {

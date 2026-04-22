@@ -363,16 +363,42 @@ export class CalendarPersistenceService {
     }
   }
 
-  async listUpcomingOccurrences(rangeStart: Date, rangeEnd: Date): Promise<CalendarEventOccurrence[]> {
+  async listSeriesAndOccurrences(
+    teamId: string,
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<{ series: CalendarEventSeries[]; occurrences: CalendarEventOccurrence[] }> {
+    const series = await this.listSeries(teamId);
+    const occurrences = series
+      .flatMap((item) => this.expandSeriesOccurrences(item, rangeStart, rangeEnd))
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+    return { series, occurrences };
+  }
+
+  async listUpcomingOccurrences(
+    rangeStart: Date,
+    rangeEnd: Date,
+  ): Promise<{ teamId: string; occurrences: CalendarEventOccurrence[] }[]> {
     try {
       const events = await getRepository(CalendarEvent).find({
         relations: ['createdByUser'],
         order: { startsAt: 'ASC' },
       });
-      const series = events.map((item) => this.mapSeries(item));
-      return series
-        .flatMap((item) => this.expandSeriesOccurrences(item, rangeStart, rangeEnd))
-        .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+
+      const seriesByTeam = new Map<string, CalendarEventSeries[]>();
+      for (const event of events) {
+        const s = this.mapSeries(event);
+        const teamSeries = seriesByTeam.get(s.teamId) ?? [];
+        teamSeries.push(s);
+        seriesByTeam.set(s.teamId, teamSeries);
+      }
+
+      return Array.from(seriesByTeam.entries()).map(([teamId, teamSeriesList]) => ({
+        teamId,
+        occurrences: teamSeriesList
+          .flatMap((item) => this.expandSeriesOccurrences(item, rangeStart, rangeEnd))
+          .sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
+      }));
     } catch (error: unknown) {
       logError(this.logger, 'Failed to list upcoming calendar occurrences', error, {
         rangeStart: rangeStart.toISOString(),

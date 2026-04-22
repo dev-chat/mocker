@@ -79,6 +79,13 @@ const keyFromDate = (value: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+const keyFromUTCDate = (value: Date): string => {
+  const year = value.getUTCFullYear();
+  const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(value.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const toDateTimeInputValue = (isoDate: string): string => {
   const date = new Date(isoDate);
   const pad = (num: number) => String(num).padStart(2, '0');
@@ -92,11 +99,8 @@ const toDateInputValue = (isoDate: string): string => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
-const subtractOneDay = (isoDate: string): string => {
-  const date = new Date(isoDate);
-  date.setDate(date.getDate() - 1);
-  return date.toISOString();
-};
+const subtractOneDay = (isoDate: string): string =>
+  new Date(new Date(isoDate).getTime() - 24 * 60 * 60 * 1000).toISOString();
 
 const startOfCalendarGrid = (value: Date): Date => {
   const monthStart = new Date(value.getFullYear(), value.getMonth(), 1);
@@ -129,8 +133,8 @@ const formatOccurrenceTime = (isoDate: string): string =>
 
 const formatSeriesDateRange = (eventSeries: CalendarEventSeries): string => {
   if (eventSeries.isAllDay && eventSeries.startsAt && eventSeries.endsAt) {
-    const startLabel = new Date(eventSeries.startsAt).toLocaleDateString();
-    const endLabel = new Date(subtractOneDay(eventSeries.endsAt)).toLocaleDateString();
+    const startLabel = new Date(eventSeries.startsAt).toLocaleDateString('en-US', { timeZone: 'UTC' });
+    const endLabel = new Date(subtractOneDay(eventSeries.endsAt)).toLocaleDateString('en-US', { timeZone: 'UTC' });
     return startLabel === endLabel ? `All day (${startLabel})` : `All day (${startLabel} - ${endLabel})`;
   }
 
@@ -175,12 +179,12 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
         const cursor = new Date(occurrence.startsAt);
         const endsAt = new Date(occurrence.endsAt);
         while (cursor < endsAt) {
-          const key = keyFromDate(cursor);
+          const key = keyFromUTCDate(cursor);
           if (!grouped[key]) {
             grouped[key] = [];
           }
           grouped[key].push(occurrence);
-          cursor.setDate(cursor.getDate() + 1);
+          cursor.setUTCDate(cursor.getUTCDate() + 1);
         }
         continue;
       }

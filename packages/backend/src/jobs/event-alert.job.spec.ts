@@ -39,14 +39,19 @@ describe('EventAlertJob', () => {
   it('sends a message for upcoming events and writes dedupe keys', async () => {
     listUpcomingOccurrencesMock.mockResolvedValue([
       {
-        occurrenceId: '1:2026-04-21T16:00:00.000Z',
-        seriesId: '1',
-        title: 'Planning 🚀',
-        location: 'HQ',
-        startsAt: '2026-04-21T16:00:00.000Z',
-        endsAt: '2026-04-21T17:00:00.000Z',
-        isAllDay: false,
-        isRecurring: false,
+        teamId: 'T123',
+        occurrences: [
+          {
+            occurrenceId: '1:2026-04-21T16:00:00.000Z',
+            seriesId: '1',
+            title: 'Planning 🚀',
+            location: 'HQ',
+            startsAt: '2026-04-21T16:00:00.000Z',
+            endsAt: '2026-04-21T17:00:00.000Z',
+            isAllDay: false,
+            isRecurring: false,
+          },
+        ],
       },
     ]);
 
@@ -61,14 +66,19 @@ describe('EventAlertJob', () => {
   it('formats all-day multi-day events as date ranges', async () => {
     listUpcomingOccurrencesMock.mockResolvedValue([
       {
-        occurrenceId: 'series-1:2026-04-21T00:00:00.000Z',
-        seriesId: 'series-1',
-        title: 'Company Retreat',
-        location: 'Lodge',
-        startsAt: '2026-04-21T00:00:00.000Z',
-        endsAt: '2026-04-24T00:00:00.000Z',
-        isAllDay: true,
-        isRecurring: false,
+        teamId: 'T123',
+        occurrences: [
+          {
+            occurrenceId: 'series-1:2026-04-21T00:00:00.000Z',
+            seriesId: 'series-1',
+            title: 'Company Retreat',
+            location: 'Lodge',
+            startsAt: '2026-04-21T00:00:00.000Z',
+            endsAt: '2026-04-24T00:00:00.000Z',
+            isAllDay: true,
+            isRecurring: false,
+          },
+        ],
       },
     ]);
 
@@ -84,14 +94,19 @@ describe('EventAlertJob', () => {
   it('does not send duplicate alerts', async () => {
     listUpcomingOccurrencesMock.mockResolvedValue([
       {
-        occurrenceId: '1:2026-04-21T16:00:00.000Z',
-        seriesId: '1',
-        title: 'Planning',
-        location: null,
-        startsAt: '2026-04-21T16:00:00.000Z',
-        endsAt: '2026-04-21T17:00:00.000Z',
-        isAllDay: false,
-        isRecurring: false,
+        teamId: 'T123',
+        occurrences: [
+          {
+            occurrenceId: '1:2026-04-21T16:00:00.000Z',
+            seriesId: '1',
+            title: 'Planning',
+            location: null,
+            startsAt: '2026-04-21T16:00:00.000Z',
+            endsAt: '2026-04-21T17:00:00.000Z',
+            isAllDay: false,
+            isRecurring: false,
+          },
+        ],
       },
     ]);
     getValueMock.mockResolvedValue('already-sent');
