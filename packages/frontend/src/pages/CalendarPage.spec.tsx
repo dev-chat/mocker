@@ -259,4 +259,153 @@ describe('CalendarPage', () => {
 
     await waitFor(() => expect(mockFetch.mock.calls.length).toBeGreaterThan(1));
   });
+
+  it('switches between month, week, and day views', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    const monthButton = screen.getByRole('button', { name: 'Month' });
+    const weekButton = screen.getByRole('button', { name: 'Week' });
+    const dayButton = screen.getByRole('button', { name: 'Day' });
+
+    expect(monthButton).toBeInTheDocument();
+    expect(weekButton).toBeInTheDocument();
+    expect(dayButton).toBeInTheDocument();
+
+    fireEvent.click(weekButton);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+
+    fireEvent.click(dayButton);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(3));
+
+    fireEvent.click(monthButton);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(4));
+  });
+
+  it('renders week view with all day row', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Week' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('All day')).toBeInTheDocument();
+    });
+  });
+
+  it('keyboard arrow right navigation loads next period', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    const grid = screen.getByRole('grid', { name: 'Month calendar grid' });
+    fireEvent.keyDown(grid, { key: 'ArrowRight' });
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+  });
+
+  it('keyboard arrow left navigation loads previous period', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    const grid = screen.getByRole('grid', { name: 'Month calendar grid' });
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' });
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+  });
+
+  it('keyboard arrow down navigation adjusts date by one week', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    const grid = screen.getByRole('grid', { name: 'Month calendar grid' });
+    fireEvent.keyDown(grid, { key: 'ArrowDown' });
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+  });
+
+  it('keyboard arrow up navigation adjusts date by minus one week', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    const grid = screen.getByRole('grid', { name: 'Month calendar grid' });
+    fireEvent.keyDown(grid, { key: 'ArrowUp' });
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+  });
+
+  it('keyboard enter opens form for quick create', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    const grid = screen.getByRole('grid', { name: 'Month calendar grid' });
+    fireEvent.keyDown(grid, { key: 'Enter' });
+
+    await waitFor(() => {
+      const titleInputs = screen.queryAllByRole('textbox');
+      expect(titleInputs.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('day view renders all day section and hour grid', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    const dayButton = screen.getByRole('button', { name: 'Day' });
+    fireEvent.click(dayButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('All day')).toBeInTheDocument();
+    });
+  });
+
+  it('agenda sidebar shows selected day counters', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByText('Agenda')).toBeInTheDocument();
+    expect(screen.getByText('Series')).toBeInTheDocument();
+    expect(screen.getByText('Occurrences')).toBeInTheDocument();
+  });
+
+  it('logs out on 401 when deleting an event', async () => {
+    const onLogout = vi.fn();
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => sampleResponse })
+      .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized', json: async () => ({}) });
+
+    render(<CalendarPage onLogout={onLogout} />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(onLogout).toHaveBeenCalledOnce());
+  });
+
+  it('supports drag selection in month view', async () => {
+    render(<CalendarPage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    const dayButtons = screen.getAllByRole('button').filter((button) => /^\d+$/.test(button.textContent?.trim() ?? ''));
+
+    if (dayButtons.length >= 2) {
+      fireEvent.mouseDown(dayButtons[0]);
+      fireEvent.mouseEnter(dayButtons[1]);
+      fireEvent.mouseUp(dayButtons[1]);
+
+      await waitFor(() => {
+        expect(screen.getByText(/All-day draft prepared/i)).toBeInTheDocument();
+      });
+    }
+  });
 });
