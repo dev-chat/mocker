@@ -53,7 +53,15 @@ if (!SEARCH_UI_ORIGIN) {
 
 const searchCors = cors({
   origin: SEARCH_UI_ORIGIN || false,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type'],
+  optionsSuccessStatus: 200,
 });
+
+app.options('/auth*', searchCors);
+app.options('/search*', searchCors);
+app.options('/dashboard*', searchCors);
+app.options('/calendar*', searchCors);
 
 app.use(
   bodyParser.urlencoded({
