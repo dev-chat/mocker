@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Home, Search, Brain, LogOut } from 'lucide-react';
+import { Home, Search, Brain, CalendarDays, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { HomePage } from '@/pages/HomePage';
 import { MessageSearchPage } from '@/pages/MessageSearchPage';
 import { PersonalContextPage } from '@/pages/PersonalContextPage';
+import { CalendarPage } from '@/pages/CalendarPage';
 import type { Page, NavItemProps, AppShellProps } from '@/components/AppShell.model';
 
 function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
@@ -49,6 +50,12 @@ export function AppShell({ onLogout }: AppShellProps) {
             active={currentPage === 'personal-context'}
             onClick={() => setCurrentPage('personal-context')}
           />
+          <NavItem
+            icon={CalendarDays}
+            label="Calendar"
+            active={currentPage === 'calendar'}
+            onClick={() => setCurrentPage('calendar')}
+          />
         </nav>
 
         <Separator />
@@ -64,6 +71,7 @@ export function AppShell({ onLogout }: AppShellProps) {
         {currentPage === 'home' && <HomePage onLogout={onLogout} />}
         {currentPage === 'message-search' && <MessageSearchPage onLogout={onLogout} />}
         {currentPage === 'personal-context' && <PersonalContextPage onLogout={onLogout} />}
+        {currentPage === 'calendar' && <CalendarPage onLogout={onLogout} />}
       </main>
     </div>
   );

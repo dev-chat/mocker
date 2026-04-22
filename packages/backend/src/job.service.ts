@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { MemoryJob } from './ai/memory/memory.job';
 import { FunFactJob } from './jobs/fun-fact.job';
 import { PricingJob } from './jobs/pricing.job';
+import { EventAlertJob } from './jobs/event-alert.job';
 import { logger } from './shared/logger/logger';
 import { TraitJob } from './trait/trait.job';
 
@@ -10,6 +11,7 @@ export class JobService {
   private traitJob: TraitJob;
   private funFactJob: FunFactJob;
   private pricingJob: PricingJob;
+  private eventAlertJob: EventAlertJob;
   private jobServiceLogger = logger.child({ module: 'JobService' });
 
   constructor() {
@@ -17,6 +19,7 @@ export class JobService {
     this.traitJob = new TraitJob();
     this.funFactJob = new FunFactJob();
     this.pricingJob = new PricingJob();
+    this.eventAlertJob = new EventAlertJob();
   }
 
   /**
@@ -68,6 +71,20 @@ export class JobService {
       this.jobServiceLogger.info('Pricing job completed successfully');
     } catch (error) {
       this.jobServiceLogger.error('Pricing job failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Run event alert job that notifies #events about events occurring today / within 24h.
+   */
+  async runEventAlertJob(): Promise<void> {
+    this.jobServiceLogger.info('Running event alert job');
+    try {
+      await this.eventAlertJob.run();
+      this.jobServiceLogger.info('Event alert job completed successfully');
+    } catch (error) {
+      this.jobServiceLogger.error('Event alert job failed:', error);
       throw error;
     }
   }
@@ -144,5 +161,17 @@ export class JobService {
       { timezone: 'America/New_York' },
     );
     this.jobServiceLogger.info('Pricing job scheduled every hour at minute 10 America/New_York time.');
+
+    // Event alert job: every hour at minute 5 America/New_York
+    cron.schedule(
+      '5 * * * *',
+      () => {
+        this.runEventAlertJob().catch((error) => {
+          this.jobServiceLogger.error('Event alert job failed:', error);
+        });
+      },
+      { timezone: 'America/New_York' },
+    );
+    this.jobServiceLogger.info('Event alert job scheduled every hour at minute 5 America/New_York time.');
   }
 }
