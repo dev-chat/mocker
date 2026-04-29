@@ -192,6 +192,10 @@ Do NOT include:
 Requirements:
 - Traits must be concise, concrete, and attributable to the user.
 - No duplicates or near-duplicates.
+- Treat semantically similar phrasings as duplicates, even if wording differs.
+- If multiple candidates express the same underlying trait, keep exactly one canonical version and drop the rest.
+- Canonical version should be the clearest, most specific, and most durable phrasing.
+- Before finalizing, run a dedupe pass over the full list and remove any overlapping traits.
 - Prefer quality over quantity. If only 4 strong traits exist, return 4.
 
 Output format:
