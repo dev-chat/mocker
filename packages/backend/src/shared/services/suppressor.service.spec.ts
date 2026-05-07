@@ -135,19 +135,6 @@ describe('SuppressorService', () => {
     );
   });
 
-  it('sendSuppressedMessage uses corpo mode for libworkchat', async () => {
-    await suppressorService.sendSuppressedMessage(
-      '#libworkchat',
-      'U1',
-      'hello world',
-      '123',
-      1,
-      suppressorService.muzzlePersistenceService as never,
-    );
-
-    expect(suppressorService.aiService.generateCorpoSpeak).toHaveBeenCalled();
-  });
-
   it('sendSuppressedMessage falls back when translation fails', async () => {
     (suppressorService.translationService.translate as Mock).mockRejectedValue(new Error('translate fail'));
 
@@ -161,6 +148,98 @@ describe('SuppressorService', () => {
     );
 
     expect(suppressorService.webService.sendMessage).toHaveBeenCalled();
+  });
+
+  it('sendSuppressedMessage returns early when text is undefined', async () => {
+    await suppressorService.sendSuppressedMessage(
+      'C123',
+      'U1',
+      undefined,
+      '123',
+      1,
+      suppressorService.muzzlePersistenceService as never,
+    );
+
+    expect(suppressorService.translationService.translate).not.toHaveBeenCalled();
+    expect(suppressorService.webService.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('sendSuppressedMessage uses corpo mode for C023B688SLT with more than 10 words', async () => {
+    const longEnoughText = new Array(11).fill('word').join(' ');
+    await suppressorService.sendSuppressedMessage(
+      'C023B688SLT',
+      'U1',
+      longEnoughText,
+      '123',
+      1,
+      suppressorService.muzzlePersistenceService as never,
+    );
+
+    expect(suppressorService.aiService.generateCorpoSpeak).toHaveBeenCalled();
+    expect(suppressorService.translationService.translate).not.toHaveBeenCalled();
+  });
+
+  it('sendSuppressedMessage does not use corpo for C023B688SLT with 10 or fewer words', async () => {
+    const shortText = new Array(10).fill('word').join(' ');
+    await suppressorService.sendSuppressedMessage(
+      'C023B688SLT',
+      'U1',
+      shortText,
+      '123',
+      1,
+      suppressorService.muzzlePersistenceService as never,
+    );
+
+    expect(suppressorService.translationService.translate).toHaveBeenCalled();
+    expect(suppressorService.aiService.generateCorpoSpeak).not.toHaveBeenCalled();
+  });
+
+  it('sendSuppressedMessage uses corpo mode for #libworkchat with more than 10 words', async () => {
+    const longEnoughText = new Array(11).fill('word').join(' ');
+    await suppressorService.sendSuppressedMessage(
+      '#libworkchat',
+      'U1',
+      longEnoughText,
+      '123',
+      1,
+      suppressorService.muzzlePersistenceService as never,
+    );
+
+    expect(suppressorService.aiService.generateCorpoSpeak).toHaveBeenCalled();
+    expect(suppressorService.translationService.translate).not.toHaveBeenCalled();
+  });
+
+  it('sendSuppressedMessage does not use corpo for #libworkchat with 10 or fewer words', async () => {
+    const shortText = new Array(10).fill('word').join(' ');
+    await suppressorService.sendSuppressedMessage(
+      '#libworkchat',
+      'U1',
+      shortText,
+      '123',
+      1,
+      suppressorService.muzzlePersistenceService as never,
+    );
+
+    expect(suppressorService.translationService.translate).toHaveBeenCalled();
+    expect(suppressorService.aiService.generateCorpoSpeak).not.toHaveBeenCalled();
+  });
+
+  it('sendSuppressedMessage falls back when corpo speak fails', async () => {
+    (suppressorService.aiService.generateCorpoSpeak as Mock).mockRejectedValue(new Error('ai fail'));
+
+    await suppressorService.sendSuppressedMessage(
+      '#libworkchat',
+      'U1',
+      'hello world',
+      '123',
+      1,
+      suppressorService.muzzlePersistenceService as never,
+    );
+
+    expect(suppressorService.webService.sendMessage).toHaveBeenCalledWith(
+      '#libworkchat',
+      expect.stringContaining('<@U1> says'),
+    );
   });
 
   it('sendSuppressedMessage skips when too many words', async () => {

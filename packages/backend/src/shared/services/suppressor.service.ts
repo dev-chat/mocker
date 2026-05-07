@@ -206,16 +206,20 @@ export class SuppressorService {
   public async sendSuppressedMessage(
     channel: string,
     userId: string,
-    text: string,
+    text: string | undefined,
     timestamp: string,
     dbId: number,
     persistenceService: MuzzlePersistenceService | BackFirePersistenceService | CounterPersistenceService,
   ): Promise<void> {
     await this.webService.deleteMessage(channel, timestamp, userId);
 
-    const words = text.split(' ');
+    if (!text) {
+      return;
+    }
 
-    const shouldMuzzle = words.length > 0 && words.length <= 250;
+    const words: string[] | undefined = text.split(' ');
+
+    const shouldMuzzle = words.length <= 250;
 
     if (shouldMuzzle) {
       const textWithFallbackReplacments = words
@@ -224,7 +228,7 @@ export class SuppressorService {
         )
         .join(' ');
 
-      const shouldCorpo = channel === '#libworkchat' || (channel === 'C023B688SLT' && words.length > 10);
+      const shouldCorpo = (channel === '#libworkchat' || channel === 'C023B688SLT') && words.length > 10;
 
       if (shouldCorpo) {
         await this.aiService
