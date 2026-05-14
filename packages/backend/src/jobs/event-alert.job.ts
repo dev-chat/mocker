@@ -7,12 +7,13 @@ import { WebService } from '../shared/services/web/web.service';
 const ALERT_CHANNEL = process.env.EVENTS_ALERT_CHANNEL ?? '#events';
 const ALERT_LOOKAHEAD_MS = 24 * 60 * 60 * 1000;
 const ALERT_DEDUPE_TTL_MS = 26 * 60 * 60 * 1000;
+const DISPLAY_TIMEZONE = 'America/New_York';
 
-const formatDateLabel = (value: Date, timeZone?: 'UTC'): string =>
+const formatDateLabel = (value: Date, timeZone: string = DISPLAY_TIMEZONE): string =>
   value.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
-    ...(timeZone ? { timeZone } : {}),
+    timeZone,
   });
 
 const formatTimeLabel = (value: Date, includeTimeZoneName = false): string =>
@@ -20,6 +21,7 @@ const formatTimeLabel = (value: Date, includeTimeZoneName = false): string =>
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
+    timeZone: DISPLAY_TIMEZONE,
     ...(includeTimeZoneName ? { timeZoneName: 'short' } : {}),
   });
 

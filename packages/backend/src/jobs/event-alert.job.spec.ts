@@ -60,6 +60,9 @@ describe('EventAlertJob', () => {
 
     expect(sendMessageMock).toHaveBeenCalledOnce();
     expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining('Planning 🚀 @ HQ'));
+    // Times should be formatted in Eastern time (EDT in April = UTC-4: 16:00 UTC → 12:00 PM, 17:00 UTC → 1:00 PM)
+    expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining('12:00 PM'));
+    expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining('1:00 PM EDT'));
     expect(setValueWithExpireMock).toHaveBeenCalledOnce();
   });
 
