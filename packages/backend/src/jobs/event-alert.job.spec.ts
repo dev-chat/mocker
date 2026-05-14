@@ -60,9 +60,20 @@ describe('EventAlertJob', () => {
 
     expect(sendMessageMock).toHaveBeenCalledOnce();
     expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining('Planning 🚀 @ HQ'));
-    // Times should be formatted in Eastern time (EDT in April = UTC-4: 16:00 UTC → 12:00 PM, 17:00 UTC → 1:00 PM)
-    expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining('12:00 PM'));
-    expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining('1:00 PM EDT'));
+    // Times should use Slack's <!date^…> format so each user sees them in their own Slack timezone.
+    // Unix seconds: start=1776787200 (2026-04-21T16:00Z), end=1776790800 (2026-04-21T17:00Z)
+    expect(sendMessageMock).toHaveBeenCalledWith(
+      '#events',
+      expect.stringContaining('<!date^1776787200^{date_short}|Apr 21>'),
+    );
+    expect(sendMessageMock).toHaveBeenCalledWith(
+      '#events',
+      expect.stringContaining('<!date^1776787200^{time}|4:00 PM>'),
+    );
+    expect(sendMessageMock).toHaveBeenCalledWith(
+      '#events',
+      expect.stringContaining('<!date^1776790800^{time}|5:00 PM>'),
+    );
     expect(setValueWithExpireMock).toHaveBeenCalledOnce();
   });
 
