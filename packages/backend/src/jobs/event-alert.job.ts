@@ -8,20 +8,19 @@ const ALERT_CHANNEL = process.env.EVENTS_ALERT_CHANNEL ?? '#events';
 const ALERT_LOOKAHEAD_MS = 24 * 60 * 60 * 1000;
 const ALERT_DEDUPE_TTL_MS = 26 * 60 * 60 * 1000;
 
-const formatDateLabel = (value: Date, timeZone?: 'UTC'): string =>
-  value.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    ...(timeZone ? { timeZone } : {}),
-  });
+/** Format a Date as "Mon Day" (e.g. "Apr 21") in UTC, used for all-day event labels. */
+const formatUtcDateLabel = (value: Date): string =>
+  value.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
-const formatTimeLabel = (value: Date, includeTimeZoneName = false): string =>
-  value.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    ...(includeTimeZoneName ? { timeZoneName: 'short' } : {}),
-  });
+/** Format a Date as a 12-hour time string in UTC, used as Slack timestamp fallback text. */
+const formatUtcTimeLabel = (value: Date): string =>
+  value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' });
+
+const toUnixSeconds = (value: Date): number => Math.floor(value.getTime() / 1000);
+
+/** Wrap a Date in Slack's <!date^…> syntax so each recipient sees it in their own Slack timezone. */
+const slackTimestamp = (value: Date, format: string, fallback: string): string =>
+  `<!date^${toUnixSeconds(value)}^${format}|${fallback}>`;
 
 const subtractOneDayUtc = (value: Date): Date => {
   const next = new Date(value);
@@ -31,23 +30,32 @@ const subtractOneDayUtc = (value: Date): Date => {
 
 const formatOccurrenceWindow = (startsAt: string, endsAt: string, isAllDay: boolean): string => {
   if (isAllDay) {
+    // All-day events are stored as midnight UTC boundaries; use plain UTC date labels.
     const start = new Date(startsAt);
     const inclusiveEnd = subtractOneDayUtc(new Date(endsAt));
-    const startLabel = formatDateLabel(start, 'UTC');
-    const endLabel = formatDateLabel(inclusiveEnd, 'UTC');
+    const startLabel = formatUtcDateLabel(start);
+    const endLabel = formatUtcDateLabel(inclusiveEnd);
     return startLabel === endLabel ? `${startLabel} (all day)` : `${startLabel} - ${endLabel} (all day)`;
   }
 
   const start = new Date(startsAt);
   const end = new Date(endsAt);
-  const startDateLabel = formatDateLabel(start);
-  const endDateLabel = formatDateLabel(end);
+  // Compare UTC calendar days to decide whether to show the date once or for both endpoints.
+  const startUtcDate = formatUtcDateLabel(start);
+  const endUtcDate = formatUtcDateLabel(end);
 
-  if (startDateLabel === endDateLabel) {
-    return `${startDateLabel}, ${formatTimeLabel(start)} - ${formatTimeLabel(end, true)}`;
+  if (startUtcDate === endUtcDate) {
+    // Same UTC calendar day: show the date once, then the start–end time range.
+    const datePart = slackTimestamp(start, '{date_short}', startUtcDate);
+    const startTime = slackTimestamp(start, '{time}', formatUtcTimeLabel(start));
+    const endTime = slackTimestamp(end, '{time}', formatUtcTimeLabel(end));
+    return `${datePart}, ${startTime} - ${endTime}`;
   }
 
-  return `${startDateLabel}, ${formatTimeLabel(start, true)} - ${endDateLabel}, ${formatTimeLabel(end, true)}`;
+  // Different UTC calendar days: include date and time for both endpoints.
+  const startFallback = `${startUtcDate} at ${formatUtcTimeLabel(start)}`;
+  const endFallback = `${endUtcDate} at ${formatUtcTimeLabel(end)}`;
+  return `${slackTimestamp(start, '{date_short} at {time}', startFallback)} - ${slackTimestamp(end, '{date_short} at {time}', endFallback)}`;
 };
 
 export class EventAlertJob {
