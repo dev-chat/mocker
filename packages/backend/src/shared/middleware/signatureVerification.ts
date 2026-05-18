@@ -20,7 +20,7 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
   const base = 'v0:' + timestamp + ':' + body;
   const hashed: string = 'v0=' + crypto.createHmac('sha256', signingSecret).update(base).digest('hex');
 
-  const isValidSlackSignature = (() => {
+  const isValidSlackSignature: boolean = (() => {
     if (typeof slackSignature !== 'string') {
       return false;
     }
@@ -30,11 +30,11 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
       return false;
     }
   })();
-  midLogger.info('Received request: ', req);
-  midLogger.info('Received request with body: ', body);
-  midLogger.info('Computed signature: ', hashed);
-  midLogger.info('Received signature: ', slackSignature);
-  midLogger.info('Is valid Slack signature: ', isValidSlackSignature);
+  midLogger.info('Received request: ', { request: req });
+  midLogger.info('Received request with body: ', { body });
+  midLogger.info('Computed signature: ', { hashed });
+  midLogger.info('Received signature: ', { slackSignature });
+  midLogger.info('Is valid Slack signature: ', { isValidSlackSignature });
 
   if (
     isValidSlackSignature ||
@@ -47,10 +47,10 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
     next();
   } else {
     midLogger.error('Someone is hitting your service from outside of slack.');
-    midLogger.error('ip: ', req.ip);
-    midLogger.error('ips: ', req.ips);
-    midLogger.error('headers: ', req.headers);
-    midLogger.error('body:', req.body);
+    midLogger.error('ip: ', { ip: req.ip });
+    midLogger.error('ips: ', { ips: req.ips });
+    midLogger.error('headers: ', { headers: req.headers });
+    midLogger.error('body:', { body: req.body });
     res
       .status(400)
       .send(
