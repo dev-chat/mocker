@@ -37,8 +37,7 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
     req.body.token === process.env.MOCKER_TOKEN ||
     req.body.token === process.env.DEFINE_TOKEN ||
     req.body.token === process.env.BLIND_TOKEN ||
-    req.headers.authorization === process.env.HOOK_TOKEN ||
-    req.hostname === '127.0.0.1'
+    req.headers.authorization === process.env.HOOK_TOKEN
   ) {
     next();
   } else {
