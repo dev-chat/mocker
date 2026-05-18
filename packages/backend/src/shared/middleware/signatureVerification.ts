@@ -30,7 +30,7 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
       return false;
     }
   })();
-
+  midLogger.info('Received request: ', req);
   midLogger.info('Received request with body: ', body);
   midLogger.info('Computed signature: ', hashed);
   midLogger.info('Received signature: ', slackSignature);
