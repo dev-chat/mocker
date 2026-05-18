@@ -31,6 +31,11 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
     }
   })();
 
+  midLogger.info('Received request with body: ', body);
+  midLogger.info('Computed signature: ', hashed);
+  midLogger.info('Received signature: ', slackSignature);
+  midLogger.info('Is valid Slack signature: ', isValidSlackSignature);
+
   if (
     isValidSlackSignature ||
     req.body.token === process.env.CLAPPER_TOKEN ||
