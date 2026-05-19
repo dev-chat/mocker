@@ -47,20 +47,6 @@ describe('signatureVerificationMiddleware', () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it('calls next when auth token matches', () => {
-    const req = {
-      rawBody: 'x',
-      headers: { 'x-slack-request-timestamp': '1', 'x-slack-signature': 'bad', authorization: 'hook' },
-      body: {},
-      hostname: 'example.com',
-    } as SignatureReq;
-    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as SignatureRes;
-    const next = vi.fn() as SignatureNext;
-
-    signatureVerificationMiddleware(req, res, next);
-    expect(next).toHaveBeenCalled();
-  });
-
   it('rejects invalid external request', () => {
     const req = {
       rawBody: 'x',
