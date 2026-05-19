@@ -36,7 +36,7 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
   midLogger.info('Received signature: ', { slackSignature });
   midLogger.info('Is valid Slack signature: ', { isValidSlackSignature });
 
-  if (isValidSlackSignature || req.headers.authorization === process.env.HOOK_TOKEN) {
+  if (isValidSlackSignature) {
     next();
   } else {
     midLogger.error('Someone is hitting your service from outside of slack.');
