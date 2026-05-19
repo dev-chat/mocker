@@ -179,7 +179,7 @@ describe('signatureVerificationMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.send).toHaveBeenCalledWith(
-      'You are trying to use this service from outside of Slack.\nEither request an API Token from Uncle JR or use the Slack client as god intended.',
+      'You are trying to use this service from outside of Slack.\nThis endpoint only accepts valid Slack signatures; use the Slack client as god intended.',
     );
   });
 });
