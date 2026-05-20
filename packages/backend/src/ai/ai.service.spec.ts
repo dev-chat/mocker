@@ -537,8 +537,8 @@ describe('AIService', () => {
       expect(aiService.openAi.responses.create).toHaveBeenCalledWith(
         expect.objectContaining({ tools: [{ type: 'web_search_preview' }], tool_choice: 'auto' }),
       );
-      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Participation response', [
-        { type: 'markdown', text: 'Participation response' },
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Participation response.', [
+        { type: 'markdown', text: 'Participation response.' },
       ]);
       expect(aiService.redis.setHasParticipated).toHaveBeenCalledWith('T1', 'C1');
       expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
@@ -550,6 +550,48 @@ describe('AIService', () => {
 
       await expect(aiService.participate('T1', 'C1', 'hi')).rejects.toThrow('model fail');
       expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
+    });
+
+    it('formats participation responses with capitalization and punctuation', async () => {
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([]);
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'hello moonbeam' }] }],
+      });
+
+      await aiService.participate('T1', 'C1', 'hi');
+      await Promise.resolve();
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Hello moonbeam.', [
+        { type: 'markdown', text: 'Hello moonbeam.' },
+      ]);
+    });
+
+    it('formats participation responses that start with a non-ascii letter', async () => {
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([]);
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'élan vital' }] }],
+      });
+
+      await aiService.participate('T1', 'C1', 'hi');
+      await Promise.resolve();
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Élan vital.', [
+        { type: 'markdown', text: 'Élan vital.' },
+      ]);
+    });
+
+    it('preserves existing terminal punctuation in participation responses', async () => {
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([]);
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'what do you think?' }] }],
+      });
+
+      await aiService.participate('T1', 'C1', 'hi');
+      await Promise.resolve();
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'What do you think?', [
+        { type: 'markdown', text: 'What do you think?' },
+      ]);
     });
 
     it('injects trait context for participation prompts', async () => {
@@ -600,7 +642,7 @@ describe('AIService', () => {
       await aiService.participate('T1', 'C1', 'hi');
 
       const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
-      expect(callArgs.instructions).toContain('you are moonbeam');
+      expect(callArgs.instructions).toContain('You are Moonbeam');
       expect(aiService.slackPersistenceService.getCustomPrompt).not.toHaveBeenCalled();
     });
 
@@ -615,7 +657,7 @@ describe('AIService', () => {
       await aiService.participate('T1', 'C1', 'hi', 'U1');
 
       const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
-      expect(callArgs.instructions).toContain('you are moonbeam');
+      expect(callArgs.instructions).toContain('You are Moonbeam');
     });
   });
 
