@@ -32,11 +32,18 @@ const signBody = (
 
 describe('signatureVerificationMiddleware', () => {
   const OLD_ENV = process.env;
+  const FIXED_NOW = new Date('2026-01-01T00:00:00Z');
 
   beforeEach(() => {
     vi.resetModules();
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     process.env = { ...OLD_ENV };
     process.env.MUZZLE_BOT_SIGNING_SECRET = 'secret';
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   afterAll(() => {
