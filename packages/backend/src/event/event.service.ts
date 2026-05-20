@@ -44,7 +44,15 @@ export class EventService {
   }
 
   async handle(request: EventRequest) {
-    this.logger.info('Handling event:', request);
+    this.logger.info('Handling event', {
+      eventType: request.event.type,
+      eventSubtype: request.event.subtype,
+      teamId: request.team_id,
+      channelId: request.event.channel,
+      userId: request.event.user,
+      eventId: request.event_id,
+      eventTs: request.event.event_ts,
+    });
 
     // First: Log the message to ensure it's in history before AI reads it
     await this.handleEvent(request);

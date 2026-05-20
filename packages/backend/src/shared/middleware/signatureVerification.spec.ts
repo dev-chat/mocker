@@ -22,18 +22,28 @@ const makeRes = (): SignatureRes =>
 
 const makeNext = (): SignatureNext => vi.fn() as SignatureNext;
 
-const signBody = (body: string, timestamp = '123'): { signature: string; timestamp: string } => ({
+const signBody = (
+  body: string,
+  timestamp = String(Math.floor(Date.now() / 1000)),
+): { signature: string; timestamp: string } => ({
   timestamp,
   signature: 'v0=' + crypto.createHmac('sha256', 'secret').update(`v0:${timestamp}:${body}`).digest('hex'),
 });
 
 describe('signatureVerificationMiddleware', () => {
   const OLD_ENV = process.env;
+  const FIXED_NOW = new Date('2026-01-01T00:00:00Z');
 
   beforeEach(() => {
     vi.resetModules();
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     process.env = { ...OLD_ENV };
     process.env.MUZZLE_BOT_SIGNING_SECRET = 'secret';
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   afterAll(() => {
@@ -181,5 +191,45 @@ describe('signatureVerificationMiddleware', () => {
     expect(res.send).toHaveBeenCalledWith(
       'You are trying to use this service from outside of Slack.\nThis endpoint only accepts valid Slack signatures; use the Slack client as god intended.',
     );
+  });
+
+  it('rejects requests with stale timestamps even when signature matches', () => {
+    const body = 'raw-body';
+    const staleTimestamp = String(Math.floor(Date.now() / 1000) - 301);
+    const { signature } = signBody(body, staleTimestamp);
+
+    const req = makeReq({
+      rawBody: body,
+      headers: { 'x-slack-request-timestamp': staleTimestamp, 'x-slack-signature': signature },
+      ip: '1.2.3.4',
+      ips: ['1.2.3.4'],
+    });
+    const res = makeRes();
+    const next = makeNext();
+
+    signatureVerificationMiddleware(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('rejects requests with non-numeric timestamps', () => {
+    const body = 'raw-body';
+    const badTimestamp = 'not-a-number';
+    const { signature } = signBody(body, badTimestamp);
+
+    const req = makeReq({
+      rawBody: body,
+      headers: { 'x-slack-request-timestamp': badTimestamp, 'x-slack-signature': signature },
+      ip: '1.2.3.4',
+      ips: ['1.2.3.4'],
+    });
+    const res = makeRes();
+    const next = makeNext();
+
+    signatureVerificationMiddleware(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
   });
 });
