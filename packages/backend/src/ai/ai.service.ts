@@ -62,6 +62,25 @@ const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): str
   return outputText?.trim();
 };
 
+const ensureSentenceCaseAndPunctuation = (text: string): string => {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  const firstLetterIndex = trimmed.search(/\p{L}/u);
+  const capitalized =
+    firstLetterIndex >= 0
+      ? `${trimmed.slice(0, firstLetterIndex)}${trimmed[firstLetterIndex].toUpperCase()}${trimmed.slice(firstLetterIndex + 1)}`
+      : trimmed;
+
+  if (/[.!?]$/.test(capitalized)) {
+    return capitalized;
+  }
+
+  return `${capitalized}.`;
+};
+
 const DEFAULT_IMAGE_DIR = path.join('/tmp', 'mocker-images');
 const execFileAsync = promisify(execFile);
 const RELEASE_METADATA_PATHS = [
@@ -496,8 +515,9 @@ export class AIService {
       .then((x) => extractAndParseOpenAiResponse(x))
       .then((result) => {
         if (result) {
+          const formattedResult = ensureSentenceCaseAndPunctuation(result);
           this.webService
-            .sendMessage(channelId, result, [{ type: 'markdown', text: result }])
+            .sendMessage(channelId, formattedResult, [{ type: 'markdown', text: formattedResult }])
             .then(() => this.redis.setHasParticipated(teamId, channelId))
             .catch((e) =>
               logError(this.aiServiceLogger, 'Failed to send AI participation message', e, {
