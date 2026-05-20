@@ -480,6 +480,13 @@ export class AIService {
   }
 
   public async participate(teamId: string, channelId: string, taggedMessage: string, userId?: string): Promise<void> {
+    this.aiServiceLogger.info('Starting Moonbeam participation flow', {
+      teamId,
+      channelId,
+      userId,
+      taggedMessage,
+    });
+
     await this.redis.setParticipationInFlight(channelId, teamId);
 
     const historyMessages = await this.historyService.getHistoryWithOptions({
@@ -498,6 +505,14 @@ export class AIService {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
     const traitContext = await this.traitService.fetchTraitContext(participantSlackIds, teamId, historyMessages);
+    this.aiServiceLogger.info('Built participation context', {
+      teamId,
+      channelId,
+      historyMessagesCount: historyMessages.length,
+      participantCount: participantSlackIds.length,
+      hasCustomPrompt: normalizedCustomPrompt !== null,
+    });
+
     const baseInstructions = normalizedCustomPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
     const systemInstructions = this.traitService.appendTraitContext(baseInstructions, traitContext);
 
@@ -514,11 +529,24 @@ export class AIService {
       })
       .then((x) => extractAndParseOpenAiResponse(x))
       .then((result) => {
+        this.aiServiceLogger.info('Received participation model response', {
+          teamId,
+          channelId,
+          hasResult: !!result,
+          resultLength: result?.length ?? 0,
+        });
+
         if (result) {
           const formattedResult = ensureSentenceCaseAndPunctuation(result);
           this.webService
             .sendMessage(channelId, formattedResult, [{ type: 'markdown', text: formattedResult }])
-            .then(() => this.redis.setHasParticipated(teamId, channelId))
+            .then(() => {
+              this.aiServiceLogger.info('Sent participation message to Slack', {
+                teamId,
+                channelId,
+              });
+              return this.redis.setHasParticipated(teamId, channelId);
+            })
             .catch((e) =>
               logError(this.aiServiceLogger, 'Failed to send AI participation message', e, {
                 teamId,
@@ -537,6 +565,10 @@ export class AIService {
       })
       .finally(() => {
         void this.redis.removeParticipationInFlight(channelId, teamId);
+        this.aiServiceLogger.info('Finished Moonbeam participation flow', {
+          teamId,
+          channelId,
+        });
       });
   }
 
