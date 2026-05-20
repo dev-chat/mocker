@@ -26,6 +26,7 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchPage = useCallback(
     async (page: number) => {
@@ -81,6 +82,12 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
           throw new Error(`Search failed: ${response.statusText}`);
         }
         const data = (await response.json()) as SearchMessagesResponse;
+
+        // Ignore stale responses from superseded requests.
+        if (abortController !== abortControllerRef.current) {
+          return;
+        }
+
         setMessages(data.messages);
         setMentions(data.mentions);
         setTotal(data.total);
@@ -103,7 +110,13 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
     [userName, channel, content, onLogout],
   );
 
-  const handleSearch = useCallback(() => fetchPage(1), [fetchPage]);
+  const handleSearch = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    return fetchPage(1);
+  }, [fetchPage]);
 
   const loadSearchFilters = useCallback(async () => {
     setIsFiltersLoading(true);
@@ -135,6 +148,10 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
   // Abort any in-flight request on unmount to prevent state updates on an unmounted component
   useEffect(() => {
     return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
       abortControllerRef.current?.abort();
       abortControllerRef.current = null;
     };
@@ -148,10 +165,19 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
       isFirstRender.current = false;
       return;
     }
-    const timer = setTimeout(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
       void handleSearch();
     }, 300);
-    return () => clearTimeout(timer);
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
   }, [handleSearch]);
 
   const displayedMessages = useMemo(

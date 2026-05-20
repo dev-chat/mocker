@@ -47,32 +47,34 @@ export const signatureVerificationMiddleware = (req: Request, res: Response, nex
       return false;
     }
   })();
-  midLogger.info('Received request: ', { request: req });
-  midLogger.info('Received request with body: ', { body });
-  midLogger.info('Computed signature: ', { hashed });
-  midLogger.info('Received signature: ', { slackSignature });
-  midLogger.info('Is fresh Slack timestamp: ', { isFreshSlackTimestamp });
-  midLogger.info('Is valid Slack signature: ', { isValidSlackSignature });
+  midLogger.info('Slack request signature evaluation complete', {
+    method: req.method,
+    path: req.path,
+    isFreshSlackTimestamp,
+    isValidSlackSignature,
+  });
 
   if (isValidSlackSignature) {
     next();
   } else {
     if (!isFreshSlackTimestamp) {
       midLogger.warn('Rejecting request due to stale or invalid Slack timestamp.', {
+        method: req.method,
+        path: req.path,
         timestamp,
         nowSeconds: Math.floor(Date.now() / 1000),
         maxAgeSeconds: SLACK_SIGNATURE_MAX_AGE_SECONDS,
       });
     } else {
       midLogger.warn('Rejecting request due to Slack signature mismatch.', {
+        method: req.method,
+        path: req.path,
         timestamp,
       });
     }
     midLogger.error('Someone is hitting your service from outside of slack.');
     midLogger.error('ip: ', { ip: req.ip });
     midLogger.error('ips: ', { ips: req.ips });
-    midLogger.error('headers: ', { headers: req.headers });
-    midLogger.error('body:', { body: req.body });
     res
       .status(400)
       .send(
