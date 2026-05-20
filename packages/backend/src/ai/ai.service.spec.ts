@@ -566,6 +566,20 @@ describe('AIService', () => {
       ]);
     });
 
+    it('formats participation responses that start with a non-ascii letter', async () => {
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([]);
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
+        output: [{ type: 'message', content: [{ type: 'output_text', text: 'élan vital' }] }],
+      });
+
+      await aiService.participate('T1', 'C1', 'hi');
+      await Promise.resolve();
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'Élan vital.', [
+        { type: 'markdown', text: 'Élan vital.' },
+      ]);
+    });
+
     it('preserves existing terminal punctuation in participation responses', async () => {
       (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([]);
       (aiService.openAi.responses.create as Mock).mockResolvedValue({

@@ -68,7 +68,7 @@ const ensureSentenceCaseAndPunctuation = (text: string): string => {
     return trimmed;
   }
 
-  const firstLetterIndex = trimmed.search(/[A-Za-z]/);
+  const firstLetterIndex = trimmed.search(/\p{L}/u);
   const capitalized =
     firstLetterIndex >= 0
       ? `${trimmed.slice(0, firstLetterIndex)}${trimmed[firstLetterIndex].toUpperCase()}${trimmed.slice(firstLetterIndex + 1)}`
