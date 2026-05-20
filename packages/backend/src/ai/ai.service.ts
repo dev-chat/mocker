@@ -74,12 +74,11 @@ const ensureSentenceCaseAndPunctuation = (text: string): string => {
       ? `${trimmed.slice(0, firstLetterIndex)}${trimmed[firstLetterIndex].toUpperCase()}${trimmed.slice(firstLetterIndex + 1)}`
       : trimmed;
 
-  const trailingWhitespaceRemoved = capitalized.replace(/\s+$/, '');
-  if (/[.!?]$/.test(trailingWhitespaceRemoved)) {
-    return trailingWhitespaceRemoved;
+  if (/[.!?]$/.test(capitalized)) {
+    return capitalized;
   }
 
-  return `${trailingWhitespaceRemoved}.`;
+  return `${capitalized}.`;
 };
 
 const DEFAULT_IMAGE_DIR = path.join('/tmp', 'mocker-images');
