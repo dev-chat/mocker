@@ -90,7 +90,7 @@ export class ArgumentJob {
       this.jobLogger.info(`Argument extraction lock active for ${channelId}-${teamId}, skipping`);
       return;
     }
-    await this.redis.setValueWithExpire(lockKey, 1, 'EX', 300000);
+    await this.redis.setValueWithExpire(lockKey, 1, 'EX', 300);
 
     try {
       const history = this.aiService.formatHistory(historyMessages);
