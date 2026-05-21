@@ -10,7 +10,9 @@ export const PrimaryGeneratedColumn = noopDecoratorFactory;
 export const PrimaryColumn = noopDecoratorFactory;
 export const OneToMany = noopDecoratorFactory;
 export const OneToOne = noopDecoratorFactory;
+export const ManyToMany = noopDecoratorFactory;
 export const ManyToOne = noopDecoratorFactory;
+export const JoinTable = noopDecoratorFactory;
 export const Unique = noopDecoratorFactory;
 
 export const getRepository = vi.fn();
