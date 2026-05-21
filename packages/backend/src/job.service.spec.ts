@@ -1,16 +1,23 @@
 import { vi } from 'vitest';
 import { loggerMock } from './test/mocks/logger.mock';
 
-const { memoryRunMock, traitRunMock, funFactRunMock, pricingRunMock, eventAlertRunMock, scheduleMock } = vi.hoisted(
-  () => ({
-    memoryRunMock: vi.fn(),
-    traitRunMock: vi.fn(),
-    funFactRunMock: vi.fn(),
-    pricingRunMock: vi.fn(),
-    eventAlertRunMock: vi.fn(),
-    scheduleMock: vi.fn(),
-  }),
-);
+const {
+  memoryRunMock,
+  argumentRunMock,
+  traitRunMock,
+  funFactRunMock,
+  pricingRunMock,
+  eventAlertRunMock,
+  scheduleMock,
+} = vi.hoisted(() => ({
+  memoryRunMock: vi.fn(),
+  argumentRunMock: vi.fn(),
+  traitRunMock: vi.fn(),
+  funFactRunMock: vi.fn(),
+  pricingRunMock: vi.fn(),
+  eventAlertRunMock: vi.fn(),
+  scheduleMock: vi.fn(),
+}));
 
 vi.mock('node-cron', async () => ({
   default: {
@@ -21,6 +28,12 @@ vi.mock('node-cron', async () => ({
 vi.mock('./ai/memory/memory.job', async () => ({
   MemoryJob: classMock(() => ({
     run: memoryRunMock,
+  })),
+}));
+
+vi.mock('./argument/argument.job', async () => ({
+  ArgumentJob: classMock(() => ({
+    run: argumentRunMock,
   })),
 }));
 
@@ -54,26 +67,37 @@ describe('JobService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     memoryRunMock.mockResolvedValue(undefined);
+    argumentRunMock.mockResolvedValue(undefined);
     traitRunMock.mockResolvedValue(undefined);
     funFactRunMock.mockResolvedValue(undefined);
     pricingRunMock.mockResolvedValue(undefined);
     eventAlertRunMock.mockResolvedValue(undefined);
   });
 
-  it('runs memory and trait jobs sequentially', async () => {
+  it('runs nightly analysis jobs sequentially', async () => {
     const service = new JobService();
 
-    await service.runMemoryAndTraitJobs();
+    await service.runNightlyAnalysisJobs();
 
     expect(memoryRunMock).toHaveBeenCalledOnce();
+    expect(argumentRunMock).toHaveBeenCalledOnce();
     expect(traitRunMock).toHaveBeenCalledOnce();
   });
 
-  it('throws when memory and trait sequence fails', async () => {
+  it('throws when nightly analysis sequence fails', async () => {
     const service = new JobService();
     memoryRunMock.mockRejectedValueOnce(new Error('memory-fail'));
 
-    await expect(service.runMemoryAndTraitJobs()).rejects.toThrow('memory-fail');
+    await expect(service.runNightlyAnalysisJobs()).rejects.toThrow('memory-fail');
+    expect(argumentRunMock).not.toHaveBeenCalled();
+    expect(traitRunMock).not.toHaveBeenCalled();
+  });
+
+  it('does not run trait job when argument job fails', async () => {
+    const service = new JobService();
+    argumentRunMock.mockRejectedValueOnce(new Error('argument-fail'));
+
+    await expect(service.runNightlyAnalysisJobs()).rejects.toThrow('argument-fail');
     expect(traitRunMock).not.toHaveBeenCalled();
   });
 
@@ -81,12 +105,14 @@ describe('JobService', () => {
     const service = new JobService();
 
     await service.runMemoryJob();
+    await service.runArgumentJob();
     await service.runTraitJob();
     await service.runFunFactJob();
     await service.runPricingJob();
     await service.runEventAlertJob();
 
     expect(memoryRunMock).toHaveBeenCalled();
+    expect(argumentRunMock).toHaveBeenCalled();
     expect(traitRunMock).toHaveBeenCalled();
     expect(funFactRunMock).toHaveBeenCalled();
     expect(pricingRunMock).toHaveBeenCalled();
@@ -118,8 +144,8 @@ describe('JobService', () => {
 
   it('logs errors from scheduled callbacks instead of throwing', async () => {
     const service = new JobService();
-    const runMemoryAndTraitJobsSpy = vi
-      .spyOn(service, 'runMemoryAndTraitJobs')
+    const runNightlyAnalysisJobsSpy = vi
+      .spyOn(service, 'runNightlyAnalysisJobs')
       .mockRejectedValueOnce(new Error('scheduled-failure'));
 
     service.scheduleCronJobs();
@@ -130,7 +156,7 @@ describe('JobService', () => {
     memoryCallback?.();
     await Promise.resolve();
 
-    expect(runMemoryAndTraitJobsSpy).toHaveBeenCalledOnce();
-    expect(loggerMock.error).toHaveBeenCalledWith('Memory and trait job sequence failed:', expect.any(Error));
+    expect(runNightlyAnalysisJobsSpy).toHaveBeenCalledOnce();
+    expect(loggerMock.error).toHaveBeenCalledWith('Nightly analysis job sequence failed:', expect.any(Error));
   });
 });

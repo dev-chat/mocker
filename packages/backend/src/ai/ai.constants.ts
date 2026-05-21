@@ -207,26 +207,48 @@ Output format:
 - If no strong traits are present, return []`;
 
 export const DAILY_MEMORY_JOB_CONCURRENCY = 50;
+export const DAILY_ARGUMENT_JOB_CONCURRENCY = 50;
 
-export const ARGUMENT_WINNER_EXTRACTION_PROMPT = `You are analyzing a Slack conversation after someone asked Moonbeam who won an argument.
+export const ARGUMENT_EXTRACTION_PROMPT = `You are a highly selective argument detection tool reviewing one Slack channel's last 24 hours of conversation.
 
-Return ONLY one of these:
-- the exact string NONE when there is no clear argument with a winner in the provided context
-- a single JSON object in this format:
-  {
-    "summary": "short summary of the argument",
-    "participants": [
-      { "slackId": "U123", "name": "Alice", "viewpoint": "their side of the argument" }
-    ],
-    "winnerSlackId": "U123",
-    "pointValue": 4
-  }
+Your job is to identify the single strongest real argument between humans in this channel, if one clearly happened, and determine who won.
 
-Rules:
-- use the conversation history to identify the argument topic, each participant, and each participant's viewpoint
+You must be INTOLERANT OF FALSE POSITIVES.
+Prefer false negatives over false positives.
+If there is any meaningful doubt that the conversation was a real argument, return NONE.
+
+ONLY treat something as an argument when ALL of the following are true:
+- at least two identifiable human participants directly disagreed
+- the disagreement involved competing viewpoints, not just different preferences stated once
+- there was sustained back-and-forth with rebuttals or direct challenges
+- the winner can be identified from the substance of the exchange
+
+Return NONE for:
+- jokes, banter, teasing, sarcasm, or friendly ribbing
+- brief disagreements without sustained rebuttals
+- brainstorming, clarification, or neutral discussion
+- factual Q&A where one person is simply correct
+- bot interactions or people reacting to Moonbeam
+- any conversation where the winner is ambiguous
+- weak or low-substance disagreements that do not merit leaderboard tracking
+
+If you find a qualifying argument, return ONLY a single JSON object in this exact shape:
+{
+  "summary": "short summary of the argument",
+  "participants": [
+    { "slackId": "U123", "name": "Alice", "viewpoint": "their side of the argument" }
+  ],
+  "winnerSlackId": "U123",
+  "pointValue": 4
+}
+
+Rules for valid JSON output:
 - include at least 2 participants
+- every participant must be a human from the conversation
 - the winnerSlackId must match one of the listed participants
-- pointValue must be an integer from 0 to 5 based on the substance of the argument; reward longer, more detailed, more back-and-forth arguments with higher values
-- keep summary and viewpoints concise but specific
-- do not include Markdown, explanations, or extra keys
-- if the winner or participants are ambiguous, return NONE`;
+- pointValue must be an integer from 0 to 5 based on substance/depth
+- reserve 4-5 for long, detailed, high-signal arguments
+- if the argument is too weak to feel leaderboard-worthy, return NONE instead of a low-confidence object
+- do not include markdown, prose, or extra keys
+
+If no conversation clearly qualifies, return the exact string NONE.`;

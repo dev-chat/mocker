@@ -5,9 +5,11 @@ import { PricingJob } from './jobs/pricing.job';
 import { EventAlertJob } from './jobs/event-alert.job';
 import { logger } from './shared/logger/logger';
 import { TraitJob } from './trait/trait.job';
+import { ArgumentJob } from './argument/argument.job';
 
 export class JobService {
   private memoryJob: MemoryJob;
+  private argumentJob: ArgumentJob;
   private traitJob: TraitJob;
   private funFactJob: FunFactJob;
   private pricingJob: PricingJob;
@@ -16,6 +18,7 @@ export class JobService {
 
   constructor() {
     this.memoryJob = new MemoryJob();
+    this.argumentJob = new ArgumentJob();
     this.traitJob = new TraitJob();
     this.funFactJob = new FunFactJob();
     this.pricingJob = new PricingJob();
@@ -23,26 +26,28 @@ export class JobService {
   }
 
   /**
-   * Run the memory and trait jobs in sequence.
-   * Memory job runs first, then trait job runs only if memory job succeeds.
+   * Run the nightly analysis jobs in sequence.
+   * Memory job runs first, then argument job, then trait job if the earlier jobs succeed.
    */
-  async runMemoryAndTraitJobs(): Promise<void> {
-    this.jobServiceLogger.info('Starting memory and trait job sequence');
+  async runNightlyAnalysisJobs(): Promise<void> {
+    this.jobServiceLogger.info('Starting nightly analysis job sequence');
 
     try {
-      // Run memory job first
       this.jobServiceLogger.info('Running memory job...');
       await this.memoryJob.run();
-      this.jobServiceLogger.info('Memory job succeeded, proceeding with trait job');
+      this.jobServiceLogger.info('Memory job succeeded, proceeding with argument job');
 
-      // Run trait job only if memory job succeeds
+      this.jobServiceLogger.info('Running argument job...');
+      await this.argumentJob.run();
+      this.jobServiceLogger.info('Argument job succeeded, proceeding with trait job');
+
       this.jobServiceLogger.info('Running trait job...');
       await this.traitJob.run();
       this.jobServiceLogger.info('Trait job succeeded');
 
-      this.jobServiceLogger.info('Memory and trait job sequence completed successfully');
+      this.jobServiceLogger.info('Nightly analysis job sequence completed successfully');
     } catch (error) {
-      this.jobServiceLogger.error('Memory and trait job sequence failed:', error);
+      this.jobServiceLogger.error('Nightly analysis job sequence failed:', error);
       throw error;
     }
   }
@@ -104,6 +109,20 @@ export class JobService {
   }
 
   /**
+   * Run the argument job in isolation
+   */
+  async runArgumentJob(): Promise<void> {
+    this.jobServiceLogger.info('Running argument job in isolation');
+    try {
+      await this.argumentJob.run();
+      this.jobServiceLogger.info('Argument job completed successfully');
+    } catch (error) {
+      this.jobServiceLogger.error('Argument job failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Run the trait job in isolation
    */
   async runTraitJob(): Promise<void> {
@@ -119,24 +138,24 @@ export class JobService {
 
   /**
    * Schedule all cron jobs on startup.
-   * Memory and trait jobs run daily at 3AM.
+   * Nightly analysis jobs run daily at 3AM.
    * Fun fact job runs daily at 9AM.
    * Pricing job runs every hour at minute 10.
    */
   scheduleCronJobs(): void {
     this.jobServiceLogger.info('Scheduling cron jobs');
 
-    // Memory and trait jobs: daily at 3AM America/New_York
+    // Nightly analysis jobs: daily at 3AM America/New_York
     cron.schedule(
       '0 3 * * *',
       () => {
-        this.runMemoryAndTraitJobs().catch((error) => {
-          this.jobServiceLogger.error('Memory and trait job sequence failed:', error);
+        this.runNightlyAnalysisJobs().catch((error) => {
+          this.jobServiceLogger.error('Nightly analysis job sequence failed:', error);
         });
       },
       { timezone: 'America/New_York' },
     );
-    this.jobServiceLogger.info('Memory and trait job sequence scheduled daily at 3AM America/New_York time.');
+    this.jobServiceLogger.info('Nightly analysis job sequence scheduled daily at 3AM America/New_York time.');
 
     // Fun fact job: daily at 9AM America/New_York
     cron.schedule(
