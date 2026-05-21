@@ -1,4 +1,6 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { JoinTable } from 'typeorm/decorator/relations/JoinTable';
+import { ManyToMany } from 'typeorm/decorator/relations/ManyToMany';
 import { SlackUser } from './SlackUser';
 
 export interface ArgumentParticipant {
@@ -6,6 +8,8 @@ export interface ArgumentParticipant {
   name: string;
   viewpoint: string;
 }
+
+export type ArgumentParticipantViewpoints = Record<string, string>;
 
 @Entity()
 export class ArgumentLeaderboard {
@@ -21,8 +25,12 @@ export class ArgumentLeaderboard {
   @Column('text')
   public argumentSummary!: string;
 
-  @Column('simple-json')
-  public participants!: ArgumentParticipant[];
+  @ManyToMany(() => SlackUser)
+  @JoinTable()
+  public participants!: SlackUser[];
+
+  @Column('simple-json', { default: '{}' })
+  public participantViewpoints!: ArgumentParticipantViewpoints;
 
   @ManyToOne(() => SlackUser, (user) => user.argumentWins)
   public winner!: SlackUser;

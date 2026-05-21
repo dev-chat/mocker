@@ -1,6 +1,7 @@
 import { getRepository } from 'typeorm';
 import { ArgumentLeaderboard } from '../shared/db/models/ArgumentLeaderboard';
 import type { ArgumentParticipant } from '../shared/db/models/ArgumentLeaderboard';
+import type { ArgumentParticipantViewpoints } from '../shared/db/models/ArgumentLeaderboard';
 import { SlackUser } from '../shared/db/models/SlackUser';
 import { logger } from '../shared/logger/logger';
 import { logError } from '../shared/logger/error-logging';
@@ -11,16 +12,6 @@ interface LeaderboardRow {
   slackId: string;
   wins: string;
   points: string;
-}
-
-interface ArgumentRow {
-  id: number;
-  argumentSummary: string;
-  participants: string;
-  winnerName: string;
-  winnerSlackId: string;
-  pointValue: string;
-  createdAt: string | Date;
 }
 
 const clampPointValue = (value: number): number => Math.min(5, Math.max(0, Math.round(value)));
@@ -36,28 +27,44 @@ const normalizeParticipant = (participant: Partial<ArgumentParticipant>): Argume
   return { slackId, name, viewpoint };
 };
 
-const parseParticipants = (raw: string): ArgumentParticipant[] => {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
+const buildParticipantViewpoints = (participants: ArgumentParticipant[]): ArgumentParticipantViewpoints =>
+  Object.fromEntries(participants.map((participant) => [participant.slackId, participant.viewpoint]));
 
-    return parsed
-      .map((participant) =>
-        typeof participant === 'object' && participant !== null ? normalizeParticipant(participant) : null,
-      )
-      .filter((participant): participant is ArgumentParticipant => participant !== null);
-  } catch {
+const buildArgumentParticipants = (
+  participants: SlackUser[] | undefined,
+  participantViewpoints: ArgumentParticipantViewpoints | null | undefined,
+): ArgumentParticipant[] => {
+  if (!participants || participants.length === 0 || !participantViewpoints) {
     return [];
   }
+
+  const participantUserBySlackId = new Map(participants.map((participant) => [participant.slackId, participant]));
+
+  return Object.entries(participantViewpoints)
+    .flatMap(([slackId, viewpoint]) => {
+      const participant = participantUserBySlackId.get(slackId);
+      const normalizedViewpoint = viewpoint.trim();
+      if (!participant || !normalizedViewpoint) {
+        return [];
+      }
+
+      return [
+        {
+          slackId: participant.slackId,
+          name: participant.name,
+          viewpoint: normalizedViewpoint,
+        },
+      ];
+    })
+    .filter((participant) => participant.name.trim());
 };
 
 export class ArgumentPersistenceService {
   private logger = logger.child({ module: 'ArgumentPersistenceService' });
 
   async saveArgumentOutcome(input: SaveArgumentOutcomeInput): Promise<ArgumentOutcomeEntry | null> {
-    const winner = await getRepository(SlackUser).findOne({
+    const slackUserRepo = getRepository(SlackUser);
+    const winner = await slackUserRepo.findOne({
       where: { slackId: input.winnerSlackId, teamId: input.teamId },
     });
 
@@ -78,7 +85,13 @@ export class ArgumentPersistenceService {
       ).values(),
     );
 
-    if (participants.length < 2) {
+    const participantUsers = await slackUserRepo.find({
+      where: participants.map((participant) => ({ slackId: participant.slackId, teamId: input.teamId })),
+    });
+    const participantViewpoints = buildParticipantViewpoints(participants);
+    const hydratedParticipants = buildArgumentParticipants(participantUsers, participantViewpoints);
+
+    if (hydratedParticipants.length < 2) {
       this.logger.warn('Skipping argument outcome save because fewer than two participants were extracted', {
         teamId: input.teamId,
         channelId: input.channelId,
@@ -99,7 +112,8 @@ export class ArgumentPersistenceService {
     entry.teamId = input.teamId;
     entry.channelId = input.channelId;
     entry.argumentSummary = argumentSummary;
-    entry.participants = participants;
+    entry.participants = participantUsers;
+    entry.participantViewpoints = participantViewpoints;
     entry.winner = winner;
     entry.pointValue = clampPointValue(input.pointValue);
 
@@ -108,7 +122,7 @@ export class ArgumentPersistenceService {
       .then((saved) => ({
         id: saved.id,
         argument: saved.argumentSummary,
-        participants: saved.participants,
+        participants: buildArgumentParticipants(participantUsers, participantViewpoints),
         winner: {
           name: winner.name,
           slackId: winner.slackId,
@@ -140,23 +154,14 @@ export class ArgumentPersistenceService {
            INNER JOIN slack_user u ON u.id = a.winnerId
            WHERE a.teamId = ?
            GROUP BY u.id, u.name, u.slackId
-           ORDER BY wins DESC, points DESC, u.name ASC`,
+            ORDER BY wins DESC, points DESC, u.name ASC`,
           [teamId],
         ),
-        repo.query<ArgumentRow[]>(
-          `SELECT a.id AS id,
-                  a.argumentSummary AS argumentSummary,
-                  a.participants AS participants,
-                  u.name AS winnerName,
-                  u.slackId AS winnerSlackId,
-                  CAST(a.pointValue AS SIGNED) AS pointValue,
-                  a.createdAt AS createdAt
-           FROM argument_leaderboard a
-           INNER JOIN slack_user u ON u.id = a.winnerId
-           WHERE a.teamId = ?
-           ORDER BY a.createdAt DESC`,
-          [teamId],
-        ),
+        repo.find({
+          where: { teamId },
+          relations: ['participants', 'winner'],
+          order: { createdAt: 'DESC' },
+        }),
       ]);
 
       return {
@@ -169,10 +174,10 @@ export class ArgumentPersistenceService {
         arguments: argumentRows.map((row) => ({
           id: Number(row.id),
           argument: row.argumentSummary,
-          participants: parseParticipants(row.participants),
+          participants: buildArgumentParticipants(row.participants, row.participantViewpoints),
           winner: {
-            name: row.winnerName,
-            slackId: row.winnerSlackId,
+            name: row.winner.name,
+            slackId: row.winner.slackId,
           },
           pointValue: Number(row.pointValue),
           createdAt: new Date(row.createdAt).toISOString(),

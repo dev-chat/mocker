@@ -12,8 +12,10 @@ vi.mock('typeorm', async () => {
 
 describe('ArgumentPersistenceService', () => {
   const findOne = vi.fn();
+  const findUsers = vi.fn();
   const save = vi.fn();
   const query = vi.fn();
+  const findArguments = vi.fn();
   let service: ArgumentPersistenceService;
 
   beforeEach(() => {
@@ -21,15 +23,19 @@ describe('ArgumentPersistenceService', () => {
     service = new ArgumentPersistenceService();
     (getRepository as Mock).mockImplementation((entity: { name?: string }) => {
       if (entity.name === 'SlackUser') {
-        return { findOne };
+        return { findOne, find: findUsers };
       }
 
-      return { save, query };
+      return { save, query, find: findArguments };
     });
   });
 
   it('saves an argument outcome with a resolved winner', async () => {
     findOne.mockResolvedValue({ id: 7, slackId: 'U2', name: 'Bob' });
+    findUsers.mockResolvedValue([
+      { id: 6, slackId: 'U1', name: 'Alice' },
+      { id: 7, slackId: 'U2', name: 'Bob' },
+    ]);
     save.mockImplementation(async (entry: { createdAt?: Date }) => ({
       ...entry,
       id: 11,
@@ -54,12 +60,24 @@ describe('ArgumentPersistenceService', () => {
         teamId: 'T1',
         channelId: 'C1',
         argumentSummary: 'Tabs versus spaces',
+        participants: [
+          { id: 6, slackId: 'U1', name: 'Alice' },
+          { id: 7, slackId: 'U2', name: 'Bob' },
+        ],
+        participantViewpoints: {
+          U1: 'tabs are faster',
+          U2: 'spaces are clearer',
+        },
         pointValue: 5,
       }),
     );
     expect(result).toMatchObject({
       id: 11,
       argument: 'Tabs versus spaces',
+      participants: [
+        { slackId: 'U1', name: 'Alice', viewpoint: 'tabs are faster' },
+        { slackId: 'U2', name: 'Bob', viewpoint: 'spaces are clearer' },
+      ],
       winner: { name: 'Bob', slackId: 'U2' },
       pointValue: 5,
     });
@@ -85,30 +103,36 @@ describe('ArgumentPersistenceService', () => {
   });
 
   it('loads leaderboard standings and detailed argument outcomes', async () => {
-    query
-      .mockResolvedValueOnce([
-        { name: 'Bob', slackId: 'U2', wins: '3', points: '12' },
-        { name: 'Alice', slackId: 'U1', wins: '1', points: '4' },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 1,
-          argumentSummary: 'tabs vs spaces',
-          participants: JSON.stringify([
-            { slackId: 'U1', name: 'Alice', viewpoint: 'tabs are faster' },
-            { slackId: 'U2', name: 'Bob', viewpoint: 'spaces are clearer' },
-          ]),
-          winnerName: 'Bob',
-          winnerSlackId: 'U2',
-          pointValue: '4',
-          createdAt: '2026-05-21T00:00:00.000Z',
+    query.mockResolvedValueOnce([
+      { name: 'Bob', slackId: 'U2', wins: '3', points: '12' },
+      { name: 'Alice', slackId: 'U1', wins: '1', points: '4' },
+    ]);
+    findArguments.mockResolvedValue([
+      {
+        id: 1,
+        argumentSummary: 'tabs vs spaces',
+        participants: [
+          { id: 2, slackId: 'U2', name: 'Bob' },
+          { id: 1, slackId: 'U1', name: 'Alice' },
+        ],
+        participantViewpoints: {
+          U1: 'tabs are faster',
+          U2: 'spaces are clearer',
         },
-      ]);
+        winner: { id: 2, slackId: 'U2', name: 'Bob' },
+        pointValue: '4',
+        createdAt: '2026-05-21T00:00:00.000Z',
+      },
+    ]);
 
     const result = await service.getArgumentLeaderboard('T1');
 
     expect(query).toHaveBeenNthCalledWith(1, expect.stringContaining('CAST(COUNT(*) AS SIGNED) AS wins'), ['T1']);
-    expect(query).toHaveBeenNthCalledWith(2, expect.stringContaining('a.argumentSummary AS argumentSummary'), ['T1']);
+    expect(findArguments).toHaveBeenCalledWith({
+      where: { teamId: 'T1' },
+      relations: ['participants', 'winner'],
+      order: { createdAt: 'DESC' },
+    });
     expect(result).toEqual({
       leaderboard: [
         { name: 'Bob', slackId: 'U2', wins: 3, points: 12 },
