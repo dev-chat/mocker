@@ -40,10 +40,13 @@ import { dashboardController } from './dashboard.controller';
 describe('dashboardController', () => {
   const app = express();
   app.use((req, _res, next) => {
+    const requestWithAuthSession = req as typeof req & {
+      authSession?: { teamId?: string; userId?: string };
+    };
     const teamId = req.header('x-team-id');
     const userId = req.header('x-user-id');
     if (teamId || userId) {
-      req.authSession = { teamId: teamId ?? undefined, userId: userId ?? undefined };
+      requestWithAuthSession.authSession = { teamId: teamId ?? undefined, userId: userId ?? undefined };
     }
     next();
   });
