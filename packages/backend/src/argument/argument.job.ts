@@ -103,89 +103,106 @@ export class ArgumentJob {
         })
         .then((response) => extractAndParseOpenAiResponse(response));
 
-      const parsedResult = this.parseExtractionResult(result);
-      if (!parsedResult) {
+      const parsedResults = this.parseExtractionResults(result);
+      if (parsedResults.length === 0) {
         return;
       }
 
-      const saved = await this.argumentPersistenceService.saveArgumentOutcome({
-        teamId,
-        channelId,
-        argumentSummary: parsedResult.summary,
-        participants: parsedResult.participants,
-        winnerSlackId: parsedResult.winnerSlackId,
-        pointValue: parsedResult.pointValue,
-      });
+      for (const parsedResult of parsedResults) {
+        const saved = await this.argumentPersistenceService.saveArgumentOutcome({
+          teamId,
+          channelId,
+          argumentSummary: parsedResult.summary,
+          participants: parsedResult.participants,
+          winnerSlackId: parsedResult.winnerSlackId,
+          pointValue: parsedResult.pointValue,
+        });
 
-      if (saved) {
-        this.jobLogger.info(`Argument extracted for ${channelId}: "${saved.argument}"`);
+        if (saved) {
+          this.jobLogger.info(`Argument extracted for ${channelId}: "${saved.argument}"`);
+        }
       }
     } catch (error) {
       logError(this.jobLogger, 'Argument extraction failed', error, { teamId, channelId });
     }
   }
 
-  private parseExtractionResult(result: string | undefined): ArgumentExtractionResult | null {
+  private parseExtractionResults(result: string | undefined): ArgumentExtractionResult[] {
     if (!result) {
       this.jobLogger.warn('Argument extraction returned no result');
-      return null;
+      return [];
     }
 
     const trimmed = result.trim();
     if (trimmed === 'NONE' || trimmed === '"NONE"') {
-      return null;
+      return [];
     }
 
     try {
       const parsed: unknown = JSON.parse(trimmed);
-      if (!isRecord(parsed)) {
-        this.jobLogger.warn(`Argument extraction returned non-object JSON: ${trimmed}`);
-        return null;
+      const rawArguments = Array.isArray(parsed) ? parsed : isRecord(parsed) ? [parsed] : null;
+      if (!rawArguments) {
+        this.jobLogger.warn(`Argument extraction returned non-array JSON: ${trimmed}`);
+        return [];
       }
 
-      const participants = Array.isArray(parsed.participants)
-        ? parsed.participants
-            .map((participant) => {
-              if (!isRecord(participant)) {
-                return null;
-              }
+      const parsedArguments = rawArguments
+        .map((argument) => {
+          if (!isRecord(argument)) {
+            return null;
+          }
 
-              return typeof participant.slackId === 'string' &&
-                typeof participant.name === 'string' &&
-                typeof participant.viewpoint === 'string'
-                ? {
-                    slackId: participant.slackId.trim(),
-                    name: participant.name.trim(),
-                    viewpoint: participant.viewpoint.trim(),
+          const participants = Array.isArray(argument.participants)
+            ? argument.participants
+                .map((participant) => {
+                  if (!isRecord(participant)) {
+                    return null;
                   }
-                : null;
-            })
-            .filter((participant): participant is ArgumentParticipant => participant !== null)
-        : [];
 
-      const summary = typeof parsed.summary === 'string' ? parsed.summary.trim() : '';
-      const winnerSlackId = typeof parsed.winnerSlackId === 'string' ? parsed.winnerSlackId.trim() : '';
-      const pointValue = typeof parsed.pointValue === 'number' ? parsed.pointValue : Number(parsed.pointValue);
+                  return typeof participant.slackId === 'string' &&
+                    typeof participant.name === 'string' &&
+                    typeof participant.viewpoint === 'string'
+                    ? {
+                        slackId: participant.slackId.trim(),
+                        name: participant.name.trim(),
+                        viewpoint: participant.viewpoint.trim(),
+                      }
+                    : null;
+                })
+                .filter((participant): participant is ArgumentParticipant => participant !== null)
+            : [];
 
-      if (
-        !summary ||
-        participants.length < 2 ||
-        !winnerSlackId ||
-        !participants.some((participant) => participant.slackId === winnerSlackId)
-      ) {
+          const summary = typeof argument.summary === 'string' ? argument.summary.trim() : '';
+          const winnerSlackId = typeof argument.winnerSlackId === 'string' ? argument.winnerSlackId.trim() : '';
+          const pointValue =
+            typeof argument.pointValue === 'number' ? argument.pointValue : Number(argument.pointValue);
+
+          if (
+            !summary ||
+            participants.length < 2 ||
+            !winnerSlackId ||
+            !participants.some((participant) => participant.slackId === winnerSlackId)
+          ) {
+            return null;
+          }
+
+          return {
+            summary,
+            participants,
+            winnerSlackId,
+            pointValue: Math.min(5, Math.max(0, Number.isFinite(pointValue) ? Math.round(pointValue) : 0)),
+          };
+        })
+        .filter((argument): argument is ArgumentExtractionResult => argument !== null);
+
+      if (parsedArguments.length === 0 && rawArguments.length > 0) {
         this.jobLogger.warn(`Argument extraction returned incomplete payload: ${trimmed}`);
-        return null;
       }
 
-      return {
-        summary,
-        participants,
-        winnerSlackId,
-        pointValue: Math.min(5, Math.max(0, Number.isFinite(pointValue) ? Math.round(pointValue) : 0)),
-      };
+      return parsedArguments;
     } catch {
       this.jobLogger.warn(`Argument extraction returned malformed JSON: ${trimmed}`);
-      return null;
+      return [];
     }
   }
 

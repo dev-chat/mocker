@@ -211,7 +211,7 @@ export const DAILY_ARGUMENT_JOB_CONCURRENCY = 50;
 
 export const ARGUMENT_EXTRACTION_PROMPT = `You are a highly selective argument detection tool reviewing one Slack channel's last 24 hours of conversation.
 
-Your job is to identify the single strongest real argument between humans in this channel, if one clearly happened, and determine who won.
+Your job is to identify every clearly real argument between humans in this channel, if any clearly happened, and determine who won each one.
 
 You must be INTOLERANT OF FALSE POSITIVES.
 Prefer false negatives over false positives.
@@ -232,7 +232,9 @@ Return NONE for:
 - any conversation where the winner is ambiguous
 - weak or low-substance disagreements that do not merit leaderboard tracking
 
-If you find a qualifying argument, return ONLY a single JSON object in this exact shape:
+Return ONLY a JSON array.
+
+Each array item must be a JSON object in this exact shape:
 {
   "summary": "short summary of the argument",
   "participants": [
@@ -243,12 +245,14 @@ If you find a qualifying argument, return ONLY a single JSON object in this exac
 }
 
 Rules for valid JSON output:
-- include at least 2 participants
+- return [] if no conversation clearly qualifies
+- include 0 or more argument objects; do not invent arguments just to fill the array
+- each argument object must include at least 2 participants
 - every participant must be a human from the conversation
 - the winnerSlackId must match one of the listed participants
 - pointValue must be an integer from 0 to 5 based on substance/depth
 - reserve 4-5 for long, detailed, high-signal arguments
-- if the argument is too weak to feel leaderboard-worthy, return NONE instead of a low-confidence object
+- omit any weak or ambiguous disagreement instead of returning a low-confidence object
 - do not include markdown, prose, or extra keys
 
-If no conversation clearly qualifies, return the exact string NONE.`;
+If no conversation clearly qualifies, return the exact JSON array [] and nothing else.`;

@@ -68,9 +68,9 @@ describe('ArgumentJob', () => {
     expect(aiService.openAi.responses.create).not.toHaveBeenCalled();
   });
 
-  it('does nothing when extractor returns NONE', async () => {
+  it('does nothing when extractor returns an empty array', async () => {
     aiService.openAi.responses.create.mockResolvedValue({
-      output: [{ type: 'message', content: [{ type: 'output_text', text: 'NONE' }] }],
+      output: [{ type: 'message', content: [{ type: 'output_text', text: '[]' }] }],
     });
 
     await (
@@ -86,7 +86,7 @@ describe('ArgumentJob', () => {
     expect(argumentPersistenceService.saveArgumentOutcome).not.toHaveBeenCalled();
   });
 
-  it('saves a valid extracted argument outcome', async () => {
+  it('saves each valid extracted argument outcome', async () => {
     aiService.openAi.responses.create.mockResolvedValue({
       output: [
         {
@@ -94,28 +94,48 @@ describe('ArgumentJob', () => {
           content: [
             {
               type: 'output_text',
-              text: JSON.stringify({
-                summary: 'tabs vs spaces',
-                participants: [
-                  { slackId: 'U1', name: 'Alice', viewpoint: 'tabs are faster' },
-                  { slackId: 'U2', name: 'Bob', viewpoint: 'spaces are clearer' },
-                ],
-                winnerSlackId: 'U2',
-                pointValue: 4,
-              }),
+              text: JSON.stringify([
+                {
+                  summary: 'tabs vs spaces',
+                  participants: [
+                    { slackId: 'U1', name: 'Alice', viewpoint: 'tabs are faster' },
+                    { slackId: 'U2', name: 'Bob', viewpoint: 'spaces are clearer' },
+                  ],
+                  winnerSlackId: 'U2',
+                  pointValue: 4,
+                },
+                {
+                  summary: 'vim vs emacs',
+                  participants: [
+                    { slackId: 'U3', name: 'Carol', viewpoint: 'vim is faster' },
+                    { slackId: 'U4', name: 'Dan', viewpoint: 'emacs is more powerful' },
+                  ],
+                  winnerSlackId: 'U3',
+                  pointValue: 3,
+                },
+              ]),
             },
           ],
         },
       ],
     });
-    argumentPersistenceService.saveArgumentOutcome.mockResolvedValue({
-      id: 1,
-      argument: 'tabs vs spaces',
-      participants: [],
-      winner: { name: 'Bob', slackId: 'U2' },
-      pointValue: 4,
-      createdAt: '2026-05-21T00:00:00.000Z',
-    });
+    argumentPersistenceService.saveArgumentOutcome
+      .mockResolvedValueOnce({
+        id: 1,
+        argument: 'tabs vs spaces',
+        participants: [],
+        winner: { name: 'Bob', slackId: 'U2' },
+        pointValue: 4,
+        createdAt: '2026-05-21T00:00:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        id: 2,
+        argument: 'vim vs emacs',
+        participants: [],
+        winner: { name: 'Carol', slackId: 'U3' },
+        pointValue: 3,
+        createdAt: '2026-05-21T00:10:00.000Z',
+      });
 
     await (
       job as never as {
@@ -127,7 +147,7 @@ describe('ArgumentJob', () => {
       }
     ).extractArgument('T1', 'C1', [{ slackId: 'U1', name: 'Alice', message: 'history' }]);
 
-    expect(argumentPersistenceService.saveArgumentOutcome).toHaveBeenCalledWith({
+    expect(argumentPersistenceService.saveArgumentOutcome).toHaveBeenNthCalledWith(1, {
       teamId: 'T1',
       channelId: 'C1',
       argumentSummary: 'tabs vs spaces',
@@ -138,7 +158,19 @@ describe('ArgumentJob', () => {
       winnerSlackId: 'U2',
       pointValue: 4,
     });
+    expect(argumentPersistenceService.saveArgumentOutcome).toHaveBeenNthCalledWith(2, {
+      teamId: 'T1',
+      channelId: 'C1',
+      argumentSummary: 'vim vs emacs',
+      participants: [
+        { slackId: 'U3', name: 'Carol', viewpoint: 'vim is faster' },
+        { slackId: 'U4', name: 'Dan', viewpoint: 'emacs is more powerful' },
+      ],
+      winnerSlackId: 'U3',
+      pointValue: 3,
+    });
     expect(jobLogger.info).toHaveBeenCalledWith('Argument extracted for C1: "tabs vs spaces"');
+    expect(jobLogger.info).toHaveBeenCalledWith('Argument extracted for C1: "vim vs emacs"');
   });
 
   it('skips malformed extraction payloads and logs warnings', async () => {
