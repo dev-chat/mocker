@@ -40,23 +40,21 @@ const buildArgumentParticipants = (
 
   const participantUserBySlackId = new Map(participants.map((participant) => [participant.slackId, participant]));
 
-  return Object.entries(participantViewpoints)
-    .flatMap(([slackId, viewpoint]) => {
-      const participant = participantUserBySlackId.get(slackId);
-      const normalizedViewpoint = viewpoint.trim();
-      if (!participant || !normalizedViewpoint) {
-        return [];
-      }
+  return Object.entries(participantViewpoints).flatMap(([slackId, viewpoint]) => {
+    const participant = participantUserBySlackId.get(slackId);
+    const normalizedViewpoint = viewpoint.trim();
+    if (!participant || !normalizedViewpoint) {
+      return [];
+    }
 
-      return [
-        {
-          slackId: participant.slackId,
-          name: participant.name,
-          viewpoint: normalizedViewpoint,
-        },
-      ];
-    })
-    .filter((participant) => participant.name.trim());
+    return [
+      {
+        slackId: participant.slackId,
+        name: participant.name,
+        viewpoint: normalizedViewpoint,
+      },
+    ];
+  });
 };
 
 export class ArgumentPersistenceService {
@@ -150,10 +148,10 @@ export class ArgumentPersistenceService {
                   u.slackId AS slackId,
                   CAST(COUNT(*) AS SIGNED) AS wins,
                   CAST(COALESCE(SUM(a.pointValue), 0) AS SIGNED) AS points
-           FROM argument_leaderboard a
-           INNER JOIN slack_user u ON u.id = a.winnerId
-           WHERE a.teamId = ?
-           GROUP BY u.id, u.name, u.slackId
+            FROM argument_leaderboard a
+            INNER JOIN slack_user u ON u.id = a.winnerId
+            WHERE a.teamId = ?
+            GROUP BY u.id, u.name, u.slackId
             ORDER BY wins DESC, points DESC, u.name ASC`,
           [teamId],
         ),
