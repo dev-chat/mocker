@@ -71,6 +71,10 @@ const buildAiService = (): AIService => {
     getCustomPrompt: vi.fn().mockResolvedValue(null),
   } as unknown as AIService['slackPersistenceService'];
 
+  ai.argumentPersistenceService = {
+    saveArgumentOutcome: vi.fn().mockResolvedValue(null),
+  } as unknown as AIService['argumentPersistenceService'];
+
   ai.aiServiceLogger = {
     error: vi.fn(),
     warn: vi.fn(),
@@ -614,6 +618,71 @@ describe('AIService', () => {
       const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
       expect(callArgs.instructions).toContain('traits_context');
       expect(callArgs.instructions).toContain('dislikes donald trump');
+    });
+
+    it('extracts, saves, and answers argument winner requests', async () => {
+      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([
+        { slackId: 'U1', name: 'Alice', message: 'Tabs are better than spaces.' },
+        { slackId: 'U2', name: 'Bob', message: 'Spaces are easier to read.' },
+      ]);
+      (aiService.openAi.responses.create as Mock).mockResolvedValue({
+        output: [
+          {
+            type: 'message',
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify({
+                  summary: 'tabs vs spaces',
+                  participants: [
+                    { slackId: 'U1', name: 'Alice', viewpoint: 'tabs are faster' },
+                    { slackId: 'U2', name: 'Bob', viewpoint: 'spaces are more readable' },
+                  ],
+                  winnerSlackId: 'U2',
+                  pointValue: 4,
+                }),
+              },
+            ],
+          },
+        ],
+      });
+      (aiService.argumentPersistenceService.saveArgumentOutcome as Mock).mockResolvedValue({
+        id: 1,
+        argument: 'tabs vs spaces',
+        participants: [
+          { slackId: 'U1', name: 'Alice', viewpoint: 'tabs are faster' },
+          { slackId: 'U2', name: 'Bob', viewpoint: 'spaces are more readable' },
+        ],
+        winner: { name: 'Bob', slackId: 'U2' },
+        pointValue: 4,
+        createdAt: '2026-05-21T00:00:00.000Z',
+      });
+
+      await aiService.participate('T1', 'C1', '<@moonbeam> who won the argument about tabs versus spaces?');
+
+      expect(aiService.argumentPersistenceService.saveArgumentOutcome).toHaveBeenCalledWith({
+        teamId: 'T1',
+        channelId: 'C1',
+        argumentSummary: 'tabs vs spaces',
+        participants: [
+          { slackId: 'U1', name: 'Alice', viewpoint: 'tabs are faster' },
+          { slackId: 'U2', name: 'Bob', viewpoint: 'spaces are more readable' },
+        ],
+        winnerSlackId: 'U2',
+        pointValue: 4,
+      });
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        'C1',
+        'Bob won. The argument was about tabs vs spaces. Alice argued tabs are faster; Bob argued spaces are more readable. Substance score: 4/5.',
+        [
+          {
+            type: 'markdown',
+            text: 'Bob won. The argument was about tabs vs spaces. Alice argued tabs are faster; Bob argued spaces are more readable. Substance score: 4/5.',
+          },
+        ],
+      );
+      expect(aiService.redis.setHasParticipated).toHaveBeenCalledWith('T1', 'C1');
+      expect(aiService.redis.removeParticipationInFlight).toHaveBeenCalledWith('C1', 'T1');
     });
   });
 

@@ -8,12 +8,14 @@ import { DEFAULT_PERIOD, VALID_PERIODS } from './dashboard.const';
 import type { TimePeriod } from './dashboard.model';
 import { MemoryPersistenceService } from '../ai/memory/memory.persistence.service';
 import { TraitPersistenceService } from '../trait/trait.persistence.service';
+import { ArgumentPersistenceService } from '../argument/argument.persistence.service';
 
 export const dashboardController: Router = express.Router();
 
 const dashboardPersistenceService = new DashboardPersistenceService();
 const memoryPersistenceService = new MemoryPersistenceService();
 const traitPersistenceService = new TraitPersistenceService();
+const argumentPersistenceService = new ArgumentPersistenceService();
 const dashboardLogger = logger.child({ module: 'DashboardController' });
 
 function parsePeriod(value: unknown): TimePeriod {
@@ -70,6 +72,23 @@ dashboardController.get('/personal-context', (req: RequestWithAuthSession, res) 
     })
     .catch((e: unknown) => {
       logError(dashboardLogger, 'Failed to load personal context data', e, { userId, teamId });
+      res.status(500).send();
+    });
+});
+
+dashboardController.get('/arguments', (req: RequestWithAuthSession, res) => {
+  const { teamId, userId } = req.authSession || {};
+
+  if (!teamId || !userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  argumentPersistenceService
+    .getArgumentLeaderboard(teamId)
+    .then((data) => res.status(200).json(data))
+    .catch((e: unknown) => {
+      logError(dashboardLogger, 'Failed to load argument leaderboard data', e, { userId, teamId });
       res.status(500).send();
     });
 });

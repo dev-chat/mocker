@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Home, Search, Brain, CalendarDays, LogOut } from 'lucide-react';
+import { Home, Search, Brain, CalendarDays, LogOut, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { HomePage } from '@/pages/HomePage';
 import { MessageSearchPage } from '@/pages/MessageSearchPage';
 import { PersonalContextPage } from '@/pages/PersonalContextPage';
 import { CalendarPage } from '@/pages/CalendarPage';
+import { ArgumentLeaderboardPage } from '@/pages/ArgumentLeaderboardPage';
 import type { Page, NavItemProps, AppShellProps } from '@/components/AppShell.model';
 
 function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
@@ -51,6 +52,12 @@ export function AppShell({ onLogout }: AppShellProps) {
             onClick={() => setCurrentPage('personal-context')}
           />
           <NavItem
+            icon={Scale}
+            label="Argument Leaderboard"
+            active={currentPage === 'arguments'}
+            onClick={() => setCurrentPage('arguments')}
+          />
+          <NavItem
             icon={CalendarDays}
             label="Calendar"
             active={currentPage === 'calendar'}
@@ -71,6 +78,7 @@ export function AppShell({ onLogout }: AppShellProps) {
         {currentPage === 'home' && <HomePage onLogout={onLogout} />}
         {currentPage === 'message-search' && <MessageSearchPage onLogout={onLogout} />}
         {currentPage === 'personal-context' && <PersonalContextPage onLogout={onLogout} />}
+        {currentPage === 'arguments' && <ArgumentLeaderboardPage onLogout={onLogout} />}
         {currentPage === 'calendar' && <CalendarPage onLogout={onLogout} />}
       </main>
     </div>

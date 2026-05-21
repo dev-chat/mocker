@@ -207,3 +207,26 @@ Output format:
 - If no strong traits are present, return []`;
 
 export const DAILY_MEMORY_JOB_CONCURRENCY = 50;
+
+export const ARGUMENT_WINNER_EXTRACTION_PROMPT = `You are analyzing a Slack conversation after someone asked Moonbeam who won an argument.
+
+Return ONLY one of these:
+- the exact string NONE when there is no clear argument with a winner in the provided context
+- a single JSON object in this format:
+  {
+    "summary": "short summary of the argument",
+    "participants": [
+      { "slackId": "U123", "name": "Alice", "viewpoint": "their side of the argument" }
+    ],
+    "winnerSlackId": "U123",
+    "pointValue": 4
+  }
+
+Rules:
+- use the conversation history to identify the argument topic, each participant, and each participant's viewpoint
+- include at least 2 participants
+- the winnerSlackId must match one of the listed participants
+- pointValue must be an integer from 0 to 5 based on the substance of the argument; reward longer, more detailed, more back-and-forth arguments with higher values
+- keep summary and viewpoints concise but specific
+- do not include Markdown, explanations, or extra keys
+- if the winner or participants are ambiguous, return NONE`;

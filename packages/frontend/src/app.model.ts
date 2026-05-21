@@ -76,6 +76,36 @@ export interface PersonalContextResponse {
   traits: PersonalContextEntry[];
 }
 
+export interface ArgumentParticipant {
+  slackId: string;
+  name: string;
+  viewpoint: string;
+}
+
+export interface ArgumentLeaderboardStanding {
+  name: string;
+  slackId: string;
+  wins: number;
+  points: number;
+}
+
+export interface ArgumentOutcomeEntry {
+  id: number;
+  argument: string;
+  participants: ArgumentParticipant[];
+  winner: {
+    name: string;
+    slackId: string;
+  };
+  pointValue: number;
+  createdAt: string;
+}
+
+export interface ArgumentLeaderboardResponse {
+  leaderboard: ArgumentLeaderboardStanding[];
+  arguments: ArgumentOutcomeEntry[];
+}
+
 export type FrontendRecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export interface FrontendRecurrenceRule {

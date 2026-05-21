@@ -10,6 +10,7 @@ import { AIPersistenceService } from './ai.persistence';
 import type { KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
 import {
+  ARGUMENT_WINNER_EXTRACTION_PROMPT,
   CORPO_SPEAK_INSTRUCTIONS,
   GENERAL_TEXT_INSTRUCTIONS,
   MOONBEAM_SYSTEM_INSTRUCTIONS,
@@ -37,6 +38,8 @@ import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
 import { extractParticipantSlackIds } from './helpers/extractParticipantSlackIds';
 import { TraitService } from '../trait/trait.service';
+import { ArgumentPersistenceService } from '../argument/argument.persistence.service';
+import type { ArgumentParticipant } from '../shared/db/models/ArgumentLeaderboard';
 
 interface ReleaseCommit {
   sha: string;
@@ -47,6 +50,13 @@ interface ReleaseMetadata {
   currentSha: string | null;
   previousSha: string | null;
   commits: ReleaseCommit[];
+}
+
+interface ArgumentWinnerExtraction {
+  summary: string;
+  participants: ArgumentParticipant[];
+  winnerSlackId: string;
+  pointValue: number;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
@@ -102,6 +112,11 @@ const normalizeReleaseSha = (value?: string): string | null => {
   return trimmed;
 };
 
+const isArgumentWinnerRequest = (taggedMessage: string): boolean => {
+  const normalized = taggedMessage.toLowerCase();
+  return normalized.includes('who won') && (normalized.includes('argument') || normalized.includes('debate'));
+};
+
 export class AIService {
   redis = new AIPersistenceService();
   openAi = new OpenAI({
@@ -115,6 +130,7 @@ export class AIService {
   slackService = new SlackService();
   slackPersistenceService = new SlackPersistenceService();
   traitService = new TraitService();
+  argumentPersistenceService = new ArgumentPersistenceService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
@@ -513,6 +529,19 @@ export class AIService {
       hasCustomPrompt: normalizedCustomPrompt !== null,
     });
 
+    if (isArgumentWinnerRequest(taggedMessage)) {
+      const handled = await this.handleArgumentWinnerRequest(teamId, channelId, taggedMessage, historyMessages);
+      if (handled) {
+        await this.redis.removeParticipationInFlight(channelId, teamId);
+        this.aiServiceLogger.info('Finished Moonbeam participation flow', {
+          teamId,
+          channelId,
+          mode: 'argument-winner',
+        });
+        return;
+      }
+    }
+
     const baseInstructions = normalizedCustomPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
     const systemInstructions = this.traitService.appendTraitContext(baseInstructions, traitContext);
 
@@ -570,6 +599,137 @@ export class AIService {
           channelId,
         });
       });
+  }
+
+  private async handleArgumentWinnerRequest(
+    teamId: string,
+    channelId: string,
+    taggedMessage: string,
+    historyMessages: MessageWithName[],
+  ): Promise<boolean> {
+    const extractedArgument = await this.extractArgumentWinner(historyMessages, taggedMessage, teamId, channelId);
+    if (!extractedArgument) {
+      return false;
+    }
+
+    const savedOutcome = await this.argumentPersistenceService.saveArgumentOutcome({
+      teamId,
+      channelId,
+      argumentSummary: extractedArgument.summary,
+      participants: extractedArgument.participants,
+      winnerSlackId: extractedArgument.winnerSlackId,
+      pointValue: extractedArgument.pointValue,
+    });
+
+    if (!savedOutcome) {
+      return false;
+    }
+
+    const responseText = this.buildArgumentWinnerResponse(savedOutcome);
+    await this.webService.sendMessage(channelId, responseText, [{ type: 'markdown', text: responseText }]);
+    await this.redis.setHasParticipated(teamId, channelId);
+    return true;
+  }
+
+  private async extractArgumentWinner(
+    historyMessages: MessageWithName[],
+    taggedMessage: string,
+    teamId: string,
+    channelId: string,
+  ): Promise<ArgumentWinnerExtraction | null> {
+    const history = this.formatHistory(historyMessages);
+
+    return this.openAi.responses
+      .create({
+        model: GPT_MODEL,
+        instructions: ARGUMENT_WINNER_EXTRACTION_PROMPT,
+        input: `${history}\n\n---\n[Request to evaluate the argument]:\n${taggedMessage}`,
+        user: `argument-winner-${channelId}-${teamId}-DaBros2016`,
+      })
+      .then((response) => extractAndParseOpenAiResponse(response))
+      .then((result) => this.parseArgumentWinnerExtraction(result))
+      .catch((error) => {
+        logError(this.aiServiceLogger, 'Failed to extract argument winner', error, {
+          teamId,
+          channelId,
+          taggedMessage,
+        });
+        return null;
+      });
+  }
+
+  private parseArgumentWinnerExtraction(result: string | undefined): ArgumentWinnerExtraction | null {
+    if (!result) {
+      return null;
+    }
+
+    const trimmed = result.trim();
+    if (trimmed === 'NONE' || trimmed === '"NONE"') {
+      return null;
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      if (!isRecord(parsed)) {
+        return null;
+      }
+
+      const participants = Array.isArray(parsed.participants)
+        ? parsed.participants
+            .map((participant) => (isRecord(participant) ? participant : null))
+            .map((participant) =>
+              participant &&
+              typeof participant.slackId === 'string' &&
+              typeof participant.name === 'string' &&
+              typeof participant.viewpoint === 'string'
+                ? {
+                    slackId: participant.slackId.trim(),
+                    name: participant.name.trim(),
+                    viewpoint: participant.viewpoint.trim(),
+                  }
+                : null,
+            )
+            .filter((participant): participant is ArgumentParticipant => participant !== null)
+        : [];
+
+      const summary = typeof parsed.summary === 'string' ? parsed.summary.trim() : '';
+      const winnerSlackId = typeof parsed.winnerSlackId === 'string' ? parsed.winnerSlackId.trim() : '';
+      const pointValue = typeof parsed.pointValue === 'number' ? parsed.pointValue : Number(parsed.pointValue);
+
+      if (
+        !summary ||
+        participants.length < 2 ||
+        !winnerSlackId ||
+        !participants.some((x) => x.slackId === winnerSlackId)
+      ) {
+        return null;
+      }
+
+      return {
+        summary,
+        participants,
+        winnerSlackId,
+        pointValue: Math.min(5, Math.max(0, Number.isFinite(pointValue) ? Math.round(pointValue) : 0)),
+      };
+    } catch {
+      this.aiServiceLogger.warn('Argument winner extraction returned malformed JSON', { result: trimmed });
+      return null;
+    }
+  }
+
+  private buildArgumentWinnerResponse(outcome: {
+    argument: string;
+    participants: ArgumentParticipant[];
+    winner: { name: string; slackId: string };
+    pointValue: number;
+  }): string {
+    const participantSummary = outcome.participants
+      .map((participant) => `${participant.name} argued ${participant.viewpoint}`)
+      .join('; ');
+
+    return ensureSentenceCaseAndPunctuation(
+      `${outcome.winner.name} won. The argument was about ${outcome.argument}. ${participantSummary}. Substance score: ${outcome.pointValue}/5`,
+    );
   }
 
   private async updateMoonbeamProfilePhoto(imageBytes: Buffer): Promise<void> {
