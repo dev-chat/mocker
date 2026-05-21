@@ -4,13 +4,9 @@ import { ArgumentPersistenceService } from './argument.persistence.service';
 
 vi.mock('typeorm', async () => {
   const actual = await vi.importActual('typeorm');
-  const { JoinTable } = await import('typeorm/decorator/relations/JoinTable');
-  const { ManyToMany } = await import('typeorm/decorator/relations/ManyToMany');
   return {
     ...actual,
     getRepository: vi.fn(),
-    JoinTable,
-    ManyToMany,
   };
 });
 

@@ -87,9 +87,9 @@ export class ArgumentPersistenceService {
       where: participants.map((participant) => ({ slackId: participant.slackId, teamId: input.teamId })),
     });
     const participantViewpoints = buildParticipantViewpoints(participants);
-    const hydratedParticipants = buildArgumentParticipants(participantUsers, participantViewpoints);
+    const resolvedParticipants = buildArgumentParticipants(participantUsers, participantViewpoints);
 
-    if (hydratedParticipants.length < 2) {
+    if (resolvedParticipants.length < 2) {
       this.logger.warn('Skipping argument outcome save because fewer than two participants were extracted', {
         teamId: input.teamId,
         channelId: input.channelId,
