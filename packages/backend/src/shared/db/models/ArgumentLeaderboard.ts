@@ -1,6 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { JoinTable } from 'typeorm/decorator/relations/JoinTable';
-import { ManyToMany } from 'typeorm/decorator/relations/ManyToMany';
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { SlackUser } from './SlackUser';
 
 export interface ArgumentParticipant {
