@@ -14,7 +14,6 @@ import { logger } from '../shared/logger/logger';
 
 export const muzzleController: Router = express.Router();
 muzzleController.use(suppressedMiddleware);
-muzzleController.use(textMiddleware);
 
 const muzzleService = new MuzzleService();
 const slackService = new SlackService();
@@ -22,7 +21,7 @@ const webService = new WebService();
 const reportService = new MuzzleReportService();
 const muzzleLogger = logger.child({ module: 'MuzzleController' });
 
-muzzleController.post('/', (req: Request, res: Response) => {
+muzzleController.post('/', textMiddleware, (req: Request, res: Response) => {
   const request: SlashCommandRequest = req.body;
   const userId = slackService.getUserId(request.text);
   if (userId && request.user_id === userId) {
