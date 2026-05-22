@@ -89,7 +89,7 @@ describe('ArgumentPersistenceService', () => {
     });
   });
 
-  it('returns null when the winner cannot be mapped to a slack user', async () => {
+  it('returns null when the winner cannot be mapped to a non-bot slack user', async () => {
     findOne.mockResolvedValue(null);
 
     await expect(
@@ -105,6 +105,34 @@ describe('ArgumentPersistenceService', () => {
         pointValue: 4,
       }),
     ).resolves.toBeNull();
+    expect(findOne).toHaveBeenCalledWith({ where: { slackId: 'U2', teamId: 'T1', isBot: false } });
+    expect(findUsers).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('returns null when fewer than two non-bot participants are resolved', async () => {
+    findOne.mockResolvedValue({ id: 7, slackId: 'U1', name: 'Alice' });
+    findUsers.mockResolvedValue([{ id: 7, slackId: 'U1', name: 'Alice' }]);
+
+    await expect(
+      service.saveArgumentOutcome({
+        teamId: 'T1',
+        channelId: 'C1',
+        argumentSummary: 'Tabs versus spaces',
+        participants: [
+          { slackId: 'U1', name: 'Alice', viewpoint: 'tabs are faster' },
+          { slackId: 'UBOT', name: 'HelperBot', viewpoint: 'bots should win' },
+        ],
+        winnerSlackId: 'U1',
+        pointValue: 4,
+      }),
+    ).resolves.toBeNull();
+    expect(findUsers).toHaveBeenCalledWith({
+      where: [
+        { slackId: 'U1', teamId: 'T1', isBot: false },
+        { slackId: 'UBOT', teamId: 'T1', isBot: false },
+      ],
+    });
     expect(save).not.toHaveBeenCalled();
   });
 
