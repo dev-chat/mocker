@@ -63,7 +63,7 @@ export class ArgumentPersistenceService {
   async saveArgumentOutcome(input: SaveArgumentOutcomeInput): Promise<ArgumentOutcomeEntry | null> {
     const slackUserRepo = getRepository(SlackUser);
     const winner = await slackUserRepo.findOne({
-      where: { slackId: input.winnerSlackId, teamId: input.teamId },
+      where: { slackId: input.winnerSlackId, teamId: input.teamId, isBot: false },
     });
 
     if (!winner) {
@@ -84,7 +84,7 @@ export class ArgumentPersistenceService {
     );
 
     const participantUsers = await slackUserRepo.find({
-      where: participants.map((participant) => ({ slackId: participant.slackId, teamId: input.teamId })),
+      where: participants.map((participant) => ({ slackId: participant.slackId, teamId: input.teamId, isBot: false })),
     });
     const extractedParticipantViewpoints = buildParticipantViewpoints(participants);
     const resolvedParticipants = buildArgumentParticipants(participantUsers, extractedParticipantViewpoints);
@@ -151,8 +151,8 @@ export class ArgumentPersistenceService {
                   CAST(COALESCE(SUM(a.pointValue), 0) AS SIGNED) AS points
             FROM argument_leaderboard a
             INNER JOIN slack_user u ON u.id = a.winnerId
-            WHERE a.teamId = ?
-            GROUP BY u.id, u.name, u.slackId
+            WHERE a.teamId = ? AND u.isBot = 0
+             GROUP BY u.id, u.name, u.slackId
             ORDER BY wins DESC, points DESC, u.name ASC`,
           [teamId],
         ),

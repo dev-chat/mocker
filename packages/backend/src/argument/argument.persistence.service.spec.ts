@@ -54,7 +54,13 @@ describe('ArgumentPersistenceService', () => {
       pointValue: 6,
     });
 
-    expect(findOne).toHaveBeenCalledWith({ where: { slackId: 'U2', teamId: 'T1' } });
+    expect(findOne).toHaveBeenCalledWith({ where: { slackId: 'U2', teamId: 'T1', isBot: false } });
+    expect(findUsers).toHaveBeenCalledWith({
+      where: [
+        { slackId: 'U1', teamId: 'T1', isBot: false },
+        { slackId: 'U2', teamId: 'T1', isBot: false },
+      ],
+    });
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
         teamId: 'T1',
@@ -171,6 +177,7 @@ describe('ArgumentPersistenceService', () => {
     const result = await service.getArgumentLeaderboard('T1');
 
     expect(query).toHaveBeenNthCalledWith(1, expect.stringContaining('CAST(COUNT(*) AS SIGNED) AS wins'), ['T1']);
+    expect(query).toHaveBeenNthCalledWith(1, expect.stringContaining('u.isBot = 0'), ['T1']);
     expect(findArguments).toHaveBeenCalledWith({
       where: { teamId: 'T1' },
       relations: ['participants', 'winner'],
