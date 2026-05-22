@@ -254,7 +254,7 @@ docker logs <container-id> | jq .
 
 ### AI Features (Optional)
 
-- **Daily Memory + Argument Jobs** - Analyze conversations daily at 3 AM (requires OpenAI API key)
+- **Nightly Analysis Sequence** - Runs memory extraction, argument analysis, and trait synthesis daily at 3 AM (requires OpenAI API key)
 - **Sentiment Analysis** - Analyzes message tone
 - **AI Summaries** - Generates summaries of message threads
 
