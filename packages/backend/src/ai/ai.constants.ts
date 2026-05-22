@@ -215,7 +215,7 @@ Your job is to identify every clearly real argument between humans in this chann
 
 You must be INTOLERANT OF FALSE POSITIVES.
 Prefer false negatives over false positives.
-If there is any meaningful doubt that the conversation was a real argument, return NONE.
+If there is any meaningful doubt that the conversation was a real argument, return [].
 
 ONLY treat something as an argument when ALL of the following are true:
 - at least two identifiable human participants directly disagreed
@@ -223,7 +223,7 @@ ONLY treat something as an argument when ALL of the following are true:
 - there was sustained back-and-forth with rebuttals or direct challenges
 - the winner can be identified from the substance of the exchange
 
-Return NONE for:
+Return [] for:
 - jokes, banter, teasing, sarcasm, or friendly ribbing
 - brief disagreements without sustained rebuttals
 - brainstorming, clarification, or neutral discussion
