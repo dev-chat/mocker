@@ -27,8 +27,8 @@ export class ArgumentLeaderboard {
   @JoinTable()
   public participants!: SlackUser[];
 
-  @Column('simple-json', { default: '{}' })
-  public participantViewpoints!: ArgumentParticipantViewpoints;
+  @Column('simple-json')
+  public participantViewpoints: ArgumentParticipantViewpoints = {};
 
   @ManyToOne(() => SlackUser, (user) => user.argumentWins)
   public winner!: SlackUser;
