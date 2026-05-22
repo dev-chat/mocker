@@ -6,6 +6,7 @@ import { RedisPersistenceService } from '../shared/services/redis.persistence.se
 import { AIService } from '../ai/ai.service';
 import { logger } from '../shared/logger/logger';
 import { logError } from '../shared/logger/error-logging';
+import { SlackUser } from '../shared/db/models/SlackUser';
 import {
   DAILY_ARGUMENT_JOB_CONCURRENCY,
   ARGUMENT_EXTRACTION_PROMPT,
@@ -70,6 +71,11 @@ export class ArgumentJob {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
     if (participantSlackIds.length < 2) return;
+
+    const humanParticipants = await getRepository(SlackUser).find({
+      where: participantSlackIds.map((slackId) => ({ slackId, teamId, isBot: false })),
+    });
+    if (humanParticipants.length < 2) return;
 
     await this.extractArgument(teamId, channelId, historyMessages);
   }
