@@ -86,8 +86,9 @@ export class ArgumentPersistenceService {
     const participantUsers = await slackUserRepo.find({
       where: participants.map((participant) => ({ slackId: participant.slackId, teamId: input.teamId })),
     });
-    const participantViewpoints = buildParticipantViewpoints(participants);
-    const resolvedParticipants = buildArgumentParticipants(participantUsers, participantViewpoints);
+    const extractedParticipantViewpoints = buildParticipantViewpoints(participants);
+    const resolvedParticipants = buildArgumentParticipants(participantUsers, extractedParticipantViewpoints);
+    const participantViewpoints = buildParticipantViewpoints(resolvedParticipants);
 
     if (resolvedParticipants.length < 2) {
       this.logger.warn('Skipping argument outcome save because fewer than two participants were extracted', {
@@ -120,7 +121,7 @@ export class ArgumentPersistenceService {
       .then((saved) => ({
         id: saved.id,
         argument: saved.argumentSummary,
-        participants: buildArgumentParticipants(participantUsers, participantViewpoints),
+        participants: resolvedParticipants,
         winner: {
           name: winner.name,
           slackId: winner.slackId,

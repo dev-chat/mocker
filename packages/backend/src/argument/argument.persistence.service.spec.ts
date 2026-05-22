@@ -102,6 +102,49 @@ describe('ArgumentPersistenceService', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('filters participant viewpoints to resolved participants before saving', async () => {
+    findOne.mockResolvedValue({ id: 7, slackId: 'U2', name: 'Bob' });
+    findUsers.mockResolvedValue([
+      { id: 6, slackId: 'U1', name: 'Alice' },
+      { id: 7, slackId: 'U2', name: 'Bob' },
+    ]);
+    save.mockImplementation(async (entry: { createdAt?: Date }) => ({
+      ...entry,
+      id: 12,
+      createdAt: entry.createdAt ?? new Date('2026-05-21T00:00:00.000Z'),
+    }));
+
+    const result = await service.saveArgumentOutcome({
+      teamId: 'T1',
+      channelId: 'C1',
+      argumentSummary: 'Tabs versus spaces',
+      participants: [
+        { slackId: 'U1', name: 'Alice', viewpoint: 'tabs are faster' },
+        { slackId: 'U2', name: 'Bob', viewpoint: 'spaces are clearer' },
+        { slackId: 'U3', name: 'Cara', viewpoint: 'tabs are clearer' },
+      ],
+      winnerSlackId: 'U2',
+      pointValue: 4,
+    });
+
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        participants: [
+          { id: 6, slackId: 'U1', name: 'Alice' },
+          { id: 7, slackId: 'U2', name: 'Bob' },
+        ],
+        participantViewpoints: {
+          U1: 'tabs are faster',
+          U2: 'spaces are clearer',
+        },
+      }),
+    );
+    expect(result?.participants).toEqual([
+      { slackId: 'U1', name: 'Alice', viewpoint: 'tabs are faster' },
+      { slackId: 'U2', name: 'Bob', viewpoint: 'spaces are clearer' },
+    ]);
+  });
+
   it('loads leaderboard standings and detailed argument outcomes', async () => {
     query.mockResolvedValueOnce([
       { name: 'Bob', slackId: 'U2', wins: '3', points: '12' },
