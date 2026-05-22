@@ -14,6 +14,8 @@ interface LeaderboardRow {
   points: string;
 }
 
+const ARGUMENT_HISTORY_LIMIT = 100;
+
 const clampPointValue = (value: number): number => Math.min(5, Math.max(0, Math.round(value)));
 
 const normalizeParticipant = (participant: Partial<ArgumentParticipant>): ArgumentParticipant | null => {
@@ -160,6 +162,7 @@ export class ArgumentPersistenceService {
           where: { teamId },
           relations: ['participants', 'winner'],
           order: { createdAt: 'DESC' },
+          take: ARGUMENT_HISTORY_LIMIT,
         }),
       ]);
 

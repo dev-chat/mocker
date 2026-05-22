@@ -210,6 +210,7 @@ describe('ArgumentPersistenceService', () => {
       where: { teamId: 'T1' },
       relations: ['participants', 'winner'],
       order: { createdAt: 'DESC' },
+      take: 100,
     });
     expect(result).toEqual({
       leaderboard: [
