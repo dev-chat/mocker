@@ -1,5 +1,4 @@
 import { getRepository } from 'typeorm';
-import type OpenAI from 'openai';
 import { SlackChannel } from '../shared/db/models/SlackChannel';
 import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { HistoryPersistenceService } from '../shared/services/history.persistence.service';
@@ -14,6 +13,7 @@ import {
   MOONBEAM_SLACK_ID,
 } from '../ai/ai.constants';
 import { extractParticipantSlackIds } from '../ai/helpers/extractParticipantSlackIds';
+import { extractOpenAiResponseText } from '../ai/helpers/extractOpenAiResponseText';
 import { ArgumentPersistenceService } from './argument.persistence.service';
 import type { ArgumentParticipant } from '../shared/db/models/ArgumentLeaderboard';
 
@@ -25,15 +25,6 @@ interface ArgumentExtractionResult {
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
-
-const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): string | undefined => {
-  const textBlock = response.output.find((item) => item.type === 'message');
-  if (textBlock && 'content' in textBlock) {
-    const outputText = textBlock.content.find((item) => item.type === 'output_text');
-    return outputText?.text.trim();
-  }
-  return undefined;
-};
 
 export class ArgumentJob {
   private historyService = new HistoryPersistenceService();
@@ -101,7 +92,7 @@ export class ArgumentJob {
           input: history,
           user: `nightly-argument-${channelId}-${teamId}`,
         })
-        .then((response) => extractAndParseOpenAiResponse(response));
+        .then((response) => extractOpenAiResponseText(response));
 
       const parsedResults = this.parseExtractionResults(result);
       if (parsedResults.length === 0) {

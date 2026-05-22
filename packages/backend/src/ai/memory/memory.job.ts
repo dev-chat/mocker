@@ -7,8 +7,8 @@ import { AIService } from '../ai.service';
 import { logger } from '../../shared/logger/logger';
 import { DAILY_MEMORY_JOB_CONCURRENCY, GATE_MODEL, MEMORY_EXTRACTION_PROMPT } from '../ai.constants';
 import { MOONBEAM_SLACK_ID } from '../ai.constants';
-import type OpenAI from 'openai';
 import { extractParticipantSlackIds } from '../helpers/extractParticipantSlackIds';
+import { extractOpenAiResponseText } from '../helpers/extractOpenAiResponseText';
 
 interface ExtractionResult {
   slackId: string;
@@ -16,15 +16,6 @@ interface ExtractionResult {
   mode: 'NEW' | 'REINFORCE' | 'EVOLVE';
   existingMemoryId: number | null;
 }
-
-const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): string | undefined => {
-  const textBlock = response.output.find((item) => item.type === 'message');
-  if (textBlock && 'content' in textBlock) {
-    const outputText = textBlock.content.find((item) => item.type === 'output_text');
-    return outputText?.text.trim();
-  }
-  return undefined;
-};
 
 export class MemoryJob {
   private historyService = new HistoryPersistenceService();
@@ -111,7 +102,7 @@ export class MemoryJob {
           instructions: prompt,
           input: conversationHistory,
         })
-        .then((response) => extractAndParseOpenAiResponse(response));
+        .then((response) => extractOpenAiResponseText(response));
 
       if (!result) {
         this.jobLogger.warn('Extraction returned no result');
