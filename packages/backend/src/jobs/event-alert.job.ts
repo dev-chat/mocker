@@ -3,6 +3,7 @@ import { logger } from '../shared/logger/logger';
 import { logError } from '../shared/logger/error-logging';
 import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 import { WebService } from '../shared/services/web/web.service';
+import type { CalendarEventOccurrence } from '../calendar/calendar.model';
 
 const ALERT_CHANNEL = process.env.EVENTS_ALERT_CHANNEL ?? '#events';
 const ALERT_LOOKAHEAD_MS = 24 * 60 * 60 * 1000;
@@ -26,6 +27,23 @@ const subtractOneDayUtc = (value: Date): Date => {
   const next = new Date(value);
   next.setUTCDate(next.getUTCDate() - 1);
   return next;
+};
+
+const startOfUtcDay = (value: Date): Date =>
+  new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+
+const addOneDayUtc = (value: Date): Date => {
+  const next = new Date(value);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next;
+};
+
+const occursTodayUtc = (occurrence: CalendarEventOccurrence, now: Date): boolean => {
+  const dayStart = startOfUtcDay(now);
+  const nextDayStart = addOneDayUtc(dayStart);
+  const start = new Date(occurrence.startsAt);
+  const end = new Date(occurrence.endsAt);
+  return end > dayStart && start < nextDayStart;
 };
 
 const formatOccurrenceWindow = (startsAt: string, endsAt: string, isAllDay: boolean): string => {
@@ -56,6 +74,28 @@ const formatOccurrenceWindow = (startsAt: string, endsAt: string, isAllDay: bool
   const startFallback = `${startUtcDate} at ${formatUtcTimeLabel(start)}`;
   const endFallback = `${endUtcDate} at ${formatUtcTimeLabel(end)}`;
   return `${slackTimestamp(start, '{date_short} at {time}', startFallback)} - ${slackTimestamp(end, '{date_short} at {time}', endFallback)}`;
+};
+
+const formatOccurrenceLine = (occurrence: CalendarEventOccurrence): string => {
+  const locationSuffix = occurrence.location ? ` @ ${occurrence.location}` : '';
+  const occurrenceWindow = formatOccurrenceWindow(occurrence.startsAt, occurrence.endsAt, occurrence.isAllDay);
+  return `- ${occurrenceWindow} - ${occurrence.title}${locationSuffix}`;
+};
+
+const formatAlertSection = (title: string, occurrences: CalendarEventOccurrence[]): string | null => {
+  if (!occurrences.length) {
+    return null;
+  }
+
+  return `${title}:\n${occurrences.map(formatOccurrenceLine).join('\n')}`;
+};
+
+const formatAlertMessage = (emoji: string, title: string, occurrences: CalendarEventOccurrence[]): string | null => {
+  const section = formatAlertSection(title, occurrences);
+  if (!section) {
+    return null;
+  }
+  return `${emoji} ${section}`;
 };
 
 export class EventAlertJob {
@@ -104,24 +144,29 @@ export class EventAlertJob {
             return;
           }
 
-          const lines = unsentOccurrences
-            .slice(0, 20)
-            .map((occurrence) => {
-              const locationSuffix = occurrence.location ? ` @ ${occurrence.location}` : '';
-              const occurrenceWindow = formatOccurrenceWindow(
-                occurrence.startsAt,
-                occurrence.endsAt,
-                occurrence.isAllDay,
-              );
-              return `- ${occurrenceWindow} - ${occurrence.title}${locationSuffix}`;
-            })
-            .join('\n');
+          const displayedOccurrences = unsentOccurrences.slice(0, 20);
+          const todayOccurrences = displayedOccurrences.filter((occurrence) => occursTodayUtc(occurrence, now));
+          const upcomingOccurrencesLater = displayedOccurrences.filter(
+            (occurrence) => !occursTodayUtc(occurrence, now),
+          );
 
-          const overflowCount = unsentOccurrences.length - Math.min(20, unsentOccurrences.length);
+          const overflowCount = unsentOccurrences.length - displayedOccurrences.length;
           const overflowLine = overflowCount > 0 ? `\n...and ${overflowCount} more event(s).` : '';
-          const text = `:calendar: Upcoming events in the next 24 hours:\n${lines}${overflowLine}`;
+          const upcomingMessage = formatAlertMessage(
+            ':hourglass_flowing_sand:',
+            'Upcoming in the next 24 hours',
+            upcomingOccurrencesLater,
+          );
+          const todayMessage = formatAlertMessage(':sunny:', 'Happening today', todayOccurrences);
 
-          await this.webService.sendMessage(ALERT_CHANNEL, text);
+          if (upcomingMessage) {
+            await this.webService.sendMessage(ALERT_CHANNEL, `${upcomingMessage}${overflowLine}`);
+          }
+
+          // Always send today alerts last when both buckets have events.
+          if (todayMessage) {
+            await this.webService.sendMessage(ALERT_CHANNEL, `${todayMessage}${overflowLine}`);
+          }
 
           await Promise.all(
             unsentOccurrences.map((occurrence) =>
