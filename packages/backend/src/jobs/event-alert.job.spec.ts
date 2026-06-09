@@ -59,6 +59,7 @@ describe('EventAlertJob', () => {
     await job.run(new Date('2026-04-21T12:00:00.000Z'));
 
     expect(sendMessageMock).toHaveBeenCalledOnce();
+    expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining(':sunny: Happening today:\n'));
     expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining('Planning 🚀 @ HQ'));
     // Times should use Slack's <!date^…> format so each user sees them in their own Slack timezone.
     // Unix seconds: start=1776787200 (2026-04-21T16:00Z), end=1776790800 (2026-04-21T17:00Z)
@@ -75,6 +76,47 @@ describe('EventAlertJob', () => {
       expect.stringContaining('<!date^1776790800^{time}|5:00 PM>'),
     );
     expect(setValueWithExpireMock).toHaveBeenCalledOnce();
+  });
+
+  it('splits today events from later upcoming events in the same 24 hour window', async () => {
+    listUpcomingOccurrencesMock.mockResolvedValue([
+      {
+        teamId: 'T123',
+        occurrences: [
+          {
+            occurrenceId: '1:2026-04-21T16:00:00.000Z',
+            seriesId: '1',
+            title: 'Today Planning',
+            location: null,
+            startsAt: '2026-04-21T16:00:00.000Z',
+            endsAt: '2026-04-21T17:00:00.000Z',
+            isAllDay: false,
+            isRecurring: false,
+          },
+          {
+            occurrenceId: '2:2026-04-22T06:00:00.000Z',
+            seriesId: '2',
+            title: 'Tomorrow Standup',
+            location: 'Zoom',
+            startsAt: '2026-04-22T06:00:00.000Z',
+            endsAt: '2026-04-22T06:30:00.000Z',
+            isAllDay: false,
+            isRecurring: false,
+          },
+        ],
+      },
+    ]);
+
+    const job = new EventAlertJob();
+    await job.run(new Date('2026-04-21T12:00:00.000Z'));
+
+    expect(sendMessageMock).toHaveBeenCalledOnce();
+    const [channel, message] = sendMessageMock.mock.calls[0];
+    expect(channel).toBe('#events');
+    expect(message).toContain(':hourglass_flowing_sand: Upcoming in the next 24 hours:\n- ');
+    expect(message).toContain('Tomorrow Standup @ Zoom');
+    expect(message).toContain(':sunny: Happening today:\n- ');
+    expect(message).toContain('Today Planning');
   });
 
   it('formats all-day multi-day events as date ranges', async () => {
