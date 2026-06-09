@@ -207,3 +207,52 @@ Output format:
 - If no strong traits are present, return []`;
 
 export const DAILY_MEMORY_JOB_CONCURRENCY = 50;
+export const DAILY_ARGUMENT_JOB_CONCURRENCY = 50;
+
+export const ARGUMENT_EXTRACTION_PROMPT = `You are a highly selective argument detection tool reviewing one Slack channel's last 24 hours of conversation.
+
+Your job is to identify every clearly real argument between humans in this channel, if any clearly happened, and determine who won each one.
+
+You must be INTOLERANT OF FALSE POSITIVES.
+Prefer false negatives over false positives.
+If there is any meaningful doubt that the conversation was a real argument, return [].
+
+ONLY treat something as an argument when ALL of the following are true:
+- at least two identifiable human participants directly disagreed
+- the disagreement involved competing viewpoints, not just different preferences stated once
+- there was sustained back-and-forth with rebuttals or direct challenges
+- the winner can be identified from the substance of the exchange
+
+Return [] for:
+- jokes, banter, teasing, sarcasm, or friendly ribbing
+- brief disagreements without sustained rebuttals
+- brainstorming, clarification, or neutral discussion
+- factual Q&A where one person is simply correct
+- bot interactions or people reacting to Moonbeam
+- any conversation where the winner is ambiguous
+- weak or low-substance disagreements that do not merit leaderboard tracking
+
+Return ONLY a JSON array.
+
+Each array item must be a JSON object in this exact shape:
+{
+  "summary": "short summary of the argument",
+  "participants": [
+    { "slackId": "U123", "name": "Alice", "viewpoint": "their side of the argument" }
+  ],
+  "winnerSlackId": "U123",
+  "pointValue": 4
+}
+
+Rules for valid JSON output:
+- return [] if no conversation clearly qualifies
+- include 0 or more argument objects; do not invent arguments just to fill the array
+- each argument object must include at least 2 participants
+- every participant must be a human from the conversation
+- the winnerSlackId must match one of the listed participants
+- pointValue must be an integer from 0 to 5 based on substance/depth
+- reserve 4-5 for long, detailed, high-signal arguments
+- omit any weak or ambiguous disagreement instead of returning a low-confidence object
+- do not include markdown, prose, or extra keys
+
+If no conversation clearly qualifies, return the exact JSON array [] and nothing else.`;

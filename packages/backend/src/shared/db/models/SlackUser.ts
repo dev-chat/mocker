@@ -1,5 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany, OneToOne } from 'typeorm';
 import { Activity } from './Activity';
+import { ArgumentLeaderboard } from './ArgumentLeaderboard';
 import { Memory } from './Memory';
 import { Message } from './Message';
 import { Portfolio } from './Portfolio';
@@ -38,6 +39,9 @@ export class SlackUser {
 
   @OneToMany(() => Message, (message) => message.userId)
   public messages?: Message[];
+
+  @OneToMany(() => ArgumentLeaderboard, (argument) => argument.winner)
+  public argumentWins?: ArgumentLeaderboard[];
 
   @OneToMany(() => CalendarEvent, (calendarEvent) => calendarEvent.createdByUser)
   public createdCalendarEvents?: CalendarEvent[];

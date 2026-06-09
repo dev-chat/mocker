@@ -1,6 +1,6 @@
 import type { ElementType } from 'react';
 
-export type Page = 'home' | 'message-search' | 'personal-context' | 'calendar';
+export type Page = 'home' | 'message-search' | 'personal-context' | 'calendar' | 'arguments';
 
 export interface NavItemProps {
   icon: ElementType;

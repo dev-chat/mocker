@@ -26,16 +26,11 @@ import { SlackService } from '../shared/services/slack/slack.service';
 import { SlackPersistenceService } from '../shared/services/slack/slack.persistence.service';
 import { MuzzlePersistenceService } from '../muzzle/muzzle.persistence.service';
 import OpenAI from 'openai';
-import type {
-  ResponseOutputMessage,
-  ResponseOutputItem,
-  ResponseOutputText,
-  ResponseOutputRefusal,
-} from 'openai/resources/responses/responses';
 import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
 import { extractParticipantSlackIds } from './helpers/extractParticipantSlackIds';
+import { extractOpenAiResponseText } from './helpers/extractOpenAiResponseText';
 import { TraitService } from '../trait/trait.service';
 
 interface ReleaseCommit {
@@ -50,17 +45,6 @@ interface ReleaseMetadata {
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
-
-const isResponseOutputMessage = (block: ResponseOutputItem): block is ResponseOutputMessage => block.type === 'message';
-
-const isResponseOutputText = (block: ResponseOutputText | ResponseOutputRefusal): block is ResponseOutputText =>
-  block.type === 'output_text';
-
-const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): string | undefined => {
-  const textBlock = response.output.find(isResponseOutputMessage);
-  const outputText = textBlock?.content.find(isResponseOutputText)?.text;
-  return outputText?.trim();
-};
 
 const ensureSentenceCaseAndPunctuation = (text: string): string => {
   const trimmed = text.trim();
@@ -151,7 +135,7 @@ export class AIService {
         user: `${userId}-DaBros2016`,
       })
       .then((x) => {
-        return extractAndParseOpenAiResponse(x);
+        return extractOpenAiResponseText(x);
       })
       .then(async (result) => {
         await this.redis.removeInflight(userId, teamId);
@@ -205,7 +189,7 @@ export class AIService {
         input: REDPLOY_MOONBEAM_TEXT_PROMPT,
         user: 'Moonbeam',
       })
-      .then((x) => extractAndParseOpenAiResponse(x));
+      .then((x) => extractOpenAiResponseText(x));
 
     const aiImage = this.gemini.models
       .generateContent({
@@ -370,7 +354,7 @@ export class AIService {
     return this.openAi.responses
       .create({ model: GPT_MODEL, input: text, user: 'Moonbeam', instructions: CORPO_SPEAK_INSTRUCTIONS })
       .then((x) => {
-        return extractAndParseOpenAiResponse(x);
+        return extractOpenAiResponseText(x);
       })
       .catch(async (e) => {
         logError(this.aiServiceLogger, 'Failed to generate corpo-speak response', e, {
@@ -427,7 +411,7 @@ export class AIService {
         input: prompt,
         user: `${user_id}-DaBros2016`,
       })
-      .then((x) => extractAndParseOpenAiResponse(x))
+      .then((x) => extractOpenAiResponseText(x))
       .then(async (result) => {
         await this.redis.removeInflight(user_id, team_id);
         if (!result) {
@@ -527,7 +511,7 @@ export class AIService {
         input,
         user: `participation-${channelId}-${teamId}-DaBros2016`,
       })
-      .then((x) => extractAndParseOpenAiResponse(x))
+      .then((x) => extractOpenAiResponseText(x))
       .then((result) => {
         this.aiServiceLogger.info('Received participation model response', {
           teamId,
