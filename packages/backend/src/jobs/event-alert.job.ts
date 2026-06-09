@@ -145,10 +145,15 @@ export class EventAlertJob {
           }
 
           const displayedOccurrences = unsentOccurrences.slice(0, 20);
-          const todayOccurrences = displayedOccurrences.filter((occurrence) => occursTodayUtc(occurrence, now));
-          const upcomingOccurrencesLater = displayedOccurrences.filter(
-            (occurrence) => !occursTodayUtc(occurrence, now),
-          );
+          const todayOccurrences: CalendarEventOccurrence[] = [];
+          const upcomingOccurrencesLater: CalendarEventOccurrence[] = [];
+          for (const occurrence of displayedOccurrences) {
+            if (occursTodayUtc(occurrence, now)) {
+              todayOccurrences.push(occurrence);
+            } else {
+              upcomingOccurrencesLater.push(occurrence);
+            }
+          }
 
           const overflowCount = unsentOccurrences.length - displayedOccurrences.length;
           const overflowLine = overflowCount > 0 ? `\n...and ${overflowCount} more event(s).` : '';
