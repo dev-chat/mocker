@@ -110,19 +110,14 @@ describe('EventAlertJob', () => {
     const job = new EventAlertJob();
     await job.run(new Date('2026-04-21T12:00:00.000Z'));
 
-    expect(sendMessageMock).toHaveBeenCalledTimes(2);
-    expect(sendMessageMock).toHaveBeenNthCalledWith(
-      1,
+    expect(sendMessageMock).toHaveBeenCalledOnce();
+    expect(sendMessageMock).toHaveBeenCalledWith(
       '#events',
       expect.stringContaining(':hourglass_flowing_sand: Upcoming in the next 24 hours:\n- '),
     );
-    expect(sendMessageMock).toHaveBeenNthCalledWith(
-      2,
-      '#events',
-      expect.stringContaining(':sunny: Happening today:\n- '),
-    );
-    expect(sendMessageMock).toHaveBeenNthCalledWith(1, '#events', expect.stringContaining('Tomorrow Standup @ Zoom'));
-    expect(sendMessageMock).toHaveBeenNthCalledWith(2, '#events', expect.stringContaining('Today Planning'));
+    expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining('Tomorrow Standup @ Zoom'));
+    expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining(':sunny: Happening today:\n- '));
+    expect(sendMessageMock).toHaveBeenCalledWith('#events', expect.stringContaining('Today Planning'));
   });
 
   it('formats all-day multi-day events as date ranges', async () => {

@@ -159,13 +159,11 @@ export class EventAlertJob {
           );
           const todayMessage = formatAlertMessage(':sunny:', 'Happening today', todayOccurrences);
 
-          const messages = [upcomingMessage, todayMessage].filter(
-            (message): message is string => Boolean(message),
-          );
-          for (let index = 0; index < messages.length; index += 1) {
-            const suffix = index === messages.length - 1 ? overflowLine : '';
-            await this.webService.sendMessage(ALERT_CHANNEL, `${messages[index]}${suffix}`);
+          const messages = [upcomingMessage, todayMessage].filter((message): message is string => Boolean(message));
+          if (!messages.length) {
+            return;
           }
+          await this.webService.sendMessage(ALERT_CHANNEL, `${messages.join('\n\n')}${overflowLine}`);
 
           await Promise.all(
             unsentOccurrences.map((occurrence) =>
