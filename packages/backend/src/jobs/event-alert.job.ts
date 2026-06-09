@@ -159,13 +159,12 @@ export class EventAlertJob {
           );
           const todayMessage = formatAlertMessage(':sunny:', 'Happening today', todayOccurrences);
 
-          if (upcomingMessage) {
-            await this.webService.sendMessage(ALERT_CHANNEL, `${upcomingMessage}${overflowLine}`);
-          }
-
-          // Always send today alerts last when both buckets have events.
-          if (todayMessage) {
-            await this.webService.sendMessage(ALERT_CHANNEL, `${todayMessage}${overflowLine}`);
+          const messages = [upcomingMessage, todayMessage].filter(
+            (message): message is string => Boolean(message),
+          );
+          for (let index = 0; index < messages.length; index += 1) {
+            const suffix = index === messages.length - 1 ? overflowLine : '';
+            await this.webService.sendMessage(ALERT_CHANNEL, `${messages[index]}${suffix}`);
           }
 
           await Promise.all(
