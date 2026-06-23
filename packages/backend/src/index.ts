@@ -204,7 +204,9 @@ app.listen(PORT, (e?: Error) => {
         process.exit(1);
       } else {
         indexLogger.info('Database connection established successfully.');
-        void aiService.redeployMoonbeam();
+        void aiService.redeployMoonbeam().catch((e) => {
+          indexLogger.error('Failed to redeploy Moonbeam:', e);
+        });
         jobService.scheduleCronJobs();
       }
     })
