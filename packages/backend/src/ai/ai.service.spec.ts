@@ -535,6 +535,21 @@ describe('AIService', () => {
   });
 
   describe('alertOnOpenAiRateLimit', () => {
+    it('alerts #muzzlefeedback for 429 errors with the OpenAI message', async () => {
+      await aiService.alertOnOpenAiRateLimit(
+        Object.assign(new Error('Rate limit exceeded'), {
+          status: 429,
+          error: { message: 'Please slow down.' },
+        }),
+        'generateText',
+      );
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        '#muzzlefeedback',
+        'OpenAI 429 during generateText: Please slow down.',
+      );
+    });
+
     it('does not alert for non-429 errors', async () => {
       await aiService.alertOnOpenAiRateLimit(new Error('API error'), 'generateText');
 
