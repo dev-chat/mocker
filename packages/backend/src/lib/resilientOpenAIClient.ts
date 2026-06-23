@@ -28,13 +28,19 @@ export class ResilientOpenAIError extends Error {
 // Metric names (exported so callers can reference them)
 // ---------------------------------------------------------------------------
 
-export const METRIC_NAMES = {
+export const METRIC_NAMES: {
+  readonly requestsTotal: 'openai_requests_total';
+  readonly retriesTotal: 'openai_retries_total';
+  readonly failuresTotal: 'openai_failures_total';
+  readonly circuitOpenTotal: 'openai_circuit_open_total';
+  readonly latencySeconds: 'openai_latency_seconds';
+} = {
   requestsTotal: 'openai_requests_total',
   retriesTotal: 'openai_retries_total',
   failuresTotal: 'openai_failures_total',
   circuitOpenTotal: 'openai_circuit_open_total',
   latencySeconds: 'openai_latency_seconds',
-} as const;
+};
 
 // ---------------------------------------------------------------------------
 // Circuit-breaker states
@@ -47,10 +53,7 @@ type CircuitState = 'closed' | 'open' | 'half-open';
 // ---------------------------------------------------------------------------
 
 export interface OpenAIResponsesAPI {
-  create(
-    params: ResponseCreateParamsNonStreaming,
-    options?: OpenAI.RequestOptions,
-  ): Promise<OpenAIResponse>;
+  create(params: ResponseCreateParamsNonStreaming, options?: OpenAI.RequestOptions): Promise<OpenAIResponse>;
 }
 
 export interface OpenAIClientLike {
@@ -333,10 +336,7 @@ export class ResilientOpenAIClient implements OpenAIClientLike {
       return;
     }
 
-    if (
-      this.circuitState === 'closed' &&
-      this.consecutiveFailures >= this.config.circuitBreakerFailures
-    ) {
+    if (this.circuitState === 'closed' && this.consecutiveFailures >= this.config.circuitBreakerFailures) {
       logError(this.clientLogger, 'Circuit breaker opening after consecutive failures', error, {
         consecutiveFailures: this.consecutiveFailures,
         threshold: this.config.circuitBreakerFailures,
@@ -392,7 +392,7 @@ export class ResilientOpenAIClient implements OpenAIClientLike {
 
   private getStatusCode(error: unknown): number | undefined {
     if (typeof error === 'object' && error !== null) {
-      const status = Reflect.get(error as object, 'status');
+      const status = Reflect.get(error, 'status');
       return typeof status === 'number' ? status : undefined;
     }
     return undefined;
@@ -419,14 +419,13 @@ export class ResilientOpenAIClient implements OpenAIClientLike {
       return null;
     }
 
-    const headers = Reflect.get(error as object, 'headers');
+    const headers = Reflect.get(error, 'headers');
     if (typeof headers !== 'object' || headers === null) {
       return null;
     }
 
-    const retryAfterHeader =
-      (Reflect.get(headers as object, 'retry-after') as string | undefined) ??
-      (Reflect.get(headers as object, 'Retry-After') as string | undefined);
+    const retryAfterRaw = Reflect.get(headers, 'retry-after') ?? Reflect.get(headers, 'Retry-After');
+    const retryAfterHeader = typeof retryAfterRaw === 'string' ? retryAfterRaw : undefined;
 
     if (!retryAfterHeader) {
       return null;

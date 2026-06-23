@@ -102,10 +102,7 @@ describe('ResilientOpenAIClient', () => {
 
     it('retries on transient 500 error and succeeds', async () => {
       const transientError = Object.assign(new Error('Internal Server Error'), { status: 500 });
-      const createMock = vi
-        .fn()
-        .mockRejectedValueOnce(transientError)
-        .mockResolvedValue(makeResponse('retry success'));
+      const createMock = vi.fn().mockRejectedValueOnce(transientError).mockResolvedValue(makeResponse('retry success'));
 
       const client = new ResilientOpenAIClient(makeUnderlying(createMock), fastConfig(), registry);
 
@@ -120,10 +117,7 @@ describe('ResilientOpenAIClient', () => {
 
     it('retries on 429 rate-limit error and succeeds', async () => {
       const rateLimitError = Object.assign(new Error('Rate limit exceeded'), { status: 429 });
-      const createMock = vi
-        .fn()
-        .mockRejectedValueOnce(rateLimitError)
-        .mockResolvedValue(makeResponse('ok after 429'));
+      const createMock = vi.fn().mockRejectedValueOnce(rateLimitError).mockResolvedValue(makeResponse('ok after 429'));
 
       const client = new ResilientOpenAIClient(makeUnderlying(createMock), fastConfig(), registry);
 
@@ -163,9 +157,7 @@ describe('ResilientOpenAIClient', () => {
 
       const client = new ResilientOpenAIClient(makeUnderlying(createMock), fastConfig(), registry);
 
-      await expect(client.responses.create({ model: 'gpt-4o', input: 'hi' })).rejects.toThrow(
-        'Bad Request',
-      );
+      await expect(client.responses.create({ model: 'gpt-4o', input: 'hi' })).rejects.toThrow('Bad Request');
       // One attempt only (no retries for 4xx other than 429)
       expect(createMock).toHaveBeenCalledOnce();
     });
@@ -228,16 +220,16 @@ describe('ResilientOpenAIClient', () => {
       // Advance past the 100 ms abort timer
       await vi.advanceTimersByTimeAsync(200);
 
+      await expect(resultPromise).rejects.toBeInstanceOf(ResilientOpenAIError);
       await expect(resultPromise).rejects.toMatchObject({
-        name: 'ResilientOpenAIError',
         code: 'TIMEOUT',
       });
     });
 
     it('does not throw when request completes within timeoutMs', async () => {
-      const createMock = vi.fn().mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve(makeResponse()), 50)),
-      );
+      const createMock = vi
+        .fn()
+        .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(makeResponse()), 50)));
 
       const client = new ResilientOpenAIClient(
         makeUnderlying(createMock),
@@ -309,8 +301,9 @@ describe('ResilientOpenAIClient', () => {
       const callCountBeforeShortCircuit = createMock.mock.calls.length;
 
       // Next call should be short-circuited (no underlying call)
-      await expect(client.responses.create({ model: 'gpt-4o', input: 'hi' })).rejects.toMatchObject({
-        name: 'ResilientOpenAIError',
+      const shortCircuited = client.responses.create({ model: 'gpt-4o', input: 'hi' });
+      await expect(shortCircuited).rejects.toBeInstanceOf(ResilientOpenAIError);
+      await expect(shortCircuited).rejects.toMatchObject({
         code: 'CIRCUIT_OPEN',
       });
 
@@ -319,9 +312,7 @@ describe('ResilientOpenAIClient', () => {
 
     it('transitions to half-open and closes on successful probe', async () => {
       const badRequestError = Object.assign(new Error('boom'), { status: 503 });
-      const createMock = vi
-        .fn()
-        .mockRejectedValue(badRequestError);
+      const createMock = vi.fn().mockRejectedValue(badRequestError);
 
       const client = new ResilientOpenAIClient(
         makeUnderlying(createMock),
@@ -393,8 +384,9 @@ describe('ResilientOpenAIClient', () => {
       expect(client.getActiveRequests()).toBe(2);
 
       // Third request should be rejected
-      await expect(client.responses.create({ model: 'gpt-4o', input: '3' })).rejects.toMatchObject({
-        name: 'ResilientOpenAIError',
+      const rejected = client.responses.create({ model: 'gpt-4o', input: '3' });
+      await expect(rejected).rejects.toBeInstanceOf(ResilientOpenAIError);
+      await expect(rejected).rejects.toMatchObject({
         code: 'CONCURRENCY_REJECTED',
       });
     });
@@ -452,10 +444,7 @@ describe('ResilientOpenAIClient', () => {
 
     it('increments openai_retries_total on retry', async () => {
       const transientError = Object.assign(new Error('oops'), { status: 503 });
-      const createMock = vi
-        .fn()
-        .mockRejectedValueOnce(transientError)
-        .mockResolvedValue(makeResponse());
+      const createMock = vi.fn().mockRejectedValueOnce(transientError).mockResolvedValue(makeResponse());
 
       const client = new ResilientOpenAIClient(makeUnderlying(createMock), fastConfig(), registry);
 
@@ -499,16 +488,10 @@ describe('ResilientOpenAIClient', () => {
       const badError = Object.assign(new Error('fail'), { status: 503 });
       const createMock = vi.fn().mockRejectedValue(badError);
 
-      const client = new ResilientOpenAIClient(
-        makeUnderlying(createMock),
-        fastConfig({ retries: 0 }),
-        registry,
-      );
+      const client = new ResilientOpenAIClient(makeUnderlying(createMock), fastConfig({ retries: 0 }), registry);
 
       // Should reject but not crash the process
-      await expect(client.responses.create({ model: 'gpt-4o', input: 'hi' })).rejects.toThrow(
-        'fail',
-      );
+      await expect(client.responses.create({ model: 'gpt-4o', input: 'hi' })).rejects.toThrow('fail');
 
       // Metrics should still be recorded
       const metric = await registry.getSingleMetricAsString(METRIC_NAMES.failuresTotal);
