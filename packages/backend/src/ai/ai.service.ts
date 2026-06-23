@@ -56,6 +56,32 @@ const isResponseOutputMessage = (block: ResponseOutputItem): block is ResponseOu
 const isResponseOutputText = (block: ResponseOutputText | ResponseOutputRefusal): block is ResponseOutputText =>
   block.type === 'output_text';
 
+const getOpenAiStatusCode = (error: unknown): number | undefined => {
+  if (!isRecord(error)) {
+    return undefined;
+  }
+
+  const status = Reflect.get(error, 'status');
+  return typeof status === 'number' ? status : undefined;
+};
+
+const getOpenAiErrorMessage = (error: unknown): string | undefined => {
+  if (!isRecord(error)) {
+    return error instanceof Error ? error.message : undefined;
+  }
+
+  const apiError = Reflect.get(error, 'error');
+  if (isRecord(apiError)) {
+    const apiErrorMessage = Reflect.get(apiError, 'message');
+    if (typeof apiErrorMessage === 'string' && apiErrorMessage.trim()) {
+      return apiErrorMessage.trim();
+    }
+  }
+
+  const message = Reflect.get(error, 'message');
+  return typeof message === 'string' && message.trim() ? message.trim() : undefined;
+};
+
 const extractAndParseOpenAiResponse = (response: OpenAI.Responses.Response): string | undefined => {
   const textBlock = response.output.find(isResponseOutputMessage);
   const outputText = textBlock?.content.find(isResponseOutputText)?.text;
@@ -133,6 +159,23 @@ export class AIService {
     return this.slackPersistenceService.setCustomPrompt(userId, teamId, prompt);
   }
 
+  public async alertOnOpenAiRateLimit(error: unknown, operation: string): Promise<void> {
+    if (getOpenAiStatusCode(error) !== 429) {
+      return;
+    }
+
+    const errorMessage = getOpenAiErrorMessage(error) ?? 'OpenAI returned a 429 response without an error message.';
+
+    try {
+      await this.webService.sendMessage('#muzzlefeedback', `OpenAI 429 during ${operation}: ${errorMessage}`);
+    } catch (slackError) {
+      logError(this.aiServiceLogger, 'Failed to send OpenAI 429 alert to Slack', slackError, {
+        operation,
+        openAiErrorMessage: errorMessage,
+      });
+    }
+  }
+
   public clearCustomPrompt(userId: string, teamId: string): Promise<boolean> {
     return this.slackPersistenceService.clearCustomPrompt(userId, teamId);
   }
@@ -163,6 +206,7 @@ export class AIService {
         }
       })
       .catch(async (e) => {
+        await this.alertOnOpenAiRateLimit(e, 'generateText');
         logError(this.aiServiceLogger, 'Failed to generate AI text response', e, {
           userId,
           teamId,
@@ -205,7 +249,11 @@ export class AIService {
         input: REDPLOY_MOONBEAM_TEXT_PROMPT,
         user: 'Moonbeam',
       })
-      .then((x) => extractAndParseOpenAiResponse(x));
+      .then((x) => extractAndParseOpenAiResponse(x))
+      .catch(async (error) => {
+        await this.alertOnOpenAiRateLimit(error, 'redeployMoonbeam');
+        throw error;
+      });
 
     const aiImage = this.gemini.models
       .generateContent({
@@ -373,6 +421,7 @@ export class AIService {
         return extractAndParseOpenAiResponse(x);
       })
       .catch(async (e) => {
+        await this.alertOnOpenAiRateLimit(e, 'generateCorpoSpeak');
         logError(this.aiServiceLogger, 'Failed to generate corpo-speak response', e, {
           prompt: text,
         });
@@ -467,6 +516,7 @@ export class AIService {
         });
       })
       .catch(async (e) => {
+        await this.alertOnOpenAiRateLimit(e, 'promptWithHistory');
         logError(this.aiServiceLogger, 'Failed to process prompt with history', e, {
           userId: request.user_id,
           teamId: request.team_id,
@@ -556,6 +606,7 @@ export class AIService {
         }
       })
       .catch(async (e) => {
+        await this.alertOnOpenAiRateLimit(e, 'participate');
         logError(this.aiServiceLogger, 'Failed to generate AI participation response', e, {
           teamId,
           channelId,

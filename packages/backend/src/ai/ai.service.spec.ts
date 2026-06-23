@@ -136,6 +136,23 @@ describe('AIService', () => {
       expect(aiService.redis.removeInflight).toHaveBeenCalledWith('U1', 'T1');
       expect(aiService.redis.decrementDailyRequests).toHaveBeenCalledWith('U1', 'T1');
     });
+
+    it('alerts #muzzlefeedback when OpenAI returns a 429 error', async () => {
+      const createSpy = aiService.openAi.responses.create as Mock;
+      createSpy.mockRejectedValue(
+        Object.assign(new Error('Rate limit exceeded'), {
+          status: 429,
+          error: { message: 'Please slow down.' },
+        }),
+      );
+
+      await expect(aiService.generateText('U1', 'T1', 'C1', 'hello')).rejects.toThrow('Rate limit exceeded');
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        '#muzzlefeedback',
+        'OpenAI 429 during generateText: Please slow down.',
+      );
+    });
   });
 
   describe('generateImage', () => {
@@ -514,6 +531,14 @@ describe('AIService', () => {
       const result = await aiService.generateCorpoSpeak('hire more people');
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('alertOnOpenAiRateLimit', () => {
+    it('does not alert for non-429 errors', async () => {
+      await aiService.alertOnOpenAiRateLimit(new Error('API error'), 'generateText');
+
+      expect(aiService.webService.sendMessage).not.toHaveBeenCalled();
     });
   });
 

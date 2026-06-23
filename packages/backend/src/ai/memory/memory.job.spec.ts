@@ -21,6 +21,7 @@ describe('MemoryJob', () => {
     warn: ReturnType<typeof vi.fn>;
   };
   let aiService: {
+    alertOnOpenAiRateLimit: ReturnType<typeof vi.fn>;
     openAi: {
       responses: {
         create: ReturnType<typeof vi.fn>;
@@ -48,6 +49,7 @@ describe('MemoryJob', () => {
       warn: vi.fn(),
     };
     aiService = {
+      alertOnOpenAiRateLimit: vi.fn().mockResolvedValue(undefined),
       openAi: {
         responses: {
           create: vi.fn(),
@@ -164,5 +166,27 @@ describe('MemoryJob', () => {
     ).extractMemories('T1', 'C1', 'history', ['U123ABC']);
 
     expect(jobLogger.warn).toHaveBeenCalled();
+  });
+
+  it('alerts on OpenAI 429 errors during extraction', async () => {
+    const rateLimitError = Object.assign(new Error('Rate limit exceeded'), {
+      status: 429,
+      error: { message: 'Too many requests.' },
+    });
+    aiService.openAi.responses.create.mockRejectedValue(rateLimitError);
+
+    await (
+      job as never as {
+        extractMemories: (
+          teamId: string,
+          channelId: string,
+          conversationHistory: string,
+          participantSlackIds: string[],
+        ) => Promise<void>;
+      }
+    ).extractMemories('T1', 'C1', 'history', ['U1']);
+
+    expect(aiService.alertOnOpenAiRateLimit).toHaveBeenCalledWith(rateLimitError, 'memory extraction');
+    expect(jobLogger.warn).toHaveBeenCalledWith('Memory extraction failed:', rateLimitError);
   });
 });
