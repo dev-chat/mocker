@@ -224,8 +224,8 @@ export class ResilientOpenAIClient implements OpenAIClientLike {
       } catch (error) {
         lastError = error;
 
-        // Don't retry circuit-open or concurrency errors (they won't be
-        // thrown from here, but guard defensively)
+        // TIMEOUT is wrapped as a ResilientOpenAIError by attemptWithTimeout;
+        // re-throw it (and any other ResilientOpenAIError) without retrying.
         if (error instanceof ResilientOpenAIError) {
           throw error;
         }
@@ -403,7 +403,7 @@ export class ResilientOpenAIClient implements OpenAIClientLike {
   // ---------------------------------------------------------------------------
 
   private computeBackoffMs(attempt: number, error: unknown): number {
-    // Honour Retry-After header on 429 responses
+    // Honor Retry-After header on 429 responses
     const retryAfterMs = this.extractRetryAfterMs(error);
     if (retryAfterMs !== null) {
       return retryAfterMs;
@@ -446,6 +446,8 @@ export class ResilientOpenAIClient implements OpenAIClientLike {
   // ---------------------------------------------------------------------------
 
   private sleep(ms: number): Promise<void> {
+    // Math.max guards against negative values that could arise from floating-
+    // point jitter computation; setTimeout(fn, 0) is the desired minimum.
     return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
   }
 }

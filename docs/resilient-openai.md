@@ -15,7 +15,7 @@ broader Moonbeam service.
 |---|---|
 | Per-request timeout | 10 s |
 | Automatic retries with exponential backoff + full jitter | 3 retries |
-| `Retry-After` header honoured on 429 responses | yes |
+| `Retry-After` header honored on 429 responses | yes |
 | Circuit breaker | opens after 5 consecutive failures |
 | Concurrency / bulkhead limiter | 10 concurrent calls |
 | Graceful degradation via `ResilientOpenAIError` | yes |

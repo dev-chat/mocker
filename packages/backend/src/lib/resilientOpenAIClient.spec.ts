@@ -23,8 +23,6 @@ const makeUnderlying = (createImpl: Mock): OpenAIClientLike => ({
   },
 });
 
-const noop = () => undefined;
-
 /** Build a minimal config with fast timings for tests. */
 const fastConfig = (overrides: Partial<OpenAIClientConfig> = {}): Partial<OpenAIClientConfig> => ({
   timeoutMs: 500,
@@ -379,7 +377,7 @@ describe('ResilientOpenAIClient', () => {
   describe('concurrency limiter', () => {
     it('rejects requests that exceed the concurrency limit', async () => {
       // Create a mock that never resolves so we can accumulate inflight requests
-      const neverResolves = () => new Promise<never>(noop);
+      const neverResolves = () => new Promise<never>(() => undefined);
       const createMock = vi.fn().mockImplementation(neverResolves);
 
       const client = new ResilientOpenAIClient(
