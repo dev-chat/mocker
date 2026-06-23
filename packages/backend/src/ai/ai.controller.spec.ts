@@ -2,15 +2,23 @@ import { vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const { generateText, generateImage, promptWithHistory, sendEphemeral, setCustomPrompt, clearCustomPrompt } =
-  vi.hoisted(() => ({
-    generateText: vi.fn().mockResolvedValue(undefined),
-    generateImage: vi.fn().mockResolvedValue(undefined),
-    promptWithHistory: vi.fn().mockResolvedValue(undefined),
-    sendEphemeral: vi.fn().mockResolvedValue({ ok: true }),
-    setCustomPrompt: vi.fn().mockResolvedValue(true),
-    clearCustomPrompt: vi.fn().mockResolvedValue(true),
-  }));
+const {
+  generateText,
+  generateImage,
+  promptWithHistory,
+  sendEphemeral,
+  sendMessage,
+  setCustomPrompt,
+  clearCustomPrompt,
+} = vi.hoisted(() => ({
+  generateText: vi.fn().mockResolvedValue(undefined),
+  generateImage: vi.fn().mockResolvedValue(undefined),
+  promptWithHistory: vi.fn().mockResolvedValue(undefined),
+  sendEphemeral: vi.fn().mockResolvedValue({ ok: true }),
+  sendMessage: vi.fn().mockResolvedValue({ ok: true }),
+  setCustomPrompt: vi.fn().mockResolvedValue(true),
+  clearCustomPrompt: vi.fn().mockResolvedValue(true),
+}));
 
 vi.mock('./ai.service', async () => ({
   AIService: classMock(() => ({
@@ -25,6 +33,7 @@ vi.mock('./ai.service', async () => ({
 vi.mock('../shared/services/web/web.service', async () => ({
   WebService: classMock(() => ({
     sendEphemeral,
+    sendMessage,
   })),
 }));
 
@@ -85,6 +94,7 @@ describe('aiController', () => {
 
     await Promise.resolve();
     expect(sendEphemeral).toHaveBeenCalledWith('C1', expect.stringContaining('hello'), 'U1');
+    expect(sendMessage).toHaveBeenCalledWith('#muzzlefeedback', expect.stringContaining('boom'));
   });
 
   it('sends ephemeral on /image service errors without crashing', async () => {
@@ -97,6 +107,7 @@ describe('aiController', () => {
 
     await Promise.resolve();
     expect(sendEphemeral).toHaveBeenCalledWith('C1', expect.stringContaining('draw a cat'), 'U1');
+    expect(sendMessage).toHaveBeenCalledWith('#muzzlefeedback', expect.stringContaining('image boom'));
   });
 
   it('sends ephemeral on /prompt-with-history service errors without crashing', async () => {
@@ -109,6 +120,7 @@ describe('aiController', () => {
 
     await Promise.resolve();
     expect(sendEphemeral).toHaveBeenCalledWith('C1', expect.stringContaining('summarize'), 'U1');
+    expect(sendMessage).toHaveBeenCalledWith('#muzzlefeedback', expect.stringContaining('history boom'));
   });
 
   describe('/set-prompt', () => {

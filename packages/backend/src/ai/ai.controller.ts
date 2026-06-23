@@ -55,6 +55,10 @@ aiController.post('/text', (req, res) => {
     });
     const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
     void webService.sendEphemeral(channel_id, errorMessage, user_id);
+    void webService.sendMessage(
+      '#muzzlefeedback',
+      `AI /text error for <@${user_id}>: ${e instanceof Error ? e.message : String(e)}`,
+    );
     return undefined;
   });
 });
@@ -71,6 +75,10 @@ aiController.post('/image', (req, res) => {
     });
     const errorMessage = `\`Sorry! Your request for ${text} failed. Please try again.\``;
     void webService.sendEphemeral(channel_id, errorMessage, user_id);
+    void webService.sendMessage(
+      '#muzzlefeedback',
+      `AI /image error for <@${user_id}>: ${e instanceof Error ? e.message : String(e)}`,
+    );
     return undefined;
   });
 });
@@ -87,6 +95,10 @@ aiController.post('/prompt-with-history', (req, res) => {
     });
     const errorMessage = `\`Sorry! Your request for ${request.text} failed. Please try again.\``;
     void webService.sendEphemeral(request.channel_id, errorMessage, request.user_id);
+    void webService.sendMessage(
+      '#muzzlefeedback',
+      `AI /prompt-with-history error for <@${request.user_id}>: ${e instanceof Error ? e.message : String(e)}`,
+    );
     return undefined;
   });
 });
