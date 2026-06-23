@@ -185,6 +185,20 @@ export class AIService {
     }
   }
 
+  /**
+   * Reports any AI error to #muzzlefeedback.
+   * For 429 rate-limit errors, delegates to alertOnOpenAiRateLimit for a more descriptive message.
+   * For all other errors, posts a generic alert.
+   */
+  private async reportAiErrorToChannel(error: unknown, operation: string): Promise<void> {
+    if (getOpenAiStatusCode(error) === 429) {
+      await this.alertOnOpenAiRateLimit(error, operation);
+    } else {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      void this.webService.sendMessage('#muzzlefeedback', `AI error during ${operation}: ${errorMsg}`);
+    }
+  }
+
   public clearCustomPrompt(userId: string, teamId: string): Promise<boolean> {
     return this.slackPersistenceService.clearCustomPrompt(userId, teamId);
   }
@@ -223,12 +237,7 @@ export class AIService {
         });
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
-        if (getOpenAiStatusCode(e) === 429) {
-          await this.alertOnOpenAiRateLimit(e, 'generateText');
-        } else {
-          const errorMsg = e instanceof Error ? e.message : String(e);
-          void this.webService.sendMessage('#muzzlefeedback', `OpenAI error during generateText: ${errorMsg}`);
-        }
+        await this.reportAiErrorToChannel(e, 'generateText');
         // Errors are fully handled here; do not re-throw to prevent crashing the app
       });
   }
@@ -424,8 +433,7 @@ export class AIService {
         });
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
-        const errorMsg = e instanceof Error ? e.message : String(e);
-        void this.webService.sendMessage('#muzzlefeedback', `AI image error: ${errorMsg}`);
+        await this.reportAiErrorToChannel(e, 'generateImage');
         // Errors are fully handled here; do not re-throw to prevent crashing the app
       });
   }
@@ -540,12 +548,7 @@ export class AIService {
         });
         await this.redis.removeInflight(user_id, team_id);
         await this.redis.decrementDailyRequests(user_id, team_id);
-        if (getOpenAiStatusCode(e) === 429) {
-          await this.alertOnOpenAiRateLimit(e, 'promptWithHistory');
-        } else {
-          const errorMsg = e instanceof Error ? e.message : String(e);
-          void this.webService.sendMessage('#muzzlefeedback', `OpenAI error during promptWithHistory: ${errorMsg}`);
-        }
+        await this.reportAiErrorToChannel(e, 'promptWithHistory');
         // Errors are fully handled here; do not re-throw to prevent crashing the app
       });
   }
