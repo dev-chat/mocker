@@ -195,7 +195,7 @@ export class AIService {
       await this.alertOnOpenAiRateLimit(error, operation);
     } else {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      void this.webService.sendMessage('#muzzlefeedback', `AI error during ${operation}: ${errorMsg}`);
+      await this.webService.sendMessage('#muzzlefeedback', `AI error during ${operation}: ${errorMsg}`);
     }
   }
 
