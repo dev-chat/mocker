@@ -278,7 +278,7 @@ All OpenAI API calls are wrapped in a `ResilientOpenAIClient` that prevents tran
 | **Circuit breaker**     | After `CIRCUIT_BREAKER_FAILURES` consecutive failures the circuit opens, short-circuiting further calls until the window elapses and a probe succeeds.              |
 | **Timeout**             | Each individual request is aborted after `OPENAI_TIMEOUT_MS` milliseconds.                                                                                          |
 | **Concurrency limiter** | At most `OPENAI_CONCURRENCY` calls are in-flight at once; excess requests are rejected immediately.                                                                 |
-| **Prometheus metrics**  | Counters and histograms for requests, retries, failures, circuit opens, and latency are exposed for observability.                                                  |
+| **Prometheus metrics**  | Counters and histograms for requests, retries, failures, circuit opens, and latency are registered via `prom-client` (expose the registry on a `/metrics` endpoint if desired). |
 | **Slack alert on 429**  | When the rate-limit error reaches the application layer, an alert is posted to `#muzzlefeedback`.                                                                   |
 
 Configure the resilience settings with these environment variables (all optional):
