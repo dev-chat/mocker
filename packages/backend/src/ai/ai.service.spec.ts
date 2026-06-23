@@ -136,6 +136,23 @@ describe('AIService', () => {
       expect(aiService.redis.removeInflight).toHaveBeenCalledWith('U1', 'T1');
       expect(aiService.redis.decrementDailyRequests).toHaveBeenCalledWith('U1', 'T1');
     });
+
+    it('alerts #muzzlefeedback when OpenAI returns a 429 error', async () => {
+      const createSpy = aiService.openAi.responses.create as Mock;
+      createSpy.mockRejectedValue(
+        Object.assign(new Error('Rate limit exceeded'), {
+          status: 429,
+          error: { message: 'Please slow down.' },
+        }),
+      );
+
+      await expect(aiService.generateText('U1', 'T1', 'C1', 'hello')).rejects.toThrow('Rate limit exceeded');
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        '#muzzlefeedback',
+        'OpenAI 429 during generateText: Please slow down.',
+      );
+    });
   });
 
   describe('generateImage', () => {
@@ -514,6 +531,88 @@ describe('AIService', () => {
       const result = await aiService.generateCorpoSpeak('hire more people');
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('alertOnOpenAiRateLimit', () => {
+    it('alerts #muzzlefeedback for 429 errors with the OpenAI message', async () => {
+      await aiService.alertOnOpenAiRateLimit(
+        Object.assign(new Error('Rate limit exceeded'), {
+          status: 429,
+          error: { message: 'Please slow down.' },
+        }),
+        'generateText',
+      );
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        '#muzzlefeedback',
+        'OpenAI 429 during generateText: Please slow down.',
+      );
+    });
+
+    it('does not alert for non-429 errors', async () => {
+      await aiService.alertOnOpenAiRateLimit(new Error('API error'), 'generateText');
+
+      expect(aiService.webService.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the top-level error message when the nested OpenAI message is blank', async () => {
+      await aiService.alertOnOpenAiRateLimit(
+        {
+          status: 429,
+          error: { message: '   ' },
+          message: '  Rate limit exceeded  ',
+        },
+        'generateText',
+      );
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        '#muzzlefeedback',
+        'OpenAI 429 during generateText: Rate limit exceeded',
+      );
+    });
+
+    it('uses a default alert message when OpenAI omits all error text', async () => {
+      await aiService.alertOnOpenAiRateLimit(
+        {
+          status: 429,
+          error: { message: '   ' },
+          message: '   ',
+        },
+        'generateText',
+      );
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        '#muzzlefeedback',
+        'OpenAI 429 during generateText: OpenAI returned a 429 response without an error message.',
+      );
+    });
+
+    it('logs and suppresses Slack delivery failures', async () => {
+      (aiService.webService.sendMessage as Mock).mockRejectedValueOnce(new Error('slack failed'));
+
+      await expect(
+        aiService.alertOnOpenAiRateLimit(
+          Object.assign(new Error('Rate limit exceeded'), {
+            status: 429,
+            error: { message: 'Please slow down.' },
+          }),
+          'generateText',
+        ),
+      ).resolves.toBeUndefined();
+
+      expect(aiService.aiServiceLogger.error).toHaveBeenCalledWith(
+        'Failed to send OpenAI 429 alert to Slack',
+        expect.objectContaining({
+          context: {
+            operation: 'generateText',
+            openAiErrorMessage: 'Please slow down.',
+          },
+          error: expect.objectContaining({
+            message: 'slack failed',
+          }),
+        }),
+      );
     });
   });
 

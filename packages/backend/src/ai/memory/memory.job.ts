@@ -111,6 +111,10 @@ export class MemoryJob {
           instructions: prompt,
           input: conversationHistory,
         })
+        .catch(async (error) => {
+          await this.aiService.alertOnOpenAiRateLimit(error, 'memory extraction');
+          throw error;
+        })
         .then((response) => extractAndParseOpenAiResponse(response));
 
       if (!result) {
