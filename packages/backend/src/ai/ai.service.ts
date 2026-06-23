@@ -819,7 +819,7 @@ export class AIService {
       const isMoonbeamTagged = this.slackService.isUserMentioned(request.event.text, MOONBEAM_SLACK_ID);
       const isPosterMoonbeam = request.event.user === MOONBEAM_SLACK_ID;
       if (isMoonbeamTagged && !isPosterMoonbeam) {
-        void this.participate(request.team_id, request.event.channel, request.event.text, request.event.user);
+        return this.participate(request.team_id, request.event.channel, request.event.text, request.event.user);
       }
     }
   }
