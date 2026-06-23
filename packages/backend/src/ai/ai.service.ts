@@ -238,7 +238,6 @@ export class AIService {
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         await this.reportAiErrorToChannel(e, 'generateText');
-        // Errors are fully handled here; do not re-throw to prevent crashing the app
       });
   }
 
@@ -434,7 +433,6 @@ export class AIService {
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         await this.reportAiErrorToChannel(e, 'generateImage');
-        // Errors are fully handled here; do not re-throw to prevent crashing the app
       });
   }
 
@@ -549,7 +547,6 @@ export class AIService {
         await this.redis.removeInflight(user_id, team_id);
         await this.redis.decrementDailyRequests(user_id, team_id);
         await this.reportAiErrorToChannel(e, 'promptWithHistory');
-        // Errors are fully handled here; do not re-throw to prevent crashing the app
       });
   }
 
