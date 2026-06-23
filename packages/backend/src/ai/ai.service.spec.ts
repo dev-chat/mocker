@@ -131,10 +131,11 @@ describe('AIService', () => {
       const createSpy = aiService.openAi.responses.create as Mock;
       createSpy.mockRejectedValue(new Error('boom'));
 
-      await expect(aiService.generateText('U1', 'T1', 'C1', 'hello')).rejects.toThrow('boom');
+      await aiService.generateText('U1', 'T1', 'C1', 'hello');
 
       expect(aiService.redis.removeInflight).toHaveBeenCalledWith('U1', 'T1');
       expect(aiService.redis.decrementDailyRequests).toHaveBeenCalledWith('U1', 'T1');
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('#muzzlefeedback', expect.stringContaining('boom'));
     });
 
     it('alerts #muzzlefeedback when OpenAI returns a 429 error', async () => {
@@ -146,7 +147,7 @@ describe('AIService', () => {
         }),
       );
 
-      await expect(aiService.generateText('U1', 'T1', 'C1', 'hello')).rejects.toThrow('Rate limit exceeded');
+      await aiService.generateText('U1', 'T1', 'C1', 'hello');
 
       expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
         '#muzzlefeedback',
@@ -178,14 +179,16 @@ describe('AIService', () => {
       expect(sendSpy).toHaveBeenCalledWith('https://muzzle.lol/image.png', 'U1', 'T1', 'C1', 'draw cat');
     });
 
-    it('logs and throws when gemini returns no image data', async () => {
+    it('logs and reports to #muzzlefeedback when gemini returns no image data', async () => {
       (aiService.gemini.models.generateContent as Mock).mockResolvedValue({
         candidates: [{ content: { parts: [] } }],
       });
       const errSpy = vi.spyOn(aiService.aiServiceLogger, 'error');
 
-      await expect(aiService.generateImage('U1', 'T1', 'C1', 'draw cat')).rejects.toThrow();
+      await aiService.generateImage('U1', 'T1', 'C1', 'draw cat');
+
       expect(errSpy).toHaveBeenCalled();
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('#muzzlefeedback', expect.any(String));
     });
   });
 
@@ -796,7 +799,8 @@ describe('AIService', () => {
         output: undefined,
       });
 
-      await expect(aiService.generateText('U1', 'T1', 'C1', 'hello')).rejects.toThrow();
+      await aiService.generateText('U1', 'T1', 'C1', 'hello');
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('#muzzlefeedback', expect.any(String));
     });
 
     it('handles empty output array', async () => {
@@ -804,7 +808,8 @@ describe('AIService', () => {
         output: [],
       });
 
-      await expect(aiService.generateText('U1', 'T1', 'C1', 'hello')).rejects.toThrow();
+      await aiService.generateText('U1', 'T1', 'C1', 'hello');
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('#muzzlefeedback', expect.any(String));
     });
   });
 
@@ -812,7 +817,8 @@ describe('AIService', () => {
     it('handles Gemini API errors', async () => {
       (aiService.gemini.models.generateContent as Mock).mockRejectedValue(new Error('Gemini error'));
 
-      await expect(aiService.generateImage('U1', 'T1', 'C1', 'draw cat')).rejects.toThrow();
+      await aiService.generateImage('U1', 'T1', 'C1', 'draw cat');
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('#muzzlefeedback', expect.any(String));
     });
 
     it('handles missing image data in response', async () => {
@@ -820,7 +826,8 @@ describe('AIService', () => {
         candidates: [{ content: { parts: [] } }],
       });
 
-      await expect(aiService.generateImage('U1', 'T1', 'C1', 'draw cat')).rejects.toThrow();
+      await aiService.generateImage('U1', 'T1', 'C1', 'draw cat');
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('#muzzlefeedback', expect.any(String));
     });
   });
 
@@ -842,14 +849,14 @@ describe('AIService', () => {
       (aiService.historyService.getHistory as Mock).mockResolvedValue([]);
       (aiService.openAi.responses.create as Mock).mockRejectedValue(new Error('OpenAI error'));
 
-      await expect(
-        aiService.promptWithHistory({
-          user_id: 'U1',
-          team_id: 'T1',
-          channel_id: 'C1',
-          text: 'Summarize',
-        } as never),
-      ).rejects.toThrow();
+      await aiService.promptWithHistory({
+        user_id: 'U1',
+        team_id: 'T1',
+        channel_id: 'C1',
+        text: 'Summarize',
+      } as never);
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith('#muzzlefeedback', expect.any(String));
     });
   });
 

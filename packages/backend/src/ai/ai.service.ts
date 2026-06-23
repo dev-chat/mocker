@@ -215,7 +215,6 @@ export class AIService {
         }
       })
       .catch(async (e) => {
-        await this.alertOnOpenAiRateLimit(e, 'generateText');
         logError(this.aiServiceLogger, 'Failed to generate AI text response', e, {
           userId,
           teamId,
@@ -224,7 +223,13 @@ export class AIService {
         });
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
-        throw e;
+        if (getOpenAiStatusCode(e) === 429) {
+          await this.alertOnOpenAiRateLimit(e, 'generateText');
+        } else {
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          void this.webService.sendMessage('#muzzlefeedback', `OpenAI error during generateText: ${errorMsg}`);
+        }
+        // Errors are fully handled here; do not re-throw to prevent crashing the app
       });
   }
 
@@ -419,7 +424,9 @@ export class AIService {
         });
         await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
-        throw e;
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        void this.webService.sendMessage('#muzzlefeedback', `AI image error: ${errorMsg}`);
+        // Errors are fully handled here; do not re-throw to prevent crashing the app
       });
   }
 
@@ -525,7 +532,6 @@ export class AIService {
         });
       })
       .catch(async (e) => {
-        await this.alertOnOpenAiRateLimit(e, 'promptWithHistory');
         logError(this.aiServiceLogger, 'Failed to process prompt with history', e, {
           userId: request.user_id,
           teamId: request.team_id,
@@ -534,7 +540,13 @@ export class AIService {
         });
         await this.redis.removeInflight(user_id, team_id);
         await this.redis.decrementDailyRequests(user_id, team_id);
-        throw e;
+        if (getOpenAiStatusCode(e) === 429) {
+          await this.alertOnOpenAiRateLimit(e, 'promptWithHistory');
+        } else {
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          void this.webService.sendMessage('#muzzlefeedback', `OpenAI error during promptWithHistory: ${errorMsg}`);
+        }
+        // Errors are fully handled here; do not re-throw to prevent crashing the app
       });
   }
 
