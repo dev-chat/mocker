@@ -33,12 +33,12 @@ const parseIntWithDefault = (value: string | undefined, defaultValue: number): n
 };
 
 export const getOpenAIClientConfig = (): OpenAIClientConfig => ({
-  timeoutMs: parseIntWithDefault(process.env.OPENAI_TIMEOUT_MS, 10_000),
-  retries: parseIntWithDefault(process.env.OPENAI_RETRIES, 3),
-  backoffBaseMs: parseIntWithDefault(process.env.OPENAI_BACKOFF_BASE_MS, 500),
-  circuitBreakerFailures: parseIntWithDefault(process.env.CIRCUIT_BREAKER_FAILURES, 5),
-  circuitBreakerWindowMs: parseIntWithDefault(process.env.CIRCUIT_BREAKER_WINDOW_MS, 60_000),
-  circuitBreakerProbeMs: parseIntWithDefault(process.env.CIRCUIT_BREAKER_PROBE_MS, 30_000),
-  concurrency: parseIntWithDefault(process.env.OPENAI_CONCURRENCY, 10),
+  timeoutMs: Math.max(1, parseIntWithDefault(process.env.OPENAI_TIMEOUT_MS, 10_000)),
+  retries: Math.max(0, parseIntWithDefault(process.env.OPENAI_RETRIES, 3)),
+  backoffBaseMs: Math.max(0, parseIntWithDefault(process.env.OPENAI_BACKOFF_BASE_MS, 500)),
+  circuitBreakerFailures: Math.max(1, parseIntWithDefault(process.env.CIRCUIT_BREAKER_FAILURES, 5)),
+  circuitBreakerWindowMs: Math.max(1, parseIntWithDefault(process.env.CIRCUIT_BREAKER_WINDOW_MS, 60_000)),
+  circuitBreakerProbeMs: Math.max(1, parseIntWithDefault(process.env.CIRCUIT_BREAKER_PROBE_MS, 30_000)),
+  concurrency: Math.max(1, parseIntWithDefault(process.env.OPENAI_CONCURRENCY, 10)),
   featureFlagResilient: process.env.FEATURE_FLAG_RESILIENT_OPENAI !== 'false',
 });
