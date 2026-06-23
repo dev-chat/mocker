@@ -159,6 +159,11 @@ export class AIService {
     return this.slackPersistenceService.setCustomPrompt(userId, teamId, prompt);
   }
 
+  /**
+   * Sends a Slack alert to #muzzlefeedback when OpenAI returns a 429 rate-limit response.
+   * Expects OpenAI-style errors with a numeric `status` field and an optional nested `error.message`.
+   * Returns without side effects for non-429 errors.
+   */
   public async alertOnOpenAiRateLimit(error: unknown, operation: string): Promise<void> {
     if (getOpenAiStatusCode(error) !== 429) {
       return;

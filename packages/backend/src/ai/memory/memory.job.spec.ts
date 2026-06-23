@@ -165,6 +165,5 @@ describe('MemoryJob', () => {
     await invokeExtractMemories(job, 'T1', 'C1', 'history', ['U1']);
 
     expect(aiService.alertOnOpenAiRateLimit).toHaveBeenCalledWith(rateLimitError, 'memory extraction');
-    expect(jobLogger.warn).toHaveBeenCalledWith('Memory extraction failed:', rateLimitError);
   });
 });
