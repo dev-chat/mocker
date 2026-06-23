@@ -360,30 +360,19 @@ export class ResilientOpenAIClient implements OpenAIClientLike {
   // ---------------------------------------------------------------------------
 
   private isRetriable(error: unknown): boolean {
-    if (!(error instanceof Error)) {
-      return false;
-    }
-
     // Timeout errors are retriable
     if (error instanceof ResilientOpenAIError && error.code === 'TIMEOUT') {
-      return true;
-    }
-
-    // Network / connection errors
-    if (
-      error.message.includes('ECONNRESET') ||
-      error.message.includes('ECONNREFUSED') ||
-      error.message.includes('ETIMEDOUT') ||
-      error.message.includes('socket hang up') ||
-      error.message.includes('fetch failed') ||
-      error.message.includes('network')
-    ) {
       return true;
     }
 
     // OpenAI HTTP status codes: 429 (rate-limit) and 5xx are retriable
     const statusCode = this.getStatusCode(error);
     if (statusCode === 429 || (statusCode !== undefined && statusCode >= 500)) {
+      return true;
+    }
+
+    // Network / transport failures are typically transient and should be retried.
+    if (this.hasRetriableNetworkSignal(error)) {
       return true;
     }
 
@@ -396,6 +385,51 @@ export class ResilientOpenAIClient implements OpenAIClientLike {
       return typeof status === 'number' ? status : undefined;
     }
     return undefined;
+  }
+
+  private hasRetriableNetworkSignal(error: unknown): boolean {
+    const queue: unknown[] = [error];
+    const visited = new Set<unknown>();
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (typeof current !== 'object' || current === null || visited.has(current)) {
+        continue;
+      }
+
+      visited.add(current);
+
+      const message = Reflect.get(current, 'message');
+      const name = Reflect.get(current, 'name');
+      const code = Reflect.get(current, 'code');
+
+      const normalizedSignals = [message, name, code]
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.toLowerCase())
+        .join(' ');
+
+      if (
+        normalizedSignals.includes('econnreset') ||
+        normalizedSignals.includes('econnrefused') ||
+        normalizedSignals.includes('etimedout') ||
+        normalizedSignals.includes('socket hang up') ||
+        normalizedSignals.includes('fetch failed') ||
+        normalizedSignals.includes('fetcherror') ||
+        normalizedSignals.includes('premature close') ||
+        normalizedSignals.includes('und_err_socket') ||
+        normalizedSignals.includes('network error') ||
+        normalizedSignals.includes('networkerror')
+      ) {
+        return true;
+      }
+
+      const cause = Reflect.get(current, 'cause');
+      if (cause !== undefined) {
+        queue.push(cause);
+      }
+    }
+
+    return false;
   }
 
   // ---------------------------------------------------------------------------

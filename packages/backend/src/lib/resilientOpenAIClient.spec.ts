@@ -129,6 +129,28 @@ describe('ResilientOpenAIClient', () => {
       expect(result).toEqual(makeResponse('ok after 429'));
     });
 
+    it('retries on FetchError with Premature close and succeeds', async () => {
+      const transientFetchError = Object.assign(
+        new Error('Invalid response body while trying to fetch https://api.openai.com/v1/responses: Premature close'),
+        {
+          name: 'FetchError',
+        },
+      );
+      const createMock = vi
+        .fn()
+        .mockRejectedValueOnce(transientFetchError)
+        .mockResolvedValue(makeResponse('ok after premature close'));
+
+      const client = new ResilientOpenAIClient(makeUnderlying(createMock), fastConfig(), registry);
+
+      const resultPromise = client.responses.create({ model: 'gpt-4o', input: 'hi' });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(createMock).toHaveBeenCalledTimes(2);
+      expect(result).toEqual(makeResponse('ok after premature close'));
+    });
+
     it('honors Retry-After header on 429 response', async () => {
       const retryAfterSeconds = 2;
       const rateLimitError = Object.assign(new Error('Rate limited'), {
