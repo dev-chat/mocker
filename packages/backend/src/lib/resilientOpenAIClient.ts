@@ -309,7 +309,7 @@ export class ResilientOpenAIClient implements OpenAIClientLike {
     }
 
     // half-open: allow exactly one probe at a time
-    return true;
+    return this.activeRequests === 0;
   }
 
   private onSuccess(): void {
