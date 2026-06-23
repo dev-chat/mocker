@@ -32,6 +32,8 @@ import type {
   ResponseOutputText,
   ResponseOutputRefusal,
 } from 'openai/resources/responses/responses';
+import { ResilientOpenAIClient } from '../lib/resilientOpenAIClient';
+import type { OpenAIClientLike } from '../lib/resilientOpenAIClient';
 import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
@@ -130,9 +132,11 @@ const normalizeReleaseSha = (value?: string): string | null => {
 
 export class AIService {
   redis = new AIPersistenceService();
-  openAi = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+  openAi: OpenAIClientLike = new ResilientOpenAIClient(
+    new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    }),
+  );
   gemini = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY });
 
   muzzlePersistenceService = new MuzzlePersistenceService();
