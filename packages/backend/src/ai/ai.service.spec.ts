@@ -555,6 +555,65 @@ describe('AIService', () => {
 
       expect(aiService.webService.sendMessage).not.toHaveBeenCalled();
     });
+
+    it('falls back to the top-level error message when the nested OpenAI message is blank', async () => {
+      await aiService.alertOnOpenAiRateLimit(
+        {
+          status: 429,
+          error: { message: '   ' },
+          message: '  Rate limit exceeded  ',
+        },
+        'generateText',
+      );
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        '#muzzlefeedback',
+        'OpenAI 429 during generateText: Rate limit exceeded',
+      );
+    });
+
+    it('uses a default alert message when OpenAI omits all error text', async () => {
+      await aiService.alertOnOpenAiRateLimit(
+        {
+          status: 429,
+          error: { message: '   ' },
+          message: '   ',
+        },
+        'generateText',
+      );
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
+        '#muzzlefeedback',
+        'OpenAI 429 during generateText: OpenAI returned a 429 response without an error message.',
+      );
+    });
+
+    it('logs and suppresses Slack delivery failures', async () => {
+      (aiService.webService.sendMessage as Mock).mockRejectedValueOnce(new Error('slack failed'));
+
+      await expect(
+        aiService.alertOnOpenAiRateLimit(
+          Object.assign(new Error('Rate limit exceeded'), {
+            status: 429,
+            error: { message: 'Please slow down.' },
+          }),
+          'generateText',
+        ),
+      ).resolves.toBeUndefined();
+
+      expect(aiService.aiServiceLogger.error).toHaveBeenCalledWith(
+        'Failed to send OpenAI 429 alert to Slack',
+        expect.objectContaining({
+          context: {
+            operation: 'generateText',
+            openAiErrorMessage: 'Please slow down.',
+          },
+          error: expect.objectContaining({
+            message: 'slack failed',
+          }),
+        }),
+      );
+    });
   });
 
   describe('participate', () => {
