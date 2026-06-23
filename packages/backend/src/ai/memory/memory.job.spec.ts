@@ -1,6 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryJob } from './memory.job';
 
+type ExtractMemoriesInvoker = {
+  extractMemories: (
+    teamId: string,
+    channelId: string,
+    conversationHistory: string,
+    participantSlackIds: string[],
+  ) => Promise<void>;
+};
+
+const invokeExtractMemories = (
+  job: MemoryJob,
+  teamId: string,
+  channelId: string,
+  conversationHistory: string,
+  participantSlackIds: string[],
+): Promise<void> =>
+  (job as unknown as ExtractMemoriesInvoker).extractMemories(
+    teamId,
+    channelId,
+    conversationHistory,
+    participantSlackIds,
+  );
+
 describe('MemoryJob', () => {
   let job: MemoryJob;
   let memoryPersistenceService: {
@@ -67,16 +90,7 @@ describe('MemoryJob', () => {
   it('returns early when extraction lock exists', async () => {
     redis.getValue.mockResolvedValue('1');
 
-    await (
-      job as never as {
-        extractMemories: (
-          teamId: string,
-          channelId: string,
-          conversationHistory: string,
-          participantSlackIds: string[],
-        ) => Promise<void>;
-      }
-    ).extractMemories('T1', 'C1', 'history', ['U1']);
+    await invokeExtractMemories(job, 'T1', 'C1', 'history', ['U1']);
 
     expect(jobLogger.info).toHaveBeenCalled();
   });
@@ -86,16 +100,7 @@ describe('MemoryJob', () => {
       output: [{ type: 'message', content: [{ type: 'output_text', text: 'NONE' }] }],
     });
 
-    await (
-      job as never as {
-        extractMemories: (
-          teamId: string,
-          channelId: string,
-          conversationHistory: string,
-          participantSlackIds: string[],
-        ) => Promise<void>;
-      }
-    ).extractMemories('T1', 'C1', 'history', ['U1']);
+    await invokeExtractMemories(job, 'T1', 'C1', 'history', ['U1']);
 
     expect(memoryPersistenceService.saveMemories).not.toHaveBeenCalled();
   });
@@ -119,16 +124,7 @@ describe('MemoryJob', () => {
       ],
     });
 
-    await (
-      job as never as {
-        extractMemories: (
-          teamId: string,
-          channelId: string,
-          conversationHistory: string,
-          participantSlackIds: string[],
-        ) => Promise<void>;
-      }
-    ).extractMemories('T1', 'C1', 'history', ['U123ABC']);
+    await invokeExtractMemories(job, 'T1', 'C1', 'history', ['U123ABC']);
 
     expect(memoryPersistenceService.saveMemories).toHaveBeenCalled();
     expect(memoryPersistenceService.reinforceMemory).toHaveBeenCalledWith(10);
@@ -154,16 +150,7 @@ describe('MemoryJob', () => {
       ],
     });
 
-    await (
-      job as never as {
-        extractMemories: (
-          teamId: string,
-          channelId: string,
-          conversationHistory: string,
-          participantSlackIds: string[],
-        ) => Promise<void>;
-      }
-    ).extractMemories('T1', 'C1', 'history', ['U123ABC']);
+    await invokeExtractMemories(job, 'T1', 'C1', 'history', ['U123ABC']);
 
     expect(jobLogger.warn).toHaveBeenCalled();
   });
@@ -175,16 +162,7 @@ describe('MemoryJob', () => {
     });
     aiService.openAi.responses.create.mockRejectedValue(rateLimitError);
 
-    await (
-      job as never as {
-        extractMemories: (
-          teamId: string,
-          channelId: string,
-          conversationHistory: string,
-          participantSlackIds: string[],
-        ) => Promise<void>;
-      }
-    ).extractMemories('T1', 'C1', 'history', ['U1']);
+    await invokeExtractMemories(job, 'T1', 'C1', 'history', ['U1']);
 
     expect(aiService.alertOnOpenAiRateLimit).toHaveBeenCalledWith(rateLimitError, 'memory extraction');
     expect(jobLogger.warn).toHaveBeenCalledWith('Memory extraction failed:', rateLimitError);
