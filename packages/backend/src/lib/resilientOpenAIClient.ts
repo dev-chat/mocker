@@ -224,9 +224,9 @@ export class ResilientOpenAIClient implements OpenAIClientLike {
       } catch (error) {
         lastError = error;
 
-        // TIMEOUT is wrapped as a ResilientOpenAIError by attemptWithTimeout;
-        // re-throw it (and any other ResilientOpenAIError) without retrying.
-        if (error instanceof ResilientOpenAIError) {
+        // Only short-circuit retries for non-retriable wrapper errors.
+        // TIMEOUT is classified as retriable by isRetriable().
+        if (error instanceof ResilientOpenAIError && error.code !== 'TIMEOUT') {
           throw error;
         }
 
