@@ -75,7 +75,7 @@ describe('aiController', () => {
     expect(promptWithHistory).toHaveBeenCalledWith(body);
   });
 
-  it('sends ephemeral on service errors', async () => {
+  it('sends ephemeral on /text service errors without crashing', async () => {
     generateText.mockRejectedValueOnce(new Error('boom'));
 
     await request(app)
@@ -84,7 +84,31 @@ describe('aiController', () => {
       .expect(200);
 
     await Promise.resolve();
-    expect(sendEphemeral).toHaveBeenCalled();
+    expect(sendEphemeral).toHaveBeenCalledWith('C1', expect.stringContaining('hello'), 'U1');
+  });
+
+  it('sends ephemeral on /image service errors without crashing', async () => {
+    generateImage.mockRejectedValueOnce(new Error('image boom'));
+
+    await request(app)
+      .post('/image')
+      .send({ user_id: 'U1', team_id: 'T1', channel_id: 'C1', text: 'draw a cat' })
+      .expect(200);
+
+    await Promise.resolve();
+    expect(sendEphemeral).toHaveBeenCalledWith('C1', expect.stringContaining('draw a cat'), 'U1');
+  });
+
+  it('sends ephemeral on /prompt-with-history service errors without crashing', async () => {
+    promptWithHistory.mockRejectedValueOnce(new Error('history boom'));
+
+    await request(app)
+      .post('/prompt-with-history')
+      .send({ user_id: 'U1', team_id: 'T1', channel_id: 'C1', text: 'summarize' })
+      .expect(200);
+
+    await Promise.resolve();
+    expect(sendEphemeral).toHaveBeenCalledWith('C1', expect.stringContaining('summarize'), 'U1');
   });
 
   describe('/set-prompt', () => {

@@ -141,6 +141,16 @@ NODE_ENV=development
 # External APIs (optional, for AI features)
 OPENAI_API_KEY=sk-your-openai-key
 GOOGLE_TRANSLATE_API_KEY=your-google-translate-key
+
+# OpenAI error handling / resilience (all optional – defaults shown)
+OPENAI_TIMEOUT_MS=10000         # Max ms to wait for a single OpenAI request before aborting
+OPENAI_RETRIES=3                # Max retry attempts on transient errors (429, 5xx, timeouts)
+OPENAI_BACKOFF_BASE_MS=500      # Base interval (ms) for exponential backoff with full jitter
+CIRCUIT_BREAKER_FAILURES=5      # Consecutive failures before the circuit breaker opens
+CIRCUIT_BREAKER_WINDOW_MS=60000 # Duration (ms) the circuit stays open before allowing a probe
+CIRCUIT_BREAKER_PROBE_MS=30000  # Minimum interval (ms) between probe attempts while circuit is open
+OPENAI_CONCURRENCY=10           # Maximum concurrent outbound OpenAI calls
+FEATURE_FLAG_RESILIENT_OPENAI=true  # Set to "false" to bypass all resilience logic (useful for debugging)
 ```
 
 #### Frontend (`packages/frontend/.env`)
@@ -257,6 +267,32 @@ docker logs <container-id> | jq .
 - **Daily Memory Job** - Summarizes conversations daily at 3 AM (requires OpenAI API key)
 - **Sentiment Analysis** - Analyzes message tone
 - **AI Summaries** - Generates summaries of message threads
+
+#### OpenAI Error Handling
+
+All OpenAI API calls are wrapped in a `ResilientOpenAIClient` that prevents transient failures from crashing the application:
+
+| Behavior                | Description                                                                                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Retry with backoff**  | Transient errors (HTTP 429, 5xx, network timeouts) are retried with exponential backoff and full jitter. Non-retriable errors (4xx other than 429) are not retried. |
+| **Circuit breaker**     | After `CIRCUIT_BREAKER_FAILURES` consecutive failures the circuit opens, short-circuiting further calls until the window elapses and a probe succeeds.              |
+| **Timeout**             | Each individual request is aborted after `OPENAI_TIMEOUT_MS` milliseconds.                                                                                          |
+| **Concurrency limiter** | At most `OPENAI_CONCURRENCY` calls are in-flight at once; excess requests are rejected immediately.                                                                 |
+| **Prometheus metrics**  | Counters and histograms for requests, retries, failures, circuit opens, and latency are exposed for observability.                                                  |
+| **Slack alert on 429**  | When the rate-limit error reaches the application layer, an alert is posted to `#muzzlefeedback`.                                                                   |
+
+Configure the resilience settings with these environment variables (all optional):
+
+| Variable                        | Default | Description                                                          |
+| ------------------------------- | ------- | -------------------------------------------------------------------- |
+| `OPENAI_TIMEOUT_MS`             | `10000` | Max ms to wait for a single OpenAI request                           |
+| `OPENAI_RETRIES`                | `3`     | Max retry attempts on transient errors                               |
+| `OPENAI_BACKOFF_BASE_MS`        | `500`   | Base interval (ms) for exponential backoff with full jitter          |
+| `CIRCUIT_BREAKER_FAILURES`      | `5`     | Consecutive failures before the circuit breaker opens                |
+| `CIRCUIT_BREAKER_WINDOW_MS`     | `60000` | Duration (ms) the circuit stays open before allowing a probe         |
+| `CIRCUIT_BREAKER_PROBE_MS`      | `30000` | Minimum interval (ms) between probes while the circuit is open       |
+| `OPENAI_CONCURRENCY`            | `10`    | Maximum concurrent outbound OpenAI calls                             |
+| `FEATURE_FLAG_RESILIENT_OPENAI` | `true`  | Set to `false` to bypass all resilience logic (useful for debugging) |
 
 ### Scheduled Jobs
 
