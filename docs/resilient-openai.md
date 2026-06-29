@@ -13,7 +13,7 @@ broader Moonbeam service.
 
 | Feature                                                  | Default                            |
 | -------------------------------------------------------- | ---------------------------------- |
-| Per-request timeout                                      | 10 s                               |
+| Per-request timeout                                      | 30 s                               |
 | Automatic retries with exponential backoff + full jitter | 3 retries                          |
 | `Retry-After` header honored on 429 responses            | yes                                |
 | Circuit breaker                                          | opens after 5 consecutive failures |
@@ -47,7 +47,7 @@ All variables are optional. Defaults are shown.
 | Variable                        | Default | Description                                                   |
 | ------------------------------- | ------- | ------------------------------------------------------------- |
 | `FEATURE_FLAG_RESILIENT_OPENAI` | `true`  | Set to `false` to bypass the wrapper entirely.                |
-| `OPENAI_TIMEOUT_MS`             | `10000` | Maximum ms to wait for a single request before aborting.      |
+| `OPENAI_TIMEOUT_MS`             | `30000` | Maximum ms to wait for a single request before aborting.      |
 | `OPENAI_RETRIES`                | `3`     | Maximum retry attempts on transient errors.                   |
 | `OPENAI_BACKOFF_BASE_MS`        | `500`   | Base interval (ms) for exponential backoff with full jitter.  |
 | `CIRCUIT_BREAKER_FAILURES`      | `5`     | Consecutive failures needed to open the circuit.              |
