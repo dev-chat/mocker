@@ -33,7 +33,7 @@ const parseIntWithDefault = (value: string | undefined, defaultValue: number): n
 };
 
 export const getOpenAIClientConfig = (): OpenAIClientConfig => ({
-  timeoutMs: Math.max(1, parseIntWithDefault(process.env.OPENAI_TIMEOUT_MS, 10_000)),
+  timeoutMs: Math.max(1, parseIntWithDefault(process.env.OPENAI_TIMEOUT_MS, 30_000)),
   retries: Math.max(0, parseIntWithDefault(process.env.OPENAI_RETRIES, 3)),
   backoffBaseMs: Math.max(0, parseIntWithDefault(process.env.OPENAI_BACKOFF_BASE_MS, 500)),
   circuitBreakerFailures: Math.max(1, parseIntWithDefault(process.env.CIRCUIT_BREAKER_FAILURES, 5)),
