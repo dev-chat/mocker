@@ -167,7 +167,8 @@ authController.get('/slack/callback', (req, res) => {
 
     const userPayload = identityResponse.data.user;
     const userPayloadRecord = isRecord(userPayload) ? userPayload : undefined;
-    const displayName = userPayload?.name || getRecordString(userPayloadRecord, 'real_name') || userId;
+    const displayName =
+      getOptionalString(userPayload?.name) || getRecordString(userPayloadRecord, 'real_name') || userId;
     const avatarUrl =
       getRecordString(userPayloadRecord, 'image_192') ??
       getRecordString(userPayloadRecord, 'image_72') ??

@@ -16,6 +16,7 @@ import { getRepository } from 'typeorm';
 import {
   ActiveTimerExistsError,
   ActiveTimerNotFoundError,
+  BathroomUserNotFoundError,
   BathroomPersistenceService,
 } from './bathroom.persistence.service';
 import { BathroomTimer } from '../shared/db/models/BathroomTimer';
@@ -96,7 +97,7 @@ describe('BathroomPersistenceService', () => {
     const service = new BathroomPersistenceService();
     userRepo.findOne.mockResolvedValue(null);
 
-    await expect(service.startTimer('U1')).rejects.toBeInstanceOf(ActiveTimerNotFoundError);
+    await expect(service.startTimer('U1')).rejects.toBeInstanceOf(BathroomUserNotFoundError);
   });
 
   it('stops the active timer and persists its duration in seconds', async () => {

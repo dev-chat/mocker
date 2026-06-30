@@ -3,6 +3,7 @@ import express from 'express';
 import {
   ActiveTimerExistsError,
   ActiveTimerNotFoundError,
+  BathroomUserNotFoundError,
   BathroomPersistenceService,
 } from './bathroom.persistence.service';
 import { logError } from '../shared/logger/error-logging';
@@ -81,7 +82,7 @@ bathroomController.post('/timer/start', (req: RequestWithAuthSession, res) => {
         res.status(409).json({ error: 'Active timer already exists' });
         return;
       }
-      if (e instanceof ActiveTimerNotFoundError) {
+      if (e instanceof BathroomUserNotFoundError) {
         res.status(404).json({ error: 'User not found' });
         return;
       }

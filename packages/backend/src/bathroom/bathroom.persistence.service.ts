@@ -26,6 +26,12 @@ export class ActiveTimerNotFoundError extends Error {
   }
 }
 
+export class BathroomUserNotFoundError extends Error {
+  public constructor() {
+    super('Bathroom user not found');
+  }
+}
+
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
@@ -80,7 +86,7 @@ export class BathroomPersistenceService {
   public async startTimer(slackId: string): Promise<BathroomTimer> {
     const user = await this.getUserBySlackId(slackId);
     if (!user) {
-      throw new ActiveTimerNotFoundError();
+      throw new BathroomUserNotFoundError();
     }
 
     const timerRepo = getRepository(BathroomTimer);
