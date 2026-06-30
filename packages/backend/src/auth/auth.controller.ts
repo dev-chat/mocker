@@ -42,6 +42,14 @@ function getOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function getRecordString(record: Record<string, unknown> | undefined, key: string): string | undefined {
+  return record ? getOptionalString(record[key]) : undefined;
+}
+
 function isAllowedWorkspace(identityResponse: UsersIdentityResponse): boolean {
   const allowedTeam = process.env.ALLOWED_TEAM_DOMAIN;
   if (!allowedTeam) {
@@ -158,11 +166,12 @@ authController.get('/slack/callback', (req, res) => {
     }
 
     const userPayload = identityResponse.data.user;
-    const displayName = userPayload?.name || getOptionalString(Reflect.get(userPayload ?? {}, 'real_name')) || userId;
+    const userPayloadRecord = isRecord(userPayload) ? userPayload : undefined;
+    const displayName = userPayload?.name || getRecordString(userPayloadRecord, 'real_name') || userId;
     const avatarUrl =
-      getOptionalString(Reflect.get(userPayload ?? {}, 'image_192')) ??
-      getOptionalString(Reflect.get(userPayload ?? {}, 'image_72')) ??
-      getOptionalString(Reflect.get(userPayload ?? {}, 'image_48')) ??
+      getRecordString(userPayloadRecord, 'image_192') ??
+      getRecordString(userPayloadRecord, 'image_72') ??
+      getRecordString(userPayloadRecord, 'image_48') ??
       null;
 
     await bathroomPersistenceService.upsertUser({
