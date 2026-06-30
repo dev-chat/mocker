@@ -135,7 +135,10 @@ export class BathroomPersistenceService {
   public async getLeaderboardForDate(date: Date): Promise<BathroomLeaderboardEntry[]> {
     const rangeStart = startOfUtcDay(date);
     const rangeEnd = endOfUtcDay(date);
+    return this.getLeaderboardForRange(rangeStart, rangeEnd);
+  }
 
+  public async getLeaderboardForRange(rangeStart: Date, rangeEnd: Date): Promise<BathroomLeaderboardEntry[]> {
     const timers = await getRepository(BathroomTimer)
       .createQueryBuilder('timer')
       .innerJoinAndSelect('timer.user', 'user')
@@ -145,13 +148,40 @@ export class BathroomPersistenceService {
       .orderBy('timer.start_at', 'ASC')
       .getMany();
 
+    return this.buildLeaderboardEntries(timers, rangeStart, rangeEnd);
+  }
+
+  public async getLifetimeLeaderboard(): Promise<BathroomLeaderboardEntry[]> {
+    const timers = await getRepository(BathroomTimer)
+      .createQueryBuilder('timer')
+      .innerJoinAndSelect('timer.user', 'user')
+      .where('timer.end_at IS NOT NULL')
+      .orderBy('timer.start_at', 'ASC')
+      .getMany();
+
+    return this.buildLeaderboardEntries(timers);
+  }
+
+  private buildLeaderboardEntries(
+    timers: Array<
+      Pick<BathroomTimer, 'startAt' | 'endAt' | 'durationSeconds'> & {
+        user: Pick<BathroomUser, 'slackId' | 'displayName'>;
+      }
+    >,
+    rangeStart?: Date,
+    rangeEnd?: Date,
+  ): BathroomLeaderboardEntry[] {
+    const useOverlapWindow = !!rangeStart && !!rangeEnd;
+
     const totals = new Map<string, BathroomLeaderboardEntry>();
     for (const timer of timers) {
       if (!timer.endAt) {
         continue;
       }
 
-      const totalSeconds = overlapSeconds(timer.startAt, timer.endAt, rangeStart, rangeEnd);
+      const totalSeconds = useOverlapWindow
+        ? overlapSeconds(timer.startAt, timer.endAt, rangeStart, rangeEnd)
+        : (timer.durationSeconds ?? Math.round((timer.endAt.getTime() - timer.startAt.getTime()) / 1000));
       if (totalSeconds <= 0) {
         continue;
       }

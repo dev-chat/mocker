@@ -158,4 +158,38 @@ describe('BathroomPersistenceService', () => {
       { slackId: 'U1', displayName: 'Alice', totalSeconds: 75 },
     ]);
   });
+
+  it('builds a lifetime leaderboard using completed timer durations', async () => {
+    const service = new BathroomPersistenceService();
+    timerQueryBuilder.getMany.mockResolvedValue([
+      {
+        id: 1,
+        user: { slackId: 'U1', displayName: 'Alice' },
+        startAt: new Date('2026-06-30T00:00:00.000Z'),
+        endAt: new Date('2026-06-30T00:03:00.000Z'),
+        durationSeconds: 180,
+      },
+      {
+        id: 2,
+        user: { slackId: 'U2', displayName: 'Bob' },
+        startAt: new Date('2026-06-30T00:00:00.000Z'),
+        endAt: new Date('2026-06-30T00:01:00.000Z'),
+        durationSeconds: 60,
+      },
+      {
+        id: 3,
+        user: { slackId: 'U1', displayName: 'Alice' },
+        startAt: new Date('2026-06-30T00:05:00.000Z'),
+        endAt: new Date('2026-06-30T00:06:30.000Z'),
+        durationSeconds: 90,
+      },
+    ]);
+
+    const result = await service.getLifetimeLeaderboard();
+
+    expect(result).toEqual([
+      { slackId: 'U2', displayName: 'Bob', totalSeconds: 60 },
+      { slackId: 'U1', displayName: 'Alice', totalSeconds: 270 },
+    ]);
+  });
 });

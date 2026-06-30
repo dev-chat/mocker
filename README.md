@@ -56,6 +56,9 @@ Add these slash commands with their request URLs:
 - `/counter` → `<backend-url>/counter`
 - `/repstats` → `<backend-url>/rep/get`
 - `/walkie` → `<backend-url>/walkie`
+- `/start` → `<backend-url>/start`
+- `/stop` → `<backend-url>/stop`
+- `/bathroom` → `<backend-url>/bathroom`
 
 **Important:** Check `Escape Channels, users and links sent to your app` for all commands.
 
@@ -182,7 +185,12 @@ npm run dev -w @mocker/frontend
   - `POST /api/timer/start`
   - `POST /api/timer/stop`
   - `GET /api/leaderboard?date=YYYY-MM-DD`
+- Signed Slack slash commands can also manage the timer directly:
+  - `/start` starts the caller's timer
+  - `/stop` stops the caller's timer
+  - `/bathroom [daily|weekly|monthly|lifetime|all]` shows the requested leaderboard(s)
 - The daily bathroom leaderboard uses **UTC calendar days** and counts the overlapping portion of each completed timer within the selected UTC day.
+- Slack leaderboard ranges are also UTC-based; `/bathroom` defaults to showing daily, weekly, monthly, and lifetime sections sorted from least to most total bathroom time.
 - Only one active bathroom timer is allowed per Slack user at a time.
 
 ### 5. Testing

@@ -40,6 +40,7 @@ import { dashboardController } from './dashboard/dashboard.controller';
 import { traitController } from './trait/trait.controller';
 import { calendarController } from './calendar/calendar.controller';
 import { bathroomController } from './bathroom/bathroom.controller';
+import { bathroomCommandController } from './bathroom/bathroom.command.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -104,6 +105,7 @@ app.use('/dashboard', searchCors, searchRateLimit, authMiddleware, dashboardCont
 app.use('/calendar', searchCors, searchRateLimit, authMiddleware, calendarController);
 app.use('/api', searchCors, searchRateLimit, authMiddleware, bathroomController);
 app.use(signatureVerificationMiddleware);
+app.use(bathroomCommandController);
 app.use('/ai', aiController);
 app.use('/clap', clapController);
 app.use('/confess', confessionController);
