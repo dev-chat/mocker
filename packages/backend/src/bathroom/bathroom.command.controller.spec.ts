@@ -2,11 +2,14 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-const upsertUserMock = vi.fn();
-const startTimerMock = vi.fn();
-const stopTimerMock = vi.fn();
-const getLeaderboardForRangeMock = vi.fn();
-const getLifetimeLeaderboardMock = vi.fn();
+const { upsertUserMock, startTimerMock, stopTimerMock, getLeaderboardForRangeMock, getLifetimeLeaderboardMock } =
+  vi.hoisted(() => ({
+    upsertUserMock: vi.fn(),
+    startTimerMock: vi.fn(),
+    stopTimerMock: vi.fn(),
+    getLeaderboardForRangeMock: vi.fn(),
+    getLifetimeLeaderboardMock: vi.fn(),
+  }));
 
 vi.mock('../shared/middleware/suppression', async () => ({
   suppressedMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
@@ -19,13 +22,13 @@ vi.mock('./bathroom.persistence.service', async () => {
   return {
     ActiveTimerExistsError,
     ActiveTimerNotFoundError,
-    BathroomPersistenceService: classMock(() => ({
-      upsertUser: upsertUserMock,
-      startTimer: startTimerMock,
-      stopTimer: stopTimerMock,
-      getLeaderboardForRange: getLeaderboardForRangeMock,
-      getLifetimeLeaderboard: getLifetimeLeaderboardMock,
-    })),
+    BathroomPersistenceService: class BathroomPersistenceService {
+      public upsertUser = upsertUserMock;
+      public startTimer = startTimerMock;
+      public stopTimer = stopTimerMock;
+      public getLeaderboardForRange = getLeaderboardForRangeMock;
+      public getLifetimeLeaderboard = getLifetimeLeaderboardMock;
+    },
   };
 });
 
