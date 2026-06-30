@@ -4,6 +4,7 @@ import express from 'express';
 import Axios from 'axios';
 import type { OauthV2AccessResponse, UsersIdentityResponse } from '@slack/web-api';
 import { createSessionToken } from '../shared/utils/session-token';
+import { TOKEN_TTL_MS } from '../shared/utils/session-token.const';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { BathroomPersistenceService } from '../bathroom/bathroom.persistence.service';
@@ -23,7 +24,7 @@ const bathroomPersistenceService = new BathroomPersistenceService();
 function sessionCookieOptions(): { httpOnly: boolean; maxAge: number; sameSite: 'lax'; secure: boolean } {
   return {
     httpOnly: true,
-    maxAge: OAUTH_STATE_MAX_AGE_MS * 288,
+    maxAge: TOKEN_TTL_MS,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
   };
