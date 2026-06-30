@@ -6,16 +6,56 @@ import type { OauthV2AccessResponse, UsersIdentityResponse } from '@slack/web-ap
 import { createSessionToken } from '../shared/utils/session-token';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
+import { BathroomPersistenceService } from '../bathroom/bathroom.persistence.service';
 import {
   SLACK_AUTH_URL,
   SLACK_TOKEN_URL,
   SLACK_IDENTITY_URL,
   OAUTH_STATE_COOKIE,
   OAUTH_STATE_MAX_AGE_MS,
+  SESSION_COOKIE,
 } from './auth.const';
 
 export const authController: Router = express.Router();
 const authLogger = logger.child({ module: 'AuthController' });
+const bathroomPersistenceService = new BathroomPersistenceService();
+
+function sessionCookieOptions(): { httpOnly: boolean; maxAge: number; sameSite: 'lax'; secure: boolean } {
+  return {
+    httpOnly: true,
+    maxAge: OAUTH_STATE_MAX_AGE_MS * 288,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  };
+}
+
+function sessionCookieClearOptions(): { httpOnly: boolean; sameSite: 'lax'; secure: boolean } {
+  return {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  };
+}
+
+function getOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function isAllowedWorkspace(identityResponse: UsersIdentityResponse): boolean {
+  const allowedTeam = process.env.ALLOWED_TEAM_DOMAIN;
+  if (!allowedTeam) {
+    return true;
+  }
+
+  const teamId = identityResponse.team?.id;
+  const teamName = identityResponse.team?.name;
+
+  return (
+    teamId === allowedTeam ||
+    teamName === allowedTeam ||
+    `${teamName ?? ''}.slack.com` === allowedTeam.replace(/^https?:\/\//, '')
+  );
+}
 
 function getCookieValue(req: Request, name: string): string | undefined {
   const cookieHeader = req.headers.cookie;
@@ -107,7 +147,7 @@ authController.get('/slack/callback', (req, res) => {
 
     const teamId = identityResponse.data.team?.id;
     const userId = identityResponse.data.user?.id;
-    if (!identityResponse.data.ok || !userId || !teamId || teamId !== process.env.ALLOWED_TEAM_DOMAIN) {
+    if (!identityResponse.data.ok || !userId || !teamId || !isAllowedWorkspace(identityResponse.data)) {
       logError(authLogger, 'Unauthorized Slack workspace attempted to authenticate', {
         teamId,
         userId,
@@ -116,10 +156,30 @@ authController.get('/slack/callback', (req, res) => {
       return;
     }
 
+    const userPayload = identityResponse.data.user;
+    const displayName = userPayload?.name || getOptionalString(Reflect.get(userPayload ?? {}, 'real_name')) || userId;
+    const avatarUrl =
+      getOptionalString(Reflect.get(userPayload ?? {}, 'image_192')) ??
+      getOptionalString(Reflect.get(userPayload ?? {}, 'image_72')) ??
+      getOptionalString(Reflect.get(userPayload ?? {}, 'image_48')) ??
+      null;
+
+    await bathroomPersistenceService.upsertUser({
+      slackId: userId,
+      displayName,
+      avatarUrl,
+    });
+
     const sessionToken = createSessionToken(userId, teamId);
-    res.redirect(`${frontendUrl}#token=${sessionToken}`);
+    res.cookie(SESSION_COOKIE, sessionToken, sessionCookieOptions());
+    res.redirect(frontendUrl);
   })().catch((e: unknown) => {
     logError(authLogger, 'Slack OAuth callback failed', e, {});
     res.redirect(`${frontendUrl}?auth_error=server_error`);
   });
+});
+
+authController.post('/logout', (_req, res) => {
+  res.clearCookie(SESSION_COOKIE, sessionCookieClearOptions());
+  res.status(204).send();
 });

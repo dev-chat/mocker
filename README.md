@@ -70,7 +70,7 @@ Add these slash commands with their request URLs:
 
 #### OAuth & Permissions
 
-- **Redirect URLs (for search/auth UI):** `http://localhost:3001` (dev), or your deployed frontend URL
+- **Redirect URLs (for search/auth UI):** `http://localhost:3000/auth/slack/callback` (backend callback), plus your deployed callback URL when applicable. This must exactly match `SLACK_REDIRECT_URI`.
 - **Scopes:**
   - `admin`
   - `channels:history`
@@ -114,14 +114,15 @@ MUZZLE_BOT_TOKEN=xoxb-your-bot-token
 MUZZLE_BOT_USER_TOKEN=xoxp-your-user-token
 MUZZLE_BOT_SIGNING_SECRET=your-signing-secret
 
-# Slack OAuth (for search/auth UI login)
+# Slack OAuth (for search/auth UI login + bathroom timer)
 SLACK_CLIENT_ID=your-client-id
 SLACK_CLIENT_SECRET=your-client-secret
 SLACK_REDIRECT_URI=http://localhost:3000/auth/slack/callback
 
 # Search & Auth
 ALLOWED_TEAM_DOMAIN=your-workspace-domain
-SEARCH_FRONTEND_URL=http://localhost:3001
+SEARCH_FRONTEND_URL=http://localhost:5173
+SESSION_SECRET=generate-a-random-secret-key
 SEARCH_AUTH_SECRET=generate-a-random-secret-key
 
 # MySQL / TypeORM
@@ -162,7 +163,7 @@ VITE_API_BASE_URL=http://localhost:3000
 # Install dependencies (installs all workspaces)
 npm install
 
-# Start backend development server
+# Start backend development server (creates/updates bathroom_users and bathroom_timers when TYPEORM_SYNCHRONIZE=true)
 npm run start
 
 # In a new terminal, start frontend development server
@@ -171,6 +172,18 @@ npm run dev -w @mocker/frontend
 # Backend: http://localhost:3000
 # Frontend (search UI): http://localhost:5173
 ```
+
+### Bathroom Timer Notes
+
+- Authentication is handled by Slack OAuth at `GET /auth/slack` and `GET /auth/slack/callback`.
+- The callback now creates an HTTP-only session cookie for frontend requests. Set a strong `SESSION_SECRET` in every environment, and use `NODE_ENV=production` so the cookie is marked `Secure` outside local development.
+- Bathroom timer endpoints live under `/api`:
+  - `GET /api/me`
+  - `POST /api/timer/start`
+  - `POST /api/timer/stop`
+  - `GET /api/leaderboard?date=YYYY-MM-DD`
+- The daily bathroom leaderboard uses **UTC calendar days** and counts the overlapping portion of each completed timer within the selected UTC day.
+- Only one active bathroom timer is allowed per Slack user at a time.
 
 ### 5. Testing
 
@@ -245,11 +258,13 @@ docker logs <container-id> | jq .
 - **Reputation Tracking** - Rep stats, reactions, achievements
 - **Event Handling** - Real-time reactions, team join events, message history
 
-### Search & Auth System (New)
+### Search, Auth & Bathroom Timer
 
-- **OAuth Login** - Users authenticate via Slack to access the search UI
+- **OAuth Login** - Users authenticate via Slack to access the UI and bathroom timer
 - **Team-Scoped Search** - Messages are filtered by `teamId` to prevent cross-workspace leakage
-- **Session Tokens** - HMAC-signed custom session tokens (base64url payload + signature, not JWT), issued after OAuth callback, required for all search requests
+- **Cookie Sessions** - Slack OAuth now sets an HTTP-only session cookie for frontend requests, with bearer-token compatibility retained for existing clients
+- **Bathroom Timer** - Authenticated users can start or stop exactly one active bathroom timer and view their current timer state
+- **Daily Leaderboard** - The home page shows a per-day bathroom leaderboard sorted from least to most total bathroom time
 - **Rate Limiting** - Auth endpoints: 20/15min, Search endpoints: 60/1min
 
 ### AI Features (Optional)

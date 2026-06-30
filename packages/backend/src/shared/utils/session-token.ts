@@ -3,10 +3,10 @@ import { TOKEN_TTL_MS } from './session-token.const';
 import type { SessionPayload } from './session-token.model';
 
 function getSecret(): string {
-  const secret = process.env.SEARCH_AUTH_SECRET;
+  const secret = process.env.SESSION_SECRET ?? process.env.SEARCH_AUTH_SECRET;
   if (!secret) {
     throw new Error(
-      'SEARCH_AUTH_SECRET environment variable is not set. ' +
+      'SESSION_SECRET or SEARCH_AUTH_SECRET environment variable is not set. ' +
         'Session tokens cannot be created or verified without a secret.',
     );
   }

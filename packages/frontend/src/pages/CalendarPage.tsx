@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Plus, Save, Trash2 } from 'lucide-react';
-import { AUTH_TOKEN_KEY } from '@/app.const';
 import type {
   CalendarEventOccurrence,
   CalendarEventsResponse,
@@ -9,6 +8,7 @@ import type {
   FrontendRecurrenceRule,
 } from '@/app.model';
 import { API_BASE_URL } from '@/config';
+import { createAuthenticatedRequestInit } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -496,16 +496,14 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
     setError(null);
 
     try {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
       const params = new URLSearchParams({
         start: rangeStart.toISOString(),
         end: rangeEnd.toISOString(),
       });
-      const response = await fetch(`${API_BASE_URL}/calendar/events?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/calendar/events?${params.toString()}`,
+        createAuthenticatedRequestInit(),
+      );
 
       if (response.status === 401) {
         onLogout();
@@ -620,14 +618,12 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
     setError(null);
 
     try {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
       const response = await fetch(
         editingSeriesId ? `${API_BASE_URL}/calendar/events/${editingSeriesId}` : `${API_BASE_URL}/calendar/events`,
-        {
+        createAuthenticatedRequestInit({
           method: editingSeriesId ? 'PUT' : 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             title: form.title,
@@ -639,7 +635,7 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
             endsAt: endsAtDate ? endsAtDate.toISOString() : null,
             recurrence,
           }),
-        },
+        }),
       );
 
       if (response.status === 401) {
@@ -665,13 +661,12 @@ export function CalendarPage({ onLogout }: CalendarPageProps) {
     setError(null);
 
     try {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
-      const response = await fetch(`${API_BASE_URL}/calendar/events/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/calendar/events/${id}`,
+        createAuthenticatedRequestInit({
+          method: 'DELETE',
+        }),
+      );
 
       if (response.status === 401) {
         onLogout();

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { AUTH_TOKEN_KEY } from '@/app.const';
 import { API_BASE_URL } from '@/config';
 import type { PersonalContextResponse } from '@/app.model';
+import { createAuthenticatedRequestInit } from '@/lib/authFetch';
 
 export interface UsePersonalContextReturn {
   data: PersonalContextResponse | null;
@@ -24,11 +24,10 @@ export function usePersonalContext(onLogout: () => void): UsePersonalContextRetu
       setError(null);
 
       try {
-        const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
-        const response = await fetch(`${API_BASE_URL}/dashboard/personal-context`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: abortController.signal,
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/dashboard/personal-context`,
+          createAuthenticatedRequestInit({ signal: abortController.signal }),
+        );
 
         if (response.status === 401) {
           onLogoutRef.current();

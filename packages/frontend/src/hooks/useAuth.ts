@@ -1,8 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { AUTH_TOKEN_KEY } from '@/app.const';
+import { API_BASE_URL } from '@/config';
+import { createAuthenticatedRequestInit } from '@/lib/authFetch';
 
 export interface UseAuthReturn {
   isAuthenticated: boolean;
+  isLoading: boolean;
   authError: string | undefined;
   logout: (onLogout?: () => void) => void;
 }
@@ -25,7 +28,9 @@ function readInitialAuthError(): string | undefined {
 }
 
 export function useAuth(): UseAuthReturn {
-  const [isAuthenticated, setIsAuthenticated] = useState(readInitialAuthState);
+  const initialAuthState = readInitialAuthState();
+  const [isAuthenticated, setIsAuthenticated] = useState(initialAuthState);
+  const [isLoading, setIsLoading] = useState(!initialAuthState);
   const [authError, setAuthError] = useState<string | undefined>(readInitialAuthError);
 
   // Side effects only: clean up the URL after reading the token / error from it.
@@ -36,12 +41,45 @@ export function useAuth(): UseAuthReturn {
     }
   }, []);
 
+  useEffect(() => {
+    if (initialAuthState) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/me`, createAuthenticatedRequestInit());
+        if (!cancelled) {
+          setIsAuthenticated(response.ok);
+        }
+      } catch {
+        if (!cancelled) {
+          setIsAuthenticated(false);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialAuthState]);
+
   const logout = useCallback((onLogout?: () => void) => {
+    void fetch(`${API_BASE_URL}/auth/logout`, createAuthenticatedRequestInit({ method: 'POST' })).catch(
+      () => undefined,
+    );
     localStorage.removeItem(AUTH_TOKEN_KEY);
     setIsAuthenticated(false);
+    setIsLoading(false);
     setAuthError(undefined);
     onLogout?.();
   }, []);
 
-  return { isAuthenticated, authError, logout };
+  return { isAuthenticated, isLoading, authError, logout };
 }

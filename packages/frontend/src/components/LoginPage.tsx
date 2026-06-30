@@ -15,19 +15,19 @@ interface LoginPageProps {
 
 const FEATURES = [
   {
-    icon: Search,
-    title: 'Message Search',
-    description: 'Search every message your team has ever sent — filter by user, channel, or content in seconds.',
+    icon: Lock,
+    title: 'Slack Sign-In',
+    description: 'Use your Slack identity to securely sign in and keep your session active with an HTTP-only cookie.',
   },
   {
     icon: BarChart2,
-    title: 'Team Insights',
-    description: 'Coming soon: visual analytics that reveal how your workspace communicates over time.',
+    title: 'Bathroom Leaderboard',
+    description: 'Track bathroom breaks per day and compare totals on a least-to-most daily leaderboard.',
   },
   {
-    icon: Lock,
-    title: 'Secure by Default',
-    description: 'OAuth-powered sign-in via Slack keeps your data private and under your control.',
+    icon: Search,
+    title: 'Workspace Search',
+    description: 'Keep the existing Slack search and team insights features alongside the new bathroom timer.',
   },
 ];
 
@@ -52,13 +52,12 @@ export function LoginPage({ authError }: LoginPageProps) {
       {/* Hero */}
       <section className="flex-1 flex flex-col items-center justify-center px-6 py-24 text-center">
         <h1 className="text-5xl font-extrabold tracking-tight mb-4 max-w-3xl leading-tight">
-          Your Slack workspace,
+          Your Slack bathroom timer,
           <br />
-          searchable and insightful.
+          leaderboard included.
         </h1>
         <p className="text-xl text-muted-foreground max-w-xl mb-10">
-          Search through your team&apos;s entire message history and unlock insights about how your workspace
-          communicates.
+          Sign in with Slack, start or stop your personal timer, and see who spent the least time in the bathroom today.
         </p>
         {errorMessage && (
           <p className="text-destructive text-sm mb-4" role="alert">

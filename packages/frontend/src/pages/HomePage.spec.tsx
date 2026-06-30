@@ -37,6 +37,47 @@ const emptyData = {
   repLeaderboard: [],
 };
 
+const meResponse = {
+  user: {
+    slack_id: 'U1',
+    display_name: 'alice',
+    avatar_url: null,
+  },
+  active_timer: null,
+};
+
+const leaderboardResponse = [
+  { slack_id: 'U2', display_name: 'bob', total_seconds: 45 },
+  { slack_id: 'U1', display_name: 'alice', total_seconds: 120 },
+];
+
+function setupFetch(options?: {
+  dashboard?: typeof fullData;
+  me?: typeof meResponse;
+  bathroomLeaderboard?: typeof leaderboardResponse;
+}) {
+  const dashboard = options?.dashboard ?? fullData;
+  const me = options?.me ?? meResponse;
+  const bathroomLeaderboard = options?.bathroomLeaderboard ?? leaderboardResponse;
+
+  mockFetch.mockImplementation((input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/dashboard')) {
+      return Promise.resolve({ ok: true, status: 200, json: async () => dashboard });
+    }
+    if (url.includes('/api/me')) {
+      return Promise.resolve({ ok: true, status: 200, json: async () => me });
+    }
+    if (url.includes('/api/leaderboard')) {
+      return Promise.resolve({ ok: true, status: 200, json: async () => bathroomLeaderboard });
+    }
+    if (url.includes('/api/timer/')) {
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+    }
+    return Promise.resolve({ ok: false, status: 404, statusText: 'Not Found' });
+  });
+}
+
 beforeEach(() => {
   localStorage.clear();
   mockFetch.mockReset();
@@ -44,9 +85,9 @@ beforeEach(() => {
 
 describe('HomePage', () => {
   it('shows the Home heading', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    setupFetch();
     render(<HomePage onLogout={vi.fn()} />);
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole('heading', { name: /^home$/i })).toBeInTheDocument());
     expect(screen.getByRole('heading', { name: /^home$/i })).toBeInTheDocument();
   });
 
@@ -59,7 +100,7 @@ describe('HomePage', () => {
   });
 
   it('renders stats after data is loaded', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    setupFetch();
     render(<HomePage onLogout={vi.fn()} />);
     await waitFor(() => expect(screen.getByText('42')).toBeInTheDocument());
     expect(screen.getByText('10')).toBeInTheDocument();
@@ -67,7 +108,7 @@ describe('HomePage', () => {
   });
 
   it('renders chart sections after data is loaded', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    setupFetch();
     render(<HomePage onLogout={vi.fn()} />);
     await waitFor(() => expect(screen.getByText('My Message Activity')).toBeInTheDocument());
     expect(screen.getByText('My Top Channels')).toBeInTheDocument();
@@ -77,7 +118,7 @@ describe('HomePage', () => {
   });
 
   it('shows "no data" empty states when all arrays are empty', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => emptyData });
+    setupFetch({ dashboard: emptyData });
     render(<HomePage onLogout={vi.fn()} />);
     await waitFor(() => expect(screen.getByText('No activity data available yet.')).toBeInTheDocument());
     expect(screen.getByText('No channel data available yet.')).toBeInTheDocument();
@@ -87,7 +128,7 @@ describe('HomePage', () => {
   });
 
   it('shows "—" for null sentiment in the stat card', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => emptyData });
+    setupFetch({ dashboard: emptyData });
     render(<HomePage onLogout={vi.fn()} />);
     await waitFor(() => {
       const dashes = screen.getAllByText('—');
@@ -100,28 +141,52 @@ describe('HomePage', () => {
       ...fullData,
       myStats: { totalMessages: 5, rep: -3, avgSentiment: -0.5 },
     };
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => data });
+    setupFetch({ dashboard: data });
     render(<HomePage onLogout={vi.fn()} />);
     await waitFor(() => expect(screen.getByText('-0.50')).toBeInTheDocument());
   });
 
   it('shows an error banner when the fetch fails', async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 500, statusText: 'Internal Server Error' });
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: false, status: 500, statusText: 'Internal Server Error' });
+      }
+      if (url.includes('/api/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => meResponse });
+      }
+      if (url.includes('/api/leaderboard')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => leaderboardResponse });
+      }
+      return Promise.resolve({ ok: false, status: 404, statusText: 'Not Found' });
+    });
     render(<HomePage onLogout={vi.fn()} />);
     await waitFor(() => expect(screen.getByText(/failed to load dashboard/i)).toBeInTheDocument());
   });
 
   it('calls onLogout when the fetch returns 401', async () => {
     const onLogout = vi.fn();
-    mockFetch.mockResolvedValue({ ok: false, status: 401 });
+    mockFetch.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/dashboard')) {
+        return Promise.resolve({ ok: false, status: 401, statusText: 'Unauthorized' });
+      }
+      if (url.includes('/api/me')) {
+        return Promise.resolve({ ok: false, status: 401, statusText: 'Unauthorized' });
+      }
+      if (url.includes('/api/leaderboard')) {
+        return Promise.resolve({ ok: false, status: 401, statusText: 'Unauthorized' });
+      }
+      return Promise.resolve({ ok: false, status: 404, statusText: 'Not Found' });
+    });
     render(<HomePage onLogout={onLogout} />);
-    await waitFor(() => expect(onLogout).toHaveBeenCalledOnce());
+    await waitFor(() => expect(onLogout).toHaveBeenCalled());
   });
 
   it('renders all five period selector buttons with Weekly active by default', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    setupFetch();
     render(<HomePage onLogout={vi.fn()} />);
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Weekly' })).toBeInTheDocument());
     for (const label of ['Daily', 'Weekly', 'Monthly', 'Yearly', 'All Time']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     }
@@ -129,54 +194,86 @@ describe('HomePage', () => {
   });
 
   it('switches to Monthly period and re-fetches when the Monthly button is clicked', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    setupFetch();
     render(<HomePage onLogout={vi.fn()} />);
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Monthly' })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Monthly' }));
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
-    const [url] = mockFetch.mock.calls[1] as [string, RequestInit];
+    await waitFor(() =>
+      expect(mockFetch.mock.calls.filter((call) => String(call[0]).includes('/dashboard')).length).toBe(2),
+    );
+    const dashboardCalls = mockFetch.mock.calls.filter((call) => String(call[0]).includes('/dashboard'));
+    const [url] = dashboardCalls[1] as [string, RequestInit];
     expect(url).toContain('period=monthly');
     expect(screen.getByRole('button', { name: 'Monthly' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Weekly' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('uses "the last 24 hours" in descriptions when Daily is selected', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    setupFetch();
     render(<HomePage onLogout={vi.fn()} />);
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Daily' })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(mockFetch.mock.calls.filter((call) => String(call[0]).includes('/dashboard')).length).toBe(2),
+    );
     expect(screen.getAllByText(/the last 24 hours/).length).toBeGreaterThan(0);
-    const [url] = mockFetch.mock.calls[1] as [string, RequestInit];
+    const dashboardCalls = mockFetch.mock.calls.filter((call) => String(call[0]).includes('/dashboard'));
+    const [url] = dashboardCalls[1] as [string, RequestInit];
     expect(url).toContain('period=daily');
   });
 
   it('uses "the last 365 days" in descriptions when Yearly is selected', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    setupFetch();
     render(<HomePage onLogout={vi.fn()} />);
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Yearly' })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Yearly' }));
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(mockFetch.mock.calls.filter((call) => String(call[0]).includes('/dashboard')).length).toBe(2),
+    );
     expect(screen.getAllByText(/the last 365 days/).length).toBeGreaterThan(0);
-    const [url] = mockFetch.mock.calls[1] as [string, RequestInit];
+    const dashboardCalls = mockFetch.mock.calls.filter((call) => String(call[0]).includes('/dashboard'));
+    const [url] = dashboardCalls[1] as [string, RequestInit];
     expect(url).toContain('period=yearly');
   });
 
   it('uses "all time" in descriptions when All Time is selected', async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => fullData });
+    setupFetch();
     render(<HomePage onLogout={vi.fn()} />);
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'All Time' })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'All Time' }));
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(mockFetch.mock.calls.filter((call) => String(call[0]).includes('/dashboard')).length).toBe(2),
+    );
     expect(screen.getAllByText(/all time/).length).toBeGreaterThan(0);
-    const [url] = mockFetch.mock.calls[1] as [string, RequestInit];
+    const dashboardCalls = mockFetch.mock.calls.filter((call) => String(call[0]).includes('/dashboard'));
+    const [url] = dashboardCalls[1] as [string, RequestInit];
     expect(url).toContain('period=allTime');
   });
 
   it('shows zero sentiment as neutral (no plus or minus prefix)', async () => {
     const data = { ...fullData, myStats: { totalMessages: 1, rep: 0, avgSentiment: 0 } };
-    mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => data });
+    setupFetch({ dashboard: data });
     render(<HomePage onLogout={vi.fn()} />);
     await waitFor(() => expect(screen.getByText('0.00')).toBeInTheDocument());
+  });
+
+  it('renders the bathroom leaderboard and toggles the timer button', async () => {
+    setupFetch({
+      me: {
+        ...meResponse,
+        active_timer: {
+          id: 4,
+          start_at: '2026-06-30T12:00:00.000Z',
+          end_at: null,
+          duration_seconds: null,
+        },
+      },
+    });
+    render(<HomePage onLogout={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByText('Bathroom Timer')).toBeInTheDocument());
+    expect(screen.getByText('Daily Bathroom Leaderboard')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /stop timer/i })).toBeInTheDocument();
+    expect(screen.getByText('bob')).toBeInTheDocument();
   });
 });

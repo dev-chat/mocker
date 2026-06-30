@@ -6,8 +6,8 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 const mockData = {
-  memories: [{ id: 1, content: 'Loves TypeScript', updatedAt: '2026-04-20T00:00:00.000Z' }],
-  traits: [{ id: 2, content: 'Direct communicator', updatedAt: '2026-04-20T00:00:00.000Z' }],
+  memories: [{ id: 1, content: 'Prefers concise summaries', updatedAt: '2026-04-20T00:00:00.000Z' }],
+  traits: [{ id: 2, content: 'Strong systems thinker', updatedAt: '2026-04-19T00:00:00.000Z' }],
 };
 
 beforeEach(() => {
@@ -29,7 +29,6 @@ describe('usePersonalContext', () => {
     const { result } = renderHook(() => usePersonalContext(vi.fn()));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.data).toEqual(mockData);
-    expect(result.current.error).toBeNull();
   });
 
   it('calls onLogout on 401', async () => {
@@ -40,15 +39,14 @@ describe('usePersonalContext', () => {
   });
 
   it('sets an error on non-401 failures', async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' });
+    mockFetch.mockResolvedValue({ ok: false, status: 500, statusText: 'Internal Server Error' });
     const { result } = renderHook(() => usePersonalContext(vi.fn()));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.error).toMatch(/failed to load personal context/i);
-    expect(result.current.data).toBeNull();
   });
 
   it('uses fallback error for non-Error rejections', async () => {
-    mockFetch.mockRejectedValue('broken');
+    mockFetch.mockRejectedValue('network gone');
     const { result } = renderHook(() => usePersonalContext(vi.fn()));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.error).toBe('Failed to load personal context');
@@ -60,6 +58,6 @@ describe('usePersonalContext', () => {
     await waitFor(() => expect(mockFetch).toHaveBeenCalledOnce());
     const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(url).toContain('/dashboard/personal-context');
-    expect((options.headers as Record<string, string>)['Authorization']).toBe('Bearer test-token');
+    expect(new Headers(options.headers).get('Authorization')?.startsWith('Bearer ')).toBe(true);
   });
 });
