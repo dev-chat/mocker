@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CSSProperties, ElementType } from 'react';
 import {
   BarChart,
@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button';
 import { useDashboard } from '@/hooks/useDashboard';
 import type { HomePageProps } from '@/pages/HomePage.model';
 import type { TimePeriod } from '@/app.model';
+import { API_BASE_URL } from '@/config';
+import { createAuthenticatedRequestInit } from '@/lib/authFetch';
 
 const CHART_COLORS = ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'];
 const POSITIVE_COLOR = '#22c55e';
@@ -64,6 +66,46 @@ function formatDayLabel(isoDate: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+interface BathroomUser {
+  slack_id: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
+interface BathroomTimer {
+  id: number;
+  start_at: string;
+  end_at: string | null;
+  duration_seconds: number | null;
+}
+
+interface BathroomMeResponse {
+  user: BathroomUser;
+  active_timer: BathroomTimer | null;
+}
+
+interface BathroomLeaderboardEntry {
+  slack_id: string;
+  display_name: string;
+  total_seconds: number;
+}
+
+function todayUtcDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatDuration(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 interface StatCardProps {
   icon: ElementType;
   label: string;
@@ -97,7 +139,108 @@ function EmptyState({ message }: { message: string }) {
 
 export function HomePage({ onLogout }: HomePageProps) {
   const [period, setPeriod] = useState<TimePeriod>('weekly');
+  const [leaderboardDate, setLeaderboardDate] = useState(todayUtcDateString);
+  const [bathroomUser, setBathroomUser] = useState<BathroomUser | null>(null);
+  const [activeTimer, setActiveTimer] = useState<BathroomTimer | null>(null);
+  const [dailyLeaderboard, setDailyLeaderboard] = useState<BathroomLeaderboardEntry[]>([]);
+  const [bathroomError, setBathroomError] = useState<string | null>(null);
+  const [isBathroomLoading, setIsBathroomLoading] = useState(true);
+  const [isTimerSubmitting, setIsTimerSubmitting] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const { data, isLoading, error } = useDashboard(onLogout, period);
+
+  useEffect(() => {
+    if (!activeTimer) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [activeTimer]);
+
+  useEffect(() => {
+    if (!activeTimer) {
+      setNowMs(Date.now());
+    }
+  }, [activeTimer]);
+
+  const loadBathroomData = useCallback(
+    async (date: string) => {
+      setIsBathroomLoading(true);
+      setBathroomError(null);
+
+      try {
+        const [meResponse, leaderboardResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/me`, createAuthenticatedRequestInit()),
+          fetch(`${API_BASE_URL}/api/leaderboard?date=${encodeURIComponent(date)}`, createAuthenticatedRequestInit()),
+        ]);
+
+        if (meResponse.status === 401 || meResponse.status === 404 || leaderboardResponse.status === 401) {
+          onLogout();
+          return;
+        }
+
+        if (!meResponse.ok) {
+          throw new Error('Failed to load bathroom timer state');
+        }
+
+        if (!leaderboardResponse.ok) {
+          throw new Error('Failed to load bathroom leaderboard');
+        }
+
+        const me = (await meResponse.json()) as BathroomMeResponse;
+        const leaderboard = (await leaderboardResponse.json()) as BathroomLeaderboardEntry[];
+        setBathroomUser(me.user);
+        setActiveTimer(me.active_timer);
+        setDailyLeaderboard(leaderboard);
+      } catch (fetchError) {
+        setBathroomError(fetchError instanceof Error ? fetchError.message : 'Failed to load bathroom timer data');
+      } finally {
+        setIsBathroomLoading(false);
+      }
+    },
+    [onLogout],
+  );
+
+  useEffect(() => {
+    void loadBathroomData(leaderboardDate);
+  }, [leaderboardDate, loadBathroomData]);
+
+  const activeTimerElapsedSeconds = useMemo(() => {
+    if (!activeTimer) {
+      return 0;
+    }
+
+    return Math.max(0, Math.floor((nowMs - new Date(activeTimer.start_at).getTime()) / 1000));
+  }, [activeTimer, nowMs]);
+
+  const handleTimerToggle = async () => {
+    setIsTimerSubmitting(true);
+    setBathroomError(null);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/timer/${activeTimer ? 'stop' : 'start'}`,
+        createAuthenticatedRequestInit({ method: 'POST' }),
+      );
+
+      if (response.status === 401) {
+        onLogout();
+        return;
+      }
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({ error: 'Request failed' }))) as { error?: string };
+        throw new Error(payload.error ?? 'Request failed');
+      }
+
+      await loadBathroomData(leaderboardDate);
+    } catch (toggleError) {
+      setBathroomError(toggleError instanceof Error ? toggleError.message : 'Failed to update bathroom timer');
+    } finally {
+      setIsTimerSubmitting(false);
+    }
+  };
 
   const avgSentiment = data?.myStats.avgSentiment ?? null;
   const sentimentDisplay =
@@ -133,6 +276,90 @@ export function HomePage({ onLogout }: HomePageProps) {
           </CardContent>
         </Card>
       )}
+
+      {bathroomError && (
+        <Card className="border-destructive/50">
+          <CardContent className="flex items-center gap-3 pt-6">
+            <AlertCircle className="h-5 w-5 text-destructive shrink-0" aria-hidden="true" />
+            <p className="text-sm text-destructive">{bathroomError}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <section aria-label="Bathroom timer and leaderboard">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Bathroom Timer</CardTitle>
+              <CardDescription>
+                {bathroomUser
+                  ? `Signed in as ${bathroomUser.display_name}`
+                  : 'Track one active bathroom timer at a time.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {bathroomUser?.avatar_url && (
+                <img
+                  src={bathroomUser.avatar_url}
+                  alt={bathroomUser.display_name}
+                  className="h-12 w-12 rounded-full border object-cover"
+                />
+              )}
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">
+                  {activeTimer
+                    ? `Active since ${new Date(activeTimer.start_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                    : 'No bathroom timer is active right now.'}
+                </p>
+                <p className="mt-2 text-3xl font-semibold">
+                  {activeTimer ? formatDuration(activeTimerElapsedSeconds) : isBathroomLoading ? 'Loading…' : '00:00'}
+                </p>
+              </div>
+              <Button onClick={() => void handleTimerToggle()} disabled={isBathroomLoading || isTimerSubmitting}>
+                {isTimerSubmitting ? 'Saving…' : activeTimer ? 'Stop timer' : 'Start timer'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily Bathroom Leaderboard</CardTitle>
+              <CardDescription>Sorted from least to most bathroom time for the selected UTC day.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <label className="block text-sm font-medium">
+                <span className="mb-2 block">Day</span>
+                <input
+                  type="date"
+                  value={leaderboardDate}
+                  onChange={(event) => setLeaderboardDate(event.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+              {isBathroomLoading ? (
+                <EmptyState message="Loading bathroom leaderboard…" />
+              ) : !dailyLeaderboard.length ? (
+                <EmptyState message="No bathroom sessions recorded for this day yet." />
+              ) : (
+                <ol className="space-y-3">
+                  {dailyLeaderboard.map((entry, index) => (
+                    <li
+                      key={`${entry.slack_id}-${index}`}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
+                      <div>
+                        <p className="font-medium">{entry.display_name}</p>
+                        <p className="text-xs text-muted-foreground">{entry.slack_id}</p>
+                      </div>
+                      <span className="font-mono text-sm">{formatDuration(entry.total_seconds)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
       {/* Stats summary row */}
       <section aria-label="Your stats">

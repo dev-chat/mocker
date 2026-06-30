@@ -7,6 +7,13 @@ vi.mock('axios');
 vi.mock('../shared/utils/session-token', async () => ({
   createSessionToken: vi.fn().mockReturnValue('mock-session-token'),
 }));
+const upsertUserMock = vi.fn();
+
+vi.mock('../bathroom/bathroom.persistence.service', async () => ({
+  BathroomPersistenceService: classMock(() => ({
+    upsertUser: upsertUserMock,
+  })),
+}));
 
 import { authController } from './auth.controller';
 
@@ -22,6 +29,7 @@ describe('authController', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    upsertUserMock.mockResolvedValue(undefined);
     process.env = {
       ...OLD_ENV,
       SLACK_CLIENT_ID: 'test-client-id',
@@ -72,14 +80,14 @@ describe('authController', () => {
       expect(res.status).toBe(500);
     });
 
-    it('redirects to frontend with token in hash on successful OAuth', async () => {
+    it('sets a session cookie and redirects to frontend home on successful OAuth', async () => {
       (Axios.post as Mock).mockResolvedValue({
         data: { ok: true, authed_user: { id: 'U123', access_token: 'xoxp-token' } },
       });
       (Axios.get as Mock).mockResolvedValue({
         data: {
           ok: true,
-          user: { id: 'U123', name: 'alice' },
+          user: { id: 'U123', name: 'alice', image_72: 'https://example.com/alice.png' },
           team: { name: 'T123', id: 'T123' },
         },
       });
@@ -90,7 +98,15 @@ describe('authController', () => {
         .query({ code: 'valid-code', state: TEST_STATE });
 
       expect(res.status).toBe(302);
-      expect(res.headers.location).toContain('#token=mock-session-token');
+      expect(res.headers.location).toBe('http://localhost:5173');
+      expect(res.headers['set-cookie']).toEqual(
+        expect.arrayContaining([expect.stringContaining('mocker_session=mock-session-token')]),
+      );
+      expect(upsertUserMock).toHaveBeenCalledWith({
+        slackId: 'U123',
+        displayName: 'alice',
+        avatarUrl: 'https://example.com/alice.png',
+      });
     });
 
     it('redirects with auth_error=access_denied when state cookie is missing', async () => {
@@ -210,6 +226,17 @@ describe('authController', () => {
         .query({ code: 'throw-code', state: TEST_STATE });
       expect(res.status).toBe(302);
       expect(res.headers.location).toContain('auth_error=server_error');
+    });
+
+    describe('POST /logout', () => {
+      it('clears the session cookie', async () => {
+        const res = await request(app).post('/logout');
+
+        expect(res.status).toBe(204);
+        expect(res.headers['set-cookie']).toEqual(
+          expect.arrayContaining([expect.stringContaining('mocker_session=;')]),
+        );
+      });
     });
   });
 });

@@ -4,10 +4,11 @@ import { SearchFiltersCard } from '@/components/SearchFiltersCard';
 import { SearchResultsCard } from '@/components/SearchResultsCard';
 import type { Message, SearchFiltersResponse, SearchMessagesResponse, SortKey, SortDirection } from '@/app.model';
 import type { ActiveFilter } from '@/components/SearchFiltersCard.model';
-import { AUTH_TOKEN_KEY, PAGE_SIZE } from '@/app.const';
+import { PAGE_SIZE } from '@/app.const';
 import { API_BASE_URL } from '@/config';
 import { getDisplayedMessages } from '@/app.helpers';
 import type { MessageSearchPageProps } from '@/pages/MessageSearchPage.model';
+import { createAuthenticatedRequestInit } from '@/lib/authFetch';
 
 export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
   const [userName, setUserName] = useState('');
@@ -69,11 +70,10 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
       params.set('offset', String((page - 1) * PAGE_SIZE));
 
       try {
-        const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
-        const response = await fetch(`${API_BASE_URL}/search/messages?${params.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: abortController.signal,
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/search/messages?${params.toString()}`,
+          createAuthenticatedRequestInit({ signal: abortController.signal }),
+        );
         if (response.status === 401) {
           onLogout();
           return;
@@ -121,10 +121,7 @@ export function MessageSearchPage({ onLogout }: MessageSearchPageProps) {
   const loadSearchFilters = useCallback(async () => {
     setIsFiltersLoading(true);
     try {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
-      const response = await fetch(`${API_BASE_URL}/search/filters`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await fetch(`${API_BASE_URL}/search/filters`, createAuthenticatedRequestInit());
       if (response.status === 401) {
         onLogout();
         return;

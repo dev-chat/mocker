@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { AUTH_TOKEN_KEY } from '@/app.const';
 import { API_BASE_URL } from '@/config';
 import type { DashboardResponse, TimePeriod } from '@/app.model';
+import { createAuthenticatedRequestInit } from '@/lib/authFetch';
 
 export interface UseDashboardReturn {
   data: DashboardResponse | null;
@@ -24,11 +24,10 @@ export function useDashboard(onLogout: () => void, period: TimePeriod): UseDashb
       setError(null);
 
       try {
-        const token = localStorage.getItem(AUTH_TOKEN_KEY) ?? '';
-        const response = await fetch(`${API_BASE_URL}/dashboard?period=${encodeURIComponent(period)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: abortController.signal,
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/dashboard?period=${encodeURIComponent(period)}`,
+          createAuthenticatedRequestInit({ signal: abortController.signal }),
+        );
 
         if (response.status === 401) {
           onLogoutRef.current();

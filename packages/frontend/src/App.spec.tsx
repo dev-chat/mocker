@@ -57,19 +57,22 @@ const waitForSearchFiltersLoaded = async () => {
 beforeEach(() => {
   localStorage.clear();
   mockFetch.mockReset();
+  mockFetch.mockResolvedValue({ ok: false, status: 401, statusText: 'Unauthorized' });
   window.history.replaceState({}, '', '/');
 });
 
 describe('App – unauthenticated state', () => {
-  it('renders the LoginPage when no token is present', () => {
+  it('renders the LoginPage when no token is present', async () => {
     render(<App />);
-    expect(screen.getByRole('link', { name: /sign in with slack/i })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('link', { name: /sign in with slack/i })).toBeInTheDocument());
   });
 
-  it('reads an auth_error from the URL and passes it to LoginPage', () => {
+  it('reads an auth_error from the URL and passes it to LoginPage', async () => {
     window.history.replaceState({}, '', '/?auth_error=unauthorized_workspace');
     render(<App />);
-    expect(screen.getByText(/only members of the dabros2016\.slack\.com workspace/i)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText(/only members of the dabros2016\.slack\.com workspace/i)).toBeInTheDocument(),
+    );
   });
 });
 
@@ -112,11 +115,11 @@ describe('App – authenticated state', () => {
     });
   });
 
-  it('clears the token and returns to LoginPage on Sign out click', () => {
+  it('clears the token and returns to LoginPage on Sign out click', async () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /sign out/i }));
     expect(localStorage.getItem('muzzle.lol-auth-token')).toBeNull();
-    expect(screen.getByRole('link', { name: /sign in with slack/i })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('link', { name: /sign in with slack/i })).toBeInTheDocument());
   });
 
   it('shows active filter badges when inputs have values', async () => {

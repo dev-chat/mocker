@@ -7,6 +7,7 @@ type AuthReq = Parameters<typeof authMiddleware>[0];
 type AuthRes = Parameters<typeof authMiddleware>[1];
 
 const makeReq = (authorization?: string): AuthReq => ({ headers: { authorization } }) as AuthReq;
+const makeCookieReq = (cookie?: string): AuthReq => ({ headers: { cookie } }) as AuthReq;
 
 const makeRes = (): AuthRes => {
   const res = {
@@ -62,6 +63,18 @@ describe('authMiddleware', () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it('calls next for a valid session cookie', () => {
+    const token = createSessionToken('U1', 'T1');
+    const req = makeCookieReq(`mocker_session=${token}`);
+    const res = makeRes();
+    const next = vi.fn() as unknown as NextFunction;
+
+    authMiddleware(req as Request, res as Response, next);
+
+    expect(next).toHaveBeenCalled();
+    expect((req as Request & { authSession?: { userId?: string } }).authSession?.userId).toBe('U1');
   });
 
   it('returns 401 when Authorization header does not start with Bearer', () => {

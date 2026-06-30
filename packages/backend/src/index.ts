@@ -39,6 +39,8 @@ import { authMiddleware } from './shared/middleware/authMiddleware';
 import { dashboardController } from './dashboard/dashboard.controller';
 import { traitController } from './trait/trait.controller';
 import { calendarController } from './calendar/calendar.controller';
+import { bathroomController } from './bathroom/bathroom.controller';
+import { bathroomCommandController } from './bathroom/bathroom.command.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -53,6 +55,7 @@ if (!SEARCH_UI_ORIGIN) {
 
 const searchCors = cors({
   origin: SEARCH_UI_ORIGIN || false,
+  credentials: true,
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Authorization', 'Content-Type'],
   optionsSuccessStatus: 200,
@@ -62,6 +65,7 @@ app.options('/auth*', searchCors);
 app.options('/search*', searchCors);
 app.options('/dashboard*', searchCors);
 app.options('/calendar*', searchCors);
+app.options('/api*', searchCors);
 
 app.use(
   bodyParser.urlencoded({
@@ -99,7 +103,9 @@ app.use('/auth', searchCors, authRateLimit, authController);
 app.use('/search', searchCors, searchRateLimit, authMiddleware, searchController);
 app.use('/dashboard', searchCors, searchRateLimit, authMiddleware, dashboardController);
 app.use('/calendar', searchCors, searchRateLimit, authMiddleware, calendarController);
+app.use('/api', searchCors, searchRateLimit, authMiddleware, bathroomController);
 app.use(signatureVerificationMiddleware);
+app.use(bathroomCommandController);
 app.use('/ai', aiController);
 app.use('/clap', clapController);
 app.use('/confess', confessionController);

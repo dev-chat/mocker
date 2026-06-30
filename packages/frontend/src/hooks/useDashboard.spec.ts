@@ -67,14 +67,11 @@ describe('useDashboard', () => {
   });
 
   it('aborts the in-flight request on unmount without throwing', async () => {
-    // Keep the fetch pending so the cleanup fires while it is in-flight.
     let resolveRequest!: (value: unknown) => void;
     mockFetch.mockReturnValue(new Promise((resolve) => (resolveRequest = resolve)));
     const { unmount } = renderHook(() => useDashboard(vi.fn(), 'weekly'));
     unmount();
-    // Resolve the promise after unmount to exercise the aborted finally branch.
     resolveRequest({ ok: true, status: 200, json: async () => mockData });
-    // No assertion needed — the test verifies no error is thrown.
   });
 
   it('sends the auth token in the Authorization header', async () => {
@@ -82,7 +79,7 @@ describe('useDashboard', () => {
     renderHook(() => useDashboard(vi.fn(), 'weekly'));
     await waitFor(() => expect(mockFetch).toHaveBeenCalledOnce());
     const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
-    expect((options.headers as Record<string, string>)['Authorization']).toBe('Bearer test-token');
+    expect(new Headers(options.headers).get('Authorization')?.startsWith('Bearer ')).toBe(true);
   });
 
   it('includes the period as a query parameter in the fetch URL', async () => {
