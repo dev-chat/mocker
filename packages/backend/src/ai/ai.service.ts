@@ -196,12 +196,12 @@ export class AIService {
     return this.openAi.responses
       .create({
         model: GPT_MODEL,
+        reasoning: { effort: 'medium' },
         tools: [{ type: 'web_search_preview' }],
         tool_choice: 'auto',
         instructions: GENERAL_TEXT_INSTRUCTIONS,
         input: text,
         user: `${userId}-DaBros2016`,
-        reasoning: { effort: 'medium' },
       })
       .then((x) => {
         return extractAndParseOpenAiResponse(x);
