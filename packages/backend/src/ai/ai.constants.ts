@@ -1,4 +1,4 @@
-export const GPT_MODEL = 'gpt-5.4-mini-2026-03-17';
+export const GPT_MODEL = 'gpt-5.6-terra';
 export const GPT_IMAGE_MODEL = 'dall-e-3';
 
 export const MAX_AI_REQUESTS_PER_DAY = 5;
