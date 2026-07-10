@@ -202,7 +202,6 @@ export class AIService {
         instructions: GENERAL_TEXT_INSTRUCTIONS,
         input: text,
         user: `${userId}-DaBros2016`,
-        reasoning: { effort: 'medium' },
       })
       .then((x) => {
         return extractAndParseOpenAiResponse(x);
