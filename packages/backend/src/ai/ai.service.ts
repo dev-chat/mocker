@@ -196,7 +196,7 @@ export class AIService {
     return this.openAi.responses
       .create({
         model: GPT_MODEL,
-        reasoning: { effort: 'medium' },
+        reasoning: { effort: 'low' },
         tools: [{ type: 'web_search_preview' }],
         tool_choice: 'auto',
         instructions: GENERAL_TEXT_INSTRUCTIONS,
@@ -480,7 +480,7 @@ export class AIService {
     return this.openAi.responses
       .create({
         model: GPT_MODEL,
-        reasoning: { effort: 'medium' },
+        reasoning: { effort: 'low' },
         tools: [{ type: 'web_search_preview' }],
         tool_choice: 'auto',
         instructions: systemInstructions,
@@ -582,7 +582,7 @@ export class AIService {
     return this.openAi.responses
       .create({
         model: GPT_MODEL,
-        reasoning: { effort: 'medium' },
+        reasoning: { effort: 'low' },
         tools: [{ type: 'web_search_preview' }],
         tool_choice: 'auto',
         instructions: systemInstructions,
