@@ -67,7 +67,7 @@ describe('searchController', () => {
     });
   });
 
-  it('returns only public channel messages when persistence returns mixed channel types', async () => {
+  it('returns messages exactly as provided by persistence', async () => {
     searchMessagesMock.mockResolvedValue({
       messages: [
         { id: 1, message: 'public', name: 'alice', channel: 'C111' },
@@ -82,7 +82,11 @@ describe('searchController', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
-      messages: [{ id: 1, message: 'public', name: 'alice', channel: 'C111' }],
+      messages: [
+        { id: 1, message: 'public', name: 'alice', channel: 'C111' },
+        { id: 2, message: 'private', name: 'bob', channel: 'G222' },
+        { id: 3, message: 'dm', name: 'carol', channel: 'D333' },
+      ],
       mentions: {},
       total: 3,
     });

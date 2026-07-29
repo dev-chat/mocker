@@ -55,7 +55,7 @@ describe('SearchPersistenceService', () => {
     expect(countSql).toContain("message.message != ''");
     expect(countSql).toContain('message.teamId = ?');
     expect(countSql).toContain('slack_user.teamId = ?');
-    expect(countSql).toContain("message.channel LIKE 'C%'");
+    expect(countSql).toContain('INNER JOIN slack_channel ON slack_channel.channelId = message.channel');
     expect(countParams).toEqual(['T1', 'T1']);
 
     expect(dataSql).toContain("message.message != ''");
@@ -88,6 +88,19 @@ describe('SearchPersistenceService', () => {
 
     const [, dataParams] = (query as Mock).mock.calls[1] as [string, unknown[]];
     expect(dataParams).toEqual(['T1', 'T1', '%general%', '%general%', 100, 0]);
+  });
+
+  it('requires channel to exist in slack_channel via INNER JOIN', async () => {
+    query.mockResolvedValueOnce([{ total: 0 }]).mockResolvedValueOnce([]);
+
+    await service.searchMessages({ teamId: 'T1' });
+
+    const [countSql] = (query as Mock).mock.calls[0] as [string, unknown[]];
+    const [dataSql] = (query as Mock).mock.calls[1] as [string, unknown[]];
+
+    expect(countSql).toContain('INNER JOIN slack_channel ON slack_channel.channelId = message.channel');
+    expect(dataSql).toContain('INNER JOIN slack_channel ON slack_channel.channelId = message.channel');
+    expect(dataSql).toContain('slack_channel.name AS channelName');
   });
 
   it('applies content LIKE filter when content is provided', async () => {

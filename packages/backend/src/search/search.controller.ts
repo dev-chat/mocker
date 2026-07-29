@@ -11,8 +11,6 @@ export const searchController: Router = express.Router();
 const searchPersistenceService = new SearchPersistenceService();
 const searchLogger = logger.child({ module: 'SearchController' });
 
-const isPublicChannelId = (value: unknown): boolean => typeof value === 'string' && value.startsWith('C');
-
 searchController.get('/filters', (req: RequestWithAuthSession, res) => {
   const teamId = req.authSession?.teamId;
   if (!teamId) {
@@ -72,11 +70,7 @@ searchController.get('/messages', (req: RequestWithAuthSession, res) => {
       limit: parsedLimit,
       offset: parsedOffset,
     })
-    .then(({ messages, mentions, total }) =>
-      res
-        .status(200)
-        .json({ messages: messages.filter((message) => isPublicChannelId(message.channel)), mentions, total }),
-    )
+    .then(({ messages, mentions, total }) => res.status(200).json({ messages, mentions, total }))
     .catch((e: unknown) => {
       logError(searchLogger, 'Failed to search messages', e, {
         userName,

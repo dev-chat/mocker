@@ -46,12 +46,7 @@ export class SearchPersistenceService {
 
     // Each condition is joined with AND in the WHERE clause; filterParams holds the
     // positional `?` values in the same order as the conditions that use them.
-    const conditions: string[] = [
-      "message.message != ''",
-      'message.teamId = ?',
-      'slack_user.teamId = ?',
-      "message.channel LIKE 'C%'",
-    ];
+    const conditions: string[] = ["message.message != ''", 'message.teamId = ?', 'slack_user.teamId = ?'];
     const filterParams: (string | number)[] = [teamId, teamId];
 
     if (userName) {
@@ -75,14 +70,14 @@ export class SearchPersistenceService {
     const joins = `
       FROM message
       INNER JOIN slack_user ON slack_user.id = message.userIdId
-      LEFT JOIN slack_channel ON slack_channel.channelId = message.channel AND slack_channel.teamId = message.teamId
+      INNER JOIN slack_channel ON slack_channel.channelId = message.channel AND slack_channel.teamId = message.teamId
       WHERE ${whereClause}
     `;
 
     const countQuery = `SELECT COUNT(*) AS total ${joins}`;
 
     const dataQuery = `
-      SELECT message.*, slack_user.name, slack_user.slackId, COALESCE(slack_channel.name, message.channel) AS channelName
+      SELECT message.*, slack_user.name, slack_user.slackId, slack_channel.name AS channelName
       ${joins}
       ORDER BY message.createdAt DESC
       LIMIT ?
