@@ -1,9 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn, Unique, OneToMany, OneToOne } from 'typeorm';
 import { Activity } from './Activity';
-import { Memory } from './Memory';
 import { Message } from './Message';
 import { Portfolio } from './Portfolio';
-import { Trait } from './Trait';
 import { CalendarEvent } from './CalendarEvent';
 
 @Entity()
@@ -29,12 +27,6 @@ export class SlackUser {
 
   @OneToMany(() => Activity, (activity) => activity.userId)
   public activity?: Activity[];
-
-  @OneToMany(() => Memory, (memory) => memory.userId)
-  public memories?: Memory[];
-
-  @OneToMany(() => Trait, (trait) => trait.userId)
-  public traits?: Trait[];
 
   @OneToMany(() => Message, (message) => message.userId)
   public messages?: Message[];

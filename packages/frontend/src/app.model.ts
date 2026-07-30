@@ -65,17 +65,6 @@ export interface DashboardResponse {
   repLeaderboard: RepLeaderboardEntry[];
 }
 
-export interface PersonalContextEntry {
-  id: number;
-  content: string;
-  updatedAt: string;
-}
-
-export interface PersonalContextResponse {
-  memories: PersonalContextEntry[];
-  traits: PersonalContextEntry[];
-}
-
 export type FrontendRecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export interface FrontendRecurrenceRule {

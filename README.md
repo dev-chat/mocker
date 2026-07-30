@@ -14,7 +14,7 @@ mocker/
 │   │                 # - REST APIs for Slack commands and events
 │   │                 # - Search endpoint (team-scoped, requires OAuth token)
 │   │                 # - Slack OAuth flow (/auth/slack, /auth/slack/callback)
-│   │                 # - Scheduled jobs (fun-fact, pricing, memory)
+│   │                 # - Scheduled jobs (fun-fact, pricing, event-alert)
 │   │
 │   └── frontend/     # @mocker/frontend - React + Vite
 │                     # - Message search UI
@@ -254,9 +254,10 @@ docker logs <container-id> | jq .
 
 ### AI Features (Optional)
 
-- **Daily Memory Job** - Summarizes conversations daily at 3 AM (requires OpenAI API key)
 - **Sentiment Analysis** - Analyzes message tone
 - **AI Summaries** - Generates summaries of message threads
+
+Schema changes are managed by TypeORM using your configured synchronization settings.
 
 ### Scheduled Jobs
 
