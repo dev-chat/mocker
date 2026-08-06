@@ -5,18 +5,6 @@ import path from 'path';
 import { AIService } from './ai.service';
 import type { MessageWithName } from '../shared/models/message/message-with-name';
 import { MOONBEAM_SLACK_ID } from './ai.constants';
-import { TraitService } from '../trait/trait.service';
-
-const { getAllTraitsForUsers } = vi.hoisted(() => ({
-  getAllTraitsForUsers: vi.fn().mockResolvedValue(new Map()),
-}));
-
-vi.mock('../trait/trait.persistence.service', async () => ({
-  TraitPersistenceService: classMock(() => ({
-    getAllTraitsForUsers,
-    getAllTraitsForUser: vi.fn().mockResolvedValue([]),
-  })),
-}));
 
 const buildAiService = (): AIService => {
   const ai = new AIService();
@@ -77,8 +65,6 @@ const buildAiService = (): AIService => {
     info: vi.fn(),
     debug: vi.fn(),
   } as unknown as AIService['aiServiceLogger'];
-
-  ai.traitService = new TraitService();
 
   return ai;
 };
@@ -362,28 +348,6 @@ describe('AIService', () => {
         'U1',
         expect.stringContaining('unable to send the requested text to Slack'),
       );
-    });
-
-    it('injects trait context when traits exist for participants', async () => {
-      (aiService.historyService.getHistory as Mock).mockResolvedValue([
-        { name: 'Jane', slackId: 'U2', message: 'Hi there' },
-      ]);
-      const traitPersistenceService = (
-        aiService.traitService as unknown as { traitPersistenceService: { getAllTraitsForUsers: unknown } }
-      ).traitPersistenceService;
-      (traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
-        new Map([['U2', [{ slackId: 'U2', content: 'prefers typescript' }]]]),
-      );
-      const createSpy = aiService.openAi.responses.create as Mock;
-      createSpy.mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Response text' }] }],
-      });
-
-      await aiService.promptWithHistory({ user_id: 'U1', team_id: 'T1', channel_id: 'C1', text: 'Summarize' } as never);
-
-      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
-      expect(callArgs.instructions).toContain('traits_context');
-      expect(callArgs.instructions).toContain('prefers typescript');
     });
   });
 
@@ -691,28 +655,6 @@ describe('AIService', () => {
       expect(aiService.webService.sendMessage).toHaveBeenCalledWith('C1', 'What do you think?', [
         { type: 'markdown', text: 'What do you think?' },
       ]);
-    });
-
-    it('injects trait context for participation prompts', async () => {
-      (aiService.historyService.getHistoryWithOptions as Mock).mockResolvedValue([
-        { slackId: 'U2', name: 'Jane', message: 'hello' },
-      ]);
-      const traitPersistenceService = (
-        aiService.traitService as unknown as { traitPersistenceService: { getAllTraitsForUsers: unknown } }
-      ).traitPersistenceService;
-      (traitPersistenceService.getAllTraitsForUsers as Mock).mockResolvedValue(
-        new Map([['U2', [{ slackId: 'U2', content: 'dislikes donald trump' }]]]),
-      );
-      const createSpy = aiService.openAi.responses.create as Mock;
-      createSpy.mockResolvedValue({
-        output: [{ type: 'message', content: [{ type: 'output_text', text: 'Participation response' }] }],
-      });
-
-      await aiService.participate('T1', 'C1', '<@moonbeam> hi');
-
-      const callArgs = createSpy.mock.calls[0][0] as { instructions: string };
-      expect(callArgs.instructions).toContain('traits_context');
-      expect(callArgs.instructions).toContain('dislikes donald trump');
     });
   });
 

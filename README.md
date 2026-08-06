@@ -14,7 +14,7 @@ mocker/
 │   │                 # - REST APIs for Slack commands and events
 │   │                 # - Search endpoint (team-scoped, requires OAuth token)
 │   │                 # - Slack OAuth flow (/auth/slack, /auth/slack/callback)
-│   │                 # - Scheduled jobs (fun-fact, pricing, memory)
+│   │                 # - Scheduled jobs (fun-fact, pricing, event-alert)
 │   │
 │   └── frontend/     # @mocker/frontend - React + Vite
 │                     # - Message search UI
@@ -254,9 +254,10 @@ docker logs <container-id> | jq .
 
 ### AI Features (Optional)
 
-- **Daily Memory Job** - Summarizes conversations daily at 3 AM (requires OpenAI API key)
 - **Sentiment Analysis** - Analyzes message tone
 - **AI Summaries** - Generates summaries of message threads
+
+Schema changes are managed by TypeORM using your configured synchronization settings.
 
 ### Scheduled Jobs
 
@@ -264,7 +265,6 @@ Most scheduled jobs run inside the backend Node.js process using `node-cron`. Th
 
 | Job              | Schedule                         | Location    | Description                                                                        |
 | ---------------- | -------------------------------- | ----------- | ---------------------------------------------------------------------------------- |
-| **Daily Memory** | `0 3 * * *` (3 AM ET)            | In-process  | Extracts AI memories from all Slack channels                                       |
 | **Fun Fact**     | `0 9 * * *` (9 AM ET)            | In-process  | Posts daily facts, joke, quote, and on-this-day event to Slack                     |
 | **Pricing**      | `10 * * * *` (every hour at :10) | In-process  | Recalculates item prices based on median reputation                                |
 | **Health Check** | `*/5 * * * *` (every 5 min)      | Bash script | Checks the `/health` endpoint from outside the process and alerts Slack on failure |

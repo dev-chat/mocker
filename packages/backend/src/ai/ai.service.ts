@@ -38,7 +38,6 @@ import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
 import { extractParticipantSlackIds } from './helpers/extractParticipantSlackIds';
-import { TraitService } from '../trait/trait.service';
 
 interface ReleaseCommit {
   sha: string;
@@ -144,7 +143,6 @@ export class AIService {
   webService = new WebService();
   slackService = new SlackService();
   slackPersistenceService = new SlackPersistenceService();
-  traitService = new TraitService();
   aiServiceLogger = logger.child({ module: 'AIService' });
 
   public decrementDaiyRequests(userId: string, teamId: string): Promise<string | null> {
@@ -466,16 +464,9 @@ export class AIService {
 
     const customPrompt = await this.slackPersistenceService.getCustomPrompt(user_id, team_id);
     const normalizedCustomPrompt = customPrompt?.trim() || null;
-
-    const traitContext = await this.traitService.fetchTraitContext(
-      extractParticipantSlackIds(history, { includeSlackId: user_id }),
-      team_id,
-      history,
-    );
     const baseInstructions = normalizedCustomPrompt
       ? `${normalizedCustomPrompt}\n\n${getHistoryInstructions(formattedHistory)}`
       : getHistoryInstructions(formattedHistory);
-    const systemInstructions = this.traitService.appendTraitContext(baseInstructions, traitContext);
 
     return this.openAi.responses
       .create({
@@ -483,7 +474,7 @@ export class AIService {
         reasoning: { effort: 'low' },
         tools: [{ type: 'web_search_preview' }],
         tool_choice: 'auto',
-        instructions: systemInstructions,
+        instructions: baseInstructions,
         input: prompt,
         user: `${user_id}-DaBros2016`,
       })
@@ -565,7 +556,6 @@ export class AIService {
     const participantSlackIds = extractParticipantSlackIds(historyMessages, {
       excludeSlackIds: [MOONBEAM_SLACK_ID],
     });
-    const traitContext = await this.traitService.fetchTraitContext(participantSlackIds, teamId, historyMessages);
     this.aiServiceLogger.info('Built participation context', {
       teamId,
       channelId,
@@ -575,7 +565,6 @@ export class AIService {
     });
 
     const baseInstructions = normalizedCustomPrompt ?? MOONBEAM_SYSTEM_INSTRUCTIONS;
-    const systemInstructions = this.traitService.appendTraitContext(baseInstructions, traitContext);
 
     const input = `${history}\n\n---\n[Tagged message to respond to]:\n${taggedMessage}`;
 
@@ -585,7 +574,7 @@ export class AIService {
         reasoning: { effort: 'low' },
         tools: [{ type: 'web_search_preview' }],
         tool_choice: 'auto',
-        instructions: systemInstructions,
+        instructions: baseInstructions,
         input,
         user: `participation-${channelId}-${teamId}-DaBros2016`,
       })

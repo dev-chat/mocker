@@ -1,50 +1,19 @@
 import cron from 'node-cron';
-import { MemoryJob } from './ai/memory/memory.job';
 import { FunFactJob } from './jobs/fun-fact.job';
 import { PricingJob } from './jobs/pricing.job';
 import { EventAlertJob } from './jobs/event-alert.job';
 import { logger } from './shared/logger/logger';
-import { TraitJob } from './trait/trait.job';
 
 export class JobService {
-  private memoryJob: MemoryJob;
-  private traitJob: TraitJob;
   private funFactJob: FunFactJob;
   private pricingJob: PricingJob;
   private eventAlertJob: EventAlertJob;
   private jobServiceLogger = logger.child({ module: 'JobService' });
 
   constructor() {
-    this.memoryJob = new MemoryJob();
-    this.traitJob = new TraitJob();
     this.funFactJob = new FunFactJob();
     this.pricingJob = new PricingJob();
     this.eventAlertJob = new EventAlertJob();
-  }
-
-  /**
-   * Run the memory and trait jobs in sequence.
-   * Memory job runs first, then trait job runs only if memory job succeeds.
-   */
-  async runMemoryAndTraitJobs(): Promise<void> {
-    this.jobServiceLogger.info('Starting memory and trait job sequence');
-
-    try {
-      // Run memory job first
-      this.jobServiceLogger.info('Running memory job...');
-      await this.memoryJob.run();
-      this.jobServiceLogger.info('Memory job succeeded, proceeding with trait job');
-
-      // Run trait job only if memory job succeeds
-      this.jobServiceLogger.info('Running trait job...');
-      await this.traitJob.run();
-      this.jobServiceLogger.info('Trait job succeeded');
-
-      this.jobServiceLogger.info('Memory and trait job sequence completed successfully');
-    } catch (error) {
-      this.jobServiceLogger.error('Memory and trait job sequence failed:', error);
-      throw error;
-    }
   }
 
   /**
@@ -90,53 +59,13 @@ export class JobService {
   }
 
   /**
-   * Run the memory job in isolation
-   */
-  async runMemoryJob(): Promise<void> {
-    this.jobServiceLogger.info('Running memory job in isolation');
-    try {
-      await this.memoryJob.run();
-      this.jobServiceLogger.info('Memory job completed successfully');
-    } catch (error) {
-      this.jobServiceLogger.error('Memory job failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Run the trait job in isolation
-   */
-  async runTraitJob(): Promise<void> {
-    this.jobServiceLogger.info('Running trait job in isolation');
-    try {
-      await this.traitJob.run();
-      this.jobServiceLogger.info('Trait job completed successfully');
-    } catch (error) {
-      this.jobServiceLogger.error('Trait job failed:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Schedule all cron jobs on startup.
-   * Memory and trait jobs run daily at 3AM.
    * Fun fact job runs daily at 9AM.
    * Pricing job runs every hour at minute 10.
+   * Event alert job runs every hour at minute 5.
    */
   scheduleCronJobs(): void {
     this.jobServiceLogger.info('Scheduling cron jobs');
-
-    // Memory and trait jobs: daily at 3AM America/New_York
-    cron.schedule(
-      '0 3 * * *',
-      () => {
-        this.runMemoryAndTraitJobs().catch((error) => {
-          this.jobServiceLogger.error('Memory and trait job sequence failed:', error);
-        });
-      },
-      { timezone: 'America/New_York' },
-    );
-    this.jobServiceLogger.info('Memory and trait job sequence scheduled daily at 3AM America/New_York time.');
 
     // Fun fact job: daily at 9AM America/New_York
     cron.schedule(
