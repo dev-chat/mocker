@@ -62,6 +62,7 @@ export class JobService {
    * Schedule all cron jobs on startup.
    * Fun fact job runs daily at 9AM.
    * Pricing job runs every hour at minute 10.
+   * Event alert job runs every hour at minute 5.
    */
   scheduleCronJobs(): void {
     this.jobServiceLogger.info('Scheduling cron jobs');
