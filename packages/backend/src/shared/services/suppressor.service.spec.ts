@@ -118,7 +118,9 @@ describe('SuppressorService', () => {
     expect(loggerSpy).toHaveBeenCalled();
   });
 
-  it('sendSuppressedMessage uses translation for normal channels', async () => {
+  it('sendSuppressedMessage uwuifies text by replacing r and l with w roughly 5% of the time when there are at least 4 eligible letters', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.04);
+
     await suppressorService.sendSuppressedMessage(
       'C123',
       'U1',
@@ -128,7 +130,42 @@ describe('SuppressorService', () => {
       suppressorService.muzzlePersistenceService as never,
     );
 
-    expect(suppressorService.translationService.translate).toHaveBeenCalled();
+    expect(suppressorService.translationService.translate).not.toHaveBeenCalled();
+    expect(suppressorService.webService.sendMessage).toHaveBeenCalledWith('C123', '<@U1> says "hewwo wowwd"');
+  });
+
+  it('sendSuppressedMessage skips uwu when the text has fewer than 4 r or l letters', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.04);
+
+    await suppressorService.sendSuppressedMessage(
+      'C123',
+      'U1',
+      'hi there',
+      '123',
+      1,
+      suppressorService.muzzlePersistenceService as never,
+    );
+
+    expect(suppressorService.translationService.translate).toHaveBeenCalledWith('hi there');
+    expect(suppressorService.webService.sendMessage).toHaveBeenCalledWith(
+      'C123',
+      expect.stringContaining('<@U1> says'),
+    );
+  });
+
+  it('sendSuppressedMessage uses translation for normal channels', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    await suppressorService.sendSuppressedMessage(
+      'C123',
+      'U1',
+      'hello world',
+      '123',
+      1,
+      suppressorService.muzzlePersistenceService as never,
+    );
+
+    expect(suppressorService.translationService.translate).toHaveBeenCalledWith('hello world');
     expect(suppressorService.webService.sendMessage).toHaveBeenCalledWith(
       'C123',
       expect.stringContaining('<@U1> says'),
@@ -136,6 +173,7 @@ describe('SuppressorService', () => {
   });
 
   it('sendSuppressedMessage falls back when translation fails', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     (suppressorService.translationService.translate as Mock).mockRejectedValue(new Error('translate fail'));
 
     await suppressorService.sendSuppressedMessage(
