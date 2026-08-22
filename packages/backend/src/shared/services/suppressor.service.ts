@@ -203,6 +203,14 @@ export class SuppressorService {
     }
   }
 
+  public uwuifyText(text: string): string {
+    return text.replace(/[rRlL]/g, 'w');
+  }
+
+  public shouldUwuifyText(text: string): boolean {
+    return (text.match(/[rRlL]/g) ?? []).length >= 4;
+  }
+
   public async sendSuppressedMessage(
     channel: string,
     userId: string,
@@ -218,7 +226,6 @@ export class SuppressorService {
     }
 
     const words: string[] | undefined = text.split(' ');
-
     const shouldMuzzle = words.length <= 250;
 
     if (shouldMuzzle) {
@@ -246,8 +253,12 @@ export class SuppressorService {
             return null;
           });
       } else {
-        await this.translationService
-          .translate(textWithFallbackReplacments)
+        const shouldUwuify = Math.random() < 0.05 && this.shouldUwuifyText(textWithFallbackReplacments);
+        await (
+          shouldUwuify
+            ? Promise.resolve(this.uwuifyText(textWithFallbackReplacments))
+            : this.translationService.translate(textWithFallbackReplacments)
+        )
           .then(async (message) => {
             await this.logTranslateSuppression(text, dbId, persistenceService);
             await this.webService
