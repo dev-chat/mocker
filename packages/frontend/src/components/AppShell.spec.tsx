@@ -29,6 +29,12 @@ describe('AppShell', () => {
     expect(screen.queryByRole('heading', { name: /^home$/i })).not.toBeInTheDocument();
   });
 
+  it('opens the Fantasy leagues page from navigation', () => {
+    render(<AppShell onLogout={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /fantasy leagues/i }));
+    expect(screen.getByRole('heading', { name: /fantasy leagues/i })).toBeInTheDocument();
+  });
+
   it('calls onLogout when the Sign out button is clicked', () => {
     const onLogout = vi.fn();
     render(<AppShell onLogout={onLogout} />);

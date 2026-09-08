@@ -39,4 +39,7 @@ export class SlackUser {
 
   @Column({ type: 'text', nullable: true, default: null })
   public customPrompt!: string | null;
+
+  @Column({ type: 'varchar', length: 32, nullable: true, default: null })
+  public sleeperUserId!: string | null;
 }

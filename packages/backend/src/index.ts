@@ -37,6 +37,7 @@ import { authController } from './auth/auth.controller';
 import { authMiddleware } from './shared/middleware/authMiddleware';
 import { dashboardController } from './dashboard/dashboard.controller';
 import { calendarController } from './calendar/calendar.controller';
+import { fantasyController } from './fantasy/fantasy.controller';
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -60,6 +61,7 @@ app.options('/auth*', searchCors);
 app.options('/search*', searchCors);
 app.options('/dashboard*', searchCors);
 app.options('/calendar*', searchCors);
+app.options('/fantasy*', searchCors);
 
 app.use(
   bodyParser.urlencoded({
@@ -97,6 +99,7 @@ app.use('/auth', searchCors, authRateLimit, authController);
 app.use('/search', searchCors, searchRateLimit, authMiddleware, searchController);
 app.use('/dashboard', searchCors, searchRateLimit, authMiddleware, dashboardController);
 app.use('/calendar', searchCors, searchRateLimit, authMiddleware, calendarController);
+app.use('/fantasy', searchCors, searchRateLimit, authMiddleware, fantasyController);
 app.use('/health', healthController);
 app.use(signatureVerificationMiddleware);
 app.use('/ai', aiController);
