@@ -54,6 +54,7 @@ export interface SleeperPlayer {
   position: string | null;
   team: string | null;
   injury_status: string | null;
+  search_rank?: number | null;
 }
 
 export interface FantasyPlayer {
@@ -95,6 +96,14 @@ export interface TradeSuggestion {
   sleeperUrl: string;
 }
 
+export interface WaiverSuggestion {
+  add: FantasyPlayer;
+  drop: FantasyPlayer;
+  rationale: string;
+  priority: 'high' | 'medium' | 'low';
+  sleeperUrl: string;
+}
+
 export interface GameToWatch {
   id: string;
   startsAt: string;
@@ -111,6 +120,7 @@ export interface FantasyOverview {
   pendingTrades: PendingTrade[];
   gamesToWatch: GameToWatch[];
   tradeSuggestions: TradeSuggestion[];
+  waiverSuggestions: WaiverSuggestion[];
   aiStatus: 'ready' | 'unavailable';
   sleeperUrl: string;
 }
@@ -132,5 +142,11 @@ export interface AITradeAnalysis {
     givePlayerIds: string[];
     receivePlayerIds: string[];
     rationale: string;
+  }>;
+  waiverSuggestions: Array<{
+    addPlayerId: string;
+    dropPlayerId: string;
+    rationale: string;
+    priority: 'high' | 'medium' | 'low';
   }>;
 }

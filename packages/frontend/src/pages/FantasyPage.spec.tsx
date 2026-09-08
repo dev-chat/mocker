@@ -64,6 +64,15 @@ const overview = {
       sleeperUrl: 'https://sleeper.com/leagues/999',
     },
   ],
+  waiverSuggestions: [
+    {
+      add: { id: 'p3', name: 'Casey Waiver', position: 'WR', team: 'DAL', injuryStatus: null },
+      drop: { id: 'p1', name: 'Alex Receiver', position: 'WR', team: 'BUF', injuryStatus: null },
+      rationale: 'Adds more weekly upside.',
+      priority: 'high',
+      sleeperUrl: 'https://sleeper.com/leagues/999',
+    },
+  ],
   aiStatus: 'ready',
   sleeperUrl: 'https://sleeper.com/leagues/999',
 };
@@ -108,9 +117,33 @@ describe('FantasyPage', () => {
     await waitFor(() => expect(screen.getByText('This improves your running back depth.')).toBeInTheDocument());
     expect(screen.getByText('Buffalo Bills at New York Jets')).toBeInTheDocument();
     expect(screen.getByText('Balances your lineup.')).toBeInTheDocument();
+    expect(screen.getByText('Adds more weekly upside.')).toBeInTheDocument();
+    expect(screen.getByText(/waivers process wednesday and sunday/i)).toBeInTheDocument();
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent?.trim());
+    expect(headings.indexOf('Trade ideas')).toBeLessThan(headings.indexOf('Games to watch'));
+    expect(headings.indexOf('Waiver wire proposals')).toBeLessThan(headings.indexOf('Games to watch'));
     expect(screen.getByRole('link', { name: /propose in sleeper/i })).toHaveAttribute(
       'href',
       'https://sleeper.com/leagues/999',
     );
+  });
+
+  it('refreshes AI trade and waiver suggestions', async () => {
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview });
+
+    render(<FantasyPage onLogout={vi.fn()} />);
+    await screen.findByText('Balances your lineup.');
+
+    fireEvent.click(screen.getByRole('button', { name: /refresh ideas/i }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(3));
+    expect(mockFetch.mock.calls[2]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=\d+/);
+
+    fireEvent.click(screen.getByRole('button', { name: /refresh proposals/i }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(4));
+    expect(mockFetch.mock.calls[3]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=\d+/);
   });
 });

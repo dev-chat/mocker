@@ -32,6 +32,14 @@ const aiResponse = {
                 rationale: 'Adds depth at running back.',
               },
             ],
+            waiverSuggestions: [
+              {
+                addPlayerId: 'p3',
+                dropPlayerId: 'p1',
+                rationale: 'Adds a higher-upside waiver option.',
+                priority: 'high',
+              },
+            ],
           }),
         },
       ],
@@ -168,6 +176,15 @@ describe('FantasyService', () => {
               team: 'NYJ',
               injury_status: null,
             },
+            p3: {
+              player_id: 'p3',
+              first_name: 'Casey',
+              last_name: 'Waiver',
+              position: 'WR',
+              team: 'DAL',
+              injury_status: null,
+              search_rank: 10,
+            },
           },
         });
       }
@@ -213,6 +230,11 @@ describe('FantasyService', () => {
     expect(result?.tradeSuggestions[0]).toMatchObject({
       targetOwnerName: 'Bob',
       sleeperUrl: 'https://sleeper.com/leagues/999',
+    });
+    expect(result?.waiverSuggestions[0]).toMatchObject({
+      add: { id: 'p3', name: 'Casey Waiver' },
+      drop: { id: 'p1', name: 'Alex Receiver' },
+      priority: 'high',
     });
     expect(result?.aiStatus).toBe('ready');
   });
@@ -307,6 +329,7 @@ describe('FantasyService', () => {
     const result = await service.getOverview('U1', 'T1', '999');
 
     expect(result?.aiStatus).toBe('unavailable');
+    expect(result?.waiverSuggestions).toEqual([]);
     expect(result?.pendingTrades[0]).toMatchObject({
       insight: 'AI insight is temporarily unavailable for this trade.',
       recommendation: 'negotiate',
