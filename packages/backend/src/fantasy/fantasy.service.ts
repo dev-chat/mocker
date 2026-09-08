@@ -521,6 +521,13 @@ export class FantasyService {
       return { transactionId, insight: insight.trim(), recommendation };
     });
 
+    const insightTransactionIds = new Set(validatedInsights.map((item) => item.transactionId));
+    if (
+      validatedInsights.length !== insightTransactionIds.size ||
+      insightTransactionIds.size !== validTransactionIds.size
+    ) {
+      throw new Error('AI returned incomplete trade insights.');
+    }
     const validatedSuggestions = suggestions.slice(0, 3).map((item: unknown) => {
       if (!item || typeof item !== 'object') throw new Error('AI returned an invalid trade suggestion.');
       const targetRosterId = Reflect.get(item, 'targetRosterId');
