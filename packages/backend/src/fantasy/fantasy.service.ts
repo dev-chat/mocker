@@ -532,19 +532,19 @@ export class FantasyService {
                     rationale: { type: 'string' },
                   },
                 },
-                waiverSuggestions: {
-                  type: 'array',
-                  maxItems: 3,
-                  items: {
-                    type: 'object',
-                    additionalProperties: false,
-                    required: ['addPlayerId', 'dropPlayerId', 'rationale', 'priority'],
-                    properties: {
-                      addPlayerId: { type: 'string' },
-                      dropPlayerId: { type: 'string' },
-                      rationale: { type: 'string' },
-                      priority: { type: 'string', enum: ['high', 'medium', 'low'] },
-                    },
+              },
+              waiverSuggestions: {
+                type: 'array',
+                maxItems: 3,
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['addPlayerId', 'dropPlayerId', 'rationale', 'priority'],
+                  properties: {
+                    addPlayerId: { type: 'string' },
+                    dropPlayerId: { type: 'string' },
+                    rationale: { type: 'string' },
+                    priority: { type: 'string', enum: ['high', 'medium', 'low'] },
                   },
                 },
               },
