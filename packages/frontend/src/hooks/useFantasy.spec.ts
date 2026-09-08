@@ -24,8 +24,11 @@ const overview = {
   league: landing.leagues[0],
   roster: { rosterId: 1, ownerName: 'Alice', players: [], starters: [] },
   pendingTrades: [],
+  pendingWaivers: [],
   gamesToWatch: [],
   tradeSuggestions: [],
+  waiverSuggestions: [],
+  teamHealth: null,
   aiStatus: 'ready',
   sleeperUrl: 'https://sleeper.com/leagues/999',
 };

@@ -12,6 +12,9 @@ export interface SleeperLeague {
   status: string;
   avatar: string | null;
   total_rosters: number;
+  settings?: {
+    waiver_budget?: number;
+  };
 }
 
 export interface SleeperRoster {
@@ -20,6 +23,9 @@ export interface SleeperRoster {
   players: string[] | null;
   starters: string[] | null;
   reserve?: string[] | null;
+  settings?: {
+    waiver_budget_used?: number;
+  };
 }
 
 export interface SleeperLeagueUser {
@@ -44,6 +50,9 @@ export interface SleeperTransaction {
   adds: Record<string, number> | null;
   drops: Record<string, number> | null;
   draft_picks?: SleeperDraftPick[] | null;
+  settings?: {
+    waiver_bid?: number;
+  };
   created: number;
 }
 
@@ -101,7 +110,22 @@ export interface WaiverSuggestion {
   drop: FantasyPlayer;
   rationale: string;
   priority: 'high' | 'medium' | 'low';
+  recommendedBid: number;
   sleeperUrl: string;
+}
+
+export interface PendingWaiver {
+  transactionId: string;
+  createdAt: string;
+  add: FantasyPlayer | null;
+  drop: FantasyPlayer | null;
+  bid: number | null;
+}
+
+export interface TeamHealth {
+  percentage: number;
+  rating: 'good' | 'ok' | 'bad';
+  summary: string;
 }
 
 export interface GameToWatch {
@@ -118,9 +142,11 @@ export interface FantasyOverview {
   league: SleeperLeague;
   roster: FantasyTeam;
   pendingTrades: PendingTrade[];
+  pendingWaivers: PendingWaiver[];
   gamesToWatch: GameToWatch[];
   tradeSuggestions: TradeSuggestion[];
   waiverSuggestions: WaiverSuggestion[];
+  teamHealth: TeamHealth | null;
   aiStatus: 'ready' | 'unavailable';
   sleeperUrl: string;
 }
@@ -132,6 +158,10 @@ export interface FantasyLandingResponse {
 }
 
 export interface AITradeAnalysis {
+  teamHealth: {
+    percentage: number;
+    summary: string;
+  };
   tradeInsights: Array<{
     transactionId: string;
     insight: string;
@@ -148,5 +178,6 @@ export interface AITradeAnalysis {
     dropPlayerId: string;
     rationale: string;
     priority: 'high' | 'medium' | 'low';
+    recommendedBid: number;
   }>;
 }
