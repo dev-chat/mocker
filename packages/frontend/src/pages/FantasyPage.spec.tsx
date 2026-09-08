@@ -43,15 +43,6 @@ const overview = {
       recommendation: 'accept',
     },
   ],
-  pendingWaivers: [
-    {
-      transactionId: 'waiver-1',
-      createdAt: '2026-09-08T12:00:00.000Z',
-      add: { id: 'p3', name: 'Casey Waiver', position: 'WR', team: 'DAL', injuryStatus: null },
-      drop: { id: 'p1', name: 'Alex Receiver', position: 'WR', team: 'BUF', injuryStatus: null },
-      bid: 14,
-    },
-  ],
   gamesToWatch: [
     {
       id: 'game-1',
@@ -98,28 +89,18 @@ describe('FantasyPage', () => {
     mockFetch.mockReset();
   });
 
-  it('links a Sleeper account when no user is configured', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({ sleeperUser: null, leagues: [], season: '2026' }),
-      })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing.sleeperUser })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview });
+  it('does not offer account linking when no Sleeper user is configured', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ sleeperUser: null, leagues: [], season: '2026' }),
+    });
 
     render(<FantasyPage onLogout={vi.fn()} />);
-    await waitFor(() => expect(screen.getByLabelText(/sleeper username/i)).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText(/sleeper username/i), { target: { value: 'alice' } });
-    fireEvent.click(screen.getByRole('button', { name: /connect/i }));
-
-    await waitFor(() =>
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/fantasy/profile'),
-        expect.objectContaining({ method: 'PUT', body: JSON.stringify({ sleeperUser: 'alice' }) }),
-      ),
-    );
+    expect(await screen.findByText(/no sleeper account linked/i)).toBeInTheDocument();
+    expect(screen.getByText(/ownership can be verified/i)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   it('renders pending trades, games, AI insights, and actionable trade ideas', async () => {
@@ -136,8 +117,6 @@ describe('FantasyPage', () => {
     expect(screen.getByText('82%')).toBeInTheDocument();
     expect(screen.getByText('Strong starters and balanced depth make this roster a contender.')).toBeInTheDocument();
     expect(screen.getByText('$17')).toBeInTheDocument();
-    expect(screen.getByText('Claim Casey Waiver')).toBeInTheDocument();
-    expect(screen.getByText('$14 bid')).toBeInTheDocument();
     expect(screen.getByText(/waivers process wednesday and sunday/i)).toBeInTheDocument();
     const headings = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent?.trim());
     expect(headings.indexOf('Trade ideas')).toBeLessThan(headings.indexOf('Games to watch'));
@@ -146,6 +125,31 @@ describe('FantasyPage', () => {
       'href',
       'https://sleeper.com/leagues/999',
     );
+  });
+
+  it('renders unavailable analysis and empty league insights', async () => {
+    const emptyOverview = {
+      ...overview,
+      roster: { ...overview.roster, players: [] },
+      pendingTrades: [],
+      gamesToWatch: [],
+      tradeSuggestions: [],
+      waiverSuggestions: [],
+      teamHealth: null,
+      aiStatus: 'unavailable',
+    };
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => emptyOverview });
+
+    render(<FantasyPage onLogout={vi.fn()} />);
+
+    expect(await screen.findByText(/AI trade analysis is temporarily unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/there are no pending trades/i)).toBeInTheDocument();
+    expect(screen.getByText(/no strong trade opportunities/i)).toBeInTheDocument();
+    expect(screen.getByText(/no strong waiver claims/i)).toBeInTheDocument();
+    expect(screen.getByText(/no scheduled games/i)).toBeInTheDocument();
+    expect(screen.getByText('0 rostered players')).toBeInTheDocument();
   });
 
   it('refreshes AI trade and waiver suggestions', async () => {

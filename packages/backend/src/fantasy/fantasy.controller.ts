@@ -44,24 +44,6 @@ fantasyController.get('/', (req: RequestWithAuthSession, res) => {
     .catch((error: unknown) => handleError(error, res, session));
 });
 
-fantasyController.put('/profile', (req: RequestWithAuthSession, res) => {
-  const session = getSession(req);
-  if (!session) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-  const body: unknown = req.body;
-  const sleeperUser = body && typeof body === 'object' ? Reflect.get(body, 'sleeperUser') : undefined;
-  if (typeof sleeperUser !== 'string') {
-    res.status(400).json({ error: 'A Sleeper username or user ID is required.' });
-    return;
-  }
-  fantasyService
-    .linkSleeperUser(session.userId, session.teamId, sleeperUser)
-    .then((user) => res.status(200).json(user))
-    .catch((error: unknown) => handleError(error, res, session));
-});
-
 fantasyController.get('/leagues/:leagueId', (req: RequestWithAuthSession, res) => {
   const session = getSession(req);
   if (!session) {

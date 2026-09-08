@@ -1,9 +1,7 @@
-import { useState } from 'react';
 import {
   Activity,
   AlertCircle,
   ArrowRight,
-  Clock3,
   ExternalLink,
   RefreshCw,
   Sparkles,
@@ -14,7 +12,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFantasy } from '@/hooks/useFantasy';
 import type { FantasyPlayer } from '@/app.model';
@@ -42,11 +39,9 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
     error,
     selectedLeagueId,
     selectLeague,
-    linkSleeperUser,
     refreshingSuggestions,
     refreshSuggestions,
   } = useFantasy(onLogout);
-  const [sleeperUser, setSleeperUser] = useState('');
 
   return (
     <div className="p-8 max-w-6xl space-y-8">
@@ -69,32 +64,11 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
       {!landing?.sleeperUser ? (
         <Card className="max-w-xl">
           <CardHeader>
-            <CardTitle>Connect Sleeper</CardTitle>
-            <CardDescription>Enter your public Sleeper username or user ID to load your leagues.</CardDescription>
+            <CardTitle>No Sleeper account linked</CardTitle>
+            <CardDescription>
+              Account linking is unavailable until Sleeper account ownership can be verified.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form
-              className="flex gap-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void linkSleeperUser(sleeperUser);
-              }}
-            >
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="sleeper-user">Sleeper username or user ID</Label>
-                <Input
-                  id="sleeper-user"
-                  value={sleeperUser}
-                  onChange={(event) => setSleeperUser(event.target.value)}
-                  placeholder="Sleeper username"
-                  required
-                />
-              </div>
-              <Button className="self-end" type="submit" disabled={isLoading || !sleeperUser.trim()}>
-                {isLoading ? 'Connecting…' : 'Connect'}
-              </Button>
-            </form>
-          </CardContent>
         </Card>
       ) : (
         <>
@@ -276,44 +250,6 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
                               Propose in Sleeper <ExternalLink aria-hidden="true" />
                             </a>
                           </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section>
-                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
-                  <Clock3 className="h-5 w-5 text-primary" aria-hidden="true" /> Pending waivers
-                </h2>
-                {!overview.pendingWaivers.length ? (
-                  <Card>
-                    <CardContent className="pt-6 text-sm text-muted-foreground">
-                      You do not have any pending waiver claims.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid gap-4 lg:grid-cols-3">
-                    {overview.pendingWaivers.map((waiver) => (
-                      <Card key={waiver.transactionId}>
-                        <CardHeader>
-                          <div className="flex items-center justify-between gap-3">
-                            <CardTitle>{waiver.add ? `Claim ${waiver.add.name}` : 'Waiver claim'}</CardTitle>
-                            {waiver.bid !== null && <Badge variant="secondary">${waiver.bid} bid</Badge>}
-                          </div>
-                          <CardDescription>Submitted {new Date(waiver.createdAt).toLocaleString()}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3 text-sm">
-                          <div>
-                            <p className="font-medium">Add</p>
-                            {waiver.add ? <PlayerList players={[waiver.add]} /> : <span>None</span>}
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                          <div>
-                            <p className="font-medium">Drop</p>
-                            {waiver.drop ? <PlayerList players={[waiver.drop]} /> : <span>None</span>}
-                          </div>
                         </CardContent>
                       </Card>
                     ))}
