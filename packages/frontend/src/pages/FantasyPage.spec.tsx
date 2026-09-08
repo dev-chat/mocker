@@ -81,7 +81,7 @@ describe('FantasyPage', () => {
         status: 200,
         json: async () => ({ sleeperUser: null, leagues: [], season: '2026' }),
       })
-.mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing.sleeperUser })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing.sleeperUser })
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing })
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview });
 
