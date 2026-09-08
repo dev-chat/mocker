@@ -55,6 +55,8 @@ authController.get('/slack', (_req, res) => {
 
   const params = new URLSearchParams({
     client_id: clientId,
+    nonce: state,
+    response_type: 'code',
     scope: 'openid',
     redirect_uri: redirectUri,
     state,
