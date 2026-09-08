@@ -28,6 +28,7 @@ import type {
   SleeperUser,
   TradeSide,
   TradeSuggestion,
+  WaiverSuggestion,
 } from './fantasy.model';
 
 const SLEEPER_API_URL = 'https://api.sleeper.app/v1';
@@ -76,6 +77,10 @@ function playerName(player: SleeperPlayer | undefined, id: string): string {
 
 function isRecommendation(value: unknown): value is 'accept' | 'decline' | 'negotiate' {
   return value === 'accept' || value === 'decline' || value === 'negotiate';
+}
+
+function isPriority(value: unknown): value is 'high' | 'medium' | 'low' {
+  return value === 'high' || value === 'medium' || value === 'low';
 }
 
 export class FantasyValidationError extends Error {
@@ -186,20 +191,35 @@ export class FantasyService {
     const pendingTransactions = transactions.filter(
       (transaction) => transaction.type === 'trade' && transaction.status === 'pending',
     );
+    const rosteredPlayerIds = new Set(rosters.flatMap((item) => item.players ?? []));
+    const waiverCandidates = Object.entries(players)
+      .filter(
+        ([id, player]) =>
+          !rosteredPlayerIds.has(id) &&
+          !!player?.team &&
+          ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(player.position ?? ''),
+      )
+      .sort(
+        ([, left], [, right]) =>
+          (left?.search_rank ?? Number.MAX_SAFE_INTEGER) - (right?.search_rank ?? Number.MAX_SAFE_INTEGER),
+      )
+      .slice(0, 120)
+      .map(([id]) => this.toPlayer(id, players));
     let analysis: AITradeAnalysis;
     let aiStatus: FantasyOverview['aiStatus'] = 'ready';
     try {
-      analysis = await this.generateTradeAnalysis(league, roster, teams, pendingTransactions);
+      analysis = await this.generateTradeAnalysis(league, roster, teams, pendingTransactions, waiverCandidates);
     } catch (error) {
       logError(this.serviceLogger, 'Failed to generate fantasy trade analysis', error, {
         leagueId,
         rosterId: roster.rosterId,
       });
-      analysis = { tradeInsights: [], suggestions: [] };
+      analysis = { tradeInsights: [], suggestions: [], waiverSuggestions: [] };
       aiStatus = 'unavailable';
     }
     const pendingTrades = this.buildPendingTrades(pendingTransactions, ownerNames, players, analysis);
     const tradeSuggestions = this.buildTradeSuggestions(analysis, roster, teams, leagueId);
+    const waiverSuggestions = this.buildWaiverSuggestions(analysis, roster, waiverCandidates, leagueId);
 
     return {
       league,
@@ -207,6 +227,7 @@ export class FantasyService {
       pendingTrades,
       gamesToWatch: this.buildGames(scoreboard, roster.players),
       tradeSuggestions,
+      waiverSuggestions,
       aiStatus,
       sleeperUrl: `https://sleeper.com/leagues/${leagueId}`,
     };
@@ -366,6 +387,37 @@ export class FantasyService {
     });
   }
 
+  private buildWaiverSuggestions(
+    analysis: AITradeAnalysis,
+    ownRoster: FantasyTeam,
+    waiverCandidates: FantasyPlayer[],
+    leagueId: string,
+  ): WaiverSuggestion[] {
+    const rosterPlayers = new Map(ownRoster.players.map((player) => [player.id, player]));
+    const availablePlayers = new Map(waiverCandidates.map((player) => [player.id, player]));
+
+    return analysis.waiverSuggestions.flatMap((suggestion) => {
+      const add = availablePlayers.get(suggestion.addPlayerId);
+      const drop = rosterPlayers.get(suggestion.dropPlayerId);
+      if (!add || !drop) {
+        this.serviceLogger.warn('Ignoring AI waiver suggestion with unavailable players', {
+          addPlayerId: suggestion.addPlayerId,
+          dropPlayerId: suggestion.dropPlayerId,
+        });
+        return [];
+      }
+      return [
+        {
+          add,
+          drop,
+          rationale: suggestion.rationale,
+          priority: suggestion.priority,
+          sleeperUrl: `https://sleeper.com/leagues/${leagueId}`,
+        },
+      ];
+    });
+  }
+
   private buildGames(scoreboard: EspnScoreboard, players: FantasyPlayer[]): GameToWatch[] {
     const playersByTeam = new Map<string, FantasyPlayer[]>();
     for (const player of players) {
@@ -413,6 +465,7 @@ export class FantasyService {
     ownRoster: FantasyTeam,
     teams: FantasyTeam[],
     pendingTransactions: SleeperTransaction[],
+    waiverCandidates: FantasyPlayer[],
   ): Promise<AITradeAnalysis> {
     const compactTeams = teams.map((team) => ({
       rosterId: team.rosterId,
@@ -429,15 +482,18 @@ export class FantasyService {
       model: GPT_MODEL,
       reasoning: { effort: 'low' },
       instructions:
-        'You are a fantasy football trade analyst. Return only valid JSON with keys tradeInsights and suggestions. ' +
+        'You are a fantasy football analyst. Return only valid JSON with keys tradeInsights, suggestions, and waiverSuggestions. ' +
         'tradeInsights must include exactly one item per pending transaction with transactionId, a concise insight, ' +
         'and recommendation of accept, decline, or negotiate. suggestions must contain up to 3 realistic options ' +
-        'with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. Use only supplied IDs and rosters.',
+        'with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. waiverSuggestions must contain up to 3 ' +
+        'add/drop proposals using only the supplied waiver candidate and user roster IDs, with rationale and a high, ' +
+        'medium, or low priority. Waivers process Wednesday and Sunday. Use only supplied IDs and rosters.',
       input: JSON.stringify({
         league: { name: league.name, season: league.season },
         userRosterId: ownRoster.rosterId,
         teams: compactTeams,
         pendingTransactions,
+        waiverCandidates,
       }),
       text: {
         format: {
@@ -447,7 +503,7 @@ export class FantasyService {
           schema: {
             type: 'object',
             additionalProperties: false,
-            required: ['tradeInsights', 'suggestions'],
+            required: ['tradeInsights', 'suggestions', 'waiverSuggestions'],
             properties: {
               tradeInsights: {
                 type: 'array',
@@ -476,6 +532,21 @@ export class FantasyService {
                     rationale: { type: 'string' },
                   },
                 },
+                waiverSuggestions: {
+                  type: 'array',
+                  maxItems: 3,
+                  items: {
+                    type: 'object',
+                    additionalProperties: false,
+                    required: ['addPlayerId', 'dropPlayerId', 'rationale', 'priority'],
+                    properties: {
+                      addPlayerId: { type: 'string' },
+                      dropPlayerId: { type: 'string' },
+                      rationale: { type: 'string' },
+                      priority: { type: 'string', enum: ['high', 'medium', 'low'] },
+                    },
+                  },
+                },
               },
             },
           },
@@ -499,7 +570,8 @@ export class FantasyService {
     }
     const tradeInsights = Reflect.get(value, 'tradeInsights');
     const suggestions = Reflect.get(value, 'suggestions');
-    if (!Array.isArray(tradeInsights) || !Array.isArray(suggestions)) {
+    const waiverSuggestions = Reflect.get(value, 'waiverSuggestions');
+    if (!Array.isArray(tradeInsights) || !Array.isArray(suggestions) || !Array.isArray(waiverSuggestions)) {
       throw new Error('AI returned invalid trade analysis.');
     }
 
@@ -548,6 +620,28 @@ export class FantasyService {
       return { targetRosterId, givePlayerIds, receivePlayerIds, rationale: rationale.trim() };
     });
 
-    return { tradeInsights: validatedInsights, suggestions: validatedSuggestions };
+    const validatedWaiverSuggestions = waiverSuggestions.slice(0, 3).map((item: unknown) => {
+      if (!item || typeof item !== 'object') throw new Error('AI returned an invalid waiver suggestion.');
+      const addPlayerId = Reflect.get(item, 'addPlayerId');
+      const dropPlayerId = Reflect.get(item, 'dropPlayerId');
+      const rationale = Reflect.get(item, 'rationale');
+      const priority = Reflect.get(item, 'priority');
+      if (
+        typeof addPlayerId !== 'string' ||
+        typeof dropPlayerId !== 'string' ||
+        typeof rationale !== 'string' ||
+        !rationale.trim() ||
+        !isPriority(priority)
+      ) {
+        throw new Error('AI returned an invalid waiver suggestion.');
+      }
+      return { addPlayerId, dropPlayerId, rationale: rationale.trim(), priority };
+    });
+
+    return {
+      tradeInsights: validatedInsights,
+      suggestions: validatedSuggestions,
+      waiverSuggestions: validatedWaiverSuggestions,
+    };
   }
 }

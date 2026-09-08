@@ -165,6 +165,14 @@ export interface TradeSuggestion {
   sleeperUrl: string;
 }
 
+export interface WaiverSuggestion {
+  add: FantasyPlayer;
+  drop: FantasyPlayer;
+  rationale: string;
+  priority: 'high' | 'medium' | 'low';
+  sleeperUrl: string;
+}
+
 export interface FantasyOverview {
   league: FantasyLeague;
   roster: {
@@ -176,6 +184,7 @@ export interface FantasyOverview {
   pendingTrades: PendingTrade[];
   gamesToWatch: GameToWatch[];
   tradeSuggestions: TradeSuggestion[];
+  waiverSuggestions: WaiverSuggestion[];
   aiStatus: 'ready' | 'unavailable';
   sleeperUrl: string;
 }

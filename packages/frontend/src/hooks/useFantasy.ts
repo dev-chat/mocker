@@ -11,6 +11,8 @@ interface UseFantasyReturn {
   selectedLeagueId: string | null;
   selectLeague: (leagueId: string) => void;
   linkSleeperUser: (usernameOrId: string) => Promise<void>;
+  refreshingSuggestions: 'trades' | 'waivers' | null;
+  refreshSuggestions: (kind: 'trades' | 'waivers') => Promise<void>;
 }
 
 export function useFantasy(onLogout: () => void): UseFantasyReturn {
@@ -20,6 +22,7 @@ export function useFantasy(onLogout: () => void): UseFantasyReturn {
   const [isLandingLoading, setIsLandingLoading] = useState(true);
   const [isOverviewLoading, setIsOverviewLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshingSuggestions, setRefreshingSuggestions] = useState<'trades' | 'waivers' | null>(null);
   const onLogoutRef = useRef(onLogout);
   onLogoutRef.current = onLogout;
 
@@ -106,6 +109,25 @@ export function useFantasy(onLogout: () => void): UseFantasyReturn {
     [loadLanding, request],
   );
 
+  const refreshSuggestions = useCallback(
+    async (kind: 'trades' | 'waivers') => {
+      if (!selectedLeagueId || refreshingSuggestions) return;
+      setRefreshingSuggestions(kind);
+      setError(null);
+      try {
+        const data = await request<FantasyOverview>(
+          `/fantasy/leagues/${encodeURIComponent(selectedLeagueId)}?refresh=${Date.now()}`,
+        );
+        setOverview(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : `Failed to refresh ${kind} suggestions.`);
+      } finally {
+        setRefreshingSuggestions(null);
+      }
+    },
+    [refreshingSuggestions, request, selectedLeagueId],
+  );
+
   return {
     landing,
     overview,
@@ -114,5 +136,7 @@ export function useFantasy(onLogout: () => void): UseFantasyReturn {
     selectedLeagueId,
     selectLeague: setSelectedLeagueId,
     linkSleeperUser,
+    refreshingSuggestions,
+    refreshSuggestions,
   };
 }

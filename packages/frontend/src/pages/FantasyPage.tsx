@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertCircle, ArrowRight, ExternalLink, Sparkles, Trophy, Tv } from 'lucide-react';
+import { AlertCircle, ArrowRight, ExternalLink, RefreshCw, Sparkles, Trophy, Tv, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +24,17 @@ function PlayerList({ players }: { players: FantasyPlayer[] }) {
 }
 
 export function FantasyPage({ onLogout }: FantasyPageProps) {
-  const { landing, overview, isLoading, error, selectedLeagueId, selectLeague, linkSleeperUser } = useFantasy(onLogout);
+  const {
+    landing,
+    overview,
+    isLoading,
+    error,
+    selectedLeagueId,
+    selectLeague,
+    linkSleeperUser,
+    refreshingSuggestions,
+    refreshSuggestions,
+  } = useFantasy(onLogout);
   const [sleeperUser, setSleeperUser] = useState('');
 
   return (
@@ -178,40 +188,23 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
               </section>
 
               <section>
-                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
-                  <Tv className="h-5 w-5 text-primary" aria-hidden="true" /> Games to watch
-                </h2>
-                {!overview.gamesToWatch.length ? (
-                  <Card>
-                    <CardContent className="pt-6 text-sm text-muted-foreground">
-                      No scheduled games currently include players from your roster.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {overview.gamesToWatch.map((game) => (
-                      <Card key={game.id}>
-                        <CardHeader>
-                          <CardTitle>
-                            {game.awayTeam} at {game.homeTeam}
-                          </CardTitle>
-                          <CardDescription>
-                            {new Date(game.startsAt).toLocaleString()} · {game.broadcast ?? game.status}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="text-sm">
-                          <PlayerList players={game.rosterPlayers} />
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section>
-                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
-                  <Trophy className="h-5 w-5 text-primary" aria-hidden="true" /> Trade ideas
-                </h2>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold">
+                    <Trophy className="h-5 w-5 text-primary" aria-hidden="true" /> Trade ideas
+                  </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={refreshingSuggestions !== null}
+                    onClick={() => void refreshSuggestions('trades')}
+                  >
+                    <RefreshCw
+                      className={refreshingSuggestions === 'trades' ? 'animate-spin' : ''}
+                      aria-hidden="true"
+                    />
+                    {refreshingSuggestions === 'trades' ? 'Refreshing…' : 'Refresh ideas'}
+                  </Button>
+                </div>
                 {!overview.tradeSuggestions.length ? (
                   <Card>
                     <CardContent className="pt-6 text-sm text-muted-foreground">
@@ -241,6 +234,99 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
                               Propose in Sleeper <ExternalLink aria-hidden="true" />
                             </a>
                           </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="flex items-center gap-2 text-lg font-semibold">
+                      <UserPlus className="h-5 w-5 text-primary" aria-hidden="true" /> Waiver wire proposals
+                    </h2>
+                    <p className="mt-1 text-sm text-muted-foreground">Waivers process Wednesday and Sunday.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={refreshingSuggestions !== null}
+                    onClick={() => void refreshSuggestions('waivers')}
+                  >
+                    <RefreshCw
+                      className={refreshingSuggestions === 'waivers' ? 'animate-spin' : ''}
+                      aria-hidden="true"
+                    />
+                    {refreshingSuggestions === 'waivers' ? 'Refreshing…' : 'Refresh proposals'}
+                  </Button>
+                </div>
+                {!overview.waiverSuggestions.length ? (
+                  <Card>
+                    <CardContent className="pt-6 text-sm text-muted-foreground">
+                      No strong waiver claims were identified right now.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    {overview.waiverSuggestions.map((suggestion) => (
+                      <Card key={`${suggestion.add.id}-${suggestion.drop.id}`}>
+                        <CardHeader>
+                          <div className="flex items-center justify-between gap-3">
+                            <CardTitle>Add {suggestion.add.name}</CardTitle>
+                            <Badge variant={suggestion.priority === 'high' ? 'default' : 'secondary'}>
+                              {suggestion.priority} priority
+                            </Badge>
+                          </div>
+                          <CardDescription>{suggestion.rationale}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3 text-sm">
+                          <div>
+                            <p className="font-medium">Add</p>
+                            <PlayerList players={[suggestion.add]} />
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                          <div>
+                            <p className="font-medium">Drop</p>
+                            <PlayerList players={[suggestion.drop]} />
+                          </div>
+                          <Button className="w-full" asChild>
+                            <a href={suggestion.sleeperUrl} target="_blank" rel="noreferrer">
+                              Open waivers in Sleeper <ExternalLink aria-hidden="true" />
+                            </a>
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section>
+                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+                  <Tv className="h-5 w-5 text-primary" aria-hidden="true" /> Games to watch
+                </h2>
+                {!overview.gamesToWatch.length ? (
+                  <Card>
+                    <CardContent className="pt-6 text-sm text-muted-foreground">
+                      No scheduled games currently include players from your roster.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {overview.gamesToWatch.map((game) => (
+                      <Card key={game.id}>
+                        <CardHeader>
+                          <CardTitle>
+                            {game.awayTeam} at {game.homeTeam}
+                          </CardTitle>
+                          <CardDescription>
+                            {new Date(game.startsAt).toLocaleString()} · {game.broadcast ?? game.status}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="text-sm">
+                          <PlayerList players={game.rosterPlayers} />
                         </CardContent>
                       </Card>
                     ))}
