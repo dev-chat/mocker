@@ -37,14 +37,18 @@ describe('authController', () => {
   });
 
   describe('GET /slack', () => {
-    it('redirects to Slack OpenID Connect with client_id, scope, and state param', async () => {
+    it('redirects to Slack OpenID Connect with required OpenID Connect params', async () => {
       const res = await request(app).get('/slack');
+      const location = new URL(res.headers.location);
+
       expect(res.status).toBe(302);
-      expect(res.headers.location).toContain('slack.com/openid/connect/authorize');
-      expect(res.headers.location).toContain('client_id=test-client-id');
-      expect(res.headers.location).toContain('scope=openid');
-      expect(res.headers.location).not.toContain('user_scope=');
-      expect(res.headers.location).toContain('state=');
+      expect(location.origin + location.pathname).toBe('https://slack.com/openid/connect/authorize');
+      expect(location.searchParams.get('client_id')).toBe('test-client-id');
+      expect(location.searchParams.get('scope')).toBe('openid');
+      expect(location.searchParams.get('response_type')).toBe('code');
+      expect(location.searchParams.get('nonce')).toBeTruthy();
+      expect(location.searchParams.has('user_scope')).toBe(false);
+      expect(location.searchParams.get('state')).toBeTruthy();
       const cookies = res.headers['set-cookie'] as unknown as string[] | undefined;
       expect(cookies).toBeDefined();
       expect(cookies?.some((c: string) => c.startsWith('oauth_state='))).toBe(true);
