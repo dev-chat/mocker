@@ -70,7 +70,9 @@ Add these slash commands with their request URLs:
 
 #### OAuth & Permissions
 
-- **Redirect URLs (for search/auth UI):** `http://localhost:3001` (dev), or your deployed frontend URL
+- **OAuth Redirect URLs (for app installation):** Configure the URLs required by the bot.
+- **Sign in with Slack Redirect URLs (for search/auth UI):** Add the backend callback URL, such as
+  `http://localhost:3000/auth/slack/callback`, under **OAuth & Permissions > Sign in with Slack**.
 - **Scopes:**
   - `admin`
   - `channels:history`
@@ -82,7 +84,10 @@ Add these slash commands with their request URLs:
   - `reactions:read`
   - `users.profile:read`
   - `users:read`
-  - `identity.basic` (user token scope for OAuth login flow)
+
+The search UI login uses Slack OpenID Connect with the `openid` scope. Do not add bot or user-token
+scopes to that sign-in flow; doing so turns login into an app installation that can require App Manager
+approval.
 
 Copy your **Bot Token** and **User OAuth Token** from the app credentials page.
 

@@ -98,28 +98,18 @@ describe('FantasyPage', () => {
     mockFetch.mockReset();
   });
 
-  it('links a Sleeper account when no user is configured', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({ sleeperUser: null, leagues: [], season: '2026' }),
-      })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing.sleeperUser })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview });
+  it('does not offer account linking when no Sleeper user is configured', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ sleeperUser: null, leagues: [], season: '2026' }),
+    });
 
     render(<FantasyPage onLogout={vi.fn()} />);
-    await waitFor(() => expect(screen.getByLabelText(/sleeper username/i)).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText(/sleeper username/i), { target: { value: 'alice' } });
-    fireEvent.click(screen.getByRole('button', { name: /connect/i }));
-
-    await waitFor(() =>
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/fantasy/profile'),
-        expect.objectContaining({ method: 'PUT', body: JSON.stringify({ sleeperUser: 'alice' }) }),
-      ),
-    );
+    expect(await screen.findByText(/no sleeper account linked/i)).toBeInTheDocument();
+    expect(screen.getByText(/ownership can be verified/i)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   it('renders pending trades, games, AI insights, and actionable trade ideas', async () => {

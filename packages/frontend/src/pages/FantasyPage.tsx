@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -14,7 +13,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFantasy } from '@/hooks/useFantasy';
 import type { FantasyPlayer } from '@/app.model';
@@ -42,11 +40,9 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
     error,
     selectedLeagueId,
     selectLeague,
-    linkSleeperUser,
     refreshingSuggestions,
     refreshSuggestions,
   } = useFantasy(onLogout);
-  const [sleeperUser, setSleeperUser] = useState('');
 
   return (
     <div className="p-8 max-w-6xl space-y-8">
@@ -69,32 +65,11 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
       {!landing?.sleeperUser ? (
         <Card className="max-w-xl">
           <CardHeader>
-            <CardTitle>Connect Sleeper</CardTitle>
-            <CardDescription>Enter your public Sleeper username or user ID to load your leagues.</CardDescription>
+            <CardTitle>No Sleeper account linked</CardTitle>
+            <CardDescription>
+              Account linking is unavailable until Sleeper account ownership can be verified.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form
-              className="flex gap-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void linkSleeperUser(sleeperUser);
-              }}
-            >
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="sleeper-user">Sleeper username or user ID</Label>
-                <Input
-                  id="sleeper-user"
-                  value={sleeperUser}
-                  onChange={(event) => setSleeperUser(event.target.value)}
-                  placeholder="Sleeper username"
-                  required
-                />
-              </div>
-              <Button className="self-end" type="submit" disabled={isLoading || !sleeperUser.trim()}>
-                {isLoading ? 'Connecting…' : 'Connect'}
-              </Button>
-            </form>
-          </CardContent>
         </Card>
       ) : (
         <>

@@ -4,14 +4,13 @@ import Axios from 'axios';
 import { FantasyValidationError } from './fantasy.service';
 
 const getLanding = vi.fn();
-const linkSleeperUser = vi.fn();
 const getOverview = vi.fn();
 
 vi.mock('./fantasy.service', async () => {
   const actual = await vi.importActual('./fantasy.service');
   return {
     ...actual,
-    FantasyService: classMock(() => ({ getLanding, linkSleeperUser, getOverview })),
+    FantasyService: classMock(() => ({ getLanding, getOverview })),
   };
 });
 
@@ -32,7 +31,6 @@ unauthenticatedApp.use('/', fantasyController);
 describe('fantasyController', () => {
   it.each([
     ['get', '/'],
-    ['put', '/profile'],
     ['get', '/leagues/999'],
   ] as const)('rejects unauthenticated %s requests to %s', async (method, path) => {
     const response = await request(unauthenticatedApp)[method](path).send({});
@@ -50,21 +48,10 @@ describe('fantasyController', () => {
     expect(getLanding).toHaveBeenCalledWith('U1', 'T1');
   });
 
-  it('links a Sleeper user', async () => {
-    linkSleeperUser.mockResolvedValue({ user_id: '123', username: 'alice', display_name: 'Alice', avatar: null });
-
+  it('does not expose the Sleeper account-linking endpoint', async () => {
     const response = await request(app).put('/profile').send({ sleeperUser: 'alice' });
 
-    expect(response.status).toBe(200);
-    expect(response.body.user_id).toBe('123');
-    expect(linkSleeperUser).toHaveBeenCalledWith('U1', 'T1', 'alice');
-  });
-
-  it('rejects a missing Sleeper username', async () => {
-    const response = await request(app).put('/profile').send({});
-
-    expect(response.status).toBe(400);
-    expect(response.body.error).toMatch(/required/i);
+    expect(response.status).toBe(404);
   });
 
   it('returns a selected league overview', async () => {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AUTH_TOKEN_KEY } from '@/app.const';
-import type { FantasyLandingResponse, FantasyOverview, SleeperUser } from '@/app.model';
+import type { FantasyLandingResponse, FantasyOverview } from '@/app.model';
 import { API_BASE_URL } from '@/config';
 
 interface UseFantasyReturn {
@@ -10,7 +10,6 @@ interface UseFantasyReturn {
   error: string | null;
   selectedLeagueId: string | null;
   selectLeague: (leagueId: string) => void;
-  linkSleeperUser: (usernameOrId: string) => Promise<void>;
   refreshingSuggestions: 'trades' | 'waivers' | null;
   refreshSuggestions: (kind: 'trades' | 'waivers') => Promise<void>;
 }
@@ -89,26 +88,6 @@ export function useFantasy(onLogout: () => void): UseFantasyReturn {
     };
   }, [request, selectedLeagueId]);
 
-  const linkSleeperUser = useCallback(
-    async (usernameOrId: string) => {
-      setIsLandingLoading(true);
-      setError(null);
-      try {
-        await request<SleeperUser>('/fantasy/profile', {
-          method: 'PUT',
-          body: JSON.stringify({ sleeperUser: usernameOrId }),
-        });
-        setOverview(null);
-        setSelectedLeagueId(null);
-        await loadLanding();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to link Sleeper account.');
-        setIsLandingLoading(false);
-      }
-    },
-    [loadLanding, request],
-  );
-
   const refreshSuggestions = useCallback(
     async (kind: 'trades' | 'waivers') => {
       if (!selectedLeagueId || refreshingSuggestions) return;
@@ -135,7 +114,6 @@ export function useFantasy(onLogout: () => void): UseFantasyReturn {
     error,
     selectedLeagueId,
     selectLeague: setSelectedLeagueId,
-    linkSleeperUser,
     refreshingSuggestions,
     refreshSuggestions,
   };

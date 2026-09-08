@@ -2,7 +2,6 @@ import crypto from 'crypto';
 import type { Request, Router } from 'express';
 import express from 'express';
 import Axios from 'axios';
-import type { OauthV2AccessResponse, UsersIdentityResponse } from '@slack/web-api';
 import { createSessionToken } from '../shared/utils/session-token';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
@@ -16,6 +15,18 @@ import {
 
 export const authController: Router = express.Router();
 const authLogger = logger.child({ module: 'AuthController' });
+
+interface SlackOpenIdTokenResponse {
+  ok: boolean;
+  access_token?: string;
+}
+
+interface SlackOpenIdUserInfoResponse {
+  ok: boolean;
+  sub?: string;
+  'https://slack.com/user_id'?: string;
+  'https://slack.com/team_id'?: string;
+}
 
 function getCookieValue(req: Request, name: string): string | undefined {
   const cookieHeader = req.headers.cookie;
@@ -44,7 +55,7 @@ authController.get('/slack', (_req, res) => {
 
   const params = new URLSearchParams({
     client_id: clientId,
-    user_scope: 'identity.basic',
+    scope: 'openid',
     redirect_uri: redirectUri,
     state,
   });
@@ -85,7 +96,7 @@ authController.get('/slack/callback', (req, res) => {
       return;
     }
 
-    const tokenResponse = await Axios.post<OauthV2AccessResponse>(
+    const tokenResponse = await Axios.post<SlackOpenIdTokenResponse>(
       SLACK_TOKEN_URL,
       new URLSearchParams({
         client_id: clientId,
@@ -96,17 +107,18 @@ authController.get('/slack/callback', (req, res) => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
     );
 
-    if (!tokenResponse.data.ok || !tokenResponse.data.authed_user) {
+    const accessToken = tokenResponse.data.access_token;
+    if (!tokenResponse.data.ok || !accessToken) {
       res.redirect(`${frontendUrl}?auth_error=token_exchange_failed`);
       return;
     }
 
-    const identityResponse = await Axios.get<UsersIdentityResponse>(SLACK_IDENTITY_URL, {
-      headers: { Authorization: `Bearer ${tokenResponse.data.authed_user.access_token}` },
+    const identityResponse = await Axios.get<SlackOpenIdUserInfoResponse>(SLACK_IDENTITY_URL, {
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    const teamId = identityResponse.data.team?.id;
-    const userId = identityResponse.data.user?.id;
+    const teamId = identityResponse.data['https://slack.com/team_id'];
+    const userId = identityResponse.data['https://slack.com/user_id'] ?? identityResponse.data.sub;
     if (!identityResponse.data.ok || !userId || !teamId || teamId !== process.env.ALLOWED_TEAM_DOMAIN) {
       logError(authLogger, 'Unauthorized Slack workspace attempted to authenticate', {
         teamId,

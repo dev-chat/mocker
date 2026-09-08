@@ -111,27 +111,4 @@ describe('useFantasy', () => {
 
     await waitFor(() => expect(result.current.overview?.league.league_id).toBe('888'));
   });
-
-  it('surfaces account-linking failures and leaves loading state', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({ sleeperUser: null, leagues: [], season: '2026' }),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        statusText: 'Bad Request',
-        json: async () => ({ error: 'Sleeper user was not found.' }),
-      });
-
-    const { result } = renderHook(() => useFantasy(vi.fn()));
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    await act(() => result.current.linkSleeperUser('missing'));
-
-    expect(result.current.error).toBe('Sleeper user was not found.');
-    expect(result.current.isLoading).toBe(false);
-  });
 });

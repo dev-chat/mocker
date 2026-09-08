@@ -54,12 +54,11 @@ const aiResponse = {
 
 describe('FantasyService', () => {
   const findOne = vi.fn();
-  const update = vi.fn();
   const create = vi.fn();
   let service: FantasyService;
 
   beforeEach(() => {
-    (getRepository as Mock).mockReturnValue({ findOne, update });
+    (getRepository as Mock).mockReturnValue({ findOne });
     create.mockResolvedValue(aiResponse);
     service = new FantasyService({ responses: { create } } as unknown as OpenAIClientLike);
   });
@@ -74,30 +73,6 @@ describe('FantasyService', () => {
       season: '2026',
     });
     expect(Axios.get).toHaveBeenCalledOnce();
-  });
-
-  it('resolves and stores a Sleeper user ID', async () => {
-    (Axios.get as Mock).mockResolvedValueOnce({
-      data: { user_id: '123', username: 'alice', display_name: 'Alice', avatar: null },
-    });
-    update.mockResolvedValue({ affected: 1 });
-
-    await expect(service.linkSleeperUser('U1', 'T1', 'alice')).resolves.toMatchObject({ user_id: '123' });
-    expect(update).toHaveBeenCalledWith({ slackId: 'U1', teamId: 'T1' }, { sleeperUserId: '123' });
-  });
-
-  it('rejects empty Sleeper account identifiers', async () => {
-    await expect(service.linkSleeperUser('U1', 'T1', '   ')).rejects.toThrow(/valid sleeper/i);
-    expect(Axios.get).not.toHaveBeenCalled();
-  });
-
-  it('rejects valid Sleeper users when the authenticated user is missing', async () => {
-    (Axios.get as Mock).mockResolvedValueOnce({
-      data: { user_id: '123', username: 'alice', display_name: 'Alice', avatar: null },
-    });
-    update.mockResolvedValue({ affected: 0 });
-
-    await expect(service.linkSleeperUser('U1', 'T1', 'alice')).rejects.toThrow(/authenticated user/i);
   });
 
   it('rejects invalid league IDs without calling Sleeper', async () => {

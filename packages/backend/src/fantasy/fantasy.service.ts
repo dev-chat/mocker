@@ -130,20 +130,6 @@ export class FantasyService {
     return { sleeperUser, leagues, season: state.season };
   }
 
-  public async linkSleeperUser(slackId: string, teamId: string, usernameOrId: string): Promise<SleeperUser> {
-    const value = usernameOrId.trim();
-    if (!value || value.length > 64) {
-      throw new FantasyValidationError('A valid Sleeper username or user ID is required.');
-    }
-
-    const sleeperUser = await this.getSleeperUser(value);
-    const result = await getRepository(SlackUser).update({ slackId, teamId }, { sleeperUserId: sleeperUser.user_id });
-    if ((result.affected ?? 0) === 0) {
-      throw new Error('Authenticated user was not found.');
-    }
-    return sleeperUser;
-  }
-
   public async getOverview(slackId: string, teamId: string, leagueId: string): Promise<FantasyOverview | null> {
     if (!SLEEPER_ID_PATTERN.test(leagueId)) {
       throw new FantasyValidationError('Invalid league ID.');

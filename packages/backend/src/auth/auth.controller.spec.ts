@@ -37,12 +37,13 @@ describe('authController', () => {
   });
 
   describe('GET /slack', () => {
-    it('redirects to Slack OAuth URL with client_id, user_scope, and state param', async () => {
+    it('redirects to Slack OpenID Connect with client_id, scope, and state param', async () => {
       const res = await request(app).get('/slack');
       expect(res.status).toBe(302);
-      expect(res.headers.location).toContain('slack.com/oauth/v2/authorize');
+      expect(res.headers.location).toContain('slack.com/openid/connect/authorize');
       expect(res.headers.location).toContain('client_id=test-client-id');
-      expect(res.headers.location).toContain('user_scope=identity.basic');
+      expect(res.headers.location).toContain('scope=openid');
+      expect(res.headers.location).not.toContain('user_scope=');
       expect(res.headers.location).toContain('state=');
       const cookies = res.headers['set-cookie'] as unknown as string[] | undefined;
       expect(cookies).toBeDefined();
@@ -74,13 +75,14 @@ describe('authController', () => {
 
     it('redirects to frontend with token in hash on successful OAuth', async () => {
       (Axios.post as Mock).mockResolvedValue({
-        data: { ok: true, authed_user: { id: 'U123', access_token: 'xoxp-token' } },
+        data: { ok: true, access_token: 'xoxe-token' },
       });
       (Axios.get as Mock).mockResolvedValue({
         data: {
           ok: true,
-          user: { id: 'U123', name: 'alice' },
-          team: { name: 'T123', id: 'T123' },
+          sub: 'U123',
+          'https://slack.com/user_id': 'U123',
+          'https://slack.com/team_id': 'T123',
         },
       });
 
@@ -91,6 +93,14 @@ describe('authController', () => {
 
       expect(res.status).toBe(302);
       expect(res.headers.location).toContain('#token=mock-session-token');
+      expect(Axios.post).toHaveBeenCalledWith(
+        'https://slack.com/api/openid.connect.token',
+        expect.stringContaining('code=valid-code'),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      );
+      expect(Axios.get).toHaveBeenCalledWith('https://slack.com/api/openid.connect.userInfo', {
+        headers: { Authorization: 'Bearer xoxe-token' },
+      });
     });
 
     it('redirects with auth_error=access_denied when state cookie is missing', async () => {
@@ -158,7 +168,7 @@ describe('authController', () => {
       expect(res.headers.location).toContain('auth_error=token_exchange_failed');
     });
 
-    it('redirects with auth_error=token_exchange_failed when authed_user is missing', async () => {
+    it('redirects with auth_error=token_exchange_failed when access_token is missing', async () => {
       (Axios.post as Mock).mockResolvedValue({ data: { ok: true } });
 
       const res = await request(app)
@@ -171,10 +181,15 @@ describe('authController', () => {
 
     it('redirects with auth_error=unauthorized_workspace when team id is wrong', async () => {
       (Axios.post as Mock).mockResolvedValue({
-        data: { ok: true, authed_user: { id: 'U999', access_token: 'xoxp-other' } },
+        data: { ok: true, access_token: 'xoxe-other' },
       });
       (Axios.get as Mock).mockResolvedValue({
-        data: { ok: true, user: { id: 'U999', name: 'bob' }, team: { name: 'otherworkspace', id: 'T999' } },
+        data: {
+          ok: true,
+          sub: 'U999',
+          'https://slack.com/user_id': 'U999',
+          'https://slack.com/team_id': 'T999',
+        },
       });
 
       const res = await request(app)
@@ -187,7 +202,7 @@ describe('authController', () => {
 
     it('redirects with auth_error=unauthorized_workspace when identity response is not ok', async () => {
       (Axios.post as Mock).mockResolvedValue({
-        data: { ok: true, authed_user: { id: 'U123', access_token: 'xoxp-token' } },
+        data: { ok: true, access_token: 'xoxe-token' },
       });
       (Axios.get as Mock).mockResolvedValue({
         data: { ok: false },
