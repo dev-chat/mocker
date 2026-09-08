@@ -44,6 +44,19 @@ describe('QuoteService', () => {
     expect(out.deltaPercent).toBe('2.00%');
   });
 
+  it('uses metric bounds and an empty name when the current quote remains within its 52 week range', () => {
+    const out = service.formatData(
+      { h: 40, l: 15, c: 20, dp: 0, d: 0, pc: 20 } as QuoteResponse,
+      { metric: { '52WeekHigh': 45, '52WeekLow': 12 } } as MetricResponse,
+      { shareOutstanding: 1000, name: '' } as CompanyProfile,
+      'acme',
+    );
+
+    expect(out['52WeekHigh']).toBe('45.00');
+    expect(out['52WeekLow']).toBe('12.00');
+    expect(out.name).toBe('');
+  });
+
   it('returns emoji and +/- prefixes correctly', () => {
     expect(service.getEmoji('1')).toContain('upwards');
     expect(service.getEmoji('-1')).toContain('downwards');
@@ -76,6 +89,28 @@ describe('QuoteService', () => {
     expect(blocks[0].type).toBe('header');
     expect(blocks[0].text.text).toContain('AAPL');
     expect(blocks[blocks.length - 1].elements[0].text).toContain('<@U1>');
+  });
+
+  it('creates a quote header without a company name', () => {
+    const blocks = service.createQuoteBlocks(
+      {
+        ticker: 'aapl',
+        name: '',
+        close: '100.00',
+        delta: '0.00',
+        deltaPercent: '0.00%',
+        prevClose: '100.00',
+        marketCap: '3.00T',
+        high: '101.00',
+        low: '98.00',
+        '52WeekHigh': '120.00',
+        '52WeekLow': '80.00',
+        lastRefreshed: new Date(),
+      },
+      'U1',
+    ) as unknown[];
+
+    expect(blocks[0].text.text).toBe('AAPL  :chart:');
   });
 
   it('fetches quote, metrics and profile payloads', async () => {

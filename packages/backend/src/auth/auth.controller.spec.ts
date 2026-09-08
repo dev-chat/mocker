@@ -109,6 +109,16 @@ describe('authController', () => {
       expect(res.headers.location).toContain('auth_error=access_denied');
     });
 
+    it('redirects with auth_error=access_denied when the state cookie is not present among other cookies', async () => {
+      const res = await request(app)
+        .get('/slack/callback')
+        .set('Cookie', 'theme=dark')
+        .query({ code: 'valid-code', state: TEST_STATE });
+
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toContain('auth_error=access_denied');
+    });
+
     it('redirects with auth_error=access_denied when state does not match cookie', async () => {
       const res = await request(app)
         .get('/slack/callback')

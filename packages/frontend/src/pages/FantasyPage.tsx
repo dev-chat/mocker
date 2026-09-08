@@ -2,7 +2,6 @@ import {
   Activity,
   AlertCircle,
   ArrowRight,
-  Clock3,
   ExternalLink,
   RefreshCw,
   Sparkles,
@@ -251,44 +250,6 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
                               Propose in Sleeper <ExternalLink aria-hidden="true" />
                             </a>
                           </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section>
-                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
-                  <Clock3 className="h-5 w-5 text-primary" aria-hidden="true" /> Pending waivers
-                </h2>
-                {!overview.pendingWaivers.length ? (
-                  <Card>
-                    <CardContent className="pt-6 text-sm text-muted-foreground">
-                      You do not have any pending waiver claims.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid gap-4 lg:grid-cols-3">
-                    {overview.pendingWaivers.map((waiver) => (
-                      <Card key={waiver.transactionId}>
-                        <CardHeader>
-                          <div className="flex items-center justify-between gap-3">
-                            <CardTitle>{waiver.add ? `Claim ${waiver.add.name}` : 'Waiver claim'}</CardTitle>
-                            {waiver.bid !== null && <Badge variant="secondary">${waiver.bid} bid</Badge>}
-                          </div>
-                          <CardDescription>Submitted {new Date(waiver.createdAt).toLocaleString()}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3 text-sm">
-                          <div>
-                            <p className="font-medium">Add</p>
-                            {waiver.add ? <PlayerList players={[waiver.add]} /> : <span>None</span>}
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                          <div>
-                            <p className="font-medium">Drop</p>
-                            {waiver.drop ? <PlayerList players={[waiver.drop]} /> : <span>None</span>}
-                          </div>
                         </CardContent>
                       </Card>
                     ))}
