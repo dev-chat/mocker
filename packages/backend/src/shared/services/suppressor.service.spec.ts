@@ -218,6 +218,7 @@ describe('SuppressorService', () => {
   });
 
   it('sendSuppressedMessage does not use corpo for C023B688SLT with 10 or fewer words', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const shortText = new Array(10).fill('word').join(' ');
     await suppressorService.sendSuppressedMessage(
       'C023B688SLT',
@@ -248,6 +249,7 @@ describe('SuppressorService', () => {
   });
 
   it('sendSuppressedMessage does not use corpo for #libworkchat with 10 or fewer words', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const shortText = new Array(10).fill('word').join(' ');
     await suppressorService.sendSuppressedMessage(
       '#libworkchat',
