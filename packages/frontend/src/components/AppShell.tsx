@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Home, Search, CalendarDays, LogOut } from 'lucide-react';
+import { Home, Search, CalendarDays, LogOut, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { HomePage } from '@/pages/HomePage';
 import { MessageSearchPage } from '@/pages/MessageSearchPage';
 import { CalendarPage } from '@/pages/CalendarPage';
+import { FantasyPage } from '@/pages/FantasyPage';
 import type { Page, NavItemProps, AppShellProps } from '@/components/AppShell.model';
 
 function NavItem({ icon: Icon, label, active, onClick }: NavItemProps) {
@@ -38,6 +39,12 @@ export function AppShell({ onLogout }: AppShellProps) {
         <nav className="flex-1 overflow-y-auto py-3 flex flex-col items-center space-y-1 w-full px-2">
           <NavItem icon={Home} label="Home" active={currentPage === 'home'} onClick={() => setCurrentPage('home')} />
           <NavItem
+            icon={Trophy}
+            label="Fantasy leagues"
+            active={currentPage === 'fantasy'}
+            onClick={() => setCurrentPage('fantasy')}
+          />
+          <NavItem
             icon={Search}
             label="Message Search"
             active={currentPage === 'message-search'}
@@ -62,6 +69,7 @@ export function AppShell({ onLogout }: AppShellProps) {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
         {currentPage === 'home' && <HomePage onLogout={onLogout} />}
+        {currentPage === 'fantasy' && <FantasyPage onLogout={onLogout} />}
         {currentPage === 'message-search' && <MessageSearchPage onLogout={onLogout} />}
         {currentPage === 'calendar' && <CalendarPage onLogout={onLogout} />}
       </main>
