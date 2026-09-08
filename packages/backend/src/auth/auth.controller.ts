@@ -39,8 +39,9 @@ function getCookieValue(req: Request, name: string): string | undefined {
 authController.get('/slack', (_req, res) => {
   const clientId = process.env.SLACK_CLIENT_ID;
   const redirectUri = process.env.SLACK_REDIRECT_URI;
+  const teamId = process.env.ALLOWED_TEAM_DOMAIN;
 
-  if (!clientId || !redirectUri) {
+  if (!clientId || !redirectUri || !teamId) {
     res.status(500).send('Slack OAuth is not configured');
     return;
   }
@@ -60,6 +61,7 @@ authController.get('/slack', (_req, res) => {
     scope: 'openid',
     redirect_uri: redirectUri,
     state,
+    team: teamId,
   });
 
   res.redirect(`${SLACK_AUTH_URL}?${params.toString()}`);
