@@ -17,6 +17,10 @@ const aiResponse = {
         {
           type: 'output_text',
           text: JSON.stringify({
+            teamHealth: {
+              percentage: 82,
+              summary: 'Strong starters and balanced depth make this roster a contender.',
+            },
             tradeInsights: [
               {
                 transactionId: 'trade-1',
@@ -38,6 +42,7 @@ const aiResponse = {
                 dropPlayerId: 'p1',
                 rationale: 'Adds a higher-upside waiver option.',
                 priority: 'high',
+                recommendedBid: 17,
               },
             ],
           }),
@@ -154,6 +159,16 @@ describe('FantasyService', () => {
               draft_picks: [],
               created: 1788883200000,
             },
+            {
+              transaction_id: 'waiver-1',
+              type: 'waiver',
+              status: 'pending',
+              roster_ids: [1],
+              adds: { p3: 1 },
+              drops: { p1: 1 },
+              settings: { waiver_bid: 14 },
+              created: 1788883300000,
+            },
           ],
         });
       }
@@ -235,6 +250,18 @@ describe('FantasyService', () => {
       add: { id: 'p3', name: 'Casey Waiver' },
       drop: { id: 'p1', name: 'Alex Receiver' },
       priority: 'high',
+      recommendedBid: 17,
+    });
+    expect(result?.pendingWaivers[0]).toMatchObject({
+      transactionId: 'waiver-1',
+      add: { id: 'p3', name: 'Casey Waiver' },
+      drop: { id: 'p1', name: 'Alex Receiver' },
+      bid: 14,
+    });
+    expect(result?.teamHealth).toEqual({
+      percentage: 82,
+      rating: 'good',
+      summary: 'Strong starters and balanced depth make this roster a contender.',
     });
     expect(result?.aiStatus).toBe('ready');
   });
@@ -329,6 +356,7 @@ describe('FantasyService', () => {
     const result = await service.getOverview('U1', 'T1', '999');
 
     expect(result?.aiStatus).toBe('unavailable');
+    expect(result?.teamHealth).toBeNull();
     expect(result?.waiverSuggestions).toEqual([]);
     expect(result?.pendingTrades[0]).toMatchObject({
       insight: 'AI insight is temporarily unavailable for this trade.',

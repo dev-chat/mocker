@@ -1,5 +1,16 @@
 import { useState } from 'react';
-import { AlertCircle, ArrowRight, ExternalLink, RefreshCw, Sparkles, Trophy, Tv, UserPlus } from 'lucide-react';
+import {
+  Activity,
+  AlertCircle,
+  ArrowRight,
+  Clock3,
+  ExternalLink,
+  RefreshCw,
+  Sparkles,
+  Trophy,
+  Tv,
+  UserPlus,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -145,6 +156,37 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
                 </div>
               </section>
 
+              {overview.teamHealth && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <Activity
+                          className={
+                            overview.teamHealth.rating === 'good'
+                              ? 'h-7 w-7 text-green-500'
+                              : overview.teamHealth.rating === 'ok'
+                                ? 'h-7 w-7 text-yellow-500'
+                                : 'h-7 w-7 text-red-500'
+                          }
+                          aria-hidden="true"
+                        />
+                        <div>
+                          <CardTitle>Team health</CardTitle>
+                          <CardDescription className="mt-1">{overview.teamHealth.summary}</CardDescription>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-bold">{overview.teamHealth.percentage}%</p>
+                        <p className="text-sm font-medium capitalize text-muted-foreground">
+                          {overview.teamHealth.rating}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              )}
+
               <section>
                 <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
                   <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" /> Pending trades
@@ -242,6 +284,44 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
               </section>
 
               <section>
+                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+                  <Clock3 className="h-5 w-5 text-primary" aria-hidden="true" /> Pending waivers
+                </h2>
+                {!overview.pendingWaivers.length ? (
+                  <Card>
+                    <CardContent className="pt-6 text-sm text-muted-foreground">
+                      You do not have any pending waiver claims.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    {overview.pendingWaivers.map((waiver) => (
+                      <Card key={waiver.transactionId}>
+                        <CardHeader>
+                          <div className="flex items-center justify-between gap-3">
+                            <CardTitle>{waiver.add ? `Claim ${waiver.add.name}` : 'Waiver claim'}</CardTitle>
+                            {waiver.bid !== null && <Badge variant="secondary">${waiver.bid} bid</Badge>}
+                          </div>
+                          <CardDescription>Submitted {new Date(waiver.createdAt).toLocaleString()}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3 text-sm">
+                          <div>
+                            <p className="font-medium">Add</p>
+                            {waiver.add ? <PlayerList players={[waiver.add]} /> : <span>None</span>}
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                          <div>
+                            <p className="font-medium">Drop</p>
+                            {waiver.drop ? <PlayerList players={[waiver.drop]} /> : <span>None</span>}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -290,6 +370,10 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
                           <div>
                             <p className="font-medium">Drop</p>
                             <PlayerList players={[suggestion.drop]} />
+                          </div>
+                          <div className="rounded-md bg-muted p-3">
+                            <p className="text-xs text-muted-foreground">Recommended bid</p>
+                            <p className="text-lg font-semibold">${suggestion.recommendedBid}</p>
                           </div>
                           <Button className="w-full" asChild>
                             <a href={suggestion.sleeperUrl} target="_blank" rel="noreferrer">
