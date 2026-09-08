@@ -71,8 +71,8 @@ Add these slash commands with their request URLs:
 #### OAuth & Permissions
 
 - **OAuth Redirect URLs (for app installation):** Configure the URLs required by the bot.
-- **Sign in with Slack Redirect URLs (for search/auth UI):** Add the backend callback URL, such as
-  `http://localhost:3000/auth/slack/callback`, under **OAuth & Permissions > Sign in with Slack**.
+- **Redirect URLs:** Add the backend callback URL for the search/auth UI, such as
+  `http://localhost:3000/auth/slack/callback`, under **OAuth & Permissions > Redirect URLs**.
 - **Scopes:**
   - `admin`
   - `channels:history`
@@ -125,7 +125,7 @@ SLACK_CLIENT_SECRET=your-client-secret
 SLACK_REDIRECT_URI=http://localhost:3000/auth/slack/callback
 
 # Search & Auth
-ALLOWED_TEAM_DOMAIN=your-workspace-domain
+ALLOWED_TEAM_DOMAIN=your-slack-team-id
 SEARCH_FRONTEND_URL=http://localhost:3001
 SEARCH_AUTH_SECRET=generate-a-random-secret-key
 

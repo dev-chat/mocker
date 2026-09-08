@@ -46,6 +46,7 @@ describe('authController', () => {
       expect(location.searchParams.get('client_id')).toBe('test-client-id');
       expect(location.searchParams.get('scope')).toBe('openid');
       expect(location.searchParams.get('response_type')).toBe('code');
+      expect(location.searchParams.get('team')).toBe('T123');
       expect(location.searchParams.get('nonce')).toBeTruthy();
       expect(location.searchParams.has('user_scope')).toBe(false);
       expect(location.searchParams.get('state')).toBeTruthy();
@@ -62,6 +63,12 @@ describe('authController', () => {
 
     it('returns 500 when SLACK_REDIRECT_URI is not set', async () => {
       delete process.env.SLACK_REDIRECT_URI;
+      const res = await request(app).get('/slack');
+      expect(res.status).toBe(500);
+    });
+
+    it('returns 500 when ALLOWED_TEAM_DOMAIN is not set', async () => {
+      delete process.env.ALLOWED_TEAM_DOMAIN;
       const res = await request(app).get('/slack');
       expect(res.status).toBe(500);
     });
