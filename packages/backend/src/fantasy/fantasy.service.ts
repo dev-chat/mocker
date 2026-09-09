@@ -41,6 +41,7 @@ const SLEEPER_API_URL = 'https://api.sleeper.app/v1';
 const SLEEPER_PROJECTIONS_URL = 'https://api.sleeper.com/projections/nfl';
 const ESPN_SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
 const PLAYER_CACHE_MS = 24 * 60 * 60 * 1000;
+const AI_ANALYSIS_CACHE_MS = 24 * 60 * 60 * 1000;
 const WAIVER_MARKET_CACHE_MS = 6 * 60 * 60 * 1000;
 const WAIVER_HISTORY_SEASONS = 3;
 const NFL_REGULAR_SEASON_WEEKS = 18;
@@ -115,6 +116,7 @@ export class FantasyService {
   private playerRequest: Promise<Record<string, SleeperPlayer | undefined>> | null = null;
   private waiverMarketCache = new Map<string, { expiresAt: number; samples: WaiverMarketSample[] }>();
   private projectionCache = new Map<string, { expiresAt: number; projections: SleeperProjection[] }>();
+  private analysisCache = new Map<string, { expiresAt: number; analysis: AITradeAnalysis }>();
   private readonly openAi: OpenAIClientLike;
   private readonly serviceLogger = logger.child({ module: 'FantasyService' });
 
@@ -146,7 +148,12 @@ export class FantasyService {
     return { sleeperUser, leagues, season: state.season };
   }
 
-  public async getOverview(slackId: string, teamId: string, leagueId: string): Promise<FantasyOverview | null> {
+  public async getOverview(
+    slackId: string,
+    teamId: string,
+    leagueId: string,
+    refresh = false,
+  ): Promise<FantasyOverview | null> {
     if (!SLEEPER_ID_PATTERN.test(leagueId)) {
       throw new FantasyValidationError('Invalid league ID.');
     }
@@ -228,7 +235,7 @@ export class FantasyService {
     try {
       const [matchups, projections] = await Promise.all([
         this.get<SleeperMatchup[]>(`/league/${leagueId}/matchups/${Math.max(state.week, 1)}`),
-        this.getProjections(state),
+        this.getProjections(state, refresh),
       ]);
       currentProjections = projections;
       lineupRecommendation = this.buildLineupRecommendation(
@@ -266,15 +273,20 @@ export class FantasyService {
     let analysis: AITradeAnalysis;
     let aiStatus: FantasyOverview['aiStatus'] = 'ready';
     try {
-      analysis = await this.generateTradeAnalysis(
-        league,
-        roster,
-        teams,
-        pendingTransactions,
-        waiverCandidates,
-        remainingWaiverBudget,
-        lineupRecommendation,
-        waiverBidGuidance,
+      analysis = await this.getTradeAnalysis(
+        `${teamId}:${slackId}:${leagueId}:${roster.rosterId}:${state.season}:${state.week}`,
+        refresh,
+        () =>
+          this.generateTradeAnalysis(
+            league,
+            roster,
+            teams,
+            pendingTransactions,
+            waiverCandidates,
+            remainingWaiverBudget,
+            lineupRecommendation,
+            waiverBidGuidance,
+          ),
       );
     } catch (error) {
       logError(this.serviceLogger, 'Failed to generate fantasy trade analysis', error, {
@@ -344,14 +356,43 @@ export class FantasyService {
     return this.get<SleeperLeague[]>(`/user/${encodeURIComponent(userId)}/leagues/nfl/${encodeURIComponent(season)}`);
   }
 
-  private getProjections(state: NflState): Promise<SleeperProjection[]> {
+  private getProjections(state: NflState, refresh: boolean): Promise<SleeperProjection[]> {
+    const key = `current:${state.season}:${state.season_type}:${Math.max(state.week, 1)}`;
+    const cached = this.projectionCache.get(key);
+    if (!refresh && cached && cached.expiresAt > Date.now()) {
+      return Promise.resolve(cached.projections);
+    }
     return Axios.get<SleeperProjection[]>(
       `${SLEEPER_PROJECTIONS_URL}/${encodeURIComponent(state.season)}/${Math.max(state.week, 1)}`,
       {
         params: { season_type: state.season_type },
         timeout: 10000,
       },
-    ).then((response) => response.data);
+    ).then((response) => {
+      this.projectionCache.set(key, {
+        expiresAt: Date.now() + AI_ANALYSIS_CACHE_MS,
+        projections: response.data,
+      });
+      return response.data;
+    });
+  }
+
+  private async getTradeAnalysis(
+    key: string,
+    refresh: boolean,
+    generate: () => Promise<AITradeAnalysis>,
+  ): Promise<AITradeAnalysis> {
+    const cached = this.analysisCache.get(key);
+    if (!refresh && cached && cached.expiresAt > Date.now()) {
+      return cached.analysis;
+    }
+
+    const analysis = await generate();
+    this.analysisCache.set(key, {
+      expiresAt: Date.now() + AI_ANALYSIS_CACHE_MS,
+      analysis,
+    });
+    return analysis;
   }
 
   private getSeasonProjections(season: string, week: number): Promise<SleeperProjection[]> {

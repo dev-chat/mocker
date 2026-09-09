@@ -2,6 +2,7 @@ import Axios from 'axios';
 import { getRepository } from 'typeorm';
 import type { OpenAIClientLike } from '../lib/resilientOpenAIClient';
 import type {
+  AITradeAnalysis,
   FantasyPlayer,
   FantasyTeam,
   LineupRecommendation,
@@ -65,6 +66,11 @@ const aiResponse = {
 };
 
 type FantasyServiceInternals = {
+  getTradeAnalysis: (
+    key: string,
+    refresh: boolean,
+    generate: () => Promise<AITradeAnalysis>,
+  ) => Promise<AITradeAnalysis>;
   buildLineupRecommendation: (
     week: number,
     league: SleeperLeague,
@@ -137,6 +143,36 @@ describe('FantasyService', () => {
 
     await expect(service.getOverview('U1', 'T1', '999')).resolves.toBeNull();
     expect(Axios.get).not.toHaveBeenCalled();
+  });
+
+  it('caches AI analysis for 24 hours and bypasses the cache on refresh', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-09T12:00:00.000Z'));
+    const internals = service as unknown as FantasyServiceInternals;
+    const analysis: AITradeAnalysis = {
+      teamHealth: { percentage: 80, summary: 'Healthy roster.' },
+      tradeInsights: [],
+      suggestions: [],
+      waiverSuggestions: [],
+      lineupSummary: 'Use the projected starters.',
+    };
+    const generate = vi.fn().mockResolvedValue(analysis);
+
+    try {
+      await expect(internals.getTradeAnalysis('U1:T1:999:1:2026:1', false, generate)).resolves.toBe(analysis);
+      vi.advanceTimersByTime(24 * 60 * 60 * 1000 - 1);
+      await expect(internals.getTradeAnalysis('U1:T1:999:1:2026:1', false, generate)).resolves.toBe(analysis);
+      expect(generate).toHaveBeenCalledOnce();
+
+      await expect(internals.getTradeAnalysis('U1:T1:999:1:2026:1', true, generate)).resolves.toBe(analysis);
+      expect(generate).toHaveBeenCalledTimes(2);
+
+      vi.advanceTimersByTime(24 * 60 * 60 * 1000);
+      await expect(internals.getTradeAnalysis('U1:T1:999:1:2026:1', false, generate)).resolves.toBe(analysis);
+      expect(generate).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('builds a league overview with AI trade analysis and roster-relevant games', async () => {

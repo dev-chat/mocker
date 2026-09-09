@@ -51,7 +51,7 @@ fantasyController.get('/leagues/:leagueId', (req: RequestWithAuthSession, res) =
     return;
   }
   fantasyService
-    .getOverview(session.userId, session.teamId, req.params.leagueId)
+    .getOverview(session.userId, session.teamId, req.params.leagueId, req.query.refresh === 'true')
     .then((overview) => {
       if (!overview) {
         res.status(404).json({ error: 'League or linked Sleeper roster was not found.' });

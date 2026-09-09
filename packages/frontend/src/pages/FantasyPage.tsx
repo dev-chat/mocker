@@ -163,10 +163,24 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
               )}
 
               <section>
-                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
-                  <Users className="h-5 w-5 text-primary" aria-hidden="true" /> Week{' '}
-                  {overview.lineupRecommendation?.week ?? ''} lineup optimizer
-                </h2>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold">
+                    <Users className="h-5 w-5 text-primary" aria-hidden="true" /> Week{' '}
+                    {overview.lineupRecommendation?.week ?? ''} lineup optimizer
+                  </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={refreshingSuggestions !== null}
+                    onClick={() => void refreshSuggestions('lineup')}
+                  >
+                    <RefreshCw
+                      className={refreshingSuggestions === 'lineup' ? 'animate-spin' : ''}
+                      aria-hidden="true"
+                    />
+                    {refreshingSuggestions === 'lineup' ? 'Refreshing…' : 'Refresh lineup'}
+                  </Button>
+                </div>
                 {overview.lineupStatus === 'unavailable' ? (
                   <Card>
                     <CardContent className="pt-6 text-sm text-muted-foreground">
