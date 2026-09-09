@@ -83,6 +83,13 @@ interface EspnScoreboard {
   events?: EspnEvent[];
 }
 
+interface RosterNeed {
+  position: string;
+  rostered: number;
+  recommended: number;
+  deficit: number;
+}
+
 const isOutputMessage = (item: ResponseOutputItem): item is ResponseOutputMessage => item.type === 'message';
 const isOutputText = (item: ResponseOutputMessage['content'][number]): item is ResponseOutputText =>
   item.type === 'output_text';
@@ -202,6 +209,24 @@ export class FantasyService {
     if (!roster) {
       return null;
     }
+    const upcomingScoreboards = await Promise.all(
+      [state.week + 1, state.week + 2]
+        .filter((week) => state.season_type === 'regular' && week <= NFL_REGULAR_SEASON_WEEKS)
+        .map((week) =>
+          Axios.get<EspnScoreboard>(ESPN_SCOREBOARD_URL, {
+            params: { dates: state.season, seasontype: 2, week },
+            timeout: 10000,
+          })
+            .then((response) => response.data)
+            .catch((error) => {
+              logError(this.serviceLogger, 'Failed to load an upcoming NFL scoreboard', error, {
+                season: state.season,
+                week,
+              });
+              return { events: [] };
+            }),
+        ),
+    );
 
     const pendingTransactions = transactions.filter(
       (transaction) => transaction.type === 'trade' && transaction.status === 'pending',
@@ -286,6 +311,8 @@ export class FantasyService {
             remainingWaiverBudget,
             lineupRecommendation,
             waiverBidGuidance,
+            state.week,
+            [scoreboard, ...upcomingScoreboards],
           ),
       );
     } catch (error) {
@@ -812,6 +839,57 @@ export class FantasyService {
     return `The highest-projected lineup for week ${recommendation.week}${opponent} is ${recommendation.userPotential.max.toFixed(1)} points.`;
   }
 
+  private buildRosterNeeds(team: FantasyTeam, rosterPositions: string[]): RosterNeed[] {
+    const requiredByPosition = rosterPositions
+      .filter((slot) => !['BN', 'IR', 'TAXI', 'FLEX', 'SUPER_FLEX', 'REC_FLEX', 'WRRB_FLEX', 'IDP_FLEX'].includes(slot))
+      .reduce<Record<string, number>>((counts, position) => {
+        counts[position] = (counts[position] ?? 0) + 1;
+        return counts;
+      }, {});
+    const rosteredByPosition = team.players.reduce<Record<string, number>>((counts, player) => {
+      if (player.position) counts[player.position] = (counts[player.position] ?? 0) + 1;
+      return counts;
+    }, {});
+
+    return Object.entries(requiredByPosition)
+      .map(([position, recommended]) => ({
+        position,
+        rostered: rosteredByPosition[position] ?? 0,
+        recommended,
+        deficit: Math.max(0, recommended - (rosteredByPosition[position] ?? 0)),
+      }))
+      .filter((need) => need.deficit > 0)
+      .sort((left, right) => right.deficit - left.deficit);
+  }
+
+  private buildMatchupContext(scoreboards: EspnScoreboard[], players: FantasyPlayer[], startingWeek: number) {
+    const rosterTeams = new Set(
+      players
+        .map((player) => (player.team ? this.normalizeTeam(player.team) : null))
+        .filter((team): team is string => !!team),
+    );
+    return scoreboards.flatMap((scoreboard, index) =>
+      (scoreboard.events ?? []).flatMap((event) => {
+        const competitors = event.competitions?.[0]?.competitors ?? [];
+        const away = competitors.find((team) => team.homeAway === 'away')?.team?.abbreviation;
+        const home = competitors.find((team) => team.homeAway === 'home')?.team?.abbreviation;
+        if (!away || !home) return [];
+        const normalizedAway = this.normalizeTeam(away);
+        const normalizedHome = this.normalizeTeam(home);
+        const rosterTeam = [normalizedAway, normalizedHome].find((team) => rosterTeams.has(team));
+        if (!rosterTeam) return [];
+        return [
+          {
+            week: startingWeek + index,
+            rosterTeam,
+            opponent: rosterTeam === normalizedAway ? normalizedHome : normalizedAway,
+            startsAt: event.date ?? null,
+          },
+        ];
+      }),
+    );
+  }
+
   private toFantasyTeam(
     roster: SleeperRoster,
     ownerNames: Map<number, string>,
@@ -1016,7 +1094,12 @@ export class FantasyService {
     remainingWaiverBudget: number,
     lineupRecommendation: LineupRecommendation | null,
     waiverBidGuidance: WaiverBidGuidance,
+    currentWeek: number,
+    scoreboards: EspnScoreboard[],
   ): Promise<AITradeAnalysis> {
+    const rosterNeeds = new Map(
+      teams.map((team) => [team.rosterId, this.buildRosterNeeds(team, league.roster_positions ?? [])]),
+    );
     const compactTeams = teams.map((team) => ({
       rosterId: team.rosterId,
       ownerName: team.ownerName,
@@ -1027,7 +1110,13 @@ export class FantasyService {
         team: nflTeam,
         injuryStatus,
       })),
+      needs: rosterNeeds.get(team.rosterId) ?? [],
     }));
+    const matchupContext = this.buildMatchupContext(
+      scoreboards,
+      [...ownRoster.players, ...waiverCandidates],
+      currentWeek,
+    );
     const response = await this.openAi.responses.create({
       model: GPT_MODEL,
       reasoning: { effort: 'low' },
@@ -1036,9 +1125,14 @@ export class FantasyService {
         'teamHealth must assess the user roster relative to the supplied league with an integer percentage from 0 to 100 and a concise summary. ' +
         'tradeInsights must include exactly one item per pending transaction with transactionId, a concise insight, ' +
         'and recommendation of accept, decline, or negotiate. suggestions must contain up to 3 realistic options ' +
-        'with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. waiverSuggestions must contain up to 3 ' +
+        'with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. Make each proposed trade fair enough that ' +
+        'the target manager is likely to accept, but favor a small, subtle value edge for the user. Consider the current ' +
+        'week, upcoming schedule, roster needs for both teams, positional scarcity, and whether the timing makes the offer ' +
+        'more or less appealing. waiverSuggestions must contain up to 3 ' +
         'add/drop proposals using only the supplied waiver candidate and user roster IDs, with rationale and a high, ' +
         'medium, or low priority, plus an integer recommendedBid in dollars that does not exceed remainingWaiverBudget. ' +
+        'Prioritize the user roster gaps first, then compare current and upcoming matchups for the candidate and the dropped ' +
+        'player; do not recommend a player solely because of name value or season-long projections. ' +
         'When historicalBidGuidance contains a suggested bid for a player, use that exact amount; it is calculated from ' +
         'the league history using recency-weighted dollars per projected point and is authoritative. ' +
         'Waivers process Wednesday and Sunday. lineupSummary must briefly explain the supplied deterministic weekly lineup recommendation, ' +
@@ -1052,6 +1146,9 @@ export class FantasyService {
         remainingWaiverBudget,
         historicalBidGuidance: waiverBidGuidance,
         lineupRecommendation,
+        currentWeek,
+        rosterNeeds: rosterNeeds.get(ownRoster.rosterId) ?? [],
+        matchupContext,
       }),
       text: {
         format: {
