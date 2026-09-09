@@ -96,6 +96,7 @@ export function useFantasy(onLogout: () => void): UseFantasyReturn {
       try {
         const data = await request<FantasyOverview>(
           `/fantasy/leagues/${encodeURIComponent(selectedLeagueId)}?refresh=true`,
+          { cache: 'no-store' },
         );
         setOverview(data);
       } catch (err) {

@@ -192,13 +192,16 @@ describe('FantasyPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /refresh lineup/i }));
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(3));
     expect(mockFetch.mock.calls[2]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=true/);
+    expect(mockFetch.mock.calls[2]?.[1]).toMatchObject({ cache: 'no-store' });
 
     fireEvent.click(screen.getByRole('button', { name: /refresh ideas/i }));
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(4));
     expect(mockFetch.mock.calls[3]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=true/);
+    expect(mockFetch.mock.calls[3]?.[1]).toMatchObject({ cache: 'no-store' });
 
     fireEvent.click(screen.getByRole('button', { name: /refresh proposals/i }));
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(5));
     expect(mockFetch.mock.calls[4]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=true/);
+    expect(mockFetch.mock.calls[4]?.[1]).toMatchObject({ cache: 'no-store' });
   });
 });
