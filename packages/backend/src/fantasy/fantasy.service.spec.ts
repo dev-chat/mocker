@@ -80,6 +80,22 @@ type FantasyServiceInternals = {
     projections: SleeperProjection[],
   ) => LineupRecommendation | null;
   buildLineupFallbackSummary: (recommendation: LineupRecommendation) => string;
+  buildRosterNeeds: (
+    team: FantasyTeam,
+    rosterPositions: string[],
+  ) => Array<{ position: string; rostered: number; recommended: number; deficit: number }>;
+  buildMatchupContext: (
+    scoreboards: Array<{
+      events?: Array<{
+        date?: string;
+        competitions?: Array<{
+          competitors?: Array<{ homeAway?: string; team?: { abbreviation?: string } }>;
+        }>;
+      }>;
+    }>,
+    players: FantasyPlayer[],
+    startingWeek: number,
+  ) => unknown[];
   isEligible: (player: FantasyPlayer, slot: string) => boolean;
   optimizeLineup: (
     players: LineupRecommendation['recommendedStarters'],
@@ -178,7 +194,9 @@ describe('FantasyService', () => {
   it('builds a league overview with AI trade analysis and roster-relevant games', async () => {
     findOne.mockResolvedValue({ slackId: 'U1', teamId: 'T1', sleeperUserId: '123' });
     (Axios.get as Mock).mockImplementation((url: string) => {
-      if (url.endsWith('/state/nfl')) return Promise.resolve({ data: { season: '2026', week: 1 } });
+      if (url.endsWith('/state/nfl')) {
+        return Promise.resolve({ data: { season: '2026', week: 1, season_type: 'regular' } });
+      }
       if (url.includes('/user/123/leagues/nfl/2026')) {
         return Promise.resolve({
           data: [
@@ -527,6 +545,101 @@ describe('FantasyService', () => {
     expect(internals.projectedPoints({ pts_half_ppr: 9 }, undefined)).toBe(9);
     expect(internals.projectedPoints({ pts_std: 7 }, {})).toBe(7);
     expect(internals.projectedPoints({}, undefined)).toBeNull();
+  });
+
+  it('identifies positional roster gaps while ignoring bench and flex slots', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const needs = internals.buildRosterNeeds(
+      {
+        rosterId: 1,
+        ownerName: 'Alice',
+        starters: [],
+        players: [
+          {
+            id: 'qb',
+            name: 'Quarterback',
+            position: 'QB',
+            team: 'BUF',
+            injuryStatus: null,
+            fantasyPositions: ['QB'],
+          },
+          {
+            id: 'unknown',
+            name: 'Unknown',
+            position: null,
+            team: null,
+            injuryStatus: null,
+            fantasyPositions: [],
+          },
+        ],
+      },
+      ['QB', 'RB', 'WR', 'FLEX', 'BN', 'IR'],
+    );
+
+    expect(needs).toEqual([
+      { position: 'RB', rostered: 0, recommended: 1, deficit: 1 },
+      { position: 'WR', rostered: 0, recommended: 1, deficit: 1 },
+    ]);
+  });
+
+  it('builds current and upcoming matchup context for roster and waiver teams', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const players: FantasyPlayer[] = [
+      {
+        id: 'washington-player',
+        name: 'Washington Player',
+        position: 'WR',
+        team: 'WAS',
+        injuryStatus: null,
+        fantasyPositions: ['WR'],
+      },
+      {
+        id: 'jacksonville-player',
+        name: 'Jacksonville Player',
+        position: 'RB',
+        team: 'JAC',
+        injuryStatus: null,
+        fantasyPositions: ['RB'],
+      },
+    ];
+
+    expect(
+      internals.buildMatchupContext(
+        [
+          {
+            events: [
+              {
+                date: '2026-09-10T00:00:00.000Z',
+                competitions: [
+                  {
+                    competitors: [
+                      { homeAway: 'away', team: { abbreviation: 'WAS' } },
+                      { homeAway: 'home', team: { abbreviation: 'DAL' } },
+                    ],
+                  },
+                ],
+              },
+              {
+                competitions: [
+                  {
+                    competitors: [
+                      { homeAway: 'away', team: { abbreviation: 'MIA' } },
+                      { homeAway: 'home', team: { abbreviation: 'JAX' } },
+                    ],
+                  },
+                ],
+              },
+              { competitions: [] },
+            ],
+          },
+        ],
+        players,
+        3,
+      ),
+    ).toEqual([
+      { week: 3, rosterTeam: 'WSH', opponent: 'DAL', startsAt: '2026-09-10T00:00:00.000Z' },
+      { week: 3, rosterTeam: 'JAX', opponent: 'MIA', startsAt: null },
+    ]);
   });
 
   it('prices waiver bids from prior-league dollars per projected point', async () => {
