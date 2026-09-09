@@ -74,6 +74,27 @@ const overview = {
       sleeperUrl: 'https://sleeper.com/leagues/999',
     },
   ],
+  lineupRecommendation: {
+    week: 1,
+    opponentOwnerName: 'Bob',
+    recommendedStarters: [
+      {
+        id: 'p3',
+        name: 'Casey Waiver',
+        position: 'WR',
+        team: 'DAL',
+        injuryStatus: null,
+        fantasyPositions: ['WR'],
+        projectedPoints: 18.4,
+      },
+    ],
+    start: [],
+    sit: [],
+    userPotential: { min: 8.2, max: 18.4 },
+    opponentPotential: { min: 9.1, max: 16.7 },
+    summary: 'This lineup gives you the strongest overall projection against Bob.',
+  },
+  lineupStatus: 'ready',
   teamHealth: {
     percentage: 82,
     rating: 'good',
@@ -117,6 +138,9 @@ describe('FantasyPage', () => {
     expect(screen.getByText('82%')).toBeInTheDocument();
     expect(screen.getByText('Strong starters and balanced depth make this roster a contender.')).toBeInTheDocument();
     expect(screen.getByText('$17')).toBeInTheDocument();
+    expect(screen.getByText('Best projected lineup vs. Bob')).toBeInTheDocument();
+    expect(screen.getByText('8.2–18.4')).toBeInTheDocument();
+    expect(screen.getByText('9.1–16.7')).toBeInTheDocument();
     expect(screen.getByText(/waivers process wednesday and sunday/i)).toBeInTheDocument();
     const headings = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent?.trim());
     expect(headings.indexOf('Trade ideas')).toBeLessThan(headings.indexOf('Games to watch'));
@@ -137,6 +161,8 @@ describe('FantasyPage', () => {
       waiverSuggestions: [],
       teamHealth: null,
       aiStatus: 'unavailable',
+      lineupRecommendation: null,
+      lineupStatus: 'no_matchup',
     };
     mockFetch
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing })

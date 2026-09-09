@@ -45,6 +45,7 @@ const aiResponse = {
                 recommendedBid: 17,
               },
             ],
+            lineupSummary: 'Start Drew Runner to maximize your matchup ceiling this week.',
           }),
         },
       ],
@@ -101,6 +102,8 @@ describe('FantasyService', () => {
               status: 'in_season',
               avatar: null,
               total_rosters: 2,
+              roster_positions: ['RB'],
+              scoring_settings: { rush_yd: 0.1, rush_td: 6 },
             },
           ],
         });
@@ -108,7 +111,7 @@ describe('FantasyService', () => {
       if (url.endsWith('/league/999/rosters')) {
         return Promise.resolve({
           data: [
-            { roster_id: 1, owner_id: '123', players: ['p1'], starters: ['p1'] },
+            { roster_id: 1, owner_id: '123', players: ['p1', 'p4'], starters: ['p1'] },
             { roster_id: 2, owner_id: '456', players: ['p2'], starters: ['p2'] },
           ],
         });
@@ -118,6 +121,24 @@ describe('FantasyService', () => {
           data: [
             { user_id: '123', username: 'alice', display_name: 'Alice' },
             { user_id: '456', username: 'bob', display_name: 'Bob' },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/matchups/1')) {
+        return Promise.resolve({
+          data: [
+            { roster_id: 1, matchup_id: 7, players: ['p1', 'p4'], starters: ['p1'] },
+            { roster_id: 2, matchup_id: 7, players: ['p2'], starters: ['p2'] },
+          ],
+        });
+      }
+      if (url.includes('api.sleeper.com/projections/nfl/2026/1')) {
+        return Promise.resolve({
+          data: [
+            { player_id: 'p1', stats: { rush_yd: 20, rush_td: 0 } },
+            { player_id: 'p2', stats: { rush_yd: 50, rush_td: 1 } },
+            { player_id: 'p3', stats: { rush_yd: 80, rush_td: 1 } },
+            { player_id: 'p4', stats: { rush_yd: 80, rush_td: 1 } },
           ],
         });
       }
@@ -157,6 +178,7 @@ describe('FantasyService', () => {
               position: 'WR',
               team: 'BUF',
               injury_status: null,
+              fantasy_positions: ['RB'],
             },
             p2: {
               player_id: 'p2',
@@ -165,15 +187,26 @@ describe('FantasyService', () => {
               position: 'RB',
               team: 'NYJ',
               injury_status: null,
+              fantasy_positions: ['RB'],
             },
             p3: {
               player_id: 'p3',
               first_name: 'Casey',
               last_name: 'Waiver',
-              position: 'WR',
+              position: 'RB',
               team: 'DAL',
               injury_status: null,
+              fantasy_positions: ['RB'],
               search_rank: 10,
+            },
+            p4: {
+              player_id: 'p4',
+              first_name: 'Drew',
+              last_name: 'Runner',
+              position: 'RB',
+              team: 'DAL',
+              injury_status: null,
+              fantasy_positions: ['RB'],
             },
           },
         });
@@ -239,6 +272,15 @@ describe('FantasyService', () => {
       summary: 'Strong starters and balanced depth make this roster a contender.',
     });
     expect(result?.aiStatus).toBe('ready');
+    expect(result?.lineupRecommendation).toMatchObject({
+      week: 1,
+      opponentOwnerName: 'Bob',
+      userPotential: { min: 2, max: 14 },
+      opponentPotential: { min: 11, max: 11 },
+      start: [{ id: 'p4' }],
+      sit: [{ id: 'p1' }],
+      summary: 'Start Drew Runner to maximize your matchup ceiling this week.',
+    });
   });
 
   it('returns league data with fallback insights when AI is unavailable', async () => {
@@ -272,6 +314,10 @@ describe('FantasyService', () => {
       }
       if (url.endsWith('/league/999/users')) {
         return Promise.resolve({ data: [] });
+      }
+      if (url.endsWith('/league/999/matchups/2')) return Promise.resolve({ data: [] });
+      if (url.includes('api.sleeper.com/projections/nfl/2026/2')) {
+        return Promise.reject(new Error('Projections unavailable'));
       }
       if (url.endsWith('/league/999/transactions/2')) {
         return Promise.resolve({
@@ -331,6 +377,8 @@ describe('FantasyService', () => {
     const result = await service.getOverview('U1', 'T1', '999');
 
     expect(result?.aiStatus).toBe('unavailable');
+    expect(result?.lineupStatus).toBe('unavailable');
+    expect(result?.lineupRecommendation).toBeNull();
     expect(result?.teamHealth).toBeNull();
     expect(result?.waiverSuggestions).toEqual([]);
     expect(result?.pendingTrades[0]).toMatchObject({

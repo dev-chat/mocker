@@ -15,6 +15,7 @@ import { logger } from '../shared/logger/logger';
 import type {
   AITradeAnalysis,
   FantasyLandingResponse,
+  LineupRecommendation,
   FantasyOverview,
   FantasyPlayer,
   FantasyTeam,
@@ -23,7 +24,9 @@ import type {
   PendingTrade,
   SleeperLeague,
   SleeperLeagueUser,
+  SleeperMatchup,
   SleeperPlayer,
+  SleeperProjection,
   SleeperRoster,
   SleeperTransaction,
   SleeperUser,
@@ -34,6 +37,7 @@ import type {
 } from './fantasy.model';
 
 const SLEEPER_API_URL = 'https://api.sleeper.app/v1';
+const SLEEPER_PROJECTIONS_URL = 'https://api.sleeper.com/projections/nfl';
 const ESPN_SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
 const PLAYER_CACHE_MS = 24 * 60 * 60 * 1000;
 const SLEEPER_ID_PATTERN = /^\d{1,32}$/;
@@ -206,6 +210,30 @@ export class FantasyService {
     const waiverBudget = Math.max(0, league.settings?.waiver_budget ?? 100);
     const waiverBudgetUsed = Math.max(0, ownRoster.settings?.waiver_budget_used ?? 0);
     const remainingWaiverBudget = Math.max(0, waiverBudget - waiverBudgetUsed);
+    let lineupRecommendation: LineupRecommendation | null = null;
+    let lineupStatus: FantasyOverview['lineupStatus'];
+    try {
+      const [matchups, projections] = await Promise.all([
+        this.get<SleeperMatchup[]>(`/league/${leagueId}/matchups/${Math.max(state.week, 1)}`),
+        this.getProjections(state),
+      ]);
+      lineupRecommendation = this.buildLineupRecommendation(
+        Math.max(state.week, 1),
+        league,
+        roster,
+        teams,
+        matchups,
+        projections,
+      );
+      lineupStatus = lineupRecommendation ? 'ready' : 'no_matchup';
+    } catch (error) {
+      logError(this.serviceLogger, 'Failed to build weekly lineup recommendation', error, {
+        leagueId,
+        rosterId: roster.rosterId,
+        week: state.week,
+      });
+      lineupStatus = 'unavailable';
+    }
     let analysis: AITradeAnalysis;
     let aiStatus: FantasyOverview['aiStatus'] = 'ready';
     try {
@@ -216,6 +244,7 @@ export class FantasyService {
         pendingTransactions,
         waiverCandidates,
         remainingWaiverBudget,
+        lineupRecommendation,
       );
     } catch (error) {
       logError(this.serviceLogger, 'Failed to generate fantasy trade analysis', error, {
@@ -227,6 +256,7 @@ export class FantasyService {
         tradeInsights: [],
         suggestions: [],
         waiverSuggestions: [],
+        lineupSummary: '',
       };
       aiStatus = 'unavailable';
     }
@@ -243,6 +273,14 @@ export class FantasyService {
       gamesToWatch: this.buildGames(scoreboard, roster.players),
       tradeSuggestions,
       waiverSuggestions,
+      lineupRecommendation: lineupRecommendation
+        ? {
+            ...lineupRecommendation,
+            summary:
+              aiStatus === 'ready' ? analysis.lineupSummary : this.buildLineupFallbackSummary(lineupRecommendation),
+          }
+        : null,
+      lineupStatus,
       teamHealth: aiStatus === 'ready' ? this.buildTeamHealth(analysis) : null,
       aiStatus,
       sleeperUrl: `https://sleeper.com/leagues/${leagueId}`,
@@ -268,6 +306,16 @@ export class FantasyService {
 
   private getLeagues(userId: string, season: string): Promise<SleeperLeague[]> {
     return this.get<SleeperLeague[]>(`/user/${encodeURIComponent(userId)}/leagues/nfl/${encodeURIComponent(season)}`);
+  }
+
+  private getProjections(state: NflState): Promise<SleeperProjection[]> {
+    return Axios.get<SleeperProjection[]>(
+      `${SLEEPER_PROJECTIONS_URL}/${encodeURIComponent(state.season)}/${Math.max(state.week, 1)}`,
+      {
+        params: { season_type: state.season_type },
+        timeout: 10000,
+      },
+    ).then((response) => response.data);
   }
 
   private async getPlayers(): Promise<Record<string, SleeperPlayer | undefined>> {
@@ -309,7 +357,176 @@ export class FantasyService {
       position: player?.position ?? null,
       team: player?.team ?? null,
       injuryStatus: player?.injury_status ?? null,
+      fantasyPositions: player?.fantasy_positions?.length
+        ? player.fantasy_positions
+        : player?.position
+          ? [player.position]
+          : [],
     };
+  }
+
+  private buildLineupRecommendation(
+    week: number,
+    league: SleeperLeague,
+    ownRoster: FantasyTeam,
+    teams: FantasyTeam[],
+    matchups: SleeperMatchup[],
+    projections: SleeperProjection[],
+  ): LineupRecommendation | null {
+    const ownMatchup = matchups.find((matchup) => matchup.roster_id === ownRoster.rosterId);
+    if (!ownMatchup || ownMatchup.matchup_id === null) {
+      return null;
+    }
+    const opponentMatchup = matchups.find(
+      (matchup) => matchup.matchup_id === ownMatchup.matchup_id && matchup.roster_id !== ownMatchup.roster_id,
+    );
+    const opponent = opponentMatchup ? teams.find((team) => team.rosterId === opponentMatchup.roster_id) : undefined;
+    const slots = (league.roster_positions ?? []).filter((slot) => !['BN', 'IR', 'TAXI'].includes(slot));
+    if (!slots.length) {
+      return null;
+    }
+
+    const projectionsByPlayer = new Map(projections.map((projection) => [projection.player_id, projection]));
+    const scorePlayers = (team: FantasyTeam, matchup: SleeperMatchup) => {
+      const activePlayerIds = new Set(matchup.players ?? []);
+      return team.players.flatMap((player) => {
+        if (!activePlayerIds.has(player.id)) return [];
+        const projectedPoints = this.projectedPoints(
+          projectionsByPlayer.get(player.id)?.stats,
+          league.scoring_settings,
+        );
+        return projectedPoints === null ? [] : [{ ...player, projectedPoints }];
+      });
+    };
+    const ownPlayers = scorePlayers(ownRoster, ownMatchup);
+    if (!ownPlayers.length) {
+      throw new Error('Sleeper returned no usable weekly projections for the user roster.');
+    }
+    const maximum = this.optimizeLineup(ownPlayers, slots, 'max');
+    const minimum = this.optimizeLineup(ownPlayers, slots, 'min');
+    if (!maximum.length || !minimum.length) {
+      return null;
+    }
+    const currentStarterIds = new Set(ownRoster.starters);
+    const recommendedIds = new Set(maximum.map((player) => player.id));
+    const opponentPlayers = opponent && opponentMatchup ? scorePlayers(opponent, opponentMatchup) : [];
+    if (opponent && !opponentPlayers.length) {
+      throw new Error('Sleeper returned no usable weekly projections for the opponent roster.');
+    }
+    const opponentMaximum = opponent ? this.optimizeLineup(opponentPlayers, slots, 'max') : [];
+    const opponentMinimum = opponent ? this.optimizeLineup(opponentPlayers, slots, 'min') : [];
+
+    return {
+      week,
+      opponentOwnerName: opponent?.ownerName ?? null,
+      recommendedStarters: maximum,
+      start: maximum.filter((player) => !currentStarterIds.has(player.id)),
+      sit: ownPlayers.filter((player) => currentStarterIds.has(player.id) && !recommendedIds.has(player.id)),
+      userPotential: {
+        min: this.lineupTotal(minimum),
+        max: this.lineupTotal(maximum),
+      },
+      opponentPotential:
+        opponentMaximum.length && opponentMinimum.length
+          ? {
+              min: this.lineupTotal(opponentMinimum),
+              max: this.lineupTotal(opponentMaximum),
+            }
+          : null,
+      summary: '',
+    };
+  }
+
+  private projectedPoints(
+    stats: Record<string, number | null | undefined> | undefined,
+    scoringSettings: Record<string, number> | undefined,
+  ): number | null {
+    if (!stats) return null;
+    if (scoringSettings && Object.keys(scoringSettings).length) {
+      const scoringEntries = Object.entries(scoringSettings).filter(([stat]) => stats[stat] !== undefined);
+      if (!scoringEntries.length) return null;
+      return scoringEntries.reduce((total, [stat, multiplier]) => total + (stats[stat] ?? 0) * multiplier, 0);
+    }
+    return stats.pts_ppr ?? stats.pts_half_ppr ?? stats.pts_std ?? null;
+  }
+
+  private optimizeLineup(
+    players: LineupRecommendation['recommendedStarters'],
+    slots: string[],
+    direction: 'min' | 'max',
+  ): LineupRecommendation['recommendedStarters'] {
+    const orderedSlots = [...slots].sort(
+      (left, right) =>
+        players.filter((player) => this.isEligible(player, left)).length -
+        players.filter((player) => this.isEligible(player, right)).length,
+    );
+    type OptimizedLineup = {
+      score: number;
+      players: LineupRecommendation['recommendedStarters'];
+    };
+    const memo = new Map<string, OptimizedLineup>();
+    const solve = (slotIndex: number, usedPlayers: bigint): OptimizedLineup => {
+      if (slotIndex === orderedSlots.length) {
+        return { score: 0, players: [] };
+      }
+      const key = `${slotIndex}:${usedPlayers}`;
+      const cached = memo.get(key);
+      if (cached) return cached;
+
+      const eligible = players
+        .map((player, index) => ({ player, index }))
+        .filter(
+          ({ player, index }) =>
+            (usedPlayers & (1n << BigInt(index))) === 0n && this.isEligible(player, orderedSlots[slotIndex]),
+        );
+      if (!eligible.length) {
+        const result = solve(slotIndex + 1, usedPlayers);
+        memo.set(key, result);
+        return result;
+      }
+
+      let best: OptimizedLineup | null = null;
+      for (const { player, index } of eligible) {
+        const remaining = solve(slotIndex + 1, usedPlayers | (1n << BigInt(index)));
+        const candidate = {
+          score: player.projectedPoints + remaining.score,
+          players: [player, ...remaining.players],
+        };
+        if (
+          best === null ||
+          (direction === 'max' && candidate.score > best.score) ||
+          (direction === 'min' && candidate.score < best.score)
+        ) {
+          best = candidate;
+        }
+      }
+      const result = best ?? { score: 0, players: [] };
+      memo.set(key, result);
+      return result;
+    };
+
+    return solve(0, 0n).players;
+  }
+
+  private isEligible(player: FantasyPlayer, slot: string): boolean {
+    const eligiblePositions: Record<string, string[] | undefined> = {
+      FLEX: ['RB', 'WR', 'TE'],
+      SUPER_FLEX: ['QB', 'RB', 'WR', 'TE'],
+      REC_FLEX: ['WR', 'TE'],
+      WRRB_FLEX: ['WR', 'RB'],
+      IDP_FLEX: ['DL', 'LB', 'DB'],
+    };
+    const positions = eligiblePositions[slot] ?? [slot];
+    return player.fantasyPositions.some((position) => positions.includes(position));
+  }
+
+  private lineupTotal(players: LineupRecommendation['recommendedStarters']): number {
+    return Math.round(players.reduce((total, player) => total + player.projectedPoints, 0) * 10) / 10;
+  }
+
+  private buildLineupFallbackSummary(recommendation: LineupRecommendation): string {
+    const opponent = recommendation.opponentOwnerName ? ` against ${recommendation.opponentOwnerName}` : '';
+    return `The highest-projected lineup for week ${recommendation.week}${opponent} is ${recommendation.userPotential.max.toFixed(1)} points.`;
   }
 
   private toFantasyTeam(
@@ -513,6 +730,7 @@ export class FantasyService {
     pendingTransactions: SleeperTransaction[],
     waiverCandidates: FantasyPlayer[],
     remainingWaiverBudget: number,
+    lineupRecommendation: LineupRecommendation | null,
   ): Promise<AITradeAnalysis> {
     const compactTeams = teams.map((team) => ({
       rosterId: team.rosterId,
@@ -529,14 +747,15 @@ export class FantasyService {
       model: GPT_MODEL,
       reasoning: { effort: 'low' },
       instructions:
-        'You are a fantasy football analyst. Return only valid JSON with keys teamHealth, tradeInsights, suggestions, and waiverSuggestions. ' +
+        'You are a fantasy football analyst. Return only valid JSON with keys teamHealth, tradeInsights, suggestions, waiverSuggestions, and lineupSummary. ' +
         'teamHealth must assess the user roster relative to the supplied league with an integer percentage from 0 to 100 and a concise summary. ' +
         'tradeInsights must include exactly one item per pending transaction with transactionId, a concise insight, ' +
         'and recommendation of accept, decline, or negotiate. suggestions must contain up to 3 realistic options ' +
         'with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. waiverSuggestions must contain up to 3 ' +
         'add/drop proposals using only the supplied waiver candidate and user roster IDs, with rationale and a high, ' +
         'medium, or low priority, plus an integer recommendedBid in dollars that does not exceed remainingWaiverBudget. ' +
-        'Waivers process Wednesday and Sunday. Use only supplied IDs and rosters.',
+        'Waivers process Wednesday and Sunday. lineupSummary must briefly explain the supplied deterministic weekly lineup recommendation, ' +
+        'including its overall potential versus the opponent; do not change or invent player IDs or projections. Use only supplied IDs and rosters.',
       input: JSON.stringify({
         league: { name: league.name, season: league.season },
         userRosterId: ownRoster.rosterId,
@@ -544,6 +763,7 @@ export class FantasyService {
         pendingTransactions,
         waiverCandidates,
         remainingWaiverBudget,
+        lineupRecommendation,
       }),
       text: {
         format: {
@@ -553,7 +773,7 @@ export class FantasyService {
           schema: {
             type: 'object',
             additionalProperties: false,
-            required: ['teamHealth', 'tradeInsights', 'suggestions', 'waiverSuggestions'],
+            required: ['teamHealth', 'tradeInsights', 'suggestions', 'waiverSuggestions', 'lineupSummary'],
             properties: {
               teamHealth: {
                 type: 'object',
@@ -608,6 +828,7 @@ export class FantasyService {
                   },
                 },
               },
+              lineupSummary: { type: 'string' },
             },
           },
         },
@@ -636,12 +857,15 @@ export class FantasyService {
     const tradeInsights = Reflect.get(value, 'tradeInsights');
     const suggestions = Reflect.get(value, 'suggestions');
     const waiverSuggestions = Reflect.get(value, 'waiverSuggestions');
+    const lineupSummary = Reflect.get(value, 'lineupSummary');
     if (
       !teamHealth ||
       typeof teamHealth !== 'object' ||
       !Array.isArray(tradeInsights) ||
       !Array.isArray(suggestions) ||
-      !Array.isArray(waiverSuggestions)
+      !Array.isArray(waiverSuggestions) ||
+      typeof lineupSummary !== 'string' ||
+      !lineupSummary.trim()
     ) {
       throw new Error('AI returned invalid trade analysis.');
     }
@@ -727,6 +951,7 @@ export class FantasyService {
       tradeInsights: validatedInsights,
       suggestions: validatedSuggestions,
       waiverSuggestions: validatedWaiverSuggestions,
+      lineupSummary: lineupSummary.trim(),
     };
   }
 }

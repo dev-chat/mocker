@@ -131,6 +131,22 @@ export interface FantasyPlayer {
   position: string | null;
   team: string | null;
   injuryStatus: string | null;
+  fantasyPositions: string[];
+}
+
+export interface ProjectedFantasyPlayer extends FantasyPlayer {
+  projectedPoints: number;
+}
+
+export interface LineupRecommendation {
+  week: number;
+  opponentOwnerName: string | null;
+  recommendedStarters: ProjectedFantasyPlayer[];
+  start: ProjectedFantasyPlayer[];
+  sit: ProjectedFantasyPlayer[];
+  userPotential: { min: number; max: number };
+  opponentPotential: { min: number; max: number } | null;
+  summary: string;
 }
 
 export interface PendingTrade {
@@ -201,6 +217,8 @@ export interface FantasyOverview {
   gamesToWatch: GameToWatch[];
   tradeSuggestions: TradeSuggestion[];
   waiverSuggestions: WaiverSuggestion[];
+  lineupRecommendation: LineupRecommendation | null;
+  lineupStatus: 'ready' | 'unavailable' | 'no_matchup';
   teamHealth: TeamHealth | null;
   aiStatus: 'ready' | 'unavailable';
   sleeperUrl: string;
