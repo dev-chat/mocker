@@ -7,6 +7,7 @@ export interface SleeperUser {
 
 export interface SleeperLeague {
   league_id: string;
+  previous_league_id?: string | null;
   name: string;
   season: string;
   status: string;
@@ -80,6 +81,11 @@ export interface SleeperProjection {
   player_id: string;
   opponent?: string | null;
   stats?: Record<string, number | null | undefined>;
+}
+
+export interface WaiverBidGuidance {
+  sampleSize: number;
+  suggestedBids: Record<string, number>;
 }
 
 export interface FantasyPlayer {

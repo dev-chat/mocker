@@ -33,6 +33,7 @@ import type {
   TeamHealth,
   TradeSide,
   TradeSuggestion,
+  WaiverBidGuidance,
   WaiverSuggestion,
 } from './fantasy.model';
 
@@ -40,12 +41,21 @@ const SLEEPER_API_URL = 'https://api.sleeper.app/v1';
 const SLEEPER_PROJECTIONS_URL = 'https://api.sleeper.com/projections/nfl';
 const ESPN_SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
 const PLAYER_CACHE_MS = 24 * 60 * 60 * 1000;
+const WAIVER_MARKET_CACHE_MS = 6 * 60 * 60 * 1000;
+const WAIVER_HISTORY_SEASONS = 3;
+const NFL_REGULAR_SEASON_WEEKS = 18;
 const SLEEPER_ID_PATTERN = /^\d{1,32}$/;
 
 interface NflState {
   season: string;
   week: number;
   season_type: 'pre' | 'regular' | 'post';
+}
+
+interface WaiverMarketSample {
+  pricePerPoint: number;
+  position: string | null;
+  weight: number;
 }
 
 interface EspnTeam {
@@ -103,6 +113,8 @@ export class FantasyValidationError extends Error {
 export class FantasyService {
   private playerCache: { expiresAt: number; players: Record<string, SleeperPlayer | undefined> } | null = null;
   private playerRequest: Promise<Record<string, SleeperPlayer | undefined>> | null = null;
+  private waiverMarketCache = new Map<string, { expiresAt: number; samples: WaiverMarketSample[] }>();
+  private projectionCache = new Map<string, { expiresAt: number; projections: SleeperProjection[] }>();
   private readonly openAi: OpenAIClientLike;
   private readonly serviceLogger = logger.child({ module: 'FantasyService' });
 
@@ -211,12 +223,14 @@ export class FantasyService {
     const waiverBudgetUsed = Math.max(0, ownRoster.settings?.waiver_budget_used ?? 0);
     const remainingWaiverBudget = Math.max(0, waiverBudget - waiverBudgetUsed);
     let lineupRecommendation: LineupRecommendation | null = null;
+    let currentProjections: SleeperProjection[] = [];
     let lineupStatus: FantasyOverview['lineupStatus'];
     try {
       const [matchups, projections] = await Promise.all([
         this.get<SleeperMatchup[]>(`/league/${leagueId}/matchups/${Math.max(state.week, 1)}`),
         this.getProjections(state),
       ]);
+      currentProjections = projections;
       lineupRecommendation = this.buildLineupRecommendation(
         Math.max(state.week, 1),
         league,
@@ -234,6 +248,21 @@ export class FantasyService {
       });
       lineupStatus = 'unavailable';
     }
+    let waiverBidGuidance: WaiverBidGuidance = { sampleSize: 0, suggestedBids: {} };
+    try {
+      waiverBidGuidance = await this.getWaiverBidGuidance(
+        league,
+        state,
+        transactionRounds,
+        transactionGroups,
+        currentProjections,
+        waiverCandidates,
+        players,
+        remainingWaiverBudget,
+      );
+    } catch (error) {
+      logError(this.serviceLogger, 'Failed to build historical waiver bid guidance', error, { leagueId });
+    }
     let analysis: AITradeAnalysis;
     let aiStatus: FantasyOverview['aiStatus'] = 'ready';
     try {
@@ -245,6 +274,7 @@ export class FantasyService {
         waiverCandidates,
         remainingWaiverBudget,
         lineupRecommendation,
+        waiverBidGuidance,
       );
     } catch (error) {
       logError(this.serviceLogger, 'Failed to generate fantasy trade analysis', error, {
@@ -263,7 +293,13 @@ export class FantasyService {
     const pendingTrades = this.buildPendingTrades(pendingTransactions, ownerNames, players, analysis);
     const pendingWaivers = this.buildPendingWaivers(pendingWaiverTransactions, roster.rosterId, players);
     const tradeSuggestions = this.buildTradeSuggestions(analysis, roster, teams, leagueId);
-    const waiverSuggestions = this.buildWaiverSuggestions(analysis, roster, waiverCandidates, leagueId);
+    const waiverSuggestions = this.buildWaiverSuggestions(
+      analysis,
+      roster,
+      waiverCandidates,
+      leagueId,
+      waiverBidGuidance,
+    );
 
     return {
       league,
@@ -316,6 +352,212 @@ export class FantasyService {
         timeout: 10000,
       },
     ).then((response) => response.data);
+  }
+
+  private getSeasonProjections(season: string, week: number): Promise<SleeperProjection[]> {
+    const key = `${season}:${week}`;
+    const cached = this.projectionCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.projections);
+    return Axios.get<SleeperProjection[]>(`${SLEEPER_PROJECTIONS_URL}/${encodeURIComponent(season)}/${week}`, {
+      params: { season_type: 'regular' },
+      timeout: 10000,
+    }).then((response) => {
+      this.projectionCache.set(key, {
+        expiresAt: Date.now() + WAIVER_MARKET_CACHE_MS,
+        projections: response.data,
+      });
+      return response.data;
+    });
+  }
+
+  private async getWaiverBidGuidance(
+    league: SleeperLeague,
+    state: NflState,
+    currentRounds: number[],
+    currentTransactionGroups: SleeperTransaction[][],
+    currentProjections: SleeperProjection[],
+    candidates: FantasyPlayer[],
+    players: Record<string, SleeperPlayer | undefined>,
+    remainingBudget: number,
+  ): Promise<WaiverBidGuidance> {
+    const cacheKey = `${league.league_id}:${state.season}:${state.week}`;
+    const cached = this.waiverMarketCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return this.buildWaiverBidGuidance(cached.samples, league, currentProjections, candidates, remainingBudget);
+    }
+
+    type SeasonTransactions = {
+      league: SleeperLeague;
+      age: number;
+      rounds: Array<{ week: number; transactions: SleeperTransaction[] }>;
+    };
+    const suppliedCurrentRounds = new Map(
+      currentRounds.map((week, index) => [week, currentTransactionGroups[index] ?? []]),
+    );
+    const allCurrentRounds = Array.from({ length: Math.max(state.week, 1) }, (_, index) => index + 1);
+    const missingCurrentRounds = allCurrentRounds.filter((week) => !suppliedCurrentRounds.has(week));
+    const missingCurrentResults = await Promise.allSettled(
+      missingCurrentRounds.map((week) =>
+        this.get<SleeperTransaction[]>(`/league/${league.league_id}/transactions/${week}`),
+      ),
+    );
+    missingCurrentRounds.forEach((week, index) => {
+      const result = missingCurrentResults[index];
+      suppliedCurrentRounds.set(week, result.status === 'fulfilled' ? result.value : []);
+    });
+    const failedCurrentRounds = missingCurrentResults.filter((result) => result.status === 'rejected').length;
+    if (failedCurrentRounds) {
+      this.serviceLogger.warn('Some current Sleeper transaction rounds were unavailable for waiver pricing', {
+        leagueId: league.league_id,
+        failedRounds: failedCurrentRounds,
+      });
+    }
+    const seasons: SeasonTransactions[] = [
+      {
+        league,
+        age: 0,
+        rounds: allCurrentRounds.map((week) => ({
+          week,
+          transactions: suppliedCurrentRounds.get(week) ?? [],
+        })),
+      },
+    ];
+    let previousLeagueId = league.previous_league_id;
+    for (let age = 1; age < WAIVER_HISTORY_SEASONS && previousLeagueId; age += 1) {
+      let historicalLeague: SleeperLeague;
+      try {
+        historicalLeague = await this.get<SleeperLeague>(`/league/${previousLeagueId}`);
+      } catch (error) {
+        logError(this.serviceLogger, 'Failed to load a previous Sleeper league for waiver pricing', error, {
+          leagueId: previousLeagueId,
+        });
+        break;
+      }
+      const rounds = Array.from({ length: NFL_REGULAR_SEASON_WEEKS }, (_, index) => index + 1);
+      const transactionResults = await Promise.allSettled(
+        rounds.map((week) =>
+          this.get<SleeperTransaction[]>(`/league/${historicalLeague.league_id}/transactions/${week}`),
+        ),
+      );
+      const failedRounds = transactionResults.filter((result) => result.status === 'rejected').length;
+      if (failedRounds) {
+        this.serviceLogger.warn('Some historical Sleeper transaction rounds were unavailable', {
+          leagueId: historicalLeague.league_id,
+          failedRounds,
+        });
+      }
+      seasons.push({
+        league: historicalLeague,
+        age,
+        rounds: rounds.map((week, index) => ({
+          week,
+          transactions: transactionResults[index]?.status === 'fulfilled' ? transactionResults[index].value : [],
+        })),
+      });
+      previousLeagueId = historicalLeague.previous_league_id;
+    }
+
+    const samples: WaiverMarketSample[] = [];
+    for (const season of seasons) {
+      const paidWaivers = season.rounds
+        .map(({ week, transactions }) => ({
+          week,
+          transactions: transactions.filter(
+            (transaction) =>
+              transaction.type === 'waiver' &&
+              transaction.status === 'complete' &&
+              Number.isFinite(transaction.settings?.waiver_bid) &&
+              (transaction.settings?.waiver_bid ?? 0) > 0 &&
+              Object.keys(transaction.adds ?? {}).length > 0,
+          ),
+        }))
+        .filter(({ transactions }) => transactions.length);
+      const projectionsByWeek = new Map<number, SleeperProjection[]>();
+      const projectionResults = await Promise.allSettled(
+        paidWaivers.map(async ({ week }) => {
+          if (season.age === 0 && season.league.season === state.season && week === Math.max(state.week, 1)) {
+            return currentProjections;
+          }
+          return this.getSeasonProjections(season.league.season, week);
+        }),
+      );
+      projectionResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') projectionsByWeek.set(paidWaivers[index]!.week, result.value);
+      });
+      const failedWeeks = projectionResults.filter((result) => result.status === 'rejected').length;
+      if (failedWeeks) {
+        this.serviceLogger.warn('Some historical Sleeper projections were unavailable for waiver pricing', {
+          leagueId: season.league.league_id,
+          failedWeeks,
+        });
+      }
+      const seasonBudget = Math.max(1, season.league.settings?.waiver_budget ?? 100);
+      for (const { week, transactions } of paidWaivers) {
+        const projections = new Map(
+          (projectionsByWeek.get(week) ?? []).map((projection) => [projection.player_id, projection]),
+        );
+        for (const transaction of transactions) {
+          const bidShare = (transaction.settings?.waiver_bid ?? 0) / Object.keys(transaction.adds ?? {}).length;
+          for (const playerId of Object.keys(transaction.adds ?? {})) {
+            const points = this.projectedPoints(
+              projections.get(playerId)?.stats,
+              season.league.scoring_settings ?? league.scoring_settings,
+            );
+            if (points !== null && points > 0) {
+              samples.push({
+                pricePerPoint: bidShare / seasonBudget / points,
+                position: players[playerId]?.position ?? null,
+                weight: 1 / (season.age + 1),
+              });
+            }
+          }
+        }
+      }
+    }
+
+    this.waiverMarketCache.set(cacheKey, {
+      expiresAt: Date.now() + WAIVER_MARKET_CACHE_MS,
+      samples,
+    });
+    return this.buildWaiverBidGuidance(samples, league, currentProjections, candidates, remainingBudget);
+  }
+
+  private buildWaiverBidGuidance(
+    samples: WaiverMarketSample[],
+    league: SleeperLeague,
+    currentProjections: SleeperProjection[],
+    candidates: FantasyPlayer[],
+    remainingBudget: number,
+  ): WaiverBidGuidance {
+    const allRate = this.weightedMedian(samples);
+    const suggestedBids =
+      allRate === null
+        ? {}
+        : Object.fromEntries(
+            candidates.flatMap((candidate) => {
+              const projection = currentProjections.find((item) => item.player_id === candidate.id);
+              const points = this.projectedPoints(projection?.stats, league.scoring_settings);
+              if (points === null || points <= 0) return [];
+              const positionSamples = samples.filter((sample) => sample.position === candidate.position);
+              const rate = this.weightedMedian(positionSamples.length >= 5 ? positionSamples : samples) ?? allRate;
+              const budget = Math.max(1, league.settings?.waiver_budget ?? 100);
+              const marketBid = Math.max(1, Math.round(rate * points * budget));
+              return [[candidate.id, Math.min(remainingBudget, marketBid)]];
+            }),
+          );
+    return { sampleSize: samples.length, suggestedBids };
+  }
+
+  private weightedMedian(samples: Array<{ pricePerPoint: number; weight: number }>): number | null {
+    if (!samples.length) return null;
+    const ordered = [...samples].sort((left, right) => left.pricePerPoint - right.pricePerPoint);
+    const midpoint = ordered.reduce((total, sample) => total + sample.weight, 0) / 2;
+    let weight = 0;
+    for (const sample of ordered) {
+      weight += sample.weight;
+      if (weight >= midpoint) return sample.pricePerPoint;
+    }
+    return ordered[ordered.length - 1]?.pricePerPoint ?? null;
   }
 
   private async getPlayers(): Promise<Record<string, SleeperPlayer | undefined>> {
@@ -645,6 +887,7 @@ export class FantasyService {
     ownRoster: FantasyTeam,
     waiverCandidates: FantasyPlayer[],
     leagueId: string,
+    bidGuidance: WaiverBidGuidance,
   ): WaiverSuggestion[] {
     const rosterPlayers = new Map(ownRoster.players.map((player) => [player.id, player]));
     const availablePlayers = new Map(waiverCandidates.map((player) => [player.id, player]));
@@ -665,7 +908,7 @@ export class FantasyService {
           drop,
           rationale: suggestion.rationale,
           priority: suggestion.priority,
-          recommendedBid: suggestion.recommendedBid,
+          recommendedBid: bidGuidance.suggestedBids[add.id] ?? suggestion.recommendedBid,
           sleeperUrl: `https://sleeper.com/leagues/${leagueId}`,
         },
       ];
@@ -731,6 +974,7 @@ export class FantasyService {
     waiverCandidates: FantasyPlayer[],
     remainingWaiverBudget: number,
     lineupRecommendation: LineupRecommendation | null,
+    waiverBidGuidance: WaiverBidGuidance,
   ): Promise<AITradeAnalysis> {
     const compactTeams = teams.map((team) => ({
       rosterId: team.rosterId,
@@ -754,6 +998,8 @@ export class FantasyService {
         'with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. waiverSuggestions must contain up to 3 ' +
         'add/drop proposals using only the supplied waiver candidate and user roster IDs, with rationale and a high, ' +
         'medium, or low priority, plus an integer recommendedBid in dollars that does not exceed remainingWaiverBudget. ' +
+        'When historicalBidGuidance contains a suggested bid for a player, use that exact amount; it is calculated from ' +
+        'the league history using recency-weighted dollars per projected point and is authoritative. ' +
         'Waivers process Wednesday and Sunday. lineupSummary must briefly explain the supplied deterministic weekly lineup recommendation, ' +
         'including its overall potential versus the opponent; do not change or invent player IDs or projections. Use only supplied IDs and rosters.',
       input: JSON.stringify({
@@ -763,6 +1009,7 @@ export class FantasyService {
         pendingTransactions,
         waiverCandidates,
         remainingWaiverBudget,
+        historicalBidGuidance: waiverBidGuidance,
         lineupRecommendation,
       }),
       text: {
