@@ -15,6 +15,8 @@ export interface SleeperLeague {
   settings?: {
     waiver_budget?: number;
   };
+  roster_positions?: string[];
+  scoring_settings?: Record<string, number>;
 }
 
 export interface SleeperRoster {
@@ -63,7 +65,21 @@ export interface SleeperPlayer {
   position: string | null;
   team: string | null;
   injury_status: string | null;
+  fantasy_positions?: string[] | null;
   search_rank?: number | null;
+}
+
+export interface SleeperMatchup {
+  roster_id: number;
+  matchup_id: number | null;
+  players: string[] | null;
+  starters: string[] | null;
+}
+
+export interface SleeperProjection {
+  player_id: string;
+  opponent?: string | null;
+  stats?: Record<string, number | null | undefined>;
 }
 
 export interface FantasyPlayer {
@@ -72,6 +88,7 @@ export interface FantasyPlayer {
   position: string | null;
   team: string | null;
   injuryStatus: string | null;
+  fantasyPositions: string[];
 }
 
 export interface FantasyTeam {
@@ -128,6 +145,21 @@ export interface TeamHealth {
   summary: string;
 }
 
+export interface ProjectedFantasyPlayer extends FantasyPlayer {
+  projectedPoints: number;
+}
+
+export interface LineupRecommendation {
+  week: number;
+  opponentOwnerName: string | null;
+  recommendedStarters: ProjectedFantasyPlayer[];
+  start: ProjectedFantasyPlayer[];
+  sit: ProjectedFantasyPlayer[];
+  userPotential: { min: number; max: number };
+  opponentPotential: { min: number; max: number } | null;
+  summary: string;
+}
+
 export interface GameToWatch {
   id: string;
   startsAt: string;
@@ -146,6 +178,8 @@ export interface FantasyOverview {
   gamesToWatch: GameToWatch[];
   tradeSuggestions: TradeSuggestion[];
   waiverSuggestions: WaiverSuggestion[];
+  lineupRecommendation: LineupRecommendation | null;
+  lineupStatus: 'ready' | 'unavailable' | 'no_matchup';
   teamHealth: TeamHealth | null;
   aiStatus: 'ready' | 'unavailable';
   sleeperUrl: string;
@@ -180,4 +214,5 @@ export interface AITradeAnalysis {
     priority: 'high' | 'medium' | 'low';
     recommendedBid: number;
   }>;
+  lineupSummary: string;
 }

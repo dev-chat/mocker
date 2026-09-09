@@ -22,6 +22,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:backend": "npm run test -w @mocker/backend",
     "test:coverage": "npm run test:coverage -w @mocker/backend",
+    "test:coverage:all": "npm run test:coverage -w @mocker/backend && npm run test:coverage -w @mocker/frontend",
     "dev:frontend": "npm run dev -w @mocker/frontend",
     "lint": "npm run lint -w @mocker/backend && npm run lint -w @mocker/frontend",
     "lint:fix": "npm run lint:fix -w @mocker/backend && npm run lint:fix -w @mocker/frontend",

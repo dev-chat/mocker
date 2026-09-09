@@ -1,6 +1,14 @@
 import Axios from 'axios';
 import { getRepository } from 'typeorm';
 import type { OpenAIClientLike } from '../lib/resilientOpenAIClient';
+import type {
+  FantasyPlayer,
+  FantasyTeam,
+  LineupRecommendation,
+  SleeperLeague,
+  SleeperMatchup,
+  SleeperProjection,
+} from './fantasy.model';
 import { FantasyService } from './fantasy.service';
 
 vi.mock('axios');
@@ -45,11 +53,34 @@ const aiResponse = {
                 recommendedBid: 17,
               },
             ],
+            lineupSummary: 'Start Drew Runner to maximize your matchup ceiling this week.',
           }),
         },
       ],
     },
   ],
+};
+
+type FantasyServiceInternals = {
+  buildLineupRecommendation: (
+    week: number,
+    league: SleeperLeague,
+    ownRoster: FantasyTeam,
+    teams: FantasyTeam[],
+    matchups: SleeperMatchup[],
+    projections: SleeperProjection[],
+  ) => LineupRecommendation | null;
+  buildLineupFallbackSummary: (recommendation: LineupRecommendation) => string;
+  isEligible: (player: FantasyPlayer, slot: string) => boolean;
+  optimizeLineup: (
+    players: LineupRecommendation['recommendedStarters'],
+    slots: string[],
+    direction: 'min' | 'max',
+  ) => LineupRecommendation['recommendedStarters'];
+  projectedPoints: (
+    stats: Record<string, number | null | undefined> | undefined,
+    scoringSettings: Record<string, number> | undefined,
+  ) => number | null;
 };
 
 describe('FantasyService', () => {
@@ -101,6 +132,8 @@ describe('FantasyService', () => {
               status: 'in_season',
               avatar: null,
               total_rosters: 2,
+              roster_positions: ['RB'],
+              scoring_settings: { rush_yd: 0.1, rush_td: 6 },
             },
           ],
         });
@@ -108,7 +141,7 @@ describe('FantasyService', () => {
       if (url.endsWith('/league/999/rosters')) {
         return Promise.resolve({
           data: [
-            { roster_id: 1, owner_id: '123', players: ['p1'], starters: ['p1'] },
+            { roster_id: 1, owner_id: '123', players: ['p1', 'p4'], starters: ['p1'] },
             { roster_id: 2, owner_id: '456', players: ['p2'], starters: ['p2'] },
           ],
         });
@@ -118,6 +151,24 @@ describe('FantasyService', () => {
           data: [
             { user_id: '123', username: 'alice', display_name: 'Alice' },
             { user_id: '456', username: 'bob', display_name: 'Bob' },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/matchups/1')) {
+        return Promise.resolve({
+          data: [
+            { roster_id: 1, matchup_id: 7, players: ['p1', 'p4'], starters: ['p1'] },
+            { roster_id: 2, matchup_id: 7, players: ['p2'], starters: ['p2'] },
+          ],
+        });
+      }
+      if (url.includes('api.sleeper.com/projections/nfl/2026/1')) {
+        return Promise.resolve({
+          data: [
+            { player_id: 'p1', stats: { rush_yd: 20, rush_td: 0 } },
+            { player_id: 'p2', stats: { rush_yd: 50, rush_td: 1 } },
+            { player_id: 'p3', stats: { rush_yd: 80, rush_td: 1 } },
+            { player_id: 'p4', stats: { rush_yd: 80, rush_td: 1 } },
           ],
         });
       }
@@ -157,6 +208,7 @@ describe('FantasyService', () => {
               position: 'WR',
               team: 'BUF',
               injury_status: null,
+              fantasy_positions: ['RB'],
             },
             p2: {
               player_id: 'p2',
@@ -165,15 +217,26 @@ describe('FantasyService', () => {
               position: 'RB',
               team: 'NYJ',
               injury_status: null,
+              fantasy_positions: ['RB'],
             },
             p3: {
               player_id: 'p3',
               first_name: 'Casey',
               last_name: 'Waiver',
-              position: 'WR',
+              position: 'RB',
               team: 'DAL',
               injury_status: null,
+              fantasy_positions: ['RB'],
               search_rank: 10,
+            },
+            p4: {
+              player_id: 'p4',
+              first_name: 'Drew',
+              last_name: 'Runner',
+              position: 'RB',
+              team: 'DAL',
+              injury_status: null,
+              fantasy_positions: ['RB'],
             },
           },
         });
@@ -239,6 +302,15 @@ describe('FantasyService', () => {
       summary: 'Strong starters and balanced depth make this roster a contender.',
     });
     expect(result?.aiStatus).toBe('ready');
+    expect(result?.lineupRecommendation).toMatchObject({
+      week: 1,
+      opponentOwnerName: 'Bob',
+      userPotential: { min: 2, max: 14 },
+      opponentPotential: { min: 11, max: 11 },
+      start: [{ id: 'p4' }],
+      sit: [{ id: 'p1' }],
+      summary: 'Start Drew Runner to maximize your matchup ceiling this week.',
+    });
   });
 
   it('returns league data with fallback insights when AI is unavailable', async () => {
@@ -272,6 +344,10 @@ describe('FantasyService', () => {
       }
       if (url.endsWith('/league/999/users')) {
         return Promise.resolve({ data: [] });
+      }
+      if (url.endsWith('/league/999/matchups/2')) return Promise.resolve({ data: [] });
+      if (url.includes('api.sleeper.com/projections/nfl/2026/2')) {
+        return Promise.reject(new Error('Projections unavailable'));
       }
       if (url.endsWith('/league/999/transactions/2')) {
         return Promise.resolve({
@@ -331,6 +407,8 @@ describe('FantasyService', () => {
     const result = await service.getOverview('U1', 'T1', '999');
 
     expect(result?.aiStatus).toBe('unavailable');
+    expect(result?.lineupStatus).toBe('unavailable');
+    expect(result?.lineupRecommendation).toBeNull();
     expect(result?.teamHealth).toBeNull();
     expect(result?.waiverSuggestions).toEqual([]);
     expect(result?.pendingTrades[0]).toMatchObject({
@@ -339,5 +417,145 @@ describe('FantasyService', () => {
     });
     expect(result?.gamesToWatch[0]?.rosterPlayers[0]?.id).toBe('p1');
     expect(result?.roster.ownerName).toBe('Roster 1');
+  });
+
+  it('handles flexible lineup slots and projection scoring fallbacks', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const player = (id: string, position: string, projectedPoints: number) => ({
+      id,
+      name: id,
+      position,
+      team: 'BUF',
+      injuryStatus: null,
+      fantasyPositions: [position],
+      projectedPoints,
+    });
+    const players = [
+      player('qb-high', 'QB', 20),
+      player('qb-low', 'QB', 10),
+      player('rb', 'RB', 15),
+      player('wr', 'WR', 12),
+      player('te', 'TE', 8),
+      player('dl', 'DL', 6),
+    ];
+
+    expect(internals.isEligible(players[2]!, 'FLEX')).toBe(true);
+    expect(internals.isEligible(players[0]!, 'SUPER_FLEX')).toBe(true);
+    expect(internals.isEligible(players[3]!, 'REC_FLEX')).toBe(true);
+    expect(internals.isEligible(players[2]!, 'WRRB_FLEX')).toBe(true);
+    expect(internals.isEligible(players[5]!, 'IDP_FLEX')).toBe(true);
+    expect(internals.isEligible(players[2]!, 'QB')).toBe(false);
+    expect(internals.optimizeLineup(players, ['QB', 'SUPER_FLEX'], 'max').map(({ id }) => id)).toEqual([
+      'qb-high',
+      'rb',
+    ]);
+    expect(internals.optimizeLineup(players, ['QB', 'SUPER_FLEX'], 'min').map(({ id }) => id)).toEqual([
+      'qb-low',
+      'te',
+    ]);
+    expect(internals.optimizeLineup(players, ['K'], 'max')).toEqual([]);
+    expect(internals.projectedPoints(undefined, undefined)).toBeNull();
+    expect(internals.projectedPoints({ rush_yd: 40 }, { pass_yd: 0.04 })).toBeNull();
+    expect(internals.projectedPoints({ rush_yd: null }, { rush_yd: 0.1 })).toBe(0);
+    expect(internals.projectedPoints({ pts_half_ppr: 9 }, undefined)).toBe(9);
+    expect(internals.projectedPoints({ pts_std: 7 }, {})).toBe(7);
+    expect(internals.projectedPoints({}, undefined)).toBeNull();
+  });
+
+  it('rejects incomplete lineup inputs and supports a matchup without an opponent', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const ownRoster: FantasyTeam = {
+      rosterId: 1,
+      ownerName: 'Alice',
+      starters: [],
+      players: [
+        {
+          id: 'rb1',
+          name: 'Runner',
+          position: 'RB',
+          team: 'BUF',
+          injuryStatus: null,
+          fantasyPositions: ['RB'],
+        },
+      ],
+    };
+    const league: SleeperLeague = {
+      league_id: '999',
+      name: 'Friends League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 2,
+      roster_positions: ['RB', 'BN'],
+    };
+
+    expect(internals.buildLineupRecommendation(1, league, ownRoster, [ownRoster], [], [])).toBeNull();
+    expect(
+      internals.buildLineupRecommendation(
+        1,
+        league,
+        ownRoster,
+        [ownRoster],
+        [{ roster_id: 1, matchup_id: null, players: ['rb1'], starters: [] }],
+        [],
+      ),
+    ).toBeNull();
+    expect(
+      internals.buildLineupRecommendation(
+        1,
+        { ...league, roster_positions: ['BN', 'IR', 'TAXI'] },
+        ownRoster,
+        [ownRoster],
+        [{ roster_id: 1, matchup_id: 4, players: ['rb1'], starters: [] }],
+        [],
+      ),
+    ).toBeNull();
+    expect(() =>
+      internals.buildLineupRecommendation(
+        1,
+        league,
+        ownRoster,
+        [ownRoster],
+        [{ roster_id: 1, matchup_id: 4, players: ['rb1'], starters: [] }],
+        [],
+      ),
+    ).toThrow(/no usable weekly projections for the user/i);
+
+    const recommendation = internals.buildLineupRecommendation(
+      1,
+      league,
+      ownRoster,
+      [ownRoster],
+      [{ roster_id: 1, matchup_id: 4, players: ['rb1'], starters: [] }],
+      [{ player_id: 'rb1', stats: { pts_ppr: 12.34 } }],
+    );
+    expect(recommendation).toMatchObject({
+      opponentOwnerName: null,
+      userPotential: { min: 12.3, max: 12.3 },
+      opponentPotential: null,
+    });
+    expect(internals.buildLineupFallbackSummary(recommendation!)).toBe(
+      'The highest-projected lineup for week 1 is 12.3 points.',
+    );
+
+    const opponent: FantasyTeam = {
+      ...ownRoster,
+      rosterId: 2,
+      ownerName: 'Bob',
+      players: [{ ...ownRoster.players[0]!, id: 'rb2' }],
+    };
+    expect(() =>
+      internals.buildLineupRecommendation(
+        1,
+        league,
+        ownRoster,
+        [ownRoster, opponent],
+        [
+          { roster_id: 1, matchup_id: 4, players: ['rb1'], starters: [] },
+          { roster_id: 2, matchup_id: 4, players: ['rb2'], starters: [] },
+        ],
+        [{ player_id: 'rb1', stats: { pts_ppr: 12 } }],
+      ),
+    ).toThrow(/no usable weekly projections for the opponent/i);
   });
 });

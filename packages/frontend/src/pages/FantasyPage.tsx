@@ -7,6 +7,7 @@ import {
   Sparkles,
   Trophy,
   Tv,
+  Users,
   UserPlus,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -160,6 +161,86 @@ export function FantasyPage({ onLogout }: FantasyPageProps) {
                   </CardHeader>
                 </Card>
               )}
+
+              <section>
+                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+                  <Users className="h-5 w-5 text-primary" aria-hidden="true" /> Week{' '}
+                  {overview.lineupRecommendation?.week ?? ''} lineup optimizer
+                </h2>
+                {overview.lineupStatus === 'unavailable' ? (
+                  <Card>
+                    <CardContent className="pt-6 text-sm text-muted-foreground">
+                      Weekly Sleeper projections are temporarily unavailable, so lineup potential could not be
+                      calculated.
+                    </CardContent>
+                  </Card>
+                ) : !overview.lineupRecommendation ? (
+                  <Card>
+                    <CardContent className="pt-6 text-sm text-muted-foreground">
+                      No head-to-head matchup or configurable starting slots were found for this week.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>
+                        Best projected lineup
+                        {overview.lineupRecommendation.opponentOwnerName
+                          ? ` vs. ${overview.lineupRecommendation.opponentOwnerName}`
+                          : ''}
+                      </CardTitle>
+                      <CardDescription>{overview.lineupRecommendation.summary}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-lg border p-4">
+                          <p className="text-sm text-muted-foreground">Your overall lineup potential</p>
+                          <p className="text-2xl font-bold">
+                            {overview.lineupRecommendation.userPotential.min.toFixed(1)}–
+                            {overview.lineupRecommendation.userPotential.max.toFixed(1)}
+                          </p>
+                        </div>
+                        {overview.lineupRecommendation.opponentPotential && (
+                          <div className="rounded-lg border p-4">
+                            <p className="text-sm text-muted-foreground">Opponent lineup potential</p>
+                            <p className="text-2xl font-bold">
+                              {overview.lineupRecommendation.opponentPotential.min.toFixed(1)}–
+                              {overview.lineupRecommendation.opponentPotential.max.toFixed(1)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="mb-2 font-medium">Recommended starters</p>
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {overview.lineupRecommendation.recommendedStarters.map((player) => (
+                            <div key={player.id} className="flex items-center justify-between rounded-md bg-muted p-3">
+                              <span>
+                                {player.name}
+                                {player.position ? ` · ${player.position}` : ''}
+                              </span>
+                              <span className="font-semibold">{player.projectedPoints.toFixed(1)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {(overview.lineupRecommendation.start.length > 0 ||
+                        overview.lineupRecommendation.sit.length > 0) && (
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <p className="mb-2 font-medium text-green-600">Move into lineup</p>
+                            <PlayerList players={overview.lineupRecommendation.start} />
+                          </div>
+                          <div>
+                            <p className="mb-2 font-medium text-amber-600">Move to bench</p>
+                            <PlayerList players={overview.lineupRecommendation.sit} />
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </section>
 
               <section>
                 <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
