@@ -179,12 +179,21 @@ describe('FantasyPage', () => {
   });
 
   it('refreshes lineup, AI trade, and waiver recommendations', async () => {
+    const refreshedOverview = {
+      ...overview,
+      waiverSuggestions: [
+        {
+          ...overview.waiverSuggestions[0],
+          rationale: 'Updated waiver proposal.',
+        },
+      ],
+    };
     mockFetch
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing })
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview })
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview })
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview })
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview });
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => refreshedOverview });
 
     render(<FantasyPage onLogout={vi.fn()} />);
     await screen.findByText('Balances your lineup.');
@@ -200,5 +209,6 @@ describe('FantasyPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /refresh proposals/i }));
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(5));
     expect(mockFetch.mock.calls[4]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=true/);
+    expect(await screen.findByText('Updated waiver proposal.')).toBeInTheDocument();
   });
 });
