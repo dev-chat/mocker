@@ -61,7 +61,16 @@ describe('fantasyController', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.league.league_id).toBe('999');
-    expect(getOverview).toHaveBeenCalledWith('U1', 'T1', '999');
+    expect(getOverview).toHaveBeenCalledWith('U1', 'T1', '999', false);
+  });
+
+  it('refreshes cached recommendations when explicitly requested', async () => {
+    getOverview.mockResolvedValue({ league: { league_id: '999' } });
+
+    const response = await request(app).get('/leagues/999?refresh=true');
+
+    expect(response.status).toBe(200);
+    expect(getOverview).toHaveBeenCalledWith('U1', 'T1', '999', true);
   });
 
   it('returns 404 when the linked roster is unavailable', async () => {

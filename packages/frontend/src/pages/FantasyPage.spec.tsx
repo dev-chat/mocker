@@ -178,9 +178,10 @@ describe('FantasyPage', () => {
     expect(screen.getByText('0 rostered players')).toBeInTheDocument();
   });
 
-  it('refreshes AI trade and waiver suggestions', async () => {
+  it('refreshes lineup, AI trade, and waiver recommendations', async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => landing })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview })
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview })
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview })
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => overview });
@@ -188,12 +189,16 @@ describe('FantasyPage', () => {
     render(<FantasyPage onLogout={vi.fn()} />);
     await screen.findByText('Balances your lineup.');
 
-    fireEvent.click(screen.getByRole('button', { name: /refresh ideas/i }));
+    fireEvent.click(screen.getByRole('button', { name: /refresh lineup/i }));
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(3));
-    expect(mockFetch.mock.calls[2]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=\d+/);
+    expect(mockFetch.mock.calls[2]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=true/);
+
+    fireEvent.click(screen.getByRole('button', { name: /refresh ideas/i }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(4));
+    expect(mockFetch.mock.calls[3]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=true/);
 
     fireEvent.click(screen.getByRole('button', { name: /refresh proposals/i }));
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(4));
-    expect(mockFetch.mock.calls[3]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=\d+/);
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(5));
+    expect(mockFetch.mock.calls[4]?.[0]).toMatch(/\/fantasy\/leagues\/999\?refresh=true/);
   });
 });
