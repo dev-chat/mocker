@@ -491,7 +491,7 @@ describe('FantasyService', () => {
           },
         });
       }
-      if (url.includes('site.api.espn.com')) {
+      if (new URL(url).hostname === 'site.api.espn.com') {
         const week = config?.params?.week ?? 0;
         espnWeeks.push(week);
         const competitors =
@@ -601,7 +601,7 @@ describe('FantasyService', () => {
           },
         });
       }
-      if (url.includes('site.api.espn.com')) {
+      if (new URL(url).hostname === 'site.api.espn.com') {
         return Promise.resolve({
           data: {
             events: [
