@@ -46,6 +46,7 @@ const WAIVER_MARKET_CACHE_MS = 6 * 60 * 60 * 1000;
 const WAIVER_HISTORY_SEASONS = 3;
 const NFL_REGULAR_SEASON_WEEKS = 18;
 const SLEEPER_ID_PATTERN = /^\d{1,32}$/;
+const OPTIONAL_ROSTER_SLOTS = new Set(['BN', 'IR', 'TAXI', 'FLEX', 'SUPER_FLEX', 'REC_FLEX', 'WRRB_FLEX', 'IDP_FLEX']);
 
 interface NflState {
   season: string;
@@ -177,7 +178,26 @@ export class FantasyService {
       return null;
     }
 
-    const transactionRounds = state.week > 1 ? [state.week, state.week - 1] : [Math.max(state.week, 1)];
+    const currentWeek = Math.max(state.week, 1);
+    const transactionRounds = state.week > 1 ? [state.week, state.week - 1] : [currentWeek];
+    const upcomingScoreboardsPromise = Promise.all(
+      [currentWeek + 1, currentWeek + 2]
+        .filter((week) => state.season_type === 'regular' && week <= NFL_REGULAR_SEASON_WEEKS)
+        .map((week) =>
+          Axios.get<EspnScoreboard>(ESPN_SCOREBOARD_URL, {
+            params: { dates: state.season, seasontype: 2, week },
+            timeout: 10000,
+          })
+            .then((response) => response.data)
+            .catch((error) => {
+              logError(this.serviceLogger, 'Failed to load an upcoming NFL scoreboard', error, {
+                season: state.season,
+                week,
+              });
+              return { events: [] };
+            }),
+        ),
+    );
     const [rosters, users, transactionGroups, players, scoreboard] = await Promise.all([
       this.get<SleeperRoster[]>(`/league/${leagueId}/rosters`),
       this.get<SleeperLeagueUser[]>(`/league/${leagueId}/users`),
@@ -189,7 +209,7 @@ export class FantasyService {
         params: {
           dates: state.season,
           seasontype: state.season_type === 'pre' ? 1 : state.season_type === 'post' ? 3 : 2,
-          week: Math.max(state.week, 1),
+          week: currentWeek,
         },
         timeout: 10000,
       }).then((response) => response.data),
@@ -209,24 +229,7 @@ export class FantasyService {
     if (!roster) {
       return null;
     }
-    const upcomingScoreboards = await Promise.all(
-      [state.week + 1, state.week + 2]
-        .filter((week) => state.season_type === 'regular' && week <= NFL_REGULAR_SEASON_WEEKS)
-        .map((week) =>
-          Axios.get<EspnScoreboard>(ESPN_SCOREBOARD_URL, {
-            params: { dates: state.season, seasontype: 2, week },
-            timeout: 10000,
-          })
-            .then((response) => response.data)
-            .catch((error) => {
-              logError(this.serviceLogger, 'Failed to load an upcoming NFL scoreboard', error, {
-                season: state.season,
-                week,
-              });
-              return { events: [] };
-            }),
-        ),
-    );
+    const upcomingScoreboards = await upcomingScoreboardsPromise;
 
     const pendingTransactions = transactions.filter(
       (transaction) => transaction.type === 'trade' && transaction.status === 'pending',
@@ -311,7 +314,7 @@ export class FantasyService {
             remainingWaiverBudget,
             lineupRecommendation,
             waiverBidGuidance,
-            state.week,
+            currentWeek,
             [scoreboard, ...upcomingScoreboards],
           ),
       );
@@ -841,7 +844,7 @@ export class FantasyService {
 
   private buildRosterNeeds(team: FantasyTeam, rosterPositions: string[]): RosterNeed[] {
     const requiredByPosition = rosterPositions
-      .filter((slot) => !['BN', 'IR', 'TAXI', 'FLEX', 'SUPER_FLEX', 'REC_FLEX', 'WRRB_FLEX', 'IDP_FLEX'].includes(slot))
+      .filter((slot) => !OPTIONAL_ROSTER_SLOTS.has(slot))
       .reduce<Record<string, number>>((counts, position) => {
         counts[position] = (counts[position] ?? 0) + 1;
         return counts;
