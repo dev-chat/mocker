@@ -7,7 +7,10 @@ import type {
   LineupRecommendation,
   SleeperLeague,
   SleeperMatchup,
+  SleeperPlayer,
   SleeperProjection,
+  SleeperTransaction,
+  WaiverBidGuidance,
 } from './fantasy.model';
 import { FantasyService } from './fantasy.service';
 
@@ -81,6 +84,24 @@ type FantasyServiceInternals = {
     stats: Record<string, number | null | undefined> | undefined,
     scoringSettings: Record<string, number> | undefined,
   ) => number | null;
+  getWaiverBidGuidance: (
+    league: SleeperLeague,
+    state: { season: string; week: number; season_type: 'pre' | 'regular' | 'post' },
+    currentRounds: number[],
+    currentTransactionGroups: SleeperTransaction[][],
+    currentProjections: SleeperProjection[],
+    candidates: FantasyPlayer[],
+    players: Record<string, SleeperPlayer | undefined>,
+    remainingBudget: number,
+  ) => Promise<WaiverBidGuidance>;
+  buildWaiverBidGuidance: (
+    samples: Array<{ pricePerPoint: number; position: string | null; weight: number }>,
+    league: SleeperLeague,
+    currentProjections: SleeperProjection[],
+    candidates: FantasyPlayer[],
+    remainingBudget: number,
+  ) => WaiverBidGuidance;
+  weightedMedian: (samples: Array<{ pricePerPoint: number; weight: number }>) => number | null;
 };
 
 describe('FantasyService', () => {
@@ -195,6 +216,16 @@ describe('FantasyService', () => {
               settings: { waiver_bid: 14 },
               created: 1788883300000,
             },
+            {
+              transaction_id: 'completed-waiver',
+              type: 'waiver',
+              status: 'complete',
+              roster_ids: [1],
+              adds: { p4: 1 },
+              drops: null,
+              settings: { waiver_bid: 5 },
+              created: 1788883100000,
+            },
           ],
         });
       }
@@ -288,7 +319,7 @@ describe('FantasyService', () => {
       add: { id: 'p3', name: 'Casey Waiver' },
       drop: { id: 'p1', name: 'Alex Receiver' },
       priority: 'high',
-      recommendedBid: 17,
+      recommendedBid: 5,
     });
     expect(result?.pendingWaivers[0]).toMatchObject({
       transactionId: 'waiver-1',
@@ -460,6 +491,147 @@ describe('FantasyService', () => {
     expect(internals.projectedPoints({ pts_half_ppr: 9 }, undefined)).toBe(9);
     expect(internals.projectedPoints({ pts_std: 7 }, {})).toBe(7);
     expect(internals.projectedPoints({}, undefined)).toBeNull();
+  });
+
+  it('prices waiver bids from prior-league dollars per projected point', async () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    (Axios.get as Mock).mockImplementation((url: string) => {
+      if (url.endsWith('/league/888')) {
+        return Promise.resolve({
+          data: {
+            league_id: '888',
+            previous_league_id: null,
+            name: 'Friends League',
+            season: '2025',
+            status: 'complete',
+            avatar: null,
+            total_rosters: 2,
+            settings: { waiver_budget: 200 },
+            scoring_settings: { pts_ppr: 1 },
+          },
+        });
+      }
+      if (url.endsWith('/league/888/transactions/1')) {
+        return Promise.resolve({
+          data: [
+            {
+              transaction_id: 'historical-waiver',
+              type: 'waiver',
+              status: 'complete',
+              roster_ids: [1],
+              adds: { historical: 1 },
+              drops: null,
+              settings: { waiver_bid: 40 },
+              created: 1756857600000,
+            },
+          ],
+        });
+      }
+      if (url.includes('/league/888/transactions/')) return Promise.resolve({ data: [] });
+      if (url.includes('/projections/nfl/2025/1')) {
+        return Promise.resolve({
+          data: [{ player_id: 'historical', stats: { pts_ppr: 10 } }],
+        });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const candidate: FantasyPlayer = {
+      id: 'candidate',
+      name: 'Current Candidate',
+      position: 'RB',
+      team: 'BUF',
+      injuryStatus: null,
+      fantasyPositions: ['RB'],
+    };
+    const guidance = await internals.getWaiverBidGuidance(
+      {
+        league_id: '999',
+        previous_league_id: '888',
+        name: 'Friends League',
+        season: '2026',
+        status: 'in_season',
+        avatar: null,
+        total_rosters: 2,
+        settings: { waiver_budget: 100 },
+        scoring_settings: { pts_ppr: 1 },
+      },
+      { season: '2026', week: 1, season_type: 'regular' },
+      [1],
+      [[]],
+      [{ player_id: 'candidate', stats: { pts_ppr: 15 } }],
+      [candidate],
+      {
+        historical: {
+          player_id: 'historical',
+          first_name: 'Past',
+          last_name: 'Player',
+          position: 'RB',
+          team: null,
+          injury_status: null,
+        },
+      },
+      100,
+    );
+
+    expect(guidance).toEqual({
+      sampleSize: 1,
+      suggestedBids: { candidate: 30 },
+    });
+  });
+
+  it('handles sparse, position-specific, and budget-limited waiver markets', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const league: SleeperLeague = {
+      league_id: '999',
+      name: 'Friends League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 2,
+      settings: { waiver_budget: 100 },
+      scoring_settings: { pts_ppr: 1 },
+    };
+    const candidate = (id: string, position: string): FantasyPlayer => ({
+      id,
+      name: id,
+      position,
+      team: 'BUF',
+      injuryStatus: null,
+      fantasyPositions: [position],
+    });
+
+    expect(internals.weightedMedian([])).toBeNull();
+    expect(
+      internals.weightedMedian([
+        { pricePerPoint: 0.1, weight: 1 },
+        { pricePerPoint: 0.2, weight: 2 },
+      ]),
+    ).toBe(0.2);
+    expect(internals.buildWaiverBidGuidance([], league, [], [candidate('rb', 'RB')], 50)).toEqual({
+      sampleSize: 0,
+      suggestedBids: {},
+    });
+    expect(
+      internals.buildWaiverBidGuidance(
+        Array.from({ length: 5 }, () => ({ pricePerPoint: 0.02, position: 'RB', weight: 1 })).concat({
+          pricePerPoint: 0.5,
+          position: 'WR',
+          weight: 1,
+        }),
+        league,
+        [
+          { player_id: 'rb', stats: { pts_ppr: 20 } },
+          { player_id: 'wr', stats: { pts_ppr: 0 } },
+          { player_id: 'missing', stats: {} },
+        ],
+        [candidate('rb', 'RB'), candidate('wr', 'WR'), candidate('missing', 'TE')],
+        25,
+      ),
+    ).toEqual({
+      sampleSize: 6,
+      suggestedBids: { rb: 25 },
+    });
   });
 
   it('rejects incomplete lineup inputs and supports a matchup without an opponent', () => {
