@@ -44,6 +44,7 @@ describe('fantasyController', () => {
     const response = await request(app).get('/');
 
     expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
     expect(response.body).toEqual({ sleeperUser: null, leagues: [], season: '2026' });
     expect(getLanding).toHaveBeenCalledWith('U1', 'T1');
   });
@@ -70,6 +71,7 @@ describe('fantasyController', () => {
     const response = await request(app).get('/leagues/999?refresh=true');
 
     expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
     expect(getOverview).toHaveBeenCalledWith('U1', 'T1', '999', true);
   });
 

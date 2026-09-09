@@ -10,6 +10,11 @@ export const fantasyController: Router = express.Router();
 const fantasyService = new FantasyService();
 const fantasyLogger = logger.child({ module: 'FantasyController' });
 
+fantasyController.use((_req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 function getSession(req: RequestWithAuthSession): { userId: string; teamId: string } | null {
   const { userId, teamId } = req.authSession ?? {};
   return userId && teamId ? { userId, teamId } : null;
