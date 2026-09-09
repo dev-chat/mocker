@@ -66,6 +66,7 @@ const aiResponse = {
 };
 
 type FantasyServiceInternals = {
+  analysisCache: Map<string, { expiresAt: number; analysis: AITradeAnalysis }>;
   getTradeAnalysis: (
     key: string,
     refresh: boolean,
@@ -170,6 +171,67 @@ describe('FantasyService', () => {
       vi.advanceTimersByTime(24 * 60 * 60 * 1000);
       await expect(internals.getTradeAnalysis('U1:T1:999:1:2026:1', false, generate)).resolves.toBe(analysis);
       expect(generate).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('coalesces concurrent AI analysis requests for the same key', async () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const analysis: AITradeAnalysis = {
+      teamHealth: null,
+      tradeInsights: [],
+      suggestions: [],
+      waiverSuggestions: [],
+      lineupSummary: null,
+    };
+    let resolveGenerate: ((value: AITradeAnalysis) => void) | undefined;
+    const generate = vi.fn(
+      () =>
+        new Promise<AITradeAnalysis>((resolve) => {
+          resolveGenerate = resolve;
+        }),
+    );
+
+    const first = internals.getTradeAnalysis('U1:T1:999:1:2026:1', false, generate);
+    const second = internals.getTradeAnalysis('U1:T1:999:1:2026:1', false, generate);
+
+    expect(generate).toHaveBeenCalledOnce();
+    resolveGenerate?.(analysis);
+
+    await expect(first).resolves.toBe(analysis);
+    await expect(second).resolves.toBe(analysis);
+  });
+
+  it('deletes expired AI analysis entries before generating new analysis', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-09T12:00:00.000Z'));
+    const internals = service as unknown as FantasyServiceInternals;
+    const key = 'U1:T1:999:1:2026:1';
+    const staleAnalysis: AITradeAnalysis = {
+      teamHealth: null,
+      tradeInsights: [],
+      suggestions: [],
+      waiverSuggestions: [],
+      lineupSummary: null,
+    };
+    const freshAnalysis: AITradeAnalysis = {
+      teamHealth: { percentage: 81, summary: 'Updated analysis.' },
+      tradeInsights: [],
+      suggestions: [],
+      waiverSuggestions: [],
+      lineupSummary: 'Updated lineup summary.',
+    };
+    internals.analysisCache.set(key, {
+      expiresAt: Date.now() - 1,
+      analysis: staleAnalysis,
+    });
+    const generate = vi.fn().mockResolvedValue(freshAnalysis);
+
+    try {
+      await expect(internals.getTradeAnalysis(key, false, generate)).resolves.toBe(freshAnalysis);
+      expect(generate).toHaveBeenCalledOnce();
+      expect(internals.analysisCache.get(key)?.analysis).toBe(freshAnalysis);
     } finally {
       vi.useRealTimers();
     }

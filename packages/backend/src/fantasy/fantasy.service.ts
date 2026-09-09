@@ -117,6 +117,7 @@ export class FantasyService {
   private waiverMarketCache = new Map<string, { expiresAt: number; samples: WaiverMarketSample[] }>();
   private projectionCache = new Map<string, { expiresAt: number; projections: SleeperProjection[] }>();
   private analysisCache = new Map<string, { expiresAt: number; analysis: AITradeAnalysis }>();
+  private analysisRequests = new Map<string, Promise<AITradeAnalysis>>();
   private readonly openAi: OpenAIClientLike;
   private readonly serviceLogger = logger.child({ module: 'FantasyService' });
 
@@ -383,16 +384,32 @@ export class FantasyService {
     generate: () => Promise<AITradeAnalysis>,
   ): Promise<AITradeAnalysis> {
     const cached = this.analysisCache.get(key);
-    if (!refresh && cached && cached.expiresAt > Date.now()) {
-      return cached.analysis;
+    if (!refresh && cached) {
+      if (cached.expiresAt > Date.now()) {
+        return cached.analysis;
+      }
+      this.analysisCache.delete(key);
     }
 
-    const analysis = await generate();
-    this.analysisCache.set(key, {
-      expiresAt: Date.now() + AI_ANALYSIS_CACHE_MS,
-      analysis,
-    });
-    return analysis;
+    const inFlight = this.analysisRequests.get(key);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const request = generate()
+      .then((analysis) => {
+        this.analysisCache.set(key, {
+          expiresAt: Date.now() + AI_ANALYSIS_CACHE_MS,
+          analysis,
+        });
+        return analysis;
+      })
+      .finally(() => {
+        this.analysisRequests.delete(key);
+      });
+
+    this.analysisRequests.set(key, request);
+    return request;
   }
 
   private getSeasonProjections(season: string, week: number): Promise<SleeperProjection[]> {
