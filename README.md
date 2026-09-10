@@ -74,24 +74,25 @@ Add these slash commands with their request URLs:
 - **Redirect URLs:** Add the backend callback URL for the search/auth UI, such as
   `http://localhost:3000/auth/slack/callback`, under **OAuth & Permissions > Redirect URLs**.
 - **Scopes (bot token scopes):**
-  - `channels:history`
+  - `channels:join`
   - `channels:read`
   - `chat:write`
-  - `chat:write.customize`
-  - `chat:write.public`
+  - `chat:write.public` — required so Moonbeam can post to public channels it has not joined
   - `commands`
+  - `files:read`
   - `files:write`
-  - `groups:history`
   - `groups:read`
-  - `reactions:read`
-  - `users.profile:read`
+  - `groups:history`
+  - `team:read`
   - `users:read`
+  - `users.profile:read`
 - **Scopes (user token scopes):**
-  - `chat:write` — required so Muzzle can delete other members' messages. The
-    `MUZZLE_BOT_USER_TOKEN` must belong to a workspace admin or owner, because only an admin
-    user token may delete another member's message.
-  - `users.profile:write` — required for `users.setPhoto`.
-  - `openid` — modern Sign in with Slack (see below).
+
+  The user token must belong to a workspace **admin or owner**, because only an admin user token
+  may delete another member's message.
+  - `chat:write:user` — required for `chat.delete` when muzzling
+  - `users.profile:write` — required for `users.setPhoto`
+  - `openid` — modern Sign in with Slack (see below)
 
 #### Search UI login
 
@@ -109,34 +110,23 @@ The backend sends `ALLOWED_TEAM_DOMAIN` as Slack's `team` parameter and verifies
 `https://slack.com/team_id` claim returned by `openid.connect.userInfo`, so this value must be the
 Slack **team ID** (for example `T2ZV0GCNS`), not the workspace domain.
 
-> **Note:** modern Sign in with Slack requires a non-classic (granular) Slack app. A classic app
-> cannot serve the OpenID Connect consent screen and will show members the full app-installation
-> screen instead. See [Migrating the Slack app](#migrating-the-slack-app).
+> **Note:** modern Sign in with Slack requires the app's user token scopes to include `openid`. A
+> classic app cannot serve the OpenID Connect consent screen and will show members the full
+> app-installation screen instead.
 
 Copy your **Bot Token** and **User OAuth Token** from the app credentials page.
 
-#### Migrating the Slack app
+#### Token usage
 
-Moonbeam was originally a **classic** Slack app. Classic apps cannot use modern Sign in with
-Slack, so members are shown an app-installation screen when they try to log in. Migrate the app
-once, via the Slack UI:
+The bot token (`MUZZLE_BOT_TOKEN`) is granular and is used for posting, editing, uploading and
+listing. The user token (`MUZZLE_BOT_USER_TOKEN`) is retained only for the two operations that
+genuinely require a user identity:
 
-1. Open the app at [api.slack.com/apps](https://api.slack.com/apps) and select
-   **Tools > Update to Granular Scopes**.
-2. Select the bot and user scopes listed above.
-3. Confirm the verification screen and select **Reinstall**.
-4. Copy the regenerated tokens into `MUZZLE_BOT_TOKEN` and `MUZZLE_BOT_USER_TOKEN`.
+- `chat.delete` — deleting another member's message requires an admin/owner user token.
+- `users.setPhoto` — acts on the authenticated user's own profile.
 
-Because Moonbeam is installed on a single workspace using static tokens rather than a
-distribution flow, no installation OAuth code is required.
-
-Notes on behavior after migration:
-
-- Messages are posted with the **bot token**, so they are authored by Moonbeam rather than by the
-  installing user. Perspectival scopes (`chat:write:bot`, `chat:write:user`, `files:write:user`)
-  and the `as_user` parameter no longer apply.
-- `chat.delete` still uses the **user token**, since deleting another member's message requires a
-  workspace admin or owner user token.
+Perspectival scopes (`chat:write:bot`, `chat:write:user`, `files:write:user`) and the `as_user`
+parameter apply only to the classic user token and are not used for bot-token calls.
 
 ### 2. Set Up MySQL Database
 
