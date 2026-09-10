@@ -180,19 +180,6 @@ export class FantasyService {
 
     const currentWeek = Math.max(state.week, 1);
     const transactionRounds = state.week > 1 ? [state.week, state.week - 1] : [currentWeek];
-    const upcomingMatchupProjectionsPromise = Promise.all(
-      [currentWeek + 1, currentWeek + 2]
-        .filter((week) => state.season_type === 'regular' && week <= NFL_REGULAR_SEASON_WEEKS)
-        .map((week) =>
-          this.getSeasonProjections(state.season, week).catch((error) => {
-            logError(this.serviceLogger, 'Failed to load upcoming Sleeper projections', error, {
-              season: state.season,
-              week,
-            });
-            return [];
-          }),
-        ),
-    );
     const [rosters, users, transactionGroups, players, scoreboard] = await Promise.all([
       this.get<SleeperRoster[]>(`/league/${leagueId}/rosters`),
       this.get<SleeperLeagueUser[]>(`/league/${leagueId}/users`),
@@ -224,8 +211,6 @@ export class FantasyService {
     if (!roster) {
       return null;
     }
-    const upcomingMatchupProjections = await upcomingMatchupProjectionsPromise;
-
     const pendingTransactions = transactions.filter(
       (transaction) => transaction.type === 'trade' && transaction.status === 'pending',
     );
@@ -299,8 +284,21 @@ export class FantasyService {
       analysis = await this.getTradeAnalysis(
         `${teamId}:${slackId}:${leagueId}:${roster.rosterId}:${state.season}:${state.week}`,
         refresh,
-        () =>
-          this.generateTradeAnalysis(
+        async () => {
+          const upcomingMatchupProjections = await Promise.all(
+            [currentWeek + 1, currentWeek + 2]
+              .filter((week) => state.season_type === 'regular' && week <= NFL_REGULAR_SEASON_WEEKS)
+              .map((week) =>
+                this.getSeasonProjections(state.season, week).catch((error) => {
+                  logError(this.serviceLogger, 'Failed to load upcoming Sleeper projections', error, {
+                    season: state.season,
+                    week,
+                  });
+                  return [];
+                }),
+              ),
+          );
+          return this.generateTradeAnalysis(
             league,
             roster,
             teams,
@@ -311,7 +309,8 @@ export class FantasyService {
             waiverBidGuidance,
             currentWeek,
             [currentProjections, ...upcomingMatchupProjections],
-          ),
+          );
+        },
       );
     } catch (error) {
       logError(this.serviceLogger, 'Failed to generate fantasy trade analysis', error, {
@@ -845,7 +844,14 @@ export class FantasyService {
         return counts;
       }, {});
     const rosteredByPosition = team.players.reduce<Record<string, number>>((counts, player) => {
-      if (player.position) counts[player.position] = (counts[player.position] ?? 0) + 1;
+      const positions = player.fantasyPositions.length
+        ? player.fantasyPositions
+        : player.position
+          ? [player.position]
+          : [];
+      Array.from(new Set(positions)).forEach((position) => {
+        counts[position] = (counts[position] ?? 0) + 1;
+      });
       return counts;
     }, {});
 

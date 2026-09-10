@@ -724,9 +724,17 @@ describe('FantasyService', () => {
             injuryStatus: null,
             fantasyPositions: [],
           },
+          {
+            id: 'edge',
+            name: 'Edge Rusher',
+            position: 'DE',
+            team: 'DAL',
+            injuryStatus: null,
+            fantasyPositions: ['DL'],
+          },
         ],
       },
-      ['QB', 'RB', 'WR', 'FLEX', 'BN', 'IR'],
+      ['QB', 'RB', 'WR', 'DL', 'FLEX', 'BN', 'IR'],
     );
 
     expect(needs).toEqual([
