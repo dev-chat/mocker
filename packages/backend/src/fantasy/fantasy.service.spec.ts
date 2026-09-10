@@ -80,6 +80,15 @@ type FantasyServiceInternals = {
     projections: SleeperProjection[],
   ) => LineupRecommendation | null;
   buildLineupFallbackSummary: (recommendation: LineupRecommendation) => string;
+  buildRosterNeeds: (
+    team: FantasyTeam,
+    rosterPositions: string[],
+  ) => Array<{ position: string; rostered: number; recommended: number; deficit: number }>;
+  buildMatchupContext: (
+    weeklyProjections: Array<Array<{ player_id: string; opponent?: string | null }>>,
+    players: FantasyPlayer[],
+    startingWeek: number,
+  ) => unknown[];
   isEligible: (player: FantasyPlayer, slot: string) => boolean;
   optimizeLineup: (
     players: LineupRecommendation['recommendedStarters'],
@@ -178,7 +187,9 @@ describe('FantasyService', () => {
   it('builds a league overview with AI trade analysis and roster-relevant games', async () => {
     findOne.mockResolvedValue({ slackId: 'U1', teamId: 'T1', sleeperUserId: '123' });
     (Axios.get as Mock).mockImplementation((url: string) => {
-      if (url.endsWith('/state/nfl')) return Promise.resolve({ data: { season: '2026', week: 1 } });
+      if (url.endsWith('/state/nfl')) {
+        return Promise.resolve({ data: { season: '2026', week: 1, season_type: 'regular' } });
+      }
       if (url.includes('/user/123/leagues/nfl/2026')) {
         return Promise.resolve({
           data: [
@@ -222,10 +233,26 @@ describe('FantasyService', () => {
       if (url.includes('api.sleeper.com/projections/nfl/2026/1')) {
         return Promise.resolve({
           data: [
-            { player_id: 'p1', stats: { rush_yd: 20, rush_td: 0 } },
-            { player_id: 'p2', stats: { rush_yd: 50, rush_td: 1 } },
-            { player_id: 'p3', stats: { rush_yd: 80, rush_td: 1 } },
-            { player_id: 'p4', stats: { rush_yd: 80, rush_td: 1 } },
+            { player_id: 'p1', opponent: 'NYJ', stats: { rush_yd: 20, rush_td: 0 } },
+            { player_id: 'p2', opponent: 'BUF', stats: { rush_yd: 50, rush_td: 1 } },
+            { player_id: 'p3', opponent: 'KC', stats: { rush_yd: 80, rush_td: 1 } },
+            { player_id: 'p4', opponent: 'KC', stats: { rush_yd: 80, rush_td: 1 } },
+          ],
+        });
+      }
+      if (url.includes('api.sleeper.com/projections/nfl/2026/2')) {
+        return Promise.resolve({
+          data: [
+            { player_id: 'p1', opponent: 'NE', stats: { rush_yd: 20, rush_td: 0 } },
+            { player_id: 'p3', opponent: '@BUF', stats: { rush_yd: 80, rush_td: 1 } },
+          ],
+        });
+      }
+      if (url.includes('api.sleeper.com/projections/nfl/2026/3')) {
+        return Promise.resolve({
+          data: [
+            { player_id: 'p1', opponent: 'MIA', stats: { rush_yd: 20, rush_td: 0 } },
+            { player_id: 'p3', opponent: 'vs. NYJ', stats: { rush_yd: 80, rush_td: 1 } },
           ],
         });
       }
@@ -308,7 +335,7 @@ describe('FantasyService', () => {
           },
         });
       }
-      if (url.includes('site.api.espn.com')) {
+      if (new URL(url).hostname === 'site.api.espn.com') {
         return Promise.resolve({
           data: {
             events: [
@@ -380,6 +407,405 @@ describe('FantasyService', () => {
     });
   });
 
+  it('normalizes week-zero matchup context before generating AI analysis', async () => {
+    findOne.mockResolvedValue({ slackId: 'U1', teamId: 'T1', sleeperUserId: '123' });
+    const getTradeAnalysisSpy = vi.spyOn(service as unknown as { getTradeAnalysis: unknown }, 'getTradeAnalysis');
+    const sleeperProjectionWeeks: number[] = [];
+    (Axios.get as Mock).mockImplementation((url: string, config?: { params?: { week?: number } }) => {
+      if (url.endsWith('/state/nfl')) {
+        return Promise.resolve({ data: { season: '2026', week: 0, season_type: 'regular' } });
+      }
+      if (url.includes('/user/123/leagues/nfl/2026')) {
+        return Promise.resolve({
+          data: [
+            {
+              league_id: '999',
+              name: 'Friends League',
+              season: '2026',
+              status: 'in_season',
+              avatar: null,
+              total_rosters: 2,
+              roster_positions: ['RB'],
+              scoring_settings: { rush_yd: 0.1, rush_td: 6 },
+            },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/rosters')) {
+        return Promise.resolve({
+          data: [
+            { roster_id: 1, owner_id: '123', players: ['p1'], starters: ['p1'] },
+            { roster_id: 2, owner_id: '456', players: ['p2'], starters: ['p2'] },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/users')) {
+        return Promise.resolve({
+          data: [
+            { user_id: '123', username: 'alice', display_name: 'Alice' },
+            { user_id: '456', username: 'bob', display_name: 'Bob' },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/matchups/1')) {
+        return Promise.resolve({
+          data: [
+            { roster_id: 1, matchup_id: 7, players: ['p1'], starters: ['p1'] },
+            { roster_id: 2, matchup_id: 7, players: ['p2'], starters: ['p2'] },
+          ],
+        });
+      }
+      if (url.includes('api.sleeper.com/projections/nfl/2026/1')) {
+        sleeperProjectionWeeks.push(1);
+        return Promise.resolve({
+          data: [
+            { player_id: 'p1', opponent: 'NYJ', stats: { rush_yd: 20, rush_td: 0 } },
+            { player_id: 'p2', opponent: 'BUF', stats: { rush_yd: 50, rush_td: 1 } },
+            { player_id: 'p3', opponent: 'KC', stats: { rush_yd: 80, rush_td: 1 } },
+          ],
+        });
+      }
+      if (url.includes('api.sleeper.com/projections/nfl/2026/2')) {
+        sleeperProjectionWeeks.push(2);
+        return Promise.resolve({
+          data: [{ player_id: 'p1', opponent: '@DAL', stats: { rush_yd: 20, rush_td: 0 } }],
+        });
+      }
+      if (url.includes('api.sleeper.com/projections/nfl/2026/3')) {
+        sleeperProjectionWeeks.push(3);
+        return Promise.resolve({
+          data: [{ player_id: 'p3', opponent: 'vs. KC', stats: { rush_yd: 80, rush_td: 1 } }],
+        });
+      }
+      if (url.endsWith('/league/999/transactions/1')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/players/nfl')) {
+        return Promise.resolve({
+          data: {
+            p1: {
+              player_id: 'p1',
+              first_name: 'Alex',
+              last_name: 'Receiver',
+              position: 'RB',
+              team: 'BUF',
+              injury_status: null,
+              fantasy_positions: ['RB'],
+            },
+            p2: {
+              player_id: 'p2',
+              first_name: 'Blake',
+              last_name: 'Runner',
+              position: 'RB',
+              team: 'NYJ',
+              injury_status: null,
+              fantasy_positions: ['RB'],
+            },
+            p3: {
+              player_id: 'p3',
+              first_name: 'Casey',
+              last_name: 'Waiver',
+              position: 'RB',
+              team: 'DAL',
+              injury_status: null,
+              fantasy_positions: ['RB'],
+              search_rank: 10,
+            },
+          },
+        });
+      }
+      if (new URL(url).hostname === 'site.api.espn.com') {
+        const week = config?.params?.week ?? 0;
+        return Promise.resolve({
+          data: {
+            events: [
+              {
+                date: `2026-09-${String(week + 9).padStart(2, '0')}T00:00:00.000Z`,
+                status: { type: { shortDetail: 'Thu, 8:00 PM' } },
+                competitions: [
+                  {
+                    competitors: [
+                      { homeAway: 'away', team: { abbreviation: 'BUF', displayName: 'Buffalo Bills' } },
+                      { homeAway: 'home', team: { abbreviation: 'NYJ', displayName: 'New York Jets' } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    await service.getOverview('U1', 'T1', '999');
+
+    const [cacheKey] = getTradeAnalysisSpy.mock.calls.at(-1) as [string, boolean, () => Promise<AITradeAnalysis>];
+    expect(cacheKey).toBe('T1:U1:999:1:2026:regular:1');
+    const payload = JSON.parse((create.mock.calls.at(-1) as [Record<string, string>])[0].input);
+    expect(payload.currentWeek).toBe(1);
+    expect(payload.matchupContext.map(({ week }: { week: number }) => week)).toEqual([1, 1, 2, 3]);
+    expect(payload.matchupContext).toEqual([
+      { week: 1, rosterTeam: 'BUF', opponent: 'NYJ', startsAt: null },
+      { week: 1, rosterTeam: 'DAL', opponent: 'KC', startsAt: null },
+      { week: 2, rosterTeam: 'BUF', opponent: 'DAL', startsAt: null },
+      { week: 3, rosterTeam: 'DAL', opponent: 'KC', startsAt: null },
+    ]);
+    expect([...sleeperProjectionWeeks].sort((left, right) => left - right)).toEqual([1, 2, 3]);
+  });
+
+  it('uses normalized week and season type in the AI cache key', async () => {
+    findOne.mockResolvedValue({ slackId: 'U1', teamId: 'T1', sleeperUserId: '123' });
+    const getTradeAnalysisSpy = vi.spyOn(service as unknown as { getTradeAnalysis: unknown }, 'getTradeAnalysis');
+    const sleeperProjectionWeeks: number[] = [];
+    (Axios.get as Mock).mockImplementation((url: string, config?: { params?: { week?: number } }) => {
+      if (url.endsWith('/state/nfl')) {
+        return Promise.resolve({ data: { season: '2026', week: 0, season_type: 'pre' } });
+      }
+      if (url.includes('/user/123/leagues/nfl/2026')) {
+        return Promise.resolve({
+          data: [
+            {
+              league_id: '999',
+              name: 'Friends League',
+              season: '2026',
+              status: 'in_season',
+              avatar: null,
+              total_rosters: 2,
+              roster_positions: ['RB'],
+              scoring_settings: { rush_yd: 0.1, rush_td: 6 },
+            },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/rosters')) {
+        return Promise.resolve({
+          data: [
+            { roster_id: 1, owner_id: '123', players: ['p1'], starters: ['p1'] },
+            { roster_id: 2, owner_id: '456', players: ['p2'], starters: ['p2'] },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/users')) {
+        return Promise.resolve({
+          data: [
+            { user_id: '123', username: 'alice', display_name: 'Alice' },
+            { user_id: '456', username: 'bob', display_name: 'Bob' },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/matchups/1')) {
+        return Promise.resolve({
+          data: [
+            { roster_id: 1, matchup_id: 7, players: ['p1'], starters: ['p1'] },
+            { roster_id: 2, matchup_id: 7, players: ['p2'], starters: ['p2'] },
+          ],
+        });
+      }
+      if (url.includes('api.sleeper.com/projections/nfl/2026/1')) {
+        sleeperProjectionWeeks.push(1);
+        return Promise.resolve({
+          data: [
+            { player_id: 'p1', opponent: 'NYJ', stats: { rush_yd: 20, rush_td: 0 } },
+            { player_id: 'p2', opponent: 'BUF', stats: { rush_yd: 50, rush_td: 1 } },
+            { player_id: 'p3', opponent: 'KC', stats: { rush_yd: 80, rush_td: 1 } },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/transactions/1')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/players/nfl')) {
+        return Promise.resolve({
+          data: {
+            p1: {
+              player_id: 'p1',
+              first_name: 'Alex',
+              last_name: 'Receiver',
+              position: 'RB',
+              team: 'BUF',
+              injury_status: null,
+              fantasy_positions: ['RB'],
+            },
+            p2: {
+              player_id: 'p2',
+              first_name: 'Blake',
+              last_name: 'Runner',
+              position: 'RB',
+              team: 'NYJ',
+              injury_status: null,
+              fantasy_positions: ['RB'],
+            },
+            p3: {
+              player_id: 'p3',
+              first_name: 'Casey',
+              last_name: 'Waiver',
+              position: 'RB',
+              team: 'DAL',
+              injury_status: null,
+              fantasy_positions: ['RB'],
+              search_rank: 10,
+            },
+          },
+        });
+      }
+      if (new URL(url).hostname === 'site.api.espn.com') {
+        const week = config?.params?.week ?? 0;
+        return Promise.resolve({
+          data: {
+            events: [
+              {
+                date: `2026-09-${String(week + 9).padStart(2, '0')}T00:00:00.000Z`,
+                status: { type: { shortDetail: 'Thu, 8:00 PM' } },
+                competitions: [
+                  {
+                    competitors: [
+                      { homeAway: 'away', team: { abbreviation: 'BUF', displayName: 'Buffalo Bills' } },
+                      { homeAway: 'home', team: { abbreviation: 'NYJ', displayName: 'New York Jets' } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    await service.getOverview('U1', 'T1', '999');
+
+    const [cacheKey] = getTradeAnalysisSpy.mock.calls.at(-1) as [string, boolean, () => Promise<AITradeAnalysis>];
+    expect(cacheKey).toBe('T1:U1:999:1:2026:pre:1');
+    expect([...sleeperProjectionWeeks].sort((left, right) => left - right)).toEqual([1]);
+  });
+
+  it('does not request out-of-range upcoming regular-season projections', async () => {
+    findOne.mockResolvedValue({ slackId: 'U1', teamId: 'T1', sleeperUserId: '123' });
+    const sleeperProjectionWeeks: number[] = [];
+    (Axios.get as Mock).mockImplementation((url: string, config?: { params?: { week?: number } }) => {
+      if (url.endsWith('/state/nfl')) {
+        return Promise.resolve({ data: { season: '2026', week: 18, season_type: 'regular' } });
+      }
+      if (url.includes('/user/123/leagues/nfl/2026')) {
+        return Promise.resolve({
+          data: [
+            {
+              league_id: '999',
+              name: 'Friends League',
+              season: '2026',
+              status: 'in_season',
+              avatar: null,
+              total_rosters: 2,
+              roster_positions: ['RB'],
+              scoring_settings: { rush_yd: 0.1, rush_td: 6 },
+            },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/rosters')) {
+        return Promise.resolve({
+          data: [
+            { roster_id: 1, owner_id: '123', players: ['p1'], starters: ['p1'] },
+            { roster_id: 2, owner_id: '456', players: ['p2'], starters: ['p2'] },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/users')) {
+        return Promise.resolve({
+          data: [
+            { user_id: '123', username: 'alice', display_name: 'Alice' },
+            { user_id: '456', username: 'bob', display_name: 'Bob' },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/matchups/18')) {
+        return Promise.resolve({
+          data: [
+            { roster_id: 1, matchup_id: 7, players: ['p1'], starters: ['p1'] },
+            { roster_id: 2, matchup_id: 7, players: ['p2'], starters: ['p2'] },
+          ],
+        });
+      }
+      if (url.includes('api.sleeper.com/projections/nfl/2026/18')) {
+        sleeperProjectionWeeks.push(18);
+        return Promise.resolve({
+          data: [
+            { player_id: 'p1', opponent: 'NYJ', stats: { rush_yd: 20, rush_td: 0 } },
+            { player_id: 'p2', opponent: 'BUF', stats: { rush_yd: 50, rush_td: 1 } },
+            { player_id: 'p3', opponent: 'KC', stats: { rush_yd: 80, rush_td: 1 } },
+          ],
+        });
+      }
+      if (url.endsWith('/league/999/transactions/18')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.endsWith('/league/999/transactions/17')) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.includes('/players/nfl')) {
+        return Promise.resolve({
+          data: {
+            p1: {
+              player_id: 'p1',
+              first_name: 'Alex',
+              last_name: 'Receiver',
+              position: 'RB',
+              team: 'BUF',
+              injury_status: null,
+              fantasy_positions: ['RB'],
+            },
+            p2: {
+              player_id: 'p2',
+              first_name: 'Blake',
+              last_name: 'Runner',
+              position: 'RB',
+              team: 'NYJ',
+              injury_status: null,
+              fantasy_positions: ['RB'],
+            },
+            p3: {
+              player_id: 'p3',
+              first_name: 'Casey',
+              last_name: 'Waiver',
+              position: 'RB',
+              team: 'DAL',
+              injury_status: null,
+              fantasy_positions: ['RB'],
+              search_rank: 10,
+            },
+          },
+        });
+      }
+      if (new URL(url).hostname === 'site.api.espn.com') {
+        const week = config?.params?.week ?? 0;
+        return Promise.resolve({
+          data: {
+            events: [
+              {
+                date: `2026-09-${String(week + 9).padStart(2, '0')}T00:00:00.000Z`,
+                status: { type: { shortDetail: 'Thu, 8:00 PM' } },
+                competitions: [
+                  {
+                    competitors: [
+                      { homeAway: 'away', team: { abbreviation: 'BUF', displayName: 'Buffalo Bills' } },
+                      { homeAway: 'home', team: { abbreviation: 'NYJ', displayName: 'New York Jets' } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    await service.getOverview('U1', 'T1', '999');
+
+    expect([...sleeperProjectionWeeks].sort((left, right) => left - right)).toEqual([18]);
+  });
+
   it('returns league data with fallback insights when AI is unavailable', async () => {
     findOne.mockResolvedValue({ slackId: 'U1', teamId: 'T1', sleeperUserId: '123' });
     create.mockRejectedValue(new Error('AI unavailable'));
@@ -447,7 +873,7 @@ describe('FantasyService', () => {
           },
         });
       }
-      if (url.includes('site.api.espn.com')) {
+      if (new URL(url).hostname === 'site.api.espn.com') {
         return Promise.resolve({
           data: {
             events: [
@@ -527,6 +953,126 @@ describe('FantasyService', () => {
     expect(internals.projectedPoints({ pts_half_ppr: 9 }, undefined)).toBe(9);
     expect(internals.projectedPoints({ pts_std: 7 }, {})).toBe(7);
     expect(internals.projectedPoints({}, undefined)).toBeNull();
+  });
+
+  it('identifies positional roster gaps while ignoring bench and flex slots', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const needs = internals.buildRosterNeeds(
+      {
+        rosterId: 1,
+        ownerName: 'Alice',
+        starters: [],
+        players: [
+          {
+            id: 'qb',
+            name: 'Quarterback',
+            position: 'QB',
+            team: 'BUF',
+            injuryStatus: null,
+            fantasyPositions: ['QB'],
+          },
+          {
+            id: 'unknown',
+            name: 'Unknown',
+            position: null,
+            team: null,
+            injuryStatus: null,
+            fantasyPositions: [],
+          },
+          {
+            id: 'edge',
+            name: 'Edge Rusher',
+            position: 'DE',
+            team: 'DAL',
+            injuryStatus: null,
+            fantasyPositions: ['DL'],
+          },
+          {
+            id: 'swing',
+            name: 'Swing Skill',
+            position: 'RB',
+            team: 'MIA',
+            injuryStatus: null,
+            fantasyPositions: ['RB', 'WR'],
+          },
+        ],
+      },
+      ['QB', 'RB', 'WR', 'DL', 'FLEX', 'BN', 'IR'],
+    );
+
+    expect(needs).toEqual([{ position: 'WR', rostered: 0, recommended: 1, deficit: 1 }]);
+  });
+
+  it('assigns multi-eligible players to maximize filled required slots', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const needs = internals.buildRosterNeeds(
+      {
+        rosterId: 1,
+        ownerName: 'Alice',
+        starters: [],
+        players: [
+          {
+            id: 'flex-qb-wr',
+            name: 'Flex QB WR',
+            position: 'QB',
+            team: 'DAL',
+            injuryStatus: null,
+            fantasyPositions: ['QB', 'WR'],
+          },
+          {
+            id: 'qb-only',
+            name: 'QB Only',
+            position: 'QB',
+            team: 'BUF',
+            injuryStatus: null,
+            fantasyPositions: ['QB'],
+          },
+        ],
+      },
+      ['QB', 'WR'],
+    );
+
+    expect(needs).toEqual([]);
+  });
+
+  it('builds current and upcoming matchup context from sleeper projections', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const players: FantasyPlayer[] = [
+      {
+        id: 'washington-player',
+        name: 'Washington Player',
+        position: 'WR',
+        team: 'WAS',
+        injuryStatus: null,
+        fantasyPositions: ['WR'],
+      },
+      {
+        id: 'jacksonville-player',
+        name: 'Jacksonville Player',
+        position: 'RB',
+        team: 'JAC',
+        injuryStatus: null,
+        fantasyPositions: ['RB'],
+      },
+    ];
+
+    expect(
+      internals.buildMatchupContext(
+        [
+          [
+            { player_id: 'washington-player', opponent: '@DAL' },
+            { player_id: 'jacksonville-player', opponent: 'MIA' },
+            { player_id: 'jacksonville-player', opponent: 'MIA' },
+            { player_id: 'washington-player', opponent: null },
+          ],
+        ],
+        players,
+        3,
+      ),
+    ).toEqual([
+      { week: 3, rosterTeam: 'WSH', opponent: 'DAL', startsAt: null },
+      { week: 3, rosterTeam: 'JAX', opponent: 'MIA', startsAt: null },
+    ]);
   });
 
   it('prices waiver bids from prior-league dollars per projected point', async () => {

@@ -46,6 +46,7 @@ const WAIVER_MARKET_CACHE_MS = 6 * 60 * 60 * 1000;
 const WAIVER_HISTORY_SEASONS = 3;
 const NFL_REGULAR_SEASON_WEEKS = 18;
 const SLEEPER_ID_PATTERN = /^\d{1,32}$/;
+const OPTIONAL_ROSTER_SLOTS = new Set(['BN', 'IR', 'TAXI', 'FLEX', 'SUPER_FLEX', 'REC_FLEX', 'WRRB_FLEX', 'IDP_FLEX']);
 
 interface NflState {
   season: string;
@@ -81,6 +82,13 @@ interface EspnEvent {
 
 interface EspnScoreboard {
   events?: EspnEvent[];
+}
+
+interface RosterNeed {
+  position: string;
+  rostered: number;
+  recommended: number;
+  deficit: number;
 }
 
 const isOutputMessage = (item: ResponseOutputItem): item is ResponseOutputMessage => item.type === 'message';
@@ -170,7 +178,8 @@ export class FantasyService {
       return null;
     }
 
-    const transactionRounds = state.week > 1 ? [state.week, state.week - 1] : [Math.max(state.week, 1)];
+    const currentWeek = Math.max(state.week, 1);
+    const transactionRounds = state.week > 1 ? [state.week, state.week - 1] : [currentWeek];
     const [rosters, users, transactionGroups, players, scoreboard] = await Promise.all([
       this.get<SleeperRoster[]>(`/league/${leagueId}/rosters`),
       this.get<SleeperLeagueUser[]>(`/league/${leagueId}/users`),
@@ -182,7 +191,7 @@ export class FantasyService {
         params: {
           dates: state.season,
           seasontype: state.season_type === 'pre' ? 1 : state.season_type === 'post' ? 3 : 2,
-          week: Math.max(state.week, 1),
+          week: currentWeek,
         },
         timeout: 10000,
       }).then((response) => response.data),
@@ -202,7 +211,6 @@ export class FantasyService {
     if (!roster) {
       return null;
     }
-
     const pendingTransactions = transactions.filter(
       (transaction) => transaction.type === 'trade' && transaction.status === 'pending',
     );
@@ -274,10 +282,23 @@ export class FantasyService {
     let aiStatus: FantasyOverview['aiStatus'] = 'ready';
     try {
       analysis = await this.getTradeAnalysis(
-        `${teamId}:${slackId}:${leagueId}:${roster.rosterId}:${state.season}:${state.week}`,
+        `${teamId}:${slackId}:${leagueId}:${roster.rosterId}:${state.season}:${state.season_type}:${currentWeek}`,
         refresh,
-        () =>
-          this.generateTradeAnalysis(
+        async () => {
+          const upcomingMatchupProjections = await Promise.all(
+            [currentWeek + 1, currentWeek + 2]
+              .filter((week) => state.season_type === 'regular' && week <= NFL_REGULAR_SEASON_WEEKS)
+              .map((week) =>
+                this.getSeasonProjections(state.season, week).catch((error) => {
+                  logError(this.serviceLogger, 'Failed to load upcoming Sleeper projections', error, {
+                    season: state.season,
+                    week,
+                  });
+                  return [];
+                }),
+              ),
+          );
+          return this.generateTradeAnalysis(
             league,
             roster,
             teams,
@@ -286,7 +307,10 @@ export class FantasyService {
             remainingWaiverBudget,
             lineupRecommendation,
             waiverBidGuidance,
-          ),
+            currentWeek,
+            [currentProjections, ...upcomingMatchupProjections],
+          );
+        },
       );
     } catch (error) {
       logError(this.serviceLogger, 'Failed to generate fantasy trade analysis', error, {
@@ -812,6 +836,87 @@ export class FantasyService {
     return `The highest-projected lineup for week ${recommendation.week}${opponent} is ${recommendation.userPotential.max.toFixed(1)} points.`;
   }
 
+  private buildRosterNeeds(team: FantasyTeam, rosterPositions: string[]): RosterNeed[] {
+    const requiredByPosition = rosterPositions
+      .filter((slot) => !OPTIONAL_ROSTER_SLOTS.has(slot))
+      .reduce<Record<string, number>>((counts, position) => {
+        counts[position] = (counts[position] ?? 0) + 1;
+        return counts;
+      }, {});
+    const rosteredByPosition = Object.keys(requiredByPosition).reduce<Record<string, number>>((counts, position) => {
+      counts[position] = 0;
+      return counts;
+    }, {});
+    const requiredSlots = Object.entries(requiredByPosition).flatMap(([position, count]) =>
+      Array.from({ length: count }, () => position),
+    );
+    const slotIndexesByPosition = requiredSlots.reduce<Partial<Record<string, number[]>>>(
+      (indexes, position, slotIndex) => {
+        (indexes[position] ??= []).push(slotIndex);
+        return indexes;
+      },
+      {},
+    );
+    const eligibleSlotsByPlayer = team.players.map((player) => {
+      const eligiblePositions = Array.from(
+        new Set(player.fantasyPositions.length ? player.fantasyPositions : player.position ? [player.position] : []),
+      ).filter((position) => slotIndexesByPosition[position] !== undefined);
+      return eligiblePositions.flatMap((position) => slotIndexesByPosition[position] ?? []);
+    });
+    const slotToPlayer = new Array<number>(requiredSlots.length).fill(-1);
+    const assignSlot = (playerIndex: number, seenSlots: boolean[]): boolean => {
+      for (const slotIndex of eligibleSlotsByPlayer[playerIndex] ?? []) {
+        if (seenSlots[slotIndex]) continue;
+        seenSlots[slotIndex] = true;
+        const assignedPlayer = slotToPlayer[slotIndex];
+        if (assignedPlayer === -1 || assignSlot(assignedPlayer, seenSlots)) {
+          slotToPlayer[slotIndex] = playerIndex;
+          return true;
+        }
+      }
+      return false;
+    };
+    eligibleSlotsByPlayer.forEach((_, playerIndex) => {
+      assignSlot(playerIndex, new Array(requiredSlots.length).fill(false));
+    });
+    slotToPlayer.forEach((playerIndex, slotIndex) => {
+      if (playerIndex === -1) return;
+      const position = requiredSlots[slotIndex];
+      rosteredByPosition[position] = (rosteredByPosition[position] ?? 0) + 1;
+    });
+
+    return Object.entries(requiredByPosition)
+      .map(([position, recommended]) => ({
+        position,
+        rostered: rosteredByPosition[position] ?? 0,
+        recommended,
+        deficit: Math.max(0, recommended - (rosteredByPosition[position] ?? 0)),
+      }))
+      .filter((need) => need.deficit > 0)
+      .sort((left, right) => right.deficit - left.deficit);
+  }
+
+  private buildMatchupContext(
+    weeklyProjections: SleeperProjection[][],
+    players: FantasyPlayer[],
+    startingWeek: number,
+  ) {
+    const playersById = new Map(players.map((player) => [player.id, player]));
+    return weeklyProjections.flatMap((projections, index) => {
+      const seenTeams = new Set<string>();
+      return projections.flatMap((projection) => {
+        const player = playersById.get(projection.player_id);
+        if (!player?.team || !projection.opponent) return [];
+        const rosterTeam = this.normalizeTeam(player.team);
+        if (seenTeams.has(rosterTeam)) return [];
+        const opponent = this.normalizeOpponentTeam(projection.opponent);
+        if (!opponent) return [];
+        seenTeams.add(rosterTeam);
+        return [{ week: startingWeek + index, rosterTeam, opponent, startsAt: null }];
+      });
+    });
+  }
+
   private toFantasyTeam(
     roster: SleeperRoster,
     ownerNames: Map<number, string>,
@@ -1007,6 +1112,14 @@ export class FantasyService {
     return aliases[team] ?? team;
   }
 
+  private normalizeOpponentTeam(opponent: string): string | null {
+    const team = opponent
+      .replace(/^(@|vs\.?\s*)/i, '')
+      .trim()
+      .toUpperCase();
+    return team ? this.normalizeTeam(team) : null;
+  }
+
   private async generateTradeAnalysis(
     league: SleeperLeague,
     ownRoster: FantasyTeam,
@@ -1016,7 +1129,12 @@ export class FantasyService {
     remainingWaiverBudget: number,
     lineupRecommendation: LineupRecommendation | null,
     waiverBidGuidance: WaiverBidGuidance,
+    currentWeek: number,
+    weeklyProjections: SleeperProjection[][],
   ): Promise<AITradeAnalysis> {
+    const rosterNeeds = new Map(
+      teams.map((team) => [team.rosterId, this.buildRosterNeeds(team, league.roster_positions ?? [])]),
+    );
     const compactTeams = teams.map((team) => ({
       rosterId: team.rosterId,
       ownerName: team.ownerName,
@@ -1027,7 +1145,13 @@ export class FantasyService {
         team: nflTeam,
         injuryStatus,
       })),
+      needs: rosterNeeds.get(team.rosterId) ?? [],
     }));
+    const matchupContext = this.buildMatchupContext(
+      weeklyProjections,
+      [...ownRoster.players, ...waiverCandidates],
+      currentWeek,
+    );
     const response = await this.openAi.responses.create({
       model: GPT_MODEL,
       reasoning: { effort: 'low' },
@@ -1036,9 +1160,14 @@ export class FantasyService {
         'teamHealth must assess the user roster relative to the supplied league with an integer percentage from 0 to 100 and a concise summary. ' +
         'tradeInsights must include exactly one item per pending transaction with transactionId, a concise insight, ' +
         'and recommendation of accept, decline, or negotiate. suggestions must contain up to 3 realistic options ' +
-        'with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. waiverSuggestions must contain up to 3 ' +
+        'with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. Make each proposed trade fair enough that ' +
+        'the target manager is likely to accept, but favor a small, subtle value edge for the user. Consider the current ' +
+        'week, upcoming schedule, roster needs for both teams, positional scarcity, and whether the timing makes the offer ' +
+        'more or less appealing. waiverSuggestions must contain up to 3 ' +
         'add/drop proposals using only the supplied waiver candidate and user roster IDs, with rationale and a high, ' +
         'medium, or low priority, plus an integer recommendedBid in dollars that does not exceed remainingWaiverBudget. ' +
+        'Prioritize the user roster gaps first, then compare current and upcoming matchups for the candidate and the dropped ' +
+        'player; do not recommend a player solely because of name value or season-long projections. ' +
         'When historicalBidGuidance contains a suggested bid for a player, use that exact amount; it is calculated from ' +
         'the league history using recency-weighted dollars per projected point and is authoritative. ' +
         'Waivers process Wednesday and Sunday. lineupSummary must briefly explain the supplied deterministic weekly lineup recommendation, ' +
@@ -1052,6 +1181,9 @@ export class FantasyService {
         remainingWaiverBudget,
         historicalBidGuidance: waiverBidGuidance,
         lineupRecommendation,
+        currentWeek,
+        rosterNeeds: rosterNeeds.get(ownRoster.rosterId) ?? [],
+        matchupContext,
       }),
       text: {
         format: {
