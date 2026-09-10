@@ -180,22 +180,17 @@ export class FantasyService {
 
     const currentWeek = Math.max(state.week, 1);
     const transactionRounds = state.week > 1 ? [state.week, state.week - 1] : [currentWeek];
-    const upcomingScoreboardsPromise = Promise.all(
+    const upcomingMatchupProjectionsPromise = Promise.all(
       [currentWeek + 1, currentWeek + 2]
         .filter((week) => state.season_type === 'regular' && week <= NFL_REGULAR_SEASON_WEEKS)
         .map((week) =>
-          Axios.get<EspnScoreboard>(ESPN_SCOREBOARD_URL, {
-            params: { dates: state.season, seasontype: 2, week },
-            timeout: 10000,
-          })
-            .then((response) => response.data)
-            .catch((error) => {
-              logError(this.serviceLogger, 'Failed to load an upcoming NFL scoreboard', error, {
-                season: state.season,
-                week,
-              });
-              return { events: [] };
-            }),
+          this.getSeasonProjections(state.season, week).catch((error) => {
+            logError(this.serviceLogger, 'Failed to load upcoming Sleeper projections', error, {
+              season: state.season,
+              week,
+            });
+            return [];
+          }),
         ),
     );
     const [rosters, users, transactionGroups, players, scoreboard] = await Promise.all([
@@ -229,7 +224,7 @@ export class FantasyService {
     if (!roster) {
       return null;
     }
-    const upcomingScoreboards = await upcomingScoreboardsPromise;
+    const upcomingMatchupProjections = await upcomingMatchupProjectionsPromise;
 
     const pendingTransactions = transactions.filter(
       (transaction) => transaction.type === 'trade' && transaction.status === 'pending',
@@ -315,7 +310,7 @@ export class FantasyService {
             lineupRecommendation,
             waiverBidGuidance,
             currentWeek,
-            [scoreboard, ...upcomingScoreboards],
+            [currentProjections, ...upcomingMatchupProjections],
           ),
       );
     } catch (error) {
@@ -865,32 +860,25 @@ export class FantasyService {
       .sort((left, right) => right.deficit - left.deficit);
   }
 
-  private buildMatchupContext(scoreboards: EspnScoreboard[], players: FantasyPlayer[], startingWeek: number) {
-    const rosterTeams = new Set(
-      players
-        .map((player) => (player.team ? this.normalizeTeam(player.team) : null))
-        .filter((team): team is string => !!team),
-    );
-    return scoreboards.flatMap((scoreboard, index) =>
-      (scoreboard.events ?? []).flatMap((event) => {
-        const competitors = event.competitions?.[0]?.competitors ?? [];
-        const away = competitors.find((team) => team.homeAway === 'away')?.team?.abbreviation;
-        const home = competitors.find((team) => team.homeAway === 'home')?.team?.abbreviation;
-        if (!away || !home) return [];
-        const normalizedAway = this.normalizeTeam(away);
-        const normalizedHome = this.normalizeTeam(home);
-        const rosterTeam = [normalizedAway, normalizedHome].find((team) => rosterTeams.has(team));
-        if (!rosterTeam) return [];
-        return [
-          {
-            week: startingWeek + index,
-            rosterTeam,
-            opponent: rosterTeam === normalizedAway ? normalizedHome : normalizedAway,
-            startsAt: event.date ?? null,
-          },
-        ];
-      }),
-    );
+  private buildMatchupContext(
+    weeklyProjections: SleeperProjection[][],
+    players: FantasyPlayer[],
+    startingWeek: number,
+  ) {
+    const playersById = new Map(players.map((player) => [player.id, player]));
+    return weeklyProjections.flatMap((projections, index) => {
+      const seenTeams = new Set<string>();
+      return projections.flatMap((projection) => {
+        const player = playersById.get(projection.player_id);
+        if (!player?.team || !projection.opponent) return [];
+        const rosterTeam = this.normalizeTeam(player.team);
+        if (seenTeams.has(rosterTeam)) return [];
+        const opponent = this.normalizeOpponentTeam(projection.opponent);
+        if (!opponent) return [];
+        seenTeams.add(rosterTeam);
+        return [{ week: startingWeek + index, rosterTeam, opponent, startsAt: null }];
+      });
+    });
   }
 
   private toFantasyTeam(
@@ -1086,6 +1074,14 @@ export class FantasyService {
   private normalizeTeam(team: string): string {
     const aliases: Record<string, string | undefined> = { WAS: 'WSH', JAC: 'JAX' };
     return aliases[team] ?? team;
+  }
+
+  private normalizeOpponentTeam(opponent: string): string | null {
+    const team = opponent
+      .replace(/^(@|vs\.?\s*)/i, '')
+      .trim()
+      .toUpperCase();
+    return team ? this.normalizeTeam(team) : null;
   }
 
   private async generateTradeAnalysis(
