@@ -1094,7 +1094,7 @@ export class FantasyService {
     lineupRecommendation: LineupRecommendation | null,
     waiverBidGuidance: WaiverBidGuidance,
     currentWeek: number,
-    scoreboards: EspnScoreboard[],
+    weeklyProjections: SleeperProjection[][],
   ): Promise<AITradeAnalysis> {
     const rosterNeeds = new Map(
       teams.map((team) => [team.rosterId, this.buildRosterNeeds(team, league.roster_positions ?? [])]),
@@ -1112,7 +1112,7 @@ export class FantasyService {
       needs: rosterNeeds.get(team.rosterId) ?? [],
     }));
     const matchupContext = this.buildMatchupContext(
-      scoreboards,
+      weeklyProjections,
       [...ownRoster.players, ...waiverCandidates],
       currentWeek,
     );
