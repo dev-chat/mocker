@@ -84,10 +84,21 @@ Add these slash commands with their request URLs:
   - `reactions:read`
   - `users.profile:read`
   - `users:read`
+  - `identity.basic` (user token scope for legacy Sign in with Slack)
 
-The search UI login uses Slack OpenID Connect with the `openid` scope. Do not add bot or user-token
-scopes to that sign-in flow; doing so turns login into an app installation that can require App Manager
-approval.
+#### Search UI login
+
+The search/auth UI login uses Slack's **legacy Sign in with Slack** flow with `identity.basic`.
+This keeps login identity-only for the existing classic Moonbeam app and avoids sending regular
+workspace members through the modern app-installation consent screen.
+
+Under **OAuth & Permissions > Redirect URLs**, add the backend callback URL, such as
+`http://localhost:3000/auth/slack/callback`. In production this should be
+`https://api.muzzle.lol/auth/slack/callback`.
+
+The backend sends `ALLOWED_TEAM_DOMAIN` as Slack's `team` parameter and verifies it against the
+`users.identity` response's `team.id`, so this value must be the Slack **team ID** (for example
+`T2ZV0GCNS`), not the workspace domain.
 
 Copy your **Bot Token** and **User OAuth Token** from the app credentials page.
 
@@ -120,6 +131,7 @@ MUZZLE_BOT_USER_TOKEN=xoxp-your-user-token
 MUZZLE_BOT_SIGNING_SECRET=your-signing-secret
 
 # Slack OAuth (for search/auth UI login)
+# Uses the existing classic app's legacy Sign in with Slack flow (`identity.basic`).
 SLACK_CLIENT_ID=your-client-id
 SLACK_CLIENT_SECRET=your-client-secret
 SLACK_REDIRECT_URI=http://localhost:3000/auth/slack/callback
