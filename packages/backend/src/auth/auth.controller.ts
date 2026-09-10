@@ -108,9 +108,15 @@ authController.get('/slack/callback', (req, res) => {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
+    const allowedTeamId = process.env.ALLOWED_TEAM_DOMAIN;
+    if (!allowedTeamId) {
+      res.status(500).send('Slack OAuth is not configured');
+      return;
+    }
+
     const teamId = identityResponse.data.team?.id;
     const userId = identityResponse.data.user?.id;
-    if (!identityResponse.data.ok || !userId || !teamId || teamId !== process.env.ALLOWED_TEAM_DOMAIN) {
+    if (!identityResponse.data.ok || !userId || !teamId || teamId !== allowedTeamId) {
       logError(authLogger, 'Unauthorized Slack workspace attempted to authenticate', {
         teamId,
         userId,
