@@ -282,7 +282,7 @@ export class FantasyService {
     let aiStatus: FantasyOverview['aiStatus'] = 'ready';
     try {
       analysis = await this.getTradeAnalysis(
-        `${teamId}:${slackId}:${leagueId}:${roster.rosterId}:${state.season}:${state.week}`,
+        `${teamId}:${slackId}:${leagueId}:${roster.rosterId}:${state.season}:${state.season_type}:${currentWeek}`,
         refresh,
         async () => {
           const upcomingMatchupProjections = await Promise.all(
