@@ -843,17 +843,47 @@ export class FantasyService {
         counts[position] = (counts[position] ?? 0) + 1;
         return counts;
       }, {});
-    const rosteredByPosition = team.players.reduce<Record<string, number>>((counts, player) => {
-      const positions = player.fantasyPositions.length
-        ? player.fantasyPositions
-        : player.position
-          ? [player.position]
-          : [];
-      Array.from(new Set(positions)).forEach((position) => {
-        counts[position] = (counts[position] ?? 0) + 1;
-      });
+    const rosteredByPosition = Object.keys(requiredByPosition).reduce<Record<string, number>>((counts, position) => {
+      counts[position] = 0;
       return counts;
     }, {});
+    const requiredSlots = Object.entries(requiredByPosition).flatMap(([position, count]) =>
+      Array.from({ length: count }, () => position),
+    );
+    const slotIndexesByPosition = requiredSlots.reduce<Partial<Record<string, number[]>>>(
+      (indexes, position, slotIndex) => {
+        (indexes[position] ??= []).push(slotIndex);
+        return indexes;
+      },
+      {},
+    );
+    const eligibleSlotsByPlayer = team.players.map((player) => {
+      const eligiblePositions = Array.from(
+        new Set(player.fantasyPositions.length ? player.fantasyPositions : player.position ? [player.position] : []),
+      ).filter((position) => slotIndexesByPosition[position] !== undefined);
+      return eligiblePositions.flatMap((position) => slotIndexesByPosition[position] ?? []);
+    });
+    const slotToPlayer = new Array<number>(requiredSlots.length).fill(-1);
+    const assignSlot = (playerIndex: number, seenSlots: boolean[]): boolean => {
+      for (const slotIndex of eligibleSlotsByPlayer[playerIndex] ?? []) {
+        if (seenSlots[slotIndex]) continue;
+        seenSlots[slotIndex] = true;
+        const assignedPlayer = slotToPlayer[slotIndex];
+        if (assignedPlayer === -1 || assignSlot(assignedPlayer, seenSlots)) {
+          slotToPlayer[slotIndex] = playerIndex;
+          return true;
+        }
+      }
+      return false;
+    };
+    eligibleSlotsByPlayer.forEach((_, playerIndex) => {
+      assignSlot(playerIndex, new Array(requiredSlots.length).fill(false));
+    });
+    slotToPlayer.forEach((playerIndex, slotIndex) => {
+      if (playerIndex === -1) return;
+      const position = requiredSlots[slotIndex];
+      rosteredByPosition[position] = (rosteredByPosition[position] ?? 0) + 1;
+    });
 
     return Object.entries(requiredByPosition)
       .map(([position, recommended]) => ({

@@ -732,15 +732,52 @@ describe('FantasyService', () => {
             injuryStatus: null,
             fantasyPositions: ['DL'],
           },
+          {
+            id: 'swing',
+            name: 'Swing Skill',
+            position: 'RB',
+            team: 'MIA',
+            injuryStatus: null,
+            fantasyPositions: ['RB', 'WR'],
+          },
         ],
       },
       ['QB', 'RB', 'WR', 'DL', 'FLEX', 'BN', 'IR'],
     );
 
-    expect(needs).toEqual([
-      { position: 'RB', rostered: 0, recommended: 1, deficit: 1 },
-      { position: 'WR', rostered: 0, recommended: 1, deficit: 1 },
-    ]);
+    expect(needs).toEqual([{ position: 'WR', rostered: 0, recommended: 1, deficit: 1 }]);
+  });
+
+  it('assigns multi-eligible players to maximize filled required slots', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const needs = internals.buildRosterNeeds(
+      {
+        rosterId: 1,
+        ownerName: 'Alice',
+        starters: [],
+        players: [
+          {
+            id: 'flex-qb-wr',
+            name: 'Flex QB WR',
+            position: 'QB',
+            team: 'DAL',
+            injuryStatus: null,
+            fantasyPositions: ['QB', 'WR'],
+          },
+          {
+            id: 'qb-only',
+            name: 'QB Only',
+            position: 'QB',
+            team: 'BUF',
+            injuryStatus: null,
+            fantasyPositions: ['QB'],
+          },
+        ],
+      },
+      ['QB', 'WR'],
+    );
+
+    expect(needs).toEqual([]);
   });
 
   it('builds current and upcoming matchup context from sleeper projections', () => {
