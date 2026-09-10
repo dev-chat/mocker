@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import type { Request, Router } from 'express';
 import express from 'express';
 import Axios from 'axios';
+import type { OauthV2AccessResponse, UsersIdentityResponse } from '@slack/web-api';
 import { createSessionToken } from '../shared/utils/session-token';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
@@ -16,38 +17,6 @@ import {
 export const authController: Router = express.Router();
 const authLogger = logger.child({ module: 'AuthController' });
 
-interface SlackOpenIdTokenResponse {
-  ok: boolean;
-  access_token?: string;
-}
-
-interface SlackOpenIdUserInfoResponse {
-  ok: boolean;
-  sub?: string;
-  'https://slack.com/user_id'?: string;
-  'https://slack.com/team_id'?: string;
-}
-
-interface SignInAppConfig {
-  clientId?: string;
-  clientSecret?: string;
-  redirectUri?: string;
-}
-
-/**
- * Sign in with Slack must use a modern (granular scope) Slack app that only
- * requests OpenID Connect scopes. Pointing it at the classic bot app makes
- * Slack render the full app-installation consent screen, which regular
- * workspace members cannot approve.
- */
-function getSignInAppConfig(): SignInAppConfig {
-  return {
-    clientId: process.env.SLACK_SIGNIN_CLIENT_ID ?? process.env.SLACK_CLIENT_ID,
-    clientSecret: process.env.SLACK_SIGNIN_CLIENT_SECRET ?? process.env.SLACK_CLIENT_SECRET,
-    redirectUri: process.env.SLACK_SIGNIN_REDIRECT_URI ?? process.env.SLACK_REDIRECT_URI,
-  };
-}
-
 function getCookieValue(req: Request, name: string): string | undefined {
   const cookieHeader = req.headers.cookie;
   if (!cookieHeader) return undefined;
@@ -57,7 +26,8 @@ function getCookieValue(req: Request, name: string): string | undefined {
 }
 
 authController.get('/slack', (_req, res) => {
-  const { clientId, redirectUri } = getSignInAppConfig();
+  const clientId = process.env.SLACK_CLIENT_ID;
+  const redirectUri = process.env.SLACK_REDIRECT_URI;
   const teamId = process.env.ALLOWED_TEAM_DOMAIN;
 
   if (!clientId || !redirectUri || !teamId) {
@@ -75,9 +45,7 @@ authController.get('/slack', (_req, res) => {
 
   const params = new URLSearchParams({
     client_id: clientId,
-    nonce: state,
-    response_type: 'code',
-    scope: 'openid',
+    user_scope: 'identity.basic',
     redirect_uri: redirectUri,
     state,
     team: teamId,
@@ -110,14 +78,16 @@ authController.get('/slack/callback', (req, res) => {
       return;
     }
 
-    const { clientId, clientSecret, redirectUri } = getSignInAppConfig();
+    const clientId = process.env.SLACK_CLIENT_ID;
+    const clientSecret = process.env.SLACK_CLIENT_SECRET;
+    const redirectUri = process.env.SLACK_REDIRECT_URI;
 
     if (!clientId || !clientSecret || !redirectUri) {
       res.status(500).send('Slack OAuth is not configured');
       return;
     }
 
-    const tokenResponse = await Axios.post<SlackOpenIdTokenResponse>(
+    const tokenResponse = await Axios.post<OauthV2AccessResponse>(
       SLACK_TOKEN_URL,
       new URLSearchParams({
         client_id: clientId,
@@ -128,18 +98,18 @@ authController.get('/slack/callback', (req, res) => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
     );
 
-    const accessToken = tokenResponse.data.access_token;
+    const accessToken = tokenResponse.data.authed_user?.access_token;
     if (!tokenResponse.data.ok || !accessToken) {
       res.redirect(`${frontendUrl}?auth_error=token_exchange_failed`);
       return;
     }
 
-    const identityResponse = await Axios.get<SlackOpenIdUserInfoResponse>(SLACK_IDENTITY_URL, {
+    const identityResponse = await Axios.get<UsersIdentityResponse>(SLACK_IDENTITY_URL, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    const teamId = identityResponse.data['https://slack.com/team_id'];
-    const userId = identityResponse.data['https://slack.com/user_id'] ?? identityResponse.data.sub;
+    const teamId = identityResponse.data.team?.id;
+    const userId = identityResponse.data.user?.id;
     if (!identityResponse.data.ok || !userId || !teamId || teamId !== process.env.ALLOWED_TEAM_DOMAIN) {
       logError(authLogger, 'Unauthorized Slack workspace attempted to authenticate', {
         teamId,
