@@ -90,7 +90,7 @@ Add these slash commands with their request URLs:
 
   The user token must belong to a workspace **admin or owner**, because only an admin user token
   may delete another member's message.
-  - `chat:write:user` — required for `chat.delete` when muzzling
+  - `chat:write` — required for `chat.delete` when muzzling
   - `users.profile:write` — required for `users.setPhoto`
   - `openid` — modern Sign in with Slack (see below)
 

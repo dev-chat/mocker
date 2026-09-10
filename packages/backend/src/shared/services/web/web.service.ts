@@ -46,13 +46,15 @@ export class WebService {
     // token, so this call must stay on the user token rather than the bot token.
     const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const deleteRequest: ChatDeleteArguments = {
-      token: muzzleToken,
       channel,
       ts,
     };
 
     this.web.chat
-      .delete(deleteRequest)
+      .delete({
+        ...deleteRequest,
+        token: muzzleToken,
+      })
       .then((r) => {
         if (r.error) {
           logError(this.logger, 'Slack deleteMessage returned an API error', new Error(r.error), {
