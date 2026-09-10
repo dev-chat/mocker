@@ -36,6 +36,7 @@ describe('WebService', () => {
       expect(mockWebClient.chat.postMessage).toHaveBeenCalledWith(
         expect.objectContaining({ channel: 'C1', text: 'hello', unfurl_links: false }),
       );
+      expect(mockWebClient.chat.postMessage.mock.calls[0][0]).not.toHaveProperty('token');
     });
 
     it('throws and logs when postMessage fails', async () => {
@@ -57,8 +58,9 @@ describe('WebService', () => {
       await Promise.resolve();
 
       expect(mockWebClient.chat.delete).toHaveBeenCalledWith(
-        expect.objectContaining({ channel: 'C1', ts: '1.23', as_user: true }),
+        expect.objectContaining({ channel: 'C1', ts: '1.23', token: 'test-user-token' }),
       );
+      expect(mockWebClient.chat.delete.mock.calls[0][0]).not.toHaveProperty('as_user');
     });
 
     it('returns early when retries exceed max', async () => {

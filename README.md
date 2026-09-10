@@ -73,34 +73,70 @@ Add these slash commands with their request URLs:
 - **OAuth Redirect URLs (for app installation):** Configure the URLs required by the bot.
 - **Redirect URLs:** Add the backend callback URL for the search/auth UI, such as
   `http://localhost:3000/auth/slack/callback`, under **OAuth & Permissions > Redirect URLs**.
-- **Scopes:**
-  - `admin`
+- **Scopes (bot token scopes):**
   - `channels:history`
-  - `chat:write:bot`
-  - `chat:write:user`
+  - `channels:read`
+  - `chat:write`
+  - `chat:write.customize`
+  - `chat:write.public`
   - `commands`
-  - `files:write:user`
+  - `files:write`
   - `groups:history`
+  - `groups:read`
   - `reactions:read`
   - `users.profile:read`
   - `users:read`
-  - `identity.basic` (user token scope for legacy Sign in with Slack)
+- **Scopes (user token scopes):**
+  - `chat:write` — required so Muzzle can delete other members' messages. The
+    `MUZZLE_BOT_USER_TOKEN` must belong to a workspace admin or owner, because only an admin
+    user token may delete another member's message.
+  - `users.profile:write` — required for `users.setPhoto`.
+  - `openid` — modern Sign in with Slack (see below).
 
 #### Search UI login
 
-The search/auth UI login uses Slack's **legacy Sign in with Slack** flow with `identity.basic`.
-This keeps login identity-only for the existing classic Moonbeam app and avoids sending regular
-workspace members through the modern app-installation consent screen.
+The search/auth UI login uses Slack's **modern Sign in with Slack**, built on OpenID Connect.
+Members are shown a limited identity consent screen rather than an app-installation screen.
+
+Sign in with Slack scopes may not be combined with bot scopes in the same OAuth flow, so login
+requests only `openid` and is kept entirely separate from app installation.
 
 Under **OAuth & Permissions > Redirect URLs**, add the backend callback URL, such as
 `http://localhost:3000/auth/slack/callback`. In production this should be
 `https://api.muzzle.lol/auth/slack/callback`.
 
 The backend sends `ALLOWED_TEAM_DOMAIN` as Slack's `team` parameter and verifies it against the
-`users.identity` response's `team.id`, so this value must be the Slack **team ID** (for example
-`T2ZV0GCNS`), not the workspace domain.
+`https://slack.com/team_id` claim returned by `openid.connect.userInfo`, so this value must be the
+Slack **team ID** (for example `T2ZV0GCNS`), not the workspace domain.
+
+> **Note:** modern Sign in with Slack requires a non-classic (granular) Slack app. A classic app
+> cannot serve the OpenID Connect consent screen and will show members the full app-installation
+> screen instead. See [Migrating the Slack app](#migrating-the-slack-app).
 
 Copy your **Bot Token** and **User OAuth Token** from the app credentials page.
+
+#### Migrating the Slack app
+
+Moonbeam was originally a **classic** Slack app. Classic apps cannot use modern Sign in with
+Slack, so members are shown an app-installation screen when they try to log in. Migrate the app
+once, via the Slack UI:
+
+1. Open the app at [api.slack.com/apps](https://api.slack.com/apps) and select
+   **Tools > Update to Granular Scopes**.
+2. Select the bot and user scopes listed above.
+3. Confirm the verification screen and select **Reinstall**.
+4. Copy the regenerated tokens into `MUZZLE_BOT_TOKEN` and `MUZZLE_BOT_USER_TOKEN`.
+
+Because Moonbeam is installed on a single workspace using static tokens rather than a
+distribution flow, no installation OAuth code is required.
+
+Notes on behavior after migration:
+
+- Messages are posted with the **bot token**, so they are authored by Moonbeam rather than by the
+  installing user. Perspectival scopes (`chat:write:bot`, `chat:write:user`, `files:write:user`)
+  and the `as_user` parameter no longer apply.
+- `chat.delete` still uses the **user token**, since deleting another member's message requires a
+  workspace admin or owner user token.
 
 ### 2. Set Up MySQL Database
 
