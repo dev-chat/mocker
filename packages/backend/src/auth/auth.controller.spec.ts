@@ -61,6 +61,20 @@ describe('authController', () => {
       expect(res.status).toBe(500);
     });
 
+    it('prefers the dedicated sign-in app credentials over the bot app credentials', async () => {
+      process.env.SLACK_SIGNIN_CLIENT_ID = 'signin-client-id';
+      process.env.SLACK_SIGNIN_REDIRECT_URI = 'http://localhost:3000/auth/slack/callback/signin';
+
+      const res = await request(app).get('/slack');
+      const location = new URL(res.headers.location);
+
+      expect(location.searchParams.get('client_id')).toBe('signin-client-id');
+      expect(location.searchParams.get('redirect_uri')).toBe('http://localhost:3000/auth/slack/callback/signin');
+
+      delete process.env.SLACK_SIGNIN_CLIENT_ID;
+      delete process.env.SLACK_SIGNIN_REDIRECT_URI;
+    });
+
     it('returns 500 when SLACK_REDIRECT_URI is not set', async () => {
       delete process.env.SLACK_REDIRECT_URI;
       const res = await request(app).get('/slack');
@@ -235,6 +249,34 @@ describe('authController', () => {
         .query({ code: 'bad-identity', state: TEST_STATE });
       expect(res.status).toBe(302);
       expect(res.headers.location).toContain('auth_error=unauthorized_workspace');
+    });
+
+    it('exchanges the code using the dedicated sign-in app credentials when configured', async () => {
+      process.env.SLACK_SIGNIN_CLIENT_ID = 'signin-client-id';
+      process.env.SLACK_SIGNIN_CLIENT_SECRET = 'signin-client-secret';
+
+      (Axios.post as Mock).mockResolvedValue({ data: { ok: true, access_token: 'xoxe-token' } });
+      (Axios.get as Mock).mockResolvedValue({
+        data: {
+          ok: true,
+          sub: 'U123',
+          'https://slack.com/user_id': 'U123',
+          'https://slack.com/team_id': 'T123',
+        },
+      });
+
+      const res = await request(app)
+        .get('/slack/callback')
+        .set('Cookie', STATE_COOKIE)
+        .query({ code: 'valid-code', state: TEST_STATE });
+
+      expect(res.status).toBe(302);
+      const body = (Axios.post as Mock).mock.calls[0][1] as string;
+      expect(body).toContain('client_id=signin-client-id');
+      expect(body).toContain('client_secret=signin-client-secret');
+
+      delete process.env.SLACK_SIGNIN_CLIENT_ID;
+      delete process.env.SLACK_SIGNIN_CLIENT_SECRET;
     });
 
     it('redirects with auth_error=server_error when an unexpected exception is thrown', async () => {

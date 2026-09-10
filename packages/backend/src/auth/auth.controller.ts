@@ -28,6 +28,26 @@ interface SlackOpenIdUserInfoResponse {
   'https://slack.com/team_id'?: string;
 }
 
+interface SignInAppConfig {
+  clientId?: string;
+  clientSecret?: string;
+  redirectUri?: string;
+}
+
+/**
+ * Sign in with Slack must use a modern (granular scope) Slack app that only
+ * requests OpenID Connect scopes. Pointing it at the classic bot app makes
+ * Slack render the full app-installation consent screen, which regular
+ * workspace members cannot approve.
+ */
+function getSignInAppConfig(): SignInAppConfig {
+  return {
+    clientId: process.env.SLACK_SIGNIN_CLIENT_ID ?? process.env.SLACK_CLIENT_ID,
+    clientSecret: process.env.SLACK_SIGNIN_CLIENT_SECRET ?? process.env.SLACK_CLIENT_SECRET,
+    redirectUri: process.env.SLACK_SIGNIN_REDIRECT_URI ?? process.env.SLACK_REDIRECT_URI,
+  };
+}
+
 function getCookieValue(req: Request, name: string): string | undefined {
   const cookieHeader = req.headers.cookie;
   if (!cookieHeader) return undefined;
@@ -37,8 +57,7 @@ function getCookieValue(req: Request, name: string): string | undefined {
 }
 
 authController.get('/slack', (_req, res) => {
-  const clientId = process.env.SLACK_CLIENT_ID;
-  const redirectUri = process.env.SLACK_REDIRECT_URI;
+  const { clientId, redirectUri } = getSignInAppConfig();
   const teamId = process.env.ALLOWED_TEAM_DOMAIN;
 
   if (!clientId || !redirectUri || !teamId) {
@@ -91,9 +110,7 @@ authController.get('/slack/callback', (req, res) => {
       return;
     }
 
-    const clientId = process.env.SLACK_CLIENT_ID;
-    const clientSecret = process.env.SLACK_CLIENT_SECRET;
-    const redirectUri = process.env.SLACK_REDIRECT_URI;
+    const { clientId, clientSecret, redirectUri } = getSignInAppConfig();
 
     if (!clientId || !clientSecret || !redirectUri) {
       res.status(500).send('Slack OAuth is not configured');

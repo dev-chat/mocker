@@ -85,9 +85,28 @@ Add these slash commands with their request URLs:
   - `users.profile:read`
   - `users:read`
 
-The search UI login uses Slack OpenID Connect with the `openid` scope. Do not add bot or user-token
-scopes to that sign-in flow; doing so turns login into an app installation that can require App Manager
-approval.
+#### Sign in with Slack app (separate from the bot app)
+
+The search/auth UI login **must use its own Slack app**, not the Moonbeam bot app above.
+
+The bot app is a classic Slack app (it uses classic scopes such as `admin`, `chat:write:bot`,
+`chat:write:user`). Classic apps cannot serve the modern OpenID Connect consent screen: Slack rewrites
+`/openid/connect/authorize` into a full app-authorization screen listing every scope the app is
+configured with. Regular workspace members see that as "install Moonbeam" and cannot approve it without
+a workspace admin.
+
+Create a second, modern (granular scope) Slack app used only for login:
+
+1. Create a new app at <https://api.slack.com/apps?new_app=1> (from scratch, not a classic app).
+2. Under **OAuth & Permissions > Redirect URLs**, add the backend callback, such as
+   `http://localhost:3000/auth/slack/callback`.
+3. Under **OAuth & Permissions > User Token Scopes**, add only `openid` (optionally `profile` and
+   `email`). Do **not** add bot scopes — mixing them turns login back into an app installation.
+4. Point the backend at this app with `SLACK_SIGNIN_CLIENT_ID` / `SLACK_SIGNIN_CLIENT_SECRET` /
+   `SLACK_SIGNIN_REDIRECT_URI`.
+
+If the `SLACK_SIGNIN_*` variables are not set, the backend falls back to `SLACK_CLIENT_ID` /
+`SLACK_CLIENT_SECRET` / `SLACK_REDIRECT_URI`.
 
 Copy your **Bot Token** and **User OAuth Token** from the app credentials page.
 
@@ -120,6 +139,12 @@ MUZZLE_BOT_USER_TOKEN=xoxp-your-user-token
 MUZZLE_BOT_SIGNING_SECRET=your-signing-secret
 
 # Slack OAuth (for search/auth UI login)
+# Use the dedicated Sign in with Slack app (modern app, `openid` scope only).
+SLACK_SIGNIN_CLIENT_ID=your-signin-client-id
+SLACK_SIGNIN_CLIENT_SECRET=your-signin-client-secret
+SLACK_SIGNIN_REDIRECT_URI=http://localhost:3000/auth/slack/callback
+
+# Legacy fallback (bot app credentials) — only used when SLACK_SIGNIN_* is unset.
 SLACK_CLIENT_ID=your-client-id
 SLACK_CLIENT_SECRET=your-client-secret
 SLACK_REDIRECT_URI=http://localhost:3000/auth/slack/callback
