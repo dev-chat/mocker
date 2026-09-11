@@ -73,34 +73,60 @@ Add these slash commands with their request URLs:
 - **OAuth Redirect URLs (for app installation):** Configure the URLs required by the bot.
 - **Redirect URLs:** Add the backend callback URL for the search/auth UI, such as
   `http://localhost:3000/auth/slack/callback`, under **OAuth & Permissions > Redirect URLs**.
-- **Scopes:**
-  - `admin`
-  - `channels:history`
-  - `chat:write:bot`
-  - `chat:write:user`
+- **Scopes (bot token scopes):**
+  - `channels:join`
+  - `channels:read`
+  - `chat:write`
+  - `chat:write.public` — required so Moonbeam can post to public channels it has not joined
   - `commands`
-  - `files:write:user`
+  - `files:read`
+  - `files:write`
+  - `groups:read`
   - `groups:history`
-  - `reactions:read`
-  - `users.profile:read`
+  - `team:read`
   - `users:read`
-  - `identity.basic` (user token scope for legacy Sign in with Slack)
+  - `users.profile:read`
+- **Scopes (user token scopes):**
+
+  The user token must belong to a workspace **admin or owner**, because only an admin user token
+  may delete another member's message.
+  - `chat:write` — required for `chat.delete` when muzzling
+  - `users.profile:write` — required for `users.setPhoto`
+  - `openid` — modern Sign in with Slack (see below)
 
 #### Search UI login
 
-The search/auth UI login uses Slack's **legacy Sign in with Slack** flow with `identity.basic`.
-This keeps login identity-only for the existing classic Moonbeam app and avoids sending regular
-workspace members through the modern app-installation consent screen.
+The search/auth UI login uses Slack's **modern Sign in with Slack**, built on OpenID Connect.
+Members are shown a limited identity consent screen rather than an app-installation screen.
+
+Sign in with Slack scopes may not be combined with bot scopes in the same OAuth flow, so login
+requests only `openid` and is kept entirely separate from app installation.
 
 Under **OAuth & Permissions > Redirect URLs**, add the backend callback URL, such as
 `http://localhost:3000/auth/slack/callback`. In production this should be
 `https://api.muzzle.lol/auth/slack/callback`.
 
 The backend sends `ALLOWED_TEAM_DOMAIN` as Slack's `team` parameter and verifies it against the
-`users.identity` response's `team.id`, so this value must be the Slack **team ID** (for example
-`T2ZV0GCNS`), not the workspace domain.
+`https://slack.com/team_id` claim returned by `openid.connect.userInfo`, so this value must be the
+Slack **team ID** (for example `T2ZV0GCNS`), not the workspace domain.
+
+> **Note:** modern Sign in with Slack requires the app's user token scopes to include `openid`. A
+> classic app cannot serve the OpenID Connect consent screen and will show members the full
+> app-installation screen instead.
 
 Copy your **Bot Token** and **User OAuth Token** from the app credentials page.
+
+#### Token usage
+
+The bot token (`MUZZLE_BOT_TOKEN`) is granular and is used for posting, editing, uploading and
+listing. The user token (`MUZZLE_BOT_USER_TOKEN`) is retained only for the two operations that
+genuinely require a user identity:
+
+- `chat.delete` — deleting another member's message requires an admin/owner user token.
+- `users.setPhoto` — acts on the authenticated user's own profile.
+
+Perspectival scopes (`chat:write:bot`, `chat:write:user`, `files:write:user`) and the `as_user`
+parameter apply only to the classic user token and are not used for bot-token calls.
 
 ### 2. Set Up MySQL Database
 

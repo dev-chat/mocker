@@ -42,16 +42,19 @@ export class WebService {
     if (times > MAX_RETRIES) {
       return;
     }
-    const muzzleToken: string | undefined = process.env.MUZZLE_BOT_TOKEN;
+    // Deleting another member's message is only permitted for a workspace admin/owner user
+    // token, so this call must stay on the user token rather than the bot token.
+    const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const deleteRequest: ChatDeleteArguments = {
-      token: muzzleToken,
       channel,
       ts,
-      as_user: true,
     };
 
     this.web.chat
-      .delete(deleteRequest)
+      .delete({
+        ...deleteRequest,
+        token: muzzleToken,
+      })
       .then((r) => {
         if (r.error) {
           logError(this.logger, 'Slack deleteMessage returned an API error', new Error(r.error), {
@@ -79,9 +82,7 @@ export class WebService {
   }
 
   public sendEphemeral(channel: string, text: string, user: string): Promise<WebAPICallResult> {
-    const token: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const postRequest: ChatPostEphemeralArguments = {
-      token,
       channel,
       text,
       user,
@@ -104,9 +105,7 @@ export class WebService {
    * Handles sending messages to the chat.
    */
   public sendMessage(channel: string, text: string, blocks?: Block[] | KnownBlock[]): Promise<WebAPICallResult> {
-    const token: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const postRequest: ChatPostMessageArguments = {
-      token,
       channel,
       text,
       blocks,
@@ -129,6 +128,7 @@ export class WebService {
   }
 
   public setProfilePhoto(image: Buffer): Promise<WebAPICallResult> {
+    // users.setPhoto acts on the authenticated user's own profile, so it requires the user token.
     const token: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const photoRequest: UsersSetPhotoArguments = {
       token,
@@ -153,12 +153,10 @@ export class WebService {
   }
 
   public editMessage(channel: string, text: string, ts: string): void {
-    const token = process.env.MUZZLE_BOT_USER_TOKEN;
     const update: ChatUpdateArguments = {
       channel,
       text,
       ts,
-      token,
     };
     this.web.chat.update(update).catch((e) =>
       logError(this.logger, 'Failed to edit Slack message', e, {
@@ -170,28 +168,23 @@ export class WebService {
   }
 
   public getAllUsers(): Promise<UsersListResponse> {
-    return this.web.users.list({
-      token: process.env.MUZZLE_BOT_USER_TOKEN,
-    });
+    return this.web.users.list({});
   }
 
   public getAllChannels(): Promise<ConversationsListResponse> {
     return this.web.conversations.list({
-      token: process.env.MUZZLE_BOT_USER_TOKEN,
       exclude_archived: true,
       types: 'public_channel,private_channel',
     });
   }
 
   public uploadFile(channel: string, content: string, title: string, userId: string): void {
-    const muzzleToken: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
     const uploadRequest: FilesUploadArguments = {
       channels: channel,
       content,
       filetype: 'auto',
       title,
       initial_comment: title,
-      token: muzzleToken,
     };
 
     this.web.files.upload(uploadRequest).catch((e: unknown) => {
