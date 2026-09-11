@@ -1466,7 +1466,7 @@ describe('FantasyService', () => {
         roster_positions: ['QB', 'SUPER_FLEX', 'RB'],
         scoring_settings: { rec: 1 },
       }),
-    ).toEqual({ isDynasty: true, numQbs: 2, ppr: 1 });
+    ).toEqual({ isDynasty: false, numQbs: 2, ppr: 1 });
 
     expect(
       internals.resolveLeagueFormat({
@@ -1480,7 +1480,7 @@ describe('FantasyService', () => {
         roster_positions: ['QB', 'QB', 'SUPER_FLEX', 'RB'],
         scoring_settings: { rec: 0.25 },
       }),
-    ).toEqual({ isDynasty: true, numQbs: 2, ppr: 0.5 });
+    ).toEqual({ isDynasty: false, numQbs: 2, ppr: 0.5 });
   });
 
   it('fetches and caches FantasyCalc player values scaled to the league format', async () => {
@@ -1528,7 +1528,7 @@ describe('FantasyService', () => {
 
     expect(Axios.get).toHaveBeenCalledWith(
       'https://api.fantasycalc.com/values/current',
-      expect.objectContaining({ params: { isDynasty: true, numQbs: 1, numTeams: 10, ppr: 0.5 }, timeout: 2000 }),
+      expect.objectContaining({ params: { isDynasty: false, numQbs: 1, numTeams: 10, ppr: 0.5 }, timeout: 2000 }),
     );
     expect(values.get('p1')).toEqual({
       sleeperId: 'p1',
@@ -1548,7 +1548,7 @@ describe('FantasyService', () => {
     const twelveTeamValues = await internals.getFantasyCalcValues(twelveTeamLeague);
     expect(Axios.get).toHaveBeenCalledWith(
       'https://api.fantasycalc.com/values/current',
-      expect.objectContaining({ params: { isDynasty: true, numQbs: 1, numTeams: 12, ppr: 0.5 }, timeout: 2000 }),
+      expect.objectContaining({ params: { isDynasty: false, numQbs: 1, numTeams: 12, ppr: 0.5 }, timeout: 2000 }),
     );
     expect(twelveTeamValues.get('p1')?.value).toBe(9100);
   });
