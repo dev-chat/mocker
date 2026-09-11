@@ -424,8 +424,8 @@ describe('FantasyService', () => {
 
     expect(result?.league.name).toBe('Friends League');
     expect(result?.roster.players).toEqual([
-      expect.objectContaining({ id: 'p1', marketValue: 4000, positionRank: 12 }),
-      expect.objectContaining({ id: 'p4', marketValue: 5800, positionRank: 5 }),
+      expect.objectContaining({ id: 'p1', marketValue: 4500, positionRank: 12 }),
+      expect.objectContaining({ id: 'p4', marketValue: 6100, positionRank: 5 }),
     ]);
     expect(result?.pendingTrades[0]).toMatchObject({
       transactionId: 'trade-1',
@@ -434,12 +434,12 @@ describe('FantasyService', () => {
     });
     expect(result?.pendingTrades[0]?.sides[0]?.players[0]).toMatchObject({
       name: 'Blake Runner',
-      marketValue: 5000,
+      marketValue: 5200,
       positionRank: 9,
     });
     expect(result?.pendingTrades[0]?.sides[1]?.players[0]).toMatchObject({
       name: 'Alex Receiver',
-      marketValue: 4000,
+      marketValue: 4500,
       positionRank: 12,
     });
     expect(result?.gamesToWatch[0]).toMatchObject({
@@ -452,15 +452,15 @@ describe('FantasyService', () => {
       sleeperUrl: 'https://sleeper.com/leagues/999',
     });
     expect(result?.waiverSuggestions[0]).toMatchObject({
-      add: { id: 'p3', name: 'Casey Waiver', marketValue: 1800, positionRank: 34 },
-      drop: { id: 'p1', name: 'Alex Receiver', marketValue: 4000, positionRank: 12 },
+      add: { id: 'p3', name: 'Casey Waiver', marketValue: 2100, positionRank: 34 },
+      drop: { id: 'p1', name: 'Alex Receiver', marketValue: 4500, positionRank: 12 },
       priority: 'high',
       recommendedBid: 5,
     });
     expect(result?.pendingWaivers[0]).toMatchObject({
       transactionId: 'waiver-1',
-      add: { id: 'p3', name: 'Casey Waiver', marketValue: 1800, positionRank: 34 },
-      drop: { id: 'p1', name: 'Alex Receiver', marketValue: 4000, positionRank: 12 },
+      add: { id: 'p3', name: 'Casey Waiver', marketValue: 2100, positionRank: 34 },
+      drop: { id: 'p1', name: 'Alex Receiver', marketValue: 4500, positionRank: 12 },
       bid: 14,
     });
     expect(result?.teamHealth).toEqual({
@@ -483,14 +483,14 @@ describe('FantasyService', () => {
         expect.objectContaining({
           rosterId: 1,
           players: expect.arrayContaining([
-            expect.objectContaining({ id: 'p1', marketValue: 4000, positionRank: 12 }),
-            expect.objectContaining({ id: 'p4', marketValue: 5800, positionRank: 5 }),
+            expect.objectContaining({ id: 'p1', marketValue: 4500, positionRank: 12 }),
+            expect.objectContaining({ id: 'p4', marketValue: 6100, positionRank: 5 }),
           ]),
         }),
       ]),
     );
     expect(payload.waiverCandidates).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: 'p3', marketValue: 1800, positionRank: 34 })]),
+      expect.arrayContaining([expect.objectContaining({ id: 'p3', marketValue: 2100, positionRank: 34 })]),
     );
   });
 
@@ -1587,7 +1587,7 @@ describe('FantasyService', () => {
 
     expect(Axios.get).toHaveBeenCalledTimes(1);
     expect(firstValues).toBe(secondValues);
-    expect(firstValues.get('p1')?.value).toBe(8000);
+    expect(firstValues.get('p1')?.value).toBe(9000);
   });
 
   it('returns an empty map and briefly negative-caches FantasyCalc failures without bumping the analysis version', async () => {

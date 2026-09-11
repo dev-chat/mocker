@@ -48,6 +48,7 @@ const WAIVER_MARKET_CACHE_MS = 6 * 60 * 60 * 1000;
 const FANTASYCALC_CACHE_MS = 6 * 60 * 60 * 1000;
 const FANTASYCALC_FAILURE_CACHE_MS = 5 * 60 * 1000;
 const FANTASYCALC_TIMEOUT_MS = 2000;
+const FANTASYCALC_OVERVIEW_WAIT_MS = 150;
 const WAIVER_HISTORY_SEASONS = 3;
 const NFL_REGULAR_SEASON_WEEKS = 18;
 const SLEEPER_ID_PATTERN = /^\d{1,32}$/;
@@ -142,7 +143,10 @@ export class FantasyService {
   private fantasyCalcCache = new Map<string, { expiresAt: number; values: Map<string, FantasyCalcPlayerValue> }>();
   private fantasyCalcAnalysisVersions = new Map<string, number>();
   private fantasyCalcRequests = new Map<string, Promise<Map<string, FantasyCalcPlayerValue>>>();
-  private analysisCache = new Map<string, { expiresAt: number; analysis: AITradeAnalysis }>();
+  private analysisCache = new Map<
+    string,
+    { expiresAt: number; analysis: AITradeAnalysis; marketValueVersion: number }
+  >();
   private readonly openAi: OpenAIClientLike;
   private readonly serviceLogger = logger.child({ module: 'FantasyService' });
 
@@ -213,7 +217,7 @@ export class FantasyService {
         },
         timeout: 10000,
       }).then((response) => response.data),
-      this.getFantasyCalcValues(league),
+      this.getFantasyCalcValuesForOverview(league),
     ]);
     const transactions = Array.from(
       new Map(transactionGroups.flat().map((transaction) => [transaction.transaction_id, transaction])).values(),
@@ -437,7 +441,7 @@ export class FantasyService {
               entry.player.sleeperId,
               {
                 sleeperId: entry.player.sleeperId,
-                value: isDynasty ? entry.value : entry.redraftValue,
+                value: entry.value,
                 overallRank: entry.overallRank,
                 positionRank: entry.positionRank,
                 trend30Day: entry.trend30Day,
@@ -468,6 +472,33 @@ export class FantasyService {
       });
     this.fantasyCalcRequests.set(cacheKey, request);
     return request;
+  }
+
+  private getFantasyCalcValuesForOverview(league: SleeperLeague): Promise<Map<string, FantasyCalcPlayerValue>> {
+    const cacheKey = this.getFantasyCalcCacheKey(league);
+    const cached = this.fantasyCalcCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return Promise.resolve(cached.values);
+    }
+
+    const fallbackValues = cached?.values ?? new Map<string, FantasyCalcPlayerValue>();
+    const refreshPromise = this.getFantasyCalcValues(league);
+    if (cached) {
+      return Promise.resolve(fallbackValues);
+    }
+
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(fallbackValues), FANTASYCALC_OVERVIEW_WAIT_MS);
+      refreshPromise
+        .then((values) => {
+          clearTimeout(timeout);
+          resolve(values);
+        })
+        .catch(() => {
+          clearTimeout(timeout);
+          resolve(fallbackValues);
+        });
+    });
   }
 
   private getNflState(): Promise<NflState> {
@@ -514,16 +545,16 @@ export class FantasyService {
     generate: () => Promise<AITradeAnalysis>,
     marketValueVersion = 0,
   ): Promise<AITradeAnalysis> {
-    const versionedKey = `${key}:${marketValueVersion}`;
-    const cached = this.analysisCache.get(versionedKey);
-    if (!refresh && cached && cached.expiresAt > Date.now()) {
+    const cached = this.analysisCache.get(key);
+    if (!refresh && cached && cached.expiresAt > Date.now() && cached.marketValueVersion === marketValueVersion) {
       return cached.analysis;
     }
 
     const analysis = await generate();
-    this.analysisCache.set(versionedKey, {
+    this.analysisCache.set(key, {
       expiresAt: Date.now() + AI_ANALYSIS_CACHE_MS,
       analysis,
+      marketValueVersion,
     });
     return analysis;
   }
