@@ -1,6 +1,10 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
+// Supports per-user rep queries filtered by affected user + team + date range.
+@Index(['affectedUser', 'teamId', 'createdAt'])
+// Supports team-wide rep leaderboard aggregation filtered by team + date range.
+@Index(['teamId', 'createdAt'])
 export class Reaction {
   @PrimaryGeneratedColumn()
   public id!: number;

@@ -186,6 +186,19 @@ OPENAI_API_KEY=sk-your-openai-key
 GOOGLE_TRANSLATE_API_KEY=your-google-translate-key
 ```
 
+#### Production rollout for dashboard query indexes
+
+If `TYPEORM_SYNCHRONIZE=false`, TypeORM will not apply the dashboard index decorators to an existing production database.
+Run these DDL statements during deployment before relying on the dashboard OOM fix:
+
+```sql
+CREATE INDEX IDX_message_user_team_created_at ON message (userIdId, teamId, createdAt);
+CREATE INDEX IDX_message_team_created_at ON message (teamId, createdAt);
+CREATE INDEX IDX_reaction_affected_user_team_created_at ON reaction (affectedUser, teamId, createdAt);
+CREATE INDEX IDX_reaction_team_created_at ON reaction (teamId, createdAt);
+CREATE INDEX IDX_sentiment_user_team_created_at ON sentiment (userId, teamId, createdAt);
+```
+
 #### Frontend (`packages/frontend/.env`)
 
 For frontend, start from the checked-in example:
