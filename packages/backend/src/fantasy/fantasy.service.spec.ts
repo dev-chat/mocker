@@ -1702,6 +1702,66 @@ describe('FantasyService', () => {
     }
   });
 
+  it('waits for delayed cold-cache FantasyCalc responses before falling back', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
+    const internals = service as unknown as FantasyServiceInternals;
+    const league: SleeperLeague = {
+      league_id: '998',
+      name: 'Redraft League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 12,
+      roster_positions: ['QB'],
+    };
+    (Axios.get as Mock).mockImplementationOnce(
+      () =>
+        new Promise<{ data: FantasyCalcResponseEntry[] }>((resolve) => {
+          setTimeout(
+            () =>
+              resolve({
+                data: [
+                  {
+                    player: { sleeperId: 'p2' },
+                    value: 1234,
+                    redraftValue: 1234,
+                    overallRank: 50,
+                    positionRank: 20,
+                    trend30Day: 1,
+                  },
+                ],
+              }),
+            300,
+          );
+        }),
+    );
+
+    try {
+      const snapshotPromise = internals.getFantasyCalcValuesForOverview(league);
+      await vi.advanceTimersByTimeAsync(300);
+
+      await expect(snapshotPromise).resolves.toEqual({
+        values: new Map([
+          [
+            'p2',
+            {
+              sleeperId: 'p2',
+              value: 1234,
+              overallRank: 50,
+              positionRank: 20,
+              trend30Day: 1,
+              tradeFrequency: null,
+            },
+          ],
+        ]),
+        version: 1,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('keeps the overview FantasyCalc version aligned with the fallback values snapshot', async () => {
     const internals = service as unknown as FantasyServiceInternals;
     const serviceState = service as unknown as {
