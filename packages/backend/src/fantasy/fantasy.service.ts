@@ -107,6 +107,15 @@ interface FantasyCalcApiEntry {
   maybeTradeFrequency?: number | null;
 }
 
+interface FantasyCalcSnapshot {
+  values: Map<string, FantasyCalcPlayerValue>;
+  version: number;
+}
+
+interface FantasyCalcCacheEntry extends FantasyCalcSnapshot {
+  expiresAt: number;
+}
+
 const isOutputMessage = (item: ResponseOutputItem): item is ResponseOutputMessage => item.type === 'message';
 const isOutputText = (item: ResponseOutputMessage['content'][number]): item is ResponseOutputText =>
   item.type === 'output_text';
@@ -140,7 +149,7 @@ export class FantasyService {
   private playerRequest: Promise<Record<string, SleeperPlayer | undefined>> | null = null;
   private waiverMarketCache = new Map<string, { expiresAt: number; samples: WaiverMarketSample[] }>();
   private projectionCache = new Map<string, { expiresAt: number; projections: SleeperProjection[] }>();
-  private fantasyCalcCache = new Map<string, { expiresAt: number; values: Map<string, FantasyCalcPlayerValue> }>();
+  private fantasyCalcCache = new Map<string, FantasyCalcCacheEntry>();
   private fantasyCalcAnalysisVersions = new Map<string, number>();
   private fantasyCalcRequests = new Map<string, Promise<Map<string, FantasyCalcPlayerValue>>>();
   private analysisCache = new Map<
@@ -202,7 +211,7 @@ export class FantasyService {
 
     const currentWeek = Math.max(state.week, 1);
     const transactionRounds = state.week > 1 ? [state.week, state.week - 1] : [currentWeek];
-    const [rosters, users, transactionGroups, players, scoreboard, marketValues] = await Promise.all([
+    const [rosters, users, transactionGroups, players, scoreboard, marketValueSnapshot] = await Promise.all([
       this.get<SleeperRoster[]>(`/league/${leagueId}/rosters`),
       this.get<SleeperLeagueUser[]>(`/league/${leagueId}/users`),
       Promise.all(
@@ -219,6 +228,7 @@ export class FantasyService {
       }).then((response) => response.data),
       this.getFantasyCalcValuesForOverview(league),
     ]);
+    const marketValues = marketValueSnapshot.values;
     const transactions = Array.from(
       new Map(transactionGroups.flat().map((transaction) => [transaction.transaction_id, transaction])).values(),
     );
@@ -334,7 +344,7 @@ export class FantasyService {
             [currentProjections, ...upcomingMatchupProjections],
           );
         },
-        this.getFantasyCalcAnalysisVersion(league),
+        marketValueSnapshot.version,
       );
     } catch (error) {
       logError(this.serviceLogger, 'Failed to generate fantasy trade analysis', error, {
@@ -449,8 +459,9 @@ export class FantasyService {
               },
             ]),
         );
-        this.fantasyCalcCache.set(cacheKey, { expiresAt: Date.now() + FANTASYCALC_CACHE_MS, values });
-        this.fantasyCalcAnalysisVersions.set(cacheKey, this.getFantasyCalcAnalysisVersion(league) + 1);
+        const version = this.getFantasyCalcAnalysisVersion(league) + 1;
+        this.fantasyCalcCache.set(cacheKey, { expiresAt: Date.now() + FANTASYCALC_CACHE_MS, values, version });
+        this.fantasyCalcAnalysisVersions.set(cacheKey, version);
         return values;
       })
       .catch((error) => {
@@ -460,12 +471,14 @@ export class FantasyService {
           numTeams,
           ppr,
         });
-        const emptyValues = new Map<string, FantasyCalcPlayerValue>();
+        const fallbackValues = cached?.values ?? new Map<string, FantasyCalcPlayerValue>();
+        const version = cached?.version ?? this.getFantasyCalcAnalysisVersion(league);
         this.fantasyCalcCache.set(cacheKey, {
           expiresAt: Date.now() + FANTASYCALC_FAILURE_CACHE_MS,
-          values: emptyValues,
+          values: fallbackValues,
+          version,
         });
-        return emptyValues;
+        return fallbackValues;
       })
       .finally(() => {
         this.fantasyCalcRequests.delete(cacheKey);
@@ -474,29 +487,31 @@ export class FantasyService {
     return request;
   }
 
-  private getFantasyCalcValuesForOverview(league: SleeperLeague): Promise<Map<string, FantasyCalcPlayerValue>> {
+  private getFantasyCalcValuesForOverview(league: SleeperLeague): Promise<FantasyCalcSnapshot> {
     const cacheKey = this.getFantasyCalcCacheKey(league);
     const cached = this.fantasyCalcCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
-      return Promise.resolve(cached.values);
+      return Promise.resolve({ values: cached.values, version: cached.version });
     }
 
-    const fallbackValues = cached?.values ?? new Map<string, FantasyCalcPlayerValue>();
+    const fallbackSnapshot: FantasyCalcSnapshot = cached
+      ? { values: cached.values, version: cached.version }
+      : { values: new Map<string, FantasyCalcPlayerValue>(), version: this.getFantasyCalcAnalysisVersion(league) };
     const refreshPromise = this.getFantasyCalcValues(league);
     if (cached) {
-      return Promise.resolve(fallbackValues);
+      return Promise.resolve(fallbackSnapshot);
     }
 
     return new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(fallbackValues), FANTASYCALC_OVERVIEW_WAIT_MS);
+      const timeout = setTimeout(() => resolve(fallbackSnapshot), FANTASYCALC_OVERVIEW_WAIT_MS);
       refreshPromise
         .then((values) => {
           clearTimeout(timeout);
-          resolve(values);
+          resolve({ values, version: this.getFantasyCalcAnalysisVersion(league) });
         })
         .catch(() => {
           clearTimeout(timeout);
-          resolve(fallbackValues);
+          resolve(fallbackSnapshot);
         });
     });
   }
@@ -1182,12 +1197,7 @@ export class FantasyService {
       }
       const giveTotal = this.totalMarketValue(give);
       const receiveTotal = this.totalMarketValue(receive);
-      if (
-        giveTotal !== null &&
-        receiveTotal !== null &&
-        receiveTotal > 0 &&
-        (giveTotal < receiveTotal * 0.8 || giveTotal > receiveTotal)
-      ) {
+      if (giveTotal !== null && receiveTotal !== null && (giveTotal < receiveTotal * 0.8 || giveTotal > receiveTotal)) {
         this.serviceLogger.warn('Ignoring AI suggestion with unverifiable or unrealistic market values', {
           targetRosterId: suggestion.targetRosterId,
           giveTotal,

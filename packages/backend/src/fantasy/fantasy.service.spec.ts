@@ -83,6 +83,9 @@ type FantasyServiceInternals = {
     generate: () => Promise<AITradeAnalysis>,
     marketValueVersion?: number,
   ) => Promise<AITradeAnalysis>;
+  getFantasyCalcValuesForOverview: (
+    league: SleeperLeague,
+  ) => Promise<{ values: Map<string, FantasyCalcPlayerValue>; version: number }>;
   buildLineupRecommendation: (
     week: number,
     league: SleeperLeague,
@@ -1647,6 +1650,132 @@ describe('FantasyService', () => {
     }
   });
 
+  it('preserves stale FantasyCalc values during failure backoff', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
+    const internals = service as unknown as FantasyServiceInternals;
+    const serviceState = service as unknown as {
+      fantasyCalcCache: Map<
+        string,
+        { expiresAt: number; values: Map<string, FantasyCalcPlayerValue>; version: number }
+      >;
+      fantasyCalcAnalysisVersions: Map<string, number>;
+    };
+    const league: SleeperLeague = {
+      league_id: '998',
+      name: 'Redraft League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 12,
+      roster_positions: ['QB'],
+    };
+    const staleValues = new Map<string, FantasyCalcPlayerValue>([
+      [
+        'p1',
+        {
+          sleeperId: 'p1',
+          value: 900,
+          overallRank: 100,
+          positionRank: 40,
+          trend30Day: -1,
+          tradeFrequency: null,
+        },
+      ],
+    ]);
+    const cacheKey = 'false:1:12:0.5';
+    serviceState.fantasyCalcAnalysisVersions.set(cacheKey, 1);
+    serviceState.fantasyCalcCache.set(cacheKey, {
+      expiresAt: Date.now() - 1,
+      values: staleValues,
+      version: 1,
+    });
+    (Axios.get as Mock).mockRejectedValueOnce(new Error('network error'));
+
+    try {
+      await expect(internals.getFantasyCalcValues(league)).resolves.toBe(staleValues);
+      await expect(internals.getFantasyCalcValues(league)).resolves.toBe(staleValues);
+      expect(Axios.get).toHaveBeenCalledTimes(1);
+      expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the overview FantasyCalc version aligned with the fallback values snapshot', async () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const serviceState = service as unknown as {
+      fantasyCalcCache: Map<
+        string,
+        { expiresAt: number; values: Map<string, FantasyCalcPlayerValue>; version: number }
+      >;
+      fantasyCalcAnalysisVersions: Map<string, number>;
+    };
+    const league: SleeperLeague = {
+      league_id: '998',
+      name: 'Redraft League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 12,
+      roster_positions: ['QB'],
+    };
+    const staleValues = new Map<string, FantasyCalcPlayerValue>([
+      [
+        'p1',
+        {
+          sleeperId: 'p1',
+          value: 900,
+          overallRank: 100,
+          positionRank: 40,
+          trend30Day: -1,
+          tradeFrequency: null,
+        },
+      ],
+    ]);
+    const cacheKey = 'false:1:12:0.5';
+    serviceState.fantasyCalcAnalysisVersions.set(cacheKey, 1);
+    serviceState.fantasyCalcCache.set(cacheKey, {
+      expiresAt: Date.now() - 1,
+      values: staleValues,
+      version: 1,
+    });
+    (Axios.get as Mock).mockResolvedValueOnce({
+      data: [
+        {
+          player: { sleeperId: 'p2' },
+          value: 1234,
+          redraftValue: 1234,
+          overallRank: 50,
+          positionRank: 20,
+          trend30Day: 1,
+        },
+      ],
+    });
+
+    const snapshot = await internals.getFantasyCalcValuesForOverview(league);
+
+    expect(snapshot.values).toBe(staleValues);
+    expect(snapshot.version).toBe(1);
+    await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(
+      new Map([
+        [
+          'p2',
+          {
+            sleeperId: 'p2',
+            value: 1234,
+            overallRank: 50,
+            positionRank: 20,
+            trend30Day: 1,
+            tradeFrequency: null,
+          },
+        ],
+      ]),
+    );
+    expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(2);
+    expect(Axios.get).toHaveBeenCalledTimes(1);
+  });
+
   it('refreshes cached AI analysis only after FantasyCalc values successfully refresh for that format', async () => {
     const internals = service as unknown as FantasyServiceInternals;
     const league: SleeperLeague = {
@@ -1766,6 +1895,16 @@ describe('FantasyService', () => {
           marketValue: null,
           positionRank: null,
         },
+        {
+          id: 'receive-zero',
+          name: 'Receive Zero',
+          position: 'RB',
+          team: 'NYJ',
+          injuryStatus: null,
+          fantasyPositions: ['RB'],
+          marketValue: 0,
+          positionRank: 99,
+        },
       ],
     };
 
@@ -1791,6 +1930,12 @@ describe('FantasyService', () => {
             givePlayerIds: ['give-null'],
             receivePlayerIds: ['receive-null'],
             rationale: 'Missing values should fall back to the qualitative recommendation.',
+          },
+          {
+            targetRosterId: 2,
+            givePlayerIds: ['give-cheap'],
+            receivePlayerIds: ['receive-zero'],
+            rationale: 'Zero-value returns should still be rejected when the outgoing value is higher.',
           },
         ],
         waiverSuggestions: [],
