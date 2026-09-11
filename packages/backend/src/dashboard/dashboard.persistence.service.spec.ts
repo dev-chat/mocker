@@ -317,9 +317,10 @@ describe('DashboardPersistenceService', () => {
     const [firstResult, secondResult] = await Promise.all([first, second]);
 
     expect(firstResult).toEqual(secondResult);
-    // 6 query types run once each, regardless of the two concurrent callers.
-    expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('totalMessages'))).toHaveLength(1);
-    expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('isBot = 0'))).toHaveLength(1);
+    expect(query).toHaveBeenCalledTimes(6);
+    for (const sql of ['totalMessages', 'DATE(m.createdAt) AS date', 'AS channel', 'ROUND(AVG(sentiment)', 'isBot = 0', 'SUM(r.value)']) {
+      expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes(sql))).toHaveLength(1);
+    }
   });
 
   it('coalesces concurrent cache-miss requests for the team-wide leaderboard across different users', async () => {
