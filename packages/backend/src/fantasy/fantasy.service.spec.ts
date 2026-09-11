@@ -259,6 +259,44 @@ describe('FantasyService', () => {
           ],
         });
       }
+      if (url === 'https://api.fantasycalc.com/values/current') {
+        return Promise.resolve({
+          data: [
+            {
+              player: { sleeperId: 'p1' },
+              value: 4500,
+              redraftValue: 4000,
+              overallRank: 30,
+              positionRank: 12,
+              trend30Day: 3,
+            },
+            {
+              player: { sleeperId: 'p2' },
+              value: 5200,
+              redraftValue: 5000,
+              overallRank: 18,
+              positionRank: 9,
+              trend30Day: 8,
+            },
+            {
+              player: { sleeperId: 'p3' },
+              value: 2100,
+              redraftValue: 1800,
+              overallRank: 85,
+              positionRank: 34,
+              trend30Day: 12,
+            },
+            {
+              player: { sleeperId: 'p4' },
+              value: 6100,
+              redraftValue: 5800,
+              overallRank: 11,
+              positionRank: 5,
+              trend30Day: 15,
+            },
+          ],
+        });
+      }
       if (url.endsWith('/league/999/transactions/1')) {
         return Promise.resolve({
           data: [
@@ -364,14 +402,28 @@ describe('FantasyService', () => {
     });
 
     const result = await service.getOverview('U1', 'T1', '999');
+    const payload = JSON.parse((create.mock.calls.at(-1) as [Record<string, string>])[0].input);
 
     expect(result?.league.name).toBe('Friends League');
+    expect(result?.roster.players).toEqual([
+      expect.objectContaining({ id: 'p1', marketValue: 4000, positionRank: 12 }),
+      expect.objectContaining({ id: 'p4', marketValue: 5800, positionRank: 5 }),
+    ]);
     expect(result?.pendingTrades[0]).toMatchObject({
       transactionId: 'trade-1',
       insight: 'The incoming receiver adds weekly upside.',
       recommendation: 'accept',
     });
-    expect(result?.pendingTrades[0]?.sides[0]?.players[0]?.name).toBe('Blake Runner');
+    expect(result?.pendingTrades[0]?.sides[0]?.players[0]).toMatchObject({
+      name: 'Blake Runner',
+      marketValue: 5000,
+      positionRank: 9,
+    });
+    expect(result?.pendingTrades[0]?.sides[1]?.players[0]).toMatchObject({
+      name: 'Alex Receiver',
+      marketValue: 4000,
+      positionRank: 12,
+    });
     expect(result?.gamesToWatch[0]).toMatchObject({
       awayTeam: 'Buffalo Bills',
       homeTeam: 'New York Jets',
@@ -382,15 +434,15 @@ describe('FantasyService', () => {
       sleeperUrl: 'https://sleeper.com/leagues/999',
     });
     expect(result?.waiverSuggestions[0]).toMatchObject({
-      add: { id: 'p3', name: 'Casey Waiver' },
-      drop: { id: 'p1', name: 'Alex Receiver' },
+      add: { id: 'p3', name: 'Casey Waiver', marketValue: 1800, positionRank: 34 },
+      drop: { id: 'p1', name: 'Alex Receiver', marketValue: 4000, positionRank: 12 },
       priority: 'high',
       recommendedBid: 5,
     });
     expect(result?.pendingWaivers[0]).toMatchObject({
       transactionId: 'waiver-1',
-      add: { id: 'p3', name: 'Casey Waiver' },
-      drop: { id: 'p1', name: 'Alex Receiver' },
+      add: { id: 'p3', name: 'Casey Waiver', marketValue: 1800, positionRank: 34 },
+      drop: { id: 'p1', name: 'Alex Receiver', marketValue: 4000, positionRank: 12 },
       bid: 14,
     });
     expect(result?.teamHealth).toEqual({
@@ -408,6 +460,20 @@ describe('FantasyService', () => {
       sit: [{ id: 'p1' }],
       summary: 'Start Drew Runner to maximize your matchup ceiling this week.',
     });
+    expect(payload.teams).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rosterId: 1,
+          players: expect.arrayContaining([
+            expect.objectContaining({ id: 'p1', marketValue: 4000, positionRank: 12 }),
+            expect.objectContaining({ id: 'p4', marketValue: 5800, positionRank: 5 }),
+          ]),
+        }),
+      ]),
+    );
+    expect(payload.waiverCandidates).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'p3', marketValue: 1800, positionRank: 34 })]),
+    );
   });
 
   it('normalizes week-zero matchup context before generating AI analysis', async () => {
@@ -1382,6 +1448,7 @@ describe('FantasyService', () => {
       settings: { type: 2 },
       roster_positions: ['QB', 'RB'],
     };
+    const twelveTeamLeague: SleeperLeague = { ...league, league_id: '1000', total_rosters: 12 };
     (Axios.get as Mock).mockResolvedValueOnce({
       data: [
         {
@@ -1394,6 +1461,19 @@ describe('FantasyService', () => {
           maybeTradeFrequency: 0.05,
         },
         { player: { sleeperId: null }, value: 1, redraftValue: 1, overallRank: 999, positionRank: 99, trend30Day: 0 },
+      ],
+    });
+    (Axios.get as Mock).mockResolvedValueOnce({
+      data: [
+        {
+          player: { sleeperId: 'p1' },
+          value: 9100,
+          redraftValue: 8100,
+          overallRank: 2,
+          positionRank: 2,
+          trend30Day: 11,
+          maybeTradeFrequency: 0.04,
+        },
       ],
     });
 
@@ -1417,9 +1497,18 @@ describe('FantasyService', () => {
     (Axios.get as Mock).mockClear();
     await internals.getFantasyCalcValues(league);
     expect(Axios.get).not.toHaveBeenCalled();
+
+    const twelveTeamValues = await internals.getFantasyCalcValues(twelveTeamLeague);
+    expect(Axios.get).toHaveBeenCalledWith(
+      'https://api.fantasycalc.com/values/current',
+      expect.objectContaining({ params: { isDynasty: true, numQbs: 1, numTeams: 12, ppr: 0.5 } }),
+    );
+    expect(twelveTeamValues.get('p1')?.value).toBe(9100);
   });
 
-  it('returns an empty map when the FantasyCalc request fails', async () => {
+  it('returns an empty map and briefly negative-caches FantasyCalc failures', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
     const internals = service as unknown as FantasyServiceInternals;
     const league: SleeperLeague = {
       league_id: '998',
@@ -1431,7 +1520,43 @@ describe('FantasyService', () => {
       roster_positions: ['QB'],
     };
     (Axios.get as Mock).mockRejectedValueOnce(new Error('network error'));
+    (Axios.get as Mock).mockResolvedValueOnce({
+      data: [
+        {
+          player: { sleeperId: 'p2' },
+          value: 1234,
+          redraftValue: 1234,
+          overallRank: 50,
+          positionRank: 20,
+          trend30Day: 1,
+        },
+      ],
+    });
 
-    await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(new Map());
+    try {
+      await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(new Map());
+      await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(new Map());
+      expect(Axios.get).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1);
+      await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(
+        new Map([
+          [
+            'p2',
+            {
+              sleeperId: 'p2',
+              value: 1234,
+              overallRank: 50,
+              positionRank: 20,
+              trend30Day: 1,
+              tradeFrequency: null,
+            },
+          ],
+        ]),
+      );
+      expect(Axios.get).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

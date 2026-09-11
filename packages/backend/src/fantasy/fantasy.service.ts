@@ -46,6 +46,7 @@ const PLAYER_CACHE_MS = 24 * 60 * 60 * 1000;
 const AI_ANALYSIS_CACHE_MS = 24 * 60 * 60 * 1000;
 const WAIVER_MARKET_CACHE_MS = 6 * 60 * 60 * 1000;
 const FANTASYCALC_CACHE_MS = 6 * 60 * 60 * 1000;
+const FANTASYCALC_FAILURE_CACHE_MS = 5 * 60 * 1000;
 const WAIVER_HISTORY_SEASONS = 3;
 const NFL_REGULAR_SEASON_WEEKS = 18;
 const SLEEPER_ID_PATTERN = /^\d{1,32}$/;
@@ -396,14 +397,15 @@ export class FantasyService {
    */
   private async getFantasyCalcValues(league: SleeperLeague): Promise<Map<string, FantasyCalcPlayerValue>> {
     const { isDynasty, numQbs, ppr } = this.resolveLeagueFormat(league);
-    const cacheKey = `${isDynasty}:${numQbs}:${ppr}`;
+    const numTeams = league.total_rosters || 12;
+    const cacheKey = `${isDynasty}:${numQbs}:${numTeams}:${ppr}`;
     const cached = this.fantasyCalcCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.values;
     }
     try {
       const response = await Axios.get<FantasyCalcApiEntry[]>(FANTASYCALC_API_URL, {
-        params: { isDynasty, numQbs, numTeams: league.total_rosters || 12, ppr },
+        params: { isDynasty, numQbs, numTeams, ppr },
         timeout: 10000,
       });
       const values = new Map<string, FantasyCalcPlayerValue>(
@@ -426,8 +428,18 @@ export class FantasyService {
       this.fantasyCalcCache.set(cacheKey, { expiresAt: Date.now() + FANTASYCALC_CACHE_MS, values });
       return values;
     } catch (error) {
-      logError(this.serviceLogger, 'Failed to load FantasyCalc player values', error, { isDynasty, numQbs, ppr });
-      return new Map();
+      logError(this.serviceLogger, 'Failed to load FantasyCalc player values', error, {
+        isDynasty,
+        numQbs,
+        numTeams,
+        ppr,
+      });
+      const emptyValues = new Map<string, FantasyCalcPlayerValue>();
+      this.fantasyCalcCache.set(cacheKey, {
+        expiresAt: Date.now() + FANTASYCALC_FAILURE_CACHE_MS,
+        values: emptyValues,
+      });
+      return emptyValues;
     }
   }
 
@@ -1249,7 +1261,7 @@ export class FantasyService {
         'materially more marketValue than they receive without a clear positional-need justification. ' +
         'suggestions must contain up to 3 realistic options with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. ' +
         "Sum the marketValue of givePlayerIds and receivePlayerIds for both sides of each suggestion: the two sides' totals " +
-        'must be within roughly 10-20% of each other (using redraftValue-equivalent scaling already applied) so the target ' +
+        "must be within roughly 10-20% of each other (using the league-format scaling already applied to each player's marketValue) so the target " +
         "manager is realistically likely to accept, while keeping a small, subtle edge in the user's favor - never propose a " +
         "trade where the user's outgoing marketValue total is more than about 20% below what they receive. State the " +
         'approximate value comparison in the rationale (e.g. "roughly even value, slight edge to you") in addition to explaining ' +
