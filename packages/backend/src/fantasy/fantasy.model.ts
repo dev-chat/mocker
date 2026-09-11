@@ -97,7 +97,7 @@ export interface FantasyPlayer {
   team: string | null;
   injuryStatus: string | null;
   fantasyPositions: string[];
-  /** Consensus market value from FantasyCalc for the league's format (dynasty/redraft, QB count, PPR). Null if unranked. */
+  /** Consensus market value from FantasyCalc redraft rankings for the league's QB count and PPR. Null if unranked. */
   marketValue: number | null;
   /** FantasyCalc rank among players at the same position. Null if unranked. */
   positionRank: number | null;

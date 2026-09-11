@@ -406,9 +406,10 @@ export class FantasyService {
     const numQbs = requestedQbs >= 2 ? 2 : 1;
     const requestedPpr = league.scoring_settings?.rec;
     const ppr = requestedPpr === undefined ? 0.5 : requestedPpr >= 0.75 ? 1 : requestedPpr >= 0.25 ? 0.5 : 0;
-    // Sleeper league format: 0 = redraft, 1 = keeper, 2 = dynasty. Keeper leagues value long-term assets
-    // similarly to dynasty, so both are treated as dynasty for valuation purposes.
-    const isDynasty = (league.settings?.type ?? 0) >= 1;
+    // Trade/waiver fairness cares about a player's current-season value, not long-term dynasty
+    // valuation, so FantasyCalc is always queried for redraft rankings regardless of the Sleeper
+    // league's keeper/dynasty settings.
+    const isDynasty = false;
     return { isDynasty, numQbs, ppr };
   }
 
@@ -424,9 +425,11 @@ export class FantasyService {
 
   /**
    * Fetches consensus player trade values from the FantasyCalc API (https://fantasycalc.com/api-docs),
-   * matched to the league's format (dynasty/redraft, QB count, PPR). Values are keyed by Sleeper player ID
-   * so they can be merged directly onto `FantasyPlayer` records. Failures are non-fatal: trade/waiver
-   * recommendations still work without market values, just with less precise fairness signal.
+   * always using redraft rankings scaled to the league's QB count and PPR (dynasty valuation is
+   * intentionally not used, since trade/waiver fairness cares about current-season value). Values
+   * are keyed by Sleeper player ID so they can be merged directly onto `FantasyPlayer` records.
+   * Failures are non-fatal: trade/waiver recommendations still work without market values, just
+   * with less precise fairness signal.
    */
   private async getFantasyCalcValues(league: SleeperLeague): Promise<Map<string, FantasyCalcPlayerValue>> {
     const { isDynasty, numQbs, ppr } = this.resolveLeagueFormat(league);
@@ -1364,8 +1367,8 @@ export class FantasyService {
       instructions:
         'You are a fantasy football analyst. Return only valid JSON with keys teamHealth, tradeInsights, suggestions, waiverSuggestions, and lineupSummary. ' +
         'teamHealth must assess the user roster relative to the supplied league with an integer percentage from 0 to 100 and a concise summary. ' +
-        "Each player object includes a marketValue (a FantasyCalc consensus trade value already scaled to this league's " +
-        'format, dynasty vs redraft, QB count, and PPR - higher is more valuable) and a positionRank (rank among players ' +
+        "Each player object includes a marketValue (a FantasyCalc consensus redraft trade value already scaled to this league's " +
+        'QB count and PPR format - higher is more valuable) and a positionRank (rank among players ' +
         'at the same position, 1 is best). A null marketValue means the player is unranked by FantasyCalc or the market-value ' +
         'feed was unavailable for this request; in either case fall back to position, roster needs, and matchup context instead ' +
         'of value. ' +
