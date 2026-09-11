@@ -70,27 +70,15 @@ export class DashboardPersistenceService {
 
     try {
       [userData, leaderboards] = await Promise.all([
-        userData ?? this.loadUserData(userCacheKey, repo, userId, teamId, intervalDays),
-        leaderboards ?? this.loadLeaderboards(leaderboardCacheKey, repo, teamId, intervalDays),
+        userData ?? this.loadUserData(userCacheKey, repo, userId, teamId, intervalDays, period),
+        leaderboards ?? this.loadLeaderboards(leaderboardCacheKey, repo, teamId, intervalDays, period),
       ]);
     } catch (e: unknown) {
       logError(this.logger, 'Failed to load dashboard data', e, { userId, teamId });
       throw e;
     }
 
-    const data: DashboardResponse = { ...userData, ...leaderboards };
-    try {
-      await this.redisService.setValueWithExpire(userCacheKey, JSON.stringify(userData), 'PX', CACHE_TTL_MS[period]);
-      await this.redisService.setValueWithExpire(
-        leaderboardCacheKey,
-        JSON.stringify(leaderboards),
-        'PX',
-        CACHE_TTL_MS[period],
-      );
-    } catch (e: unknown) {
-      logError(this.logger, 'Failed to write dashboard data to cache', e, { userId, teamId, period });
-    }
-    return data;
+    return { ...userData, ...leaderboards };
   }
 
   private loadUserData(
@@ -99,6 +87,7 @@ export class DashboardPersistenceService {
     userId: string,
     teamId: string,
     intervalDays: number | null,
+    period: TimePeriod,
   ): Promise<Pick<DashboardResponse, 'myStats' | 'myActivity' | 'myTopChannels' | 'mySentimentTrend'>> {
     const inFlight = this.inFlightUserData.get(cacheKey);
     if (inFlight) {
@@ -111,12 +100,11 @@ export class DashboardPersistenceService {
       this.getMyTopChannels(repo, userId, teamId, intervalDays),
       this.getMySentimentTrend(repo, userId, teamId, intervalDays),
     ])
-      .then(([myStats, myActivity, myTopChannels, mySentimentTrend]) => ({
-        myStats,
-        myActivity,
-        myTopChannels,
-        mySentimentTrend,
-      }))
+      .then(async ([myStats, myActivity, myTopChannels, mySentimentTrend]) => {
+        const data = { myStats, myActivity, myTopChannels, mySentimentTrend };
+        await this.writeDashboardCache(cacheKey, data, period, { userId, teamId, period });
+        return data;
+      })
       .finally(() => this.inFlightUserData.delete(cacheKey));
 
     this.inFlightUserData.set(cacheKey, request);
@@ -128,18 +116,35 @@ export class DashboardPersistenceService {
     repo: Repository<Message>,
     teamId: string,
     intervalDays: number | null,
+    period: TimePeriod,
   ): Promise<Pick<DashboardResponse, 'leaderboard' | 'repLeaderboard'>> {
     const inFlight = this.inFlightLeaderboards.get(cacheKey);
     if (inFlight) {
       return inFlight;
     }
 
-    const request = this.getLeaderboards(repo, teamId, intervalDays).finally(() =>
-      this.inFlightLeaderboards.delete(cacheKey),
-    );
+    const request = this.getLeaderboards(repo, teamId, intervalDays)
+      .then(async (data) => {
+        await this.writeDashboardCache(cacheKey, data, period, { teamId, period });
+        return data;
+      })
+      .finally(() => this.inFlightLeaderboards.delete(cacheKey));
 
     this.inFlightLeaderboards.set(cacheKey, request);
     return request;
+  }
+
+  private async writeDashboardCache(
+    cacheKey: string,
+    data: object,
+    period: TimePeriod,
+    context: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      await this.redisService.setValueWithExpire(cacheKey, JSON.stringify(data), 'PX', CACHE_TTL_MS[period]);
+    } catch (e: unknown) {
+      logError(this.logger, 'Failed to write dashboard data to cache', e, context);
+    }
   }
 
   private async getMyStats(

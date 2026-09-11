@@ -33,6 +33,16 @@ describe('DashboardPersistenceService', () => {
     return Promise.resolve([]);
   }
 
+  function defer<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+      resolve = resolvePromise;
+      reject = rejectPromise;
+    });
+    return { promise, resolve, reject };
+  }
+
   beforeEach(() => {
     vi.resetAllMocks();
     service = new DashboardPersistenceService();
@@ -310,28 +320,72 @@ describe('DashboardPersistenceService', () => {
     });
   });
 
-  it('coalesces concurrent cache-miss requests for the same user into a single set of DB queries', async () => {
+  it('coalesces same-user cache misses while the shared cache write is still in flight', async () => {
+    const userCacheWrite = defer<string>();
+    const leaderboardCacheWrite = defer<string>();
+    redis.setValueWithExpire.mockImplementation((key: string) => {
+      if (key === 'dashboard:user:T1:U1:weekly') return userCacheWrite.promise;
+      if (key === 'dashboard:leaderboards:T1:weekly') return leaderboardCacheWrite.promise;
+      return Promise.resolve('OK');
+    });
+
     const first = service.getDashboardData('U1', 'T1', 'weekly');
+    await vi.waitFor(() => expect(redis.setValueWithExpire).toHaveBeenCalledTimes(2));
+
     const second = service.getDashboardData('U1', 'T1', 'weekly');
+    await vi.waitFor(() => expect(redis.getValue).toHaveBeenCalledTimes(4));
+
+    userCacheWrite.resolve('OK');
+    leaderboardCacheWrite.resolve('OK');
 
     const [firstResult, secondResult] = await Promise.all([first, second]);
 
     expect(firstResult).toEqual(secondResult);
     expect(query).toHaveBeenCalledTimes(6);
-    for (const sql of ['totalMessages', 'DATE(m.createdAt) AS date', 'AS channel', 'ROUND(AVG(sentiment)', 'isBot = 0', 'SUM(r.value)']) {
+    for (const sql of [
+      'totalMessages',
+      'DATE(m.createdAt) AS date',
+      'AS channel',
+      'ROUND(AVG(sentiment)',
+      'isBot = 0',
+      'SUM(r.value)',
+    ]) {
       expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes(sql))).toHaveLength(1);
     }
   });
 
-  it('coalesces concurrent cache-miss requests for the team-wide leaderboard across different users', async () => {
+  it('keeps team leaderboard coalesced across users until the shared cache write finishes', async () => {
+    const leaderboardCacheWrite = defer<string>();
+    redis.setValueWithExpire.mockImplementation((key: string) => {
+      if (key === 'dashboard:leaderboards:T1:weekly') return leaderboardCacheWrite.promise;
+      return Promise.resolve('OK');
+    });
+
     const first = service.getDashboardData('U1', 'T1', 'weekly');
+    await vi.waitFor(() =>
+      expect(redis.setValueWithExpire).toHaveBeenCalledWith(
+        'dashboard:leaderboards:T1:weekly',
+        expect.any(String),
+        'PX',
+        expect.any(Number),
+      ),
+    );
+
     const second = service.getDashboardData('U2', 'T1', 'weekly');
+    await vi.waitFor(() =>
+      expect(
+        query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('ROUND(AVG(sentiment)')),
+      ).toHaveLength(2),
+    );
+
+    leaderboardCacheWrite.resolve('OK');
 
     await Promise.all([first, second]);
 
     expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('isBot = 0'))).toHaveLength(1);
     expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('SUM(r.value)'))).toHaveLength(1);
-    // Per-user stats still run once for each distinct user.
-    expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('totalMessages'))).toHaveLength(2);
+    for (const sql of ['totalMessages', 'DATE(m.createdAt) AS date', 'AS channel', 'ROUND(AVG(sentiment)']) {
+      expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes(sql))).toHaveLength(2);
+    }
   });
 });
