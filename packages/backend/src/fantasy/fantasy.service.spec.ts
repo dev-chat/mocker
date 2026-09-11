@@ -66,11 +66,22 @@ const aiResponse = {
   ],
 };
 
+type FantasyCalcResponseEntry = {
+  player: { sleeperId?: string | null };
+  value: number;
+  redraftValue: number;
+  overallRank: number;
+  positionRank: number;
+  trend30Day: number;
+  maybeTradeFrequency?: number | null;
+};
+
 type FantasyServiceInternals = {
   getTradeAnalysis: (
     key: string,
     refresh: boolean,
     generate: () => Promise<AITradeAnalysis>,
+    marketValueVersion?: number,
   ) => Promise<AITradeAnalysis>;
   buildLineupRecommendation: (
     week: number,
@@ -119,6 +130,7 @@ type FantasyServiceInternals = {
   ) => WaiverBidGuidance;
   weightedMedian: (samples: Array<{ pricePerPoint: number; weight: number }>) => number | null;
   resolveLeagueFormat: (league: SleeperLeague) => { isDynasty: boolean; numQbs: number; ppr: number };
+  getFantasyCalcAnalysisVersion: (league: SleeperLeague) => number;
   getFantasyCalcValues: (league: SleeperLeague) => Promise<Map<string, FantasyCalcPlayerValue>>;
   buildTradeSuggestions: (
     analysis: AITradeAnalysis,
@@ -1549,7 +1561,7 @@ describe('FantasyService', () => {
       total_rosters: 12,
       roster_positions: ['QB', 'RB'],
     };
-    let resolveRequest: ((value: { data: FantasyCalcApiEntry[] }) => void) | undefined;
+    let resolveRequest: ((value: { data: FantasyCalcResponseEntry[] }) => void) | undefined;
     (Axios.get as Mock).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -1578,7 +1590,7 @@ describe('FantasyService', () => {
     expect(firstValues.get('p1')?.value).toBe(8000);
   });
 
-  it('returns an empty map and briefly negative-caches FantasyCalc failures', async () => {
+  it('returns an empty map and briefly negative-caches FantasyCalc failures without bumping the analysis version', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
     const internals = service as unknown as FantasyServiceInternals;
@@ -1606,9 +1618,11 @@ describe('FantasyService', () => {
     });
 
     try {
+      expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(0);
       await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(new Map());
       await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(new Map());
       expect(Axios.get).toHaveBeenCalledTimes(1);
+      expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(0);
 
       vi.advanceTimersByTime(5 * 60 * 1000 + 1);
       await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(
@@ -1627,12 +1641,13 @@ describe('FantasyService', () => {
         ]),
       );
       expect(Axios.get).toHaveBeenCalledTimes(2);
+      expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(1);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('clears cached AI analysis when FantasyCalc values refresh', async () => {
+  it('refreshes cached AI analysis only after FantasyCalc values successfully refresh for that format', async () => {
     const internals = service as unknown as FantasyServiceInternals;
     const league: SleeperLeague = {
       league_id: '998',
@@ -1655,6 +1670,7 @@ describe('FantasyService', () => {
       teamHealth: { percentage: 70, summary: 'Values were refreshed.' },
     };
     const generate = vi.fn().mockResolvedValueOnce(firstAnalysis).mockResolvedValueOnce(refreshedAnalysis);
+    const initialVersion = internals.getFantasyCalcAnalysisVersion(league);
     (Axios.get as Mock).mockResolvedValueOnce({
       data: [
         {
@@ -1668,13 +1684,15 @@ describe('FantasyService', () => {
       ],
     });
 
-    await expect(internals.getTradeAnalysis('key', false, generate)).resolves.toBe(firstAnalysis);
+    await expect(internals.getTradeAnalysis('key', false, generate, initialVersion)).resolves.toBe(firstAnalysis);
     await internals.getFantasyCalcValues(league);
-    await expect(internals.getTradeAnalysis('key', false, generate)).resolves.toBe(refreshedAnalysis);
+    const refreshedVersion = internals.getFantasyCalcAnalysisVersion(league);
+    expect(refreshedVersion).toBe(initialVersion + 1);
+    await expect(internals.getTradeAnalysis('key', false, generate, refreshedVersion)).resolves.toBe(refreshedAnalysis);
     expect(generate).toHaveBeenCalledTimes(2);
   });
 
-  it('filters AI trade suggestions that are unfair or missing market values', () => {
+  it('filters only unfair AI trade suggestions when market values are available', () => {
     const internals = service as unknown as FantasyServiceInternals;
     const ownRoster: FantasyTeam = {
       rosterId: 1,
@@ -1772,7 +1790,7 @@ describe('FantasyService', () => {
             targetRosterId: 2,
             givePlayerIds: ['give-null'],
             receivePlayerIds: ['receive-null'],
-            rationale: 'Missing values make this unverifiable.',
+            rationale: 'Missing values should fall back to the qualitative recommendation.',
           },
         ],
         waiverSuggestions: [],
@@ -1783,12 +1801,84 @@ describe('FantasyService', () => {
       '999',
     );
 
-    expect(suggestions).toHaveLength(1);
+    expect(suggestions).toHaveLength(2);
     expect(suggestions[0]).toMatchObject({
       targetRosterId: 2,
       targetOwnerName: 'Bob',
       give: [expect.objectContaining({ id: 'give-fair', marketValue: 4800 })],
       receive: [expect.objectContaining({ id: 'receive-fair', marketValue: 5000 })],
     });
+    expect(suggestions[1]).toMatchObject({
+      targetRosterId: 2,
+      targetOwnerName: 'Bob',
+      give: [expect.objectContaining({ id: 'give-null', marketValue: null })],
+      receive: [expect.objectContaining({ id: 'receive-null', marketValue: null })],
+    });
+  });
+
+  it('rejects AI trade suggestions with duplicate or unknown player ids', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const ownRoster: FantasyTeam = {
+      rosterId: 1,
+      ownerName: 'Alice',
+      starters: [],
+      players: [
+        {
+          id: 'give-fair',
+          name: 'Give Fair',
+          position: 'WR',
+          team: 'BUF',
+          injuryStatus: null,
+          fantasyPositions: ['WR'],
+          marketValue: 4800,
+          positionRank: 12,
+        },
+      ],
+    };
+    const target: FantasyTeam = {
+      rosterId: 2,
+      ownerName: 'Bob',
+      starters: [],
+      players: [
+        {
+          id: 'receive-fair',
+          name: 'Receive Fair',
+          position: 'RB',
+          team: 'NYJ',
+          injuryStatus: null,
+          fantasyPositions: ['RB'],
+          marketValue: 5000,
+          positionRank: 10,
+        },
+      ],
+    };
+
+    const suggestions = internals.buildTradeSuggestions(
+      {
+        teamHealth: { percentage: 80, summary: 'Healthy roster.' },
+        tradeInsights: [],
+        suggestions: [
+          {
+            targetRosterId: 2,
+            givePlayerIds: ['give-fair', 'give-fair'],
+            receivePlayerIds: ['receive-fair'],
+            rationale: 'Duplicate outgoing players should be rejected.',
+          },
+          {
+            targetRosterId: 2,
+            givePlayerIds: ['give-fair'],
+            receivePlayerIds: ['receive-fair', 'missing-player'],
+            rationale: 'Unknown players should be rejected.',
+          },
+        ],
+        waiverSuggestions: [],
+        lineupSummary: 'Use the projected starters.',
+      },
+      ownRoster,
+      [ownRoster, target],
+      '999',
+    );
+
+    expect(suggestions).toEqual([]);
   });
 });

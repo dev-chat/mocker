@@ -140,6 +140,7 @@ export class FantasyService {
   private waiverMarketCache = new Map<string, { expiresAt: number; samples: WaiverMarketSample[] }>();
   private projectionCache = new Map<string, { expiresAt: number; projections: SleeperProjection[] }>();
   private fantasyCalcCache = new Map<string, { expiresAt: number; values: Map<string, FantasyCalcPlayerValue> }>();
+  private fantasyCalcAnalysisVersions = new Map<string, number>();
   private fantasyCalcRequests = new Map<string, Promise<Map<string, FantasyCalcPlayerValue>>>();
   private analysisCache = new Map<string, { expiresAt: number; analysis: AITradeAnalysis }>();
   private readonly openAi: OpenAIClientLike;
@@ -329,6 +330,7 @@ export class FantasyService {
             [currentProjections, ...upcomingMatchupProjections],
           );
         },
+        this.getFantasyCalcAnalysisVersion(league),
       );
     } catch (error) {
       logError(this.serviceLogger, 'Failed to generate fantasy trade analysis', error, {
@@ -393,6 +395,16 @@ export class FantasyService {
     return { isDynasty, numQbs, ppr };
   }
 
+  private getFantasyCalcCacheKey(league: SleeperLeague): string {
+    const { isDynasty, numQbs, ppr } = this.resolveLeagueFormat(league);
+    const numTeams = league.total_rosters || 12;
+    return `${isDynasty}:${numQbs}:${numTeams}:${ppr}`;
+  }
+
+  private getFantasyCalcAnalysisVersion(league: SleeperLeague): number {
+    return this.fantasyCalcAnalysisVersions.get(this.getFantasyCalcCacheKey(league)) ?? 0;
+  }
+
   /**
    * Fetches consensus player trade values from the FantasyCalc API (https://fantasycalc.com/api-docs),
    * matched to the league's format (dynasty/redraft, QB count, PPR). Values are keyed by Sleeper player ID
@@ -402,7 +414,7 @@ export class FantasyService {
   private async getFantasyCalcValues(league: SleeperLeague): Promise<Map<string, FantasyCalcPlayerValue>> {
     const { isDynasty, numQbs, ppr } = this.resolveLeagueFormat(league);
     const numTeams = league.total_rosters || 12;
-    const cacheKey = `${isDynasty}:${numQbs}:${numTeams}:${ppr}`;
+    const cacheKey = this.getFantasyCalcCacheKey(league);
     const cached = this.fantasyCalcCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.values;
@@ -434,7 +446,7 @@ export class FantasyService {
             ]),
         );
         this.fantasyCalcCache.set(cacheKey, { expiresAt: Date.now() + FANTASYCALC_CACHE_MS, values });
-        this.analysisCache.clear();
+        this.fantasyCalcAnalysisVersions.set(cacheKey, this.getFantasyCalcAnalysisVersion(league) + 1);
         return values;
       })
       .catch((error) => {
@@ -449,7 +461,6 @@ export class FantasyService {
           expiresAt: Date.now() + FANTASYCALC_FAILURE_CACHE_MS,
           values: emptyValues,
         });
-        this.analysisCache.clear();
         return emptyValues;
       })
       .finally(() => {
@@ -501,14 +512,16 @@ export class FantasyService {
     key: string,
     refresh: boolean,
     generate: () => Promise<AITradeAnalysis>,
+    marketValueVersion = 0,
   ): Promise<AITradeAnalysis> {
-    const cached = this.analysisCache.get(key);
+    const versionedKey = `${key}:${marketValueVersion}`;
+    const cached = this.analysisCache.get(versionedKey);
     if (!refresh && cached && cached.expiresAt > Date.now()) {
       return cached.analysis;
     }
 
     const analysis = await generate();
-    this.analysisCache.set(key, {
+    this.analysisCache.set(versionedKey, {
       expiresAt: Date.now() + AI_ANALYSIS_CACHE_MS,
       analysis,
     });
@@ -1110,14 +1123,28 @@ export class FantasyService {
         return [];
       }
       const targetPlayers = new Map(target.players.map((player) => [player.id, player]));
+      if (
+        new Set(suggestion.givePlayerIds).size !== suggestion.givePlayerIds.length ||
+        new Set(suggestion.receivePlayerIds).size !== suggestion.receivePlayerIds.length
+      ) {
+        this.serviceLogger.warn('Ignoring AI suggestion with duplicate player ids', {
+          targetRosterId: suggestion.targetRosterId,
+        });
+        return [];
+      }
       const give = suggestion.givePlayerIds
         .map((id) => ownPlayers.get(id))
         .filter((item): item is FantasyPlayer => !!item);
       const receive = suggestion.receivePlayerIds
         .map((id) => targetPlayers.get(id))
         .filter((item): item is FantasyPlayer => !!item);
-      if (!give.length || !receive.length) {
-        this.serviceLogger.warn('Ignoring AI suggestion with players outside the proposed rosters', {
+      if (
+        !give.length ||
+        !receive.length ||
+        give.length !== suggestion.givePlayerIds.length ||
+        receive.length !== suggestion.receivePlayerIds.length
+      ) {
+        this.serviceLogger.warn('Ignoring AI suggestion with unknown players outside the proposed rosters', {
           targetRosterId: suggestion.targetRosterId,
         });
         return [];
@@ -1125,11 +1152,10 @@ export class FantasyService {
       const giveTotal = this.totalMarketValue(give);
       const receiveTotal = this.totalMarketValue(receive);
       if (
-        giveTotal === null ||
-        receiveTotal === null ||
-        receiveTotal <= 0 ||
-        giveTotal < receiveTotal * 0.8 ||
-        giveTotal > receiveTotal
+        giveTotal !== null &&
+        receiveTotal !== null &&
+        receiveTotal > 0 &&
+        (giveTotal < receiveTotal * 0.8 || giveTotal > receiveTotal)
       ) {
         this.serviceLogger.warn('Ignoring AI suggestion with unverifiable or unrealistic market values', {
           targetRosterId: suggestion.targetRosterId,
