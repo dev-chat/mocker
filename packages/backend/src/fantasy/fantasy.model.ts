@@ -15,6 +15,8 @@ export interface SleeperLeague {
   total_rosters: number;
   settings?: {
     waiver_budget?: number;
+    /** Sleeper league format: 0 = redraft, 1 = keeper, 2 = dynasty. */
+    type?: number;
   };
   roster_positions?: string[];
   scoring_settings?: Record<string, number>;
@@ -95,6 +97,20 @@ export interface FantasyPlayer {
   team: string | null;
   injuryStatus: string | null;
   fantasyPositions: string[];
+  /** Consensus market value from FantasyCalc for the league's format (dynasty/redraft, QB count, PPR). Null if unranked. */
+  marketValue: number | null;
+  /** FantasyCalc rank among players at the same position. Null if unranked. */
+  positionRank: number | null;
+}
+
+/** A single player valuation entry from the FantasyCalc `/values/current` API, keyed by Sleeper player ID. */
+export interface FantasyCalcPlayerValue {
+  sleeperId: string;
+  value: number;
+  overallRank: number;
+  positionRank: number;
+  trend30Day: number;
+  tradeFrequency: number | null;
 }
 
 export interface FantasyTeam {
