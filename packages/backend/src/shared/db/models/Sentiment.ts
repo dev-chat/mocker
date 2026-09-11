@@ -1,6 +1,8 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
+// Supports per-user sentiment trend queries filtered by user + team + date range.
+@Index(['userId', 'teamId', 'createdAt'])
 export class Sentiment {
   @PrimaryGeneratedColumn()
   public id!: number;

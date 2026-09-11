@@ -309,4 +309,28 @@ describe('DashboardPersistenceService', () => {
       repLeaderboard: [],
     });
   });
+
+  it('coalesces concurrent cache-miss requests for the same user into a single set of DB queries', async () => {
+    const first = service.getDashboardData('U1', 'T1', 'weekly');
+    const second = service.getDashboardData('U1', 'T1', 'weekly');
+
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+
+    expect(firstResult).toEqual(secondResult);
+    // 6 query types run once each, regardless of the two concurrent callers.
+    expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('totalMessages'))).toHaveLength(1);
+    expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('isBot = 0'))).toHaveLength(1);
+  });
+
+  it('coalesces concurrent cache-miss requests for the team-wide leaderboard across different users', async () => {
+    const first = service.getDashboardData('U1', 'T1', 'weekly');
+    const second = service.getDashboardData('U2', 'T1', 'weekly');
+
+    await Promise.all([first, second]);
+
+    expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('isBot = 0'))).toHaveLength(1);
+    expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('SUM(r.value)'))).toHaveLength(1);
+    // Per-user stats still run once for each distinct user.
+    expect(query.mock.calls.filter((call: unknown[]) => (call[0] as string).includes('totalMessages'))).toHaveLength(2);
+  });
 });

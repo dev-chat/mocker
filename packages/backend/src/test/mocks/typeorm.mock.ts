@@ -12,6 +12,7 @@ export const OneToMany = noopDecoratorFactory;
 export const OneToOne = noopDecoratorFactory;
 export const ManyToOne = noopDecoratorFactory;
 export const Unique = noopDecoratorFactory;
+export const Index = noopDecoratorFactory;
 
 export const getRepository = vi.fn();
 export const getManager = vi.fn();

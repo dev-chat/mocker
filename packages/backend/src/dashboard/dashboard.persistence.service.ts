@@ -18,6 +18,14 @@ import { CACHE_TTL_MS, LEADERBOARD_LIMIT, PERIOD_DAYS, TOP_CHANNELS_LIMIT } from
 export class DashboardPersistenceService {
   private logger = logger.child({ module: 'DashboardPersistenceService' });
   private redisService: RedisPersistenceService = RedisPersistenceService.getInstance();
+  // Coalesces concurrent cache-miss requests for the same key into a single DB round trip so that
+  // multiple users loading the dashboard at once (especially the team-wide leaderboard, which is
+  // shared across all of a team's users) don't each trigger duplicate, expensive aggregate queries.
+  private inFlightUserData = new Map<
+    string,
+    Promise<Pick<DashboardResponse, 'myStats' | 'myActivity' | 'myTopChannels' | 'mySentimentTrend'>>
+  >();
+  private inFlightLeaderboards = new Map<string, Promise<Pick<DashboardResponse, 'leaderboard' | 'repLeaderboard'>>>();
 
   async getDashboardData(userId: string, teamId: string, period: TimePeriod): Promise<DashboardResponse> {
     const userCacheKey = `dashboard:user:${teamId}:${userId}:${period}`;
@@ -61,17 +69,10 @@ export class DashboardPersistenceService {
     let leaderboards = cachedLeaderboards;
 
     try {
-      if (!userData) {
-        const myStats = await this.getMyStats(repo, userId, teamId, intervalDays);
-        const myActivity = await this.getMyActivity(repo, userId, teamId, intervalDays);
-        const myTopChannels = await this.getMyTopChannels(repo, userId, teamId, intervalDays);
-        const mySentimentTrend = await this.getMySentimentTrend(repo, userId, teamId, intervalDays);
-        userData = { myStats, myActivity, myTopChannels, mySentimentTrend };
-      }
-
-      if (!leaderboards) {
-        leaderboards = await this.getLeaderboards(repo, teamId, intervalDays);
-      }
+      [userData, leaderboards] = await Promise.all([
+        userData ?? this.loadUserData(userCacheKey, repo, userId, teamId, intervalDays),
+        leaderboards ?? this.loadLeaderboards(leaderboardCacheKey, repo, teamId, intervalDays),
+      ]);
     } catch (e: unknown) {
       logError(this.logger, 'Failed to load dashboard data', e, { userId, teamId });
       throw e;
@@ -90,6 +91,55 @@ export class DashboardPersistenceService {
       logError(this.logger, 'Failed to write dashboard data to cache', e, { userId, teamId, period });
     }
     return data;
+  }
+
+  private loadUserData(
+    cacheKey: string,
+    repo: Repository<Message>,
+    userId: string,
+    teamId: string,
+    intervalDays: number | null,
+  ): Promise<Pick<DashboardResponse, 'myStats' | 'myActivity' | 'myTopChannels' | 'mySentimentTrend'>> {
+    const inFlight = this.inFlightUserData.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const request = Promise.all([
+      this.getMyStats(repo, userId, teamId, intervalDays),
+      this.getMyActivity(repo, userId, teamId, intervalDays),
+      this.getMyTopChannels(repo, userId, teamId, intervalDays),
+      this.getMySentimentTrend(repo, userId, teamId, intervalDays),
+    ])
+      .then(([myStats, myActivity, myTopChannels, mySentimentTrend]) => ({
+        myStats,
+        myActivity,
+        myTopChannels,
+        mySentimentTrend,
+      }))
+      .finally(() => this.inFlightUserData.delete(cacheKey));
+
+    this.inFlightUserData.set(cacheKey, request);
+    return request;
+  }
+
+  private loadLeaderboards(
+    cacheKey: string,
+    repo: Repository<Message>,
+    teamId: string,
+    intervalDays: number | null,
+  ): Promise<Pick<DashboardResponse, 'leaderboard' | 'repLeaderboard'>> {
+    const inFlight = this.inFlightLeaderboards.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const request = this.getLeaderboards(repo, teamId, intervalDays).finally(() =>
+      this.inFlightLeaderboards.delete(cacheKey),
+    );
+
+    this.inFlightLeaderboards.set(cacheKey, request);
+    return request;
   }
 
   private async getMyStats(
@@ -235,7 +285,7 @@ export class DashboardPersistenceService {
     if (intervalDays !== null) repParams.push(intervalDays);
     repParams.push(LEADERBOARD_LIMIT);
 
-    const activityRows = await this.timeQuery('getLeaderboards:activity', () =>
+    const activityRowsPromise = this.timeQuery('getLeaderboards:activity', () =>
       repo.query<{ name: string; value: string }[]>(
         `SELECT u.name AS name, CAST(COUNT(*) AS SIGNED) AS value
          FROM message m
@@ -249,7 +299,7 @@ export class DashboardPersistenceService {
       ),
     );
 
-    const repRows = await this.timeQuery('getLeaderboards:rep', () =>
+    const repRowsPromise = this.timeQuery('getLeaderboards:rep', () =>
       repo.query<{ name: string; value: string }[]>(
         `SELECT u.name AS name, CAST(SUM(r.value) AS SIGNED) AS value
          FROM reaction r
@@ -262,6 +312,8 @@ export class DashboardPersistenceService {
         repParams,
       ),
     );
+
+    const [activityRows, repRows] = await Promise.all([activityRowsPromise, repRowsPromise]);
 
     return {
       leaderboard: activityRows.map((r) => ({ name: r.name, count: Number(r.value) })),
