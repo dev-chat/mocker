@@ -132,6 +132,8 @@ export interface FantasyPlayer {
   team: string | null;
   injuryStatus: string | null;
   fantasyPositions: string[];
+  marketValue: number | null;
+  positionRank: number | null;
 }
 
 export interface ProjectedFantasyPlayer extends FantasyPlayer {

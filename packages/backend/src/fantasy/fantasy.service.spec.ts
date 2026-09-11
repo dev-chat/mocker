@@ -3,6 +3,7 @@ import { getRepository } from 'typeorm';
 import type { OpenAIClientLike } from '../lib/resilientOpenAIClient';
 import type {
   AITradeAnalysis,
+  FantasyCalcPlayerValue,
   FantasyPlayer,
   FantasyTeam,
   LineupRecommendation,
@@ -65,12 +66,26 @@ const aiResponse = {
   ],
 };
 
+type FantasyCalcResponseEntry = {
+  player: { sleeperId?: string | null };
+  value: number;
+  redraftValue: number;
+  overallRank: number;
+  positionRank: number;
+  trend30Day: number;
+  maybeTradeFrequency?: number | null;
+};
+
 type FantasyServiceInternals = {
   getTradeAnalysis: (
     key: string,
     refresh: boolean,
     generate: () => Promise<AITradeAnalysis>,
+    marketValueVersion?: number,
   ) => Promise<AITradeAnalysis>;
+  getFantasyCalcValuesForOverview: (
+    league: SleeperLeague,
+  ) => Promise<{ values: Map<string, FantasyCalcPlayerValue>; version: number }>;
   buildLineupRecommendation: (
     week: number,
     league: SleeperLeague,
@@ -117,6 +132,15 @@ type FantasyServiceInternals = {
     remainingBudget: number,
   ) => WaiverBidGuidance;
   weightedMedian: (samples: Array<{ pricePerPoint: number; weight: number }>) => number | null;
+  resolveLeagueFormat: (league: SleeperLeague) => { isDynasty: boolean; numQbs: number; ppr: number };
+  getFantasyCalcAnalysisVersion: (league: SleeperLeague) => number;
+  getFantasyCalcValues: (league: SleeperLeague) => Promise<Map<string, FantasyCalcPlayerValue>>;
+  buildTradeSuggestions: (
+    analysis: AITradeAnalysis,
+    ownRoster: FantasyTeam,
+    teams: FantasyTeam[],
+    leagueId: string,
+  ) => unknown[];
 };
 
 describe('FantasyService', () => {
@@ -256,6 +280,44 @@ describe('FantasyService', () => {
           ],
         });
       }
+      if (url === 'https://api.fantasycalc.com/values/current') {
+        return Promise.resolve({
+          data: [
+            {
+              player: { sleeperId: 'p1' },
+              value: 4500,
+              redraftValue: 4000,
+              overallRank: 30,
+              positionRank: 12,
+              trend30Day: 3,
+            },
+            {
+              player: { sleeperId: 'p2' },
+              value: 5200,
+              redraftValue: 5000,
+              overallRank: 18,
+              positionRank: 9,
+              trend30Day: 8,
+            },
+            {
+              player: { sleeperId: 'p3' },
+              value: 2100,
+              redraftValue: 1800,
+              overallRank: 85,
+              positionRank: 34,
+              trend30Day: 12,
+            },
+            {
+              player: { sleeperId: 'p4' },
+              value: 6100,
+              redraftValue: 5800,
+              overallRank: 11,
+              positionRank: 5,
+              trend30Day: 15,
+            },
+          ],
+        });
+      }
       if (url.endsWith('/league/999/transactions/1')) {
         return Promise.resolve({
           data: [
@@ -361,14 +423,28 @@ describe('FantasyService', () => {
     });
 
     const result = await service.getOverview('U1', 'T1', '999');
+    const payload = JSON.parse((create.mock.calls.at(-1) as [Record<string, string>])[0].input);
 
     expect(result?.league.name).toBe('Friends League');
+    expect(result?.roster.players).toEqual([
+      expect.objectContaining({ id: 'p1', marketValue: 4500, positionRank: 12 }),
+      expect.objectContaining({ id: 'p4', marketValue: 6100, positionRank: 5 }),
+    ]);
     expect(result?.pendingTrades[0]).toMatchObject({
       transactionId: 'trade-1',
       insight: 'The incoming receiver adds weekly upside.',
       recommendation: 'accept',
     });
-    expect(result?.pendingTrades[0]?.sides[0]?.players[0]?.name).toBe('Blake Runner');
+    expect(result?.pendingTrades[0]?.sides[0]?.players[0]).toMatchObject({
+      name: 'Blake Runner',
+      marketValue: 5200,
+      positionRank: 9,
+    });
+    expect(result?.pendingTrades[0]?.sides[1]?.players[0]).toMatchObject({
+      name: 'Alex Receiver',
+      marketValue: 4500,
+      positionRank: 12,
+    });
     expect(result?.gamesToWatch[0]).toMatchObject({
       awayTeam: 'Buffalo Bills',
       homeTeam: 'New York Jets',
@@ -379,15 +455,15 @@ describe('FantasyService', () => {
       sleeperUrl: 'https://sleeper.com/leagues/999',
     });
     expect(result?.waiverSuggestions[0]).toMatchObject({
-      add: { id: 'p3', name: 'Casey Waiver' },
-      drop: { id: 'p1', name: 'Alex Receiver' },
+      add: { id: 'p3', name: 'Casey Waiver', marketValue: 2100, positionRank: 34 },
+      drop: { id: 'p1', name: 'Alex Receiver', marketValue: 4500, positionRank: 12 },
       priority: 'high',
       recommendedBid: 5,
     });
     expect(result?.pendingWaivers[0]).toMatchObject({
       transactionId: 'waiver-1',
-      add: { id: 'p3', name: 'Casey Waiver' },
-      drop: { id: 'p1', name: 'Alex Receiver' },
+      add: { id: 'p3', name: 'Casey Waiver', marketValue: 2100, positionRank: 34 },
+      drop: { id: 'p1', name: 'Alex Receiver', marketValue: 4500, positionRank: 12 },
       bid: 14,
     });
     expect(result?.teamHealth).toEqual({
@@ -405,6 +481,20 @@ describe('FantasyService', () => {
       sit: [{ id: 'p1' }],
       summary: 'Start Drew Runner to maximize your matchup ceiling this week.',
     });
+    expect(payload.teams).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rosterId: 1,
+          players: expect.arrayContaining([
+            expect.objectContaining({ id: 'p1', marketValue: 4500, positionRank: 12 }),
+            expect.objectContaining({ id: 'p4', marketValue: 6100, positionRank: 5 }),
+          ]),
+        }),
+      ]),
+    );
+    expect(payload.waiverCandidates).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'p3', marketValue: 2100, positionRank: 34 })]),
+    );
   });
 
   it('normalizes week-zero matchup context before generating AI analysis', async () => {
@@ -513,6 +603,9 @@ describe('FantasyService', () => {
             },
           },
         });
+      }
+      if (url === 'https://api.fantasycalc.com/values/current') {
+        return Promise.resolve({ data: [] });
       }
       if (new URL(url).hostname === 'site.api.espn.com') {
         const week = config?.params?.week ?? 0;
@@ -649,6 +742,9 @@ describe('FantasyService', () => {
           },
         });
       }
+      if (url === 'https://api.fantasycalc.com/values/current') {
+        return Promise.resolve({ data: [] });
+      }
       if (new URL(url).hostname === 'site.api.espn.com') {
         const week = config?.params?.week ?? 0;
         return Promise.resolve({
@@ -777,6 +873,9 @@ describe('FantasyService', () => {
           },
         });
       }
+      if (url === 'https://api.fantasycalc.com/values/current') {
+        return Promise.resolve({ data: [] });
+      }
       if (new URL(url).hostname === 'site.api.espn.com') {
         const week = config?.params?.week ?? 0;
         return Promise.resolve({
@@ -873,6 +972,9 @@ describe('FantasyService', () => {
           },
         });
       }
+      if (url === 'https://api.fantasycalc.com/values/current') {
+        return Promise.resolve({ data: [] });
+      }
       if (new URL(url).hostname === 'site.api.espn.com') {
         return Promise.resolve({
           data: {
@@ -921,6 +1023,8 @@ describe('FantasyService', () => {
       team: 'BUF',
       injuryStatus: null,
       fantasyPositions: [position],
+      marketValue: null,
+      positionRank: null,
       projectedPoints,
     });
     const players = [
@@ -970,6 +1074,8 @@ describe('FantasyService', () => {
             team: 'BUF',
             injuryStatus: null,
             fantasyPositions: ['QB'],
+            marketValue: null,
+            positionRank: null,
           },
           {
             id: 'unknown',
@@ -978,6 +1084,8 @@ describe('FantasyService', () => {
             team: null,
             injuryStatus: null,
             fantasyPositions: [],
+            marketValue: null,
+            positionRank: null,
           },
           {
             id: 'edge',
@@ -986,6 +1094,8 @@ describe('FantasyService', () => {
             team: 'DAL',
             injuryStatus: null,
             fantasyPositions: ['DL'],
+            marketValue: null,
+            positionRank: null,
           },
           {
             id: 'swing',
@@ -994,6 +1104,8 @@ describe('FantasyService', () => {
             team: 'MIA',
             injuryStatus: null,
             fantasyPositions: ['RB', 'WR'],
+            marketValue: null,
+            positionRank: null,
           },
         ],
       },
@@ -1018,6 +1130,8 @@ describe('FantasyService', () => {
             team: 'DAL',
             injuryStatus: null,
             fantasyPositions: ['QB', 'WR'],
+            marketValue: null,
+            positionRank: null,
           },
           {
             id: 'qb-only',
@@ -1026,6 +1140,8 @@ describe('FantasyService', () => {
             team: 'BUF',
             injuryStatus: null,
             fantasyPositions: ['QB'],
+            marketValue: null,
+            positionRank: null,
           },
         ],
       },
@@ -1045,6 +1161,8 @@ describe('FantasyService', () => {
         team: 'WAS',
         injuryStatus: null,
         fantasyPositions: ['WR'],
+        marketValue: null,
+        positionRank: null,
       },
       {
         id: 'jacksonville-player',
@@ -1053,6 +1171,8 @@ describe('FantasyService', () => {
         team: 'JAC',
         injuryStatus: null,
         fantasyPositions: ['RB'],
+        marketValue: null,
+        positionRank: null,
       },
     ];
 
@@ -1125,6 +1245,8 @@ describe('FantasyService', () => {
       team: 'BUF',
       injuryStatus: null,
       fantasyPositions: ['RB'],
+      marketValue: null,
+      positionRank: null,
     };
     const guidance = await internals.getWaiverBidGuidance(
       {
@@ -1181,6 +1303,8 @@ describe('FantasyService', () => {
       team: 'BUF',
       injuryStatus: null,
       fantasyPositions: [position],
+      marketValue: null,
+      positionRank: null,
     });
 
     expect(internals.weightedMedian([])).toBeNull();
@@ -1230,6 +1354,8 @@ describe('FantasyService', () => {
           team: 'BUF',
           injuryStatus: null,
           fantasyPositions: ['RB'],
+          marketValue: null,
+          positionRank: null,
         },
       ],
     };
@@ -1311,5 +1437,593 @@ describe('FantasyService', () => {
         [{ player_id: 'rb1', stats: { pts_ppr: 12 } }],
       ),
     ).toThrow(/no usable weekly projections for the opponent/i);
+  });
+
+  it('resolves league format for FantasyCalc from Sleeper league settings', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+
+    expect(
+      internals.resolveLeagueFormat({
+        league_id: '1',
+        name: 'Redraft 1QB Half PPR',
+        season: '2026',
+        status: 'in_season',
+        avatar: null,
+        total_rosters: 12,
+        roster_positions: ['QB', 'RB', 'WR'],
+      }),
+    ).toEqual({ isDynasty: false, numQbs: 1, ppr: 0.5 });
+
+    expect(
+      internals.resolveLeagueFormat({
+        league_id: '2',
+        name: 'Dynasty Superflex Full PPR',
+        season: '2026',
+        status: 'in_season',
+        avatar: null,
+        total_rosters: 12,
+        settings: { type: 2 },
+        roster_positions: ['QB', 'SUPER_FLEX', 'RB'],
+        scoring_settings: { rec: 1 },
+      }),
+    ).toEqual({ isDynasty: true, numQbs: 2, ppr: 1 });
+
+    expect(
+      internals.resolveLeagueFormat({
+        league_id: '3',
+        name: 'Keeper 2QB Quarter PPR',
+        season: '2026',
+        status: 'in_season',
+        avatar: null,
+        total_rosters: 12,
+        settings: { type: 1 },
+        roster_positions: ['QB', 'QB', 'SUPER_FLEX', 'RB'],
+        scoring_settings: { rec: 0.25 },
+      }),
+    ).toEqual({ isDynasty: true, numQbs: 2, ppr: 0.5 });
+  });
+
+  it('fetches and caches FantasyCalc player values scaled to the league format', async () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const league: SleeperLeague = {
+      league_id: '999',
+      name: 'Friends League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 10,
+      settings: { type: 2 },
+      roster_positions: ['QB', 'RB'],
+    };
+    const twelveTeamLeague: SleeperLeague = { ...league, league_id: '1000', total_rosters: 12 };
+    (Axios.get as Mock).mockResolvedValueOnce({
+      data: [
+        {
+          player: { sleeperId: 'p1' },
+          value: 9000,
+          redraftValue: 8000,
+          overallRank: 1,
+          positionRank: 1,
+          trend30Day: 10,
+          maybeTradeFrequency: 0.05,
+        },
+        { player: { sleeperId: null }, value: 1, redraftValue: 1, overallRank: 999, positionRank: 99, trend30Day: 0 },
+      ],
+    });
+    (Axios.get as Mock).mockResolvedValueOnce({
+      data: [
+        {
+          player: { sleeperId: 'p1' },
+          value: 9100,
+          redraftValue: 8100,
+          overallRank: 2,
+          positionRank: 2,
+          trend30Day: 11,
+          maybeTradeFrequency: 0.04,
+        },
+      ],
+    });
+
+    const values = await internals.getFantasyCalcValues(league);
+
+    expect(Axios.get).toHaveBeenCalledWith(
+      'https://api.fantasycalc.com/values/current',
+      expect.objectContaining({ params: { isDynasty: true, numQbs: 1, numTeams: 10, ppr: 0.5 }, timeout: 2000 }),
+    );
+    expect(values.get('p1')).toEqual({
+      sleeperId: 'p1',
+      value: 9000,
+      overallRank: 1,
+      positionRank: 1,
+      trend30Day: 10,
+      tradeFrequency: 0.05,
+    });
+    expect(values.has('null')).toBe(false);
+    expect(values.size).toBe(1);
+
+    (Axios.get as Mock).mockClear();
+    await internals.getFantasyCalcValues(league);
+    expect(Axios.get).not.toHaveBeenCalled();
+
+    const twelveTeamValues = await internals.getFantasyCalcValues(twelveTeamLeague);
+    expect(Axios.get).toHaveBeenCalledWith(
+      'https://api.fantasycalc.com/values/current',
+      expect.objectContaining({ params: { isDynasty: true, numQbs: 1, numTeams: 12, ppr: 0.5 }, timeout: 2000 }),
+    );
+    expect(twelveTeamValues.get('p1')?.value).toBe(9100);
+  });
+
+  it('deduplicates concurrent FantasyCalc requests for the same cache key', async () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const league: SleeperLeague = {
+      league_id: '999',
+      name: 'Friends League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 12,
+      roster_positions: ['QB', 'RB'],
+    };
+    let resolveRequest: ((value: { data: FantasyCalcResponseEntry[] }) => void) | undefined;
+    (Axios.get as Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+
+    const first = internals.getFantasyCalcValues(league);
+    const second = internals.getFantasyCalcValues(league);
+    resolveRequest?.({
+      data: [
+        {
+          player: { sleeperId: 'p1' },
+          value: 9000,
+          redraftValue: 8000,
+          overallRank: 1,
+          positionRank: 1,
+          trend30Day: 10,
+        },
+      ],
+    });
+    const [firstValues, secondValues] = await Promise.all([first, second]);
+
+    expect(Axios.get).toHaveBeenCalledTimes(1);
+    expect(firstValues).toBe(secondValues);
+    expect(firstValues.get('p1')?.value).toBe(9000);
+  });
+
+  it('returns an empty map and briefly negative-caches FantasyCalc failures without bumping the analysis version', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
+    const internals = service as unknown as FantasyServiceInternals;
+    const league: SleeperLeague = {
+      league_id: '998',
+      name: 'Redraft League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 12,
+      roster_positions: ['QB'],
+    };
+    (Axios.get as Mock).mockRejectedValueOnce(new Error('network error'));
+    (Axios.get as Mock).mockResolvedValueOnce({
+      data: [
+        {
+          player: { sleeperId: 'p2' },
+          value: 1234,
+          redraftValue: 1234,
+          overallRank: 50,
+          positionRank: 20,
+          trend30Day: 1,
+        },
+      ],
+    });
+
+    try {
+      expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(0);
+      await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(new Map());
+      await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(new Map());
+      expect(Axios.get).toHaveBeenCalledTimes(1);
+      expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(0);
+
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1);
+      await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(
+        new Map([
+          [
+            'p2',
+            {
+              sleeperId: 'p2',
+              value: 1234,
+              overallRank: 50,
+              positionRank: 20,
+              trend30Day: 1,
+              tradeFrequency: null,
+            },
+          ],
+        ]),
+      );
+      expect(Axios.get).toHaveBeenCalledTimes(2);
+      expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('preserves stale FantasyCalc values during failure backoff', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
+    const internals = service as unknown as FantasyServiceInternals;
+    const serviceState = service as unknown as {
+      fantasyCalcCache: Map<
+        string,
+        { expiresAt: number; values: Map<string, FantasyCalcPlayerValue>; version: number }
+      >;
+      fantasyCalcAnalysisVersions: Map<string, number>;
+    };
+    const league: SleeperLeague = {
+      league_id: '998',
+      name: 'Redraft League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 12,
+      roster_positions: ['QB'],
+    };
+    const staleValues = new Map<string, FantasyCalcPlayerValue>([
+      [
+        'p1',
+        {
+          sleeperId: 'p1',
+          value: 900,
+          overallRank: 100,
+          positionRank: 40,
+          trend30Day: -1,
+          tradeFrequency: null,
+        },
+      ],
+    ]);
+    const cacheKey = 'false:1:12:0.5';
+    serviceState.fantasyCalcAnalysisVersions.set(cacheKey, 1);
+    serviceState.fantasyCalcCache.set(cacheKey, {
+      expiresAt: Date.now() - 1,
+      values: staleValues,
+      version: 1,
+    });
+    (Axios.get as Mock).mockRejectedValueOnce(new Error('network error'));
+
+    try {
+      await expect(internals.getFantasyCalcValues(league)).resolves.toBe(staleValues);
+      await expect(internals.getFantasyCalcValues(league)).resolves.toBe(staleValues);
+      expect(Axios.get).toHaveBeenCalledTimes(1);
+      expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the overview FantasyCalc version aligned with the fallback values snapshot', async () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const serviceState = service as unknown as {
+      fantasyCalcCache: Map<
+        string,
+        { expiresAt: number; values: Map<string, FantasyCalcPlayerValue>; version: number }
+      >;
+      fantasyCalcAnalysisVersions: Map<string, number>;
+    };
+    const league: SleeperLeague = {
+      league_id: '998',
+      name: 'Redraft League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 12,
+      roster_positions: ['QB'],
+    };
+    const staleValues = new Map<string, FantasyCalcPlayerValue>([
+      [
+        'p1',
+        {
+          sleeperId: 'p1',
+          value: 900,
+          overallRank: 100,
+          positionRank: 40,
+          trend30Day: -1,
+          tradeFrequency: null,
+        },
+      ],
+    ]);
+    const cacheKey = 'false:1:12:0.5';
+    serviceState.fantasyCalcAnalysisVersions.set(cacheKey, 1);
+    serviceState.fantasyCalcCache.set(cacheKey, {
+      expiresAt: Date.now() - 1,
+      values: staleValues,
+      version: 1,
+    });
+    (Axios.get as Mock).mockResolvedValueOnce({
+      data: [
+        {
+          player: { sleeperId: 'p2' },
+          value: 1234,
+          redraftValue: 1234,
+          overallRank: 50,
+          positionRank: 20,
+          trend30Day: 1,
+        },
+      ],
+    });
+
+    const snapshot = await internals.getFantasyCalcValuesForOverview(league);
+
+    expect(snapshot.values).toBe(staleValues);
+    expect(snapshot.version).toBe(1);
+    await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(
+      new Map([
+        [
+          'p2',
+          {
+            sleeperId: 'p2',
+            value: 1234,
+            overallRank: 50,
+            positionRank: 20,
+            trend30Day: 1,
+            tradeFrequency: null,
+          },
+        ],
+      ]),
+    );
+    expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(2);
+    expect(Axios.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes cached AI analysis only after FantasyCalc values successfully refresh for that format', async () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const league: SleeperLeague = {
+      league_id: '998',
+      name: 'Redraft League',
+      season: '2026',
+      status: 'in_season',
+      avatar: null,
+      total_rosters: 12,
+      roster_positions: ['QB'],
+    };
+    const firstAnalysis: AITradeAnalysis = {
+      teamHealth: { percentage: 80, summary: 'Healthy roster.' },
+      tradeInsights: [],
+      suggestions: [],
+      waiverSuggestions: [],
+      lineupSummary: 'Use the projected starters.',
+    };
+    const refreshedAnalysis: AITradeAnalysis = {
+      ...firstAnalysis,
+      teamHealth: { percentage: 70, summary: 'Values were refreshed.' },
+    };
+    const generate = vi.fn().mockResolvedValueOnce(firstAnalysis).mockResolvedValueOnce(refreshedAnalysis);
+    const initialVersion = internals.getFantasyCalcAnalysisVersion(league);
+    (Axios.get as Mock).mockResolvedValueOnce({
+      data: [
+        {
+          player: { sleeperId: 'p2' },
+          value: 1234,
+          redraftValue: 1234,
+          overallRank: 50,
+          positionRank: 20,
+          trend30Day: 1,
+        },
+      ],
+    });
+
+    await expect(internals.getTradeAnalysis('key', false, generate, initialVersion)).resolves.toBe(firstAnalysis);
+    await internals.getFantasyCalcValues(league);
+    const refreshedVersion = internals.getFantasyCalcAnalysisVersion(league);
+    expect(refreshedVersion).toBe(initialVersion + 1);
+    await expect(internals.getTradeAnalysis('key', false, generate, refreshedVersion)).resolves.toBe(refreshedAnalysis);
+    expect(generate).toHaveBeenCalledTimes(2);
+  });
+
+  it('filters only unfair AI trade suggestions when market values are available', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const ownRoster: FantasyTeam = {
+      rosterId: 1,
+      ownerName: 'Alice',
+      starters: [],
+      players: [
+        {
+          id: 'give-fair',
+          name: 'Give Fair',
+          position: 'WR',
+          team: 'BUF',
+          injuryStatus: null,
+          fantasyPositions: ['WR'],
+          marketValue: 4800,
+          positionRank: 12,
+        },
+        {
+          id: 'give-cheap',
+          name: 'Give Cheap',
+          position: 'WR',
+          team: 'BUF',
+          injuryStatus: null,
+          fantasyPositions: ['WR'],
+          marketValue: 3000,
+          positionRank: 20,
+        },
+        {
+          id: 'give-null',
+          name: 'Give Null',
+          position: 'WR',
+          team: 'BUF',
+          injuryStatus: null,
+          fantasyPositions: ['WR'],
+          marketValue: null,
+          positionRank: null,
+        },
+      ],
+    };
+    const target: FantasyTeam = {
+      rosterId: 2,
+      ownerName: 'Bob',
+      starters: [],
+      players: [
+        {
+          id: 'receive-fair',
+          name: 'Receive Fair',
+          position: 'RB',
+          team: 'NYJ',
+          injuryStatus: null,
+          fantasyPositions: ['RB'],
+          marketValue: 5000,
+          positionRank: 10,
+        },
+        {
+          id: 'receive-expensive',
+          name: 'Receive Expensive',
+          position: 'RB',
+          team: 'NYJ',
+          injuryStatus: null,
+          fantasyPositions: ['RB'],
+          marketValue: 5000,
+          positionRank: 10,
+        },
+        {
+          id: 'receive-null',
+          name: 'Receive Null',
+          position: 'RB',
+          team: 'NYJ',
+          injuryStatus: null,
+          fantasyPositions: ['RB'],
+          marketValue: null,
+          positionRank: null,
+        },
+        {
+          id: 'receive-zero',
+          name: 'Receive Zero',
+          position: 'RB',
+          team: 'NYJ',
+          injuryStatus: null,
+          fantasyPositions: ['RB'],
+          marketValue: 0,
+          positionRank: 99,
+        },
+      ],
+    };
+
+    const suggestions = internals.buildTradeSuggestions(
+      {
+        teamHealth: { percentage: 80, summary: 'Healthy roster.' },
+        tradeInsights: [],
+        suggestions: [
+          {
+            targetRosterId: 2,
+            givePlayerIds: ['give-fair'],
+            receivePlayerIds: ['receive-fair'],
+            rationale: 'Roughly even value, slight edge to you.',
+          },
+          {
+            targetRosterId: 2,
+            givePlayerIds: ['give-cheap'],
+            receivePlayerIds: ['receive-expensive'],
+            rationale: 'This is too one-sided.',
+          },
+          {
+            targetRosterId: 2,
+            givePlayerIds: ['give-null'],
+            receivePlayerIds: ['receive-null'],
+            rationale: 'Missing values should fall back to the qualitative recommendation.',
+          },
+          {
+            targetRosterId: 2,
+            givePlayerIds: ['give-cheap'],
+            receivePlayerIds: ['receive-zero'],
+            rationale: 'Zero-value returns should still be rejected when the outgoing value is higher.',
+          },
+        ],
+        waiverSuggestions: [],
+        lineupSummary: 'Use the projected starters.',
+      },
+      ownRoster,
+      [ownRoster, target],
+      '999',
+    );
+
+    expect(suggestions).toHaveLength(2);
+    expect(suggestions[0]).toMatchObject({
+      targetRosterId: 2,
+      targetOwnerName: 'Bob',
+      give: [expect.objectContaining({ id: 'give-fair', marketValue: 4800 })],
+      receive: [expect.objectContaining({ id: 'receive-fair', marketValue: 5000 })],
+    });
+    expect(suggestions[1]).toMatchObject({
+      targetRosterId: 2,
+      targetOwnerName: 'Bob',
+      give: [expect.objectContaining({ id: 'give-null', marketValue: null })],
+      receive: [expect.objectContaining({ id: 'receive-null', marketValue: null })],
+    });
+  });
+
+  it('rejects AI trade suggestions with duplicate or unknown player ids', () => {
+    const internals = service as unknown as FantasyServiceInternals;
+    const ownRoster: FantasyTeam = {
+      rosterId: 1,
+      ownerName: 'Alice',
+      starters: [],
+      players: [
+        {
+          id: 'give-fair',
+          name: 'Give Fair',
+          position: 'WR',
+          team: 'BUF',
+          injuryStatus: null,
+          fantasyPositions: ['WR'],
+          marketValue: 4800,
+          positionRank: 12,
+        },
+      ],
+    };
+    const target: FantasyTeam = {
+      rosterId: 2,
+      ownerName: 'Bob',
+      starters: [],
+      players: [
+        {
+          id: 'receive-fair',
+          name: 'Receive Fair',
+          position: 'RB',
+          team: 'NYJ',
+          injuryStatus: null,
+          fantasyPositions: ['RB'],
+          marketValue: 5000,
+          positionRank: 10,
+        },
+      ],
+    };
+
+    const suggestions = internals.buildTradeSuggestions(
+      {
+        teamHealth: { percentage: 80, summary: 'Healthy roster.' },
+        tradeInsights: [],
+        suggestions: [
+          {
+            targetRosterId: 2,
+            givePlayerIds: ['give-fair', 'give-fair'],
+            receivePlayerIds: ['receive-fair'],
+            rationale: 'Duplicate outgoing players should be rejected.',
+          },
+          {
+            targetRosterId: 2,
+            givePlayerIds: ['give-fair'],
+            receivePlayerIds: ['receive-fair', 'missing-player'],
+            rationale: 'Unknown players should be rejected.',
+          },
+        ],
+        waiverSuggestions: [],
+        lineupSummary: 'Use the projected starters.',
+      },
+      ownRoster,
+      [ownRoster, target],
+      '999',
+    );
+
+    expect(suggestions).toEqual([]);
   });
 });

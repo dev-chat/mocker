@@ -17,6 +17,7 @@ import type {
   FantasyLandingResponse,
   LineupRecommendation,
   FantasyOverview,
+  FantasyCalcPlayerValue,
   FantasyPlayer,
   FantasyTeam,
   GameToWatch,
@@ -40,9 +41,14 @@ import type {
 const SLEEPER_API_URL = 'https://api.sleeper.app/v1';
 const SLEEPER_PROJECTIONS_URL = 'https://api.sleeper.com/projections/nfl';
 const ESPN_SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
+const FANTASYCALC_API_URL = 'https://api.fantasycalc.com/values/current';
 const PLAYER_CACHE_MS = 24 * 60 * 60 * 1000;
 const AI_ANALYSIS_CACHE_MS = 24 * 60 * 60 * 1000;
 const WAIVER_MARKET_CACHE_MS = 6 * 60 * 60 * 1000;
+const FANTASYCALC_CACHE_MS = 6 * 60 * 60 * 1000;
+const FANTASYCALC_FAILURE_CACHE_MS = 5 * 60 * 1000;
+const FANTASYCALC_TIMEOUT_MS = 2000;
+const FANTASYCALC_OVERVIEW_WAIT_MS = 150;
 const WAIVER_HISTORY_SEASONS = 3;
 const NFL_REGULAR_SEASON_WEEKS = 18;
 const SLEEPER_ID_PATTERN = /^\d{1,32}$/;
@@ -91,6 +97,25 @@ interface RosterNeed {
   deficit: number;
 }
 
+interface FantasyCalcApiEntry {
+  player: { sleeperId?: string | null };
+  value: number;
+  redraftValue: number;
+  overallRank: number;
+  positionRank: number;
+  trend30Day: number;
+  maybeTradeFrequency?: number | null;
+}
+
+interface FantasyCalcSnapshot {
+  values: Map<string, FantasyCalcPlayerValue>;
+  version: number;
+}
+
+interface FantasyCalcCacheEntry extends FantasyCalcSnapshot {
+  expiresAt: number;
+}
+
 const isOutputMessage = (item: ResponseOutputItem): item is ResponseOutputMessage => item.type === 'message';
 const isOutputText = (item: ResponseOutputMessage['content'][number]): item is ResponseOutputText =>
   item.type === 'output_text';
@@ -124,7 +149,13 @@ export class FantasyService {
   private playerRequest: Promise<Record<string, SleeperPlayer | undefined>> | null = null;
   private waiverMarketCache = new Map<string, { expiresAt: number; samples: WaiverMarketSample[] }>();
   private projectionCache = new Map<string, { expiresAt: number; projections: SleeperProjection[] }>();
-  private analysisCache = new Map<string, { expiresAt: number; analysis: AITradeAnalysis }>();
+  private fantasyCalcCache = new Map<string, FantasyCalcCacheEntry>();
+  private fantasyCalcAnalysisVersions = new Map<string, number>();
+  private fantasyCalcRequests = new Map<string, Promise<Map<string, FantasyCalcPlayerValue>>>();
+  private analysisCache = new Map<
+    string,
+    { expiresAt: number; analysis: AITradeAnalysis; marketValueVersion: number }
+  >();
   private readonly openAi: OpenAIClientLike;
   private readonly serviceLogger = logger.child({ module: 'FantasyService' });
 
@@ -180,7 +211,7 @@ export class FantasyService {
 
     const currentWeek = Math.max(state.week, 1);
     const transactionRounds = state.week > 1 ? [state.week, state.week - 1] : [currentWeek];
-    const [rosters, users, transactionGroups, players, scoreboard] = await Promise.all([
+    const [rosters, users, transactionGroups, players, scoreboard, marketValueSnapshot] = await Promise.all([
       this.get<SleeperRoster[]>(`/league/${leagueId}/rosters`),
       this.get<SleeperLeagueUser[]>(`/league/${leagueId}/users`),
       Promise.all(
@@ -195,7 +226,9 @@ export class FantasyService {
         },
         timeout: 10000,
       }).then((response) => response.data),
+      this.getFantasyCalcValuesForOverview(league),
     ]);
+    const marketValues = marketValueSnapshot.values;
     const transactions = Array.from(
       new Map(transactionGroups.flat().map((transaction) => [transaction.transaction_id, transaction])).values(),
     );
@@ -206,7 +239,7 @@ export class FantasyService {
       return null;
     }
 
-    const teams = rosters.map((roster) => this.toFantasyTeam(roster, ownerNames, players));
+    const teams = rosters.map((roster) => this.toFantasyTeam(roster, ownerNames, players, marketValues));
     const roster = teams.find((team) => team.rosterId === ownRoster.roster_id);
     if (!roster) {
       return null;
@@ -233,7 +266,7 @@ export class FantasyService {
           (left?.search_rank ?? Number.MAX_SAFE_INTEGER) - (right?.search_rank ?? Number.MAX_SAFE_INTEGER),
       )
       .slice(0, 120)
-      .map(([id]) => this.toPlayer(id, players));
+      .map(([id]) => this.toPlayer(id, players, marketValues));
     const waiverBudget = Math.max(0, league.settings?.waiver_budget ?? 100);
     const waiverBudgetUsed = Math.max(0, ownRoster.settings?.waiver_budget_used ?? 0);
     const remainingWaiverBudget = Math.max(0, waiverBudget - waiverBudgetUsed);
@@ -311,6 +344,7 @@ export class FantasyService {
             [currentProjections, ...upcomingMatchupProjections],
           );
         },
+        marketValueSnapshot.version,
       );
     } catch (error) {
       logError(this.serviceLogger, 'Failed to generate fantasy trade analysis', error, {
@@ -326,8 +360,8 @@ export class FantasyService {
       };
       aiStatus = 'unavailable';
     }
-    const pendingTrades = this.buildPendingTrades(pendingTransactions, ownerNames, players, analysis);
-    const pendingWaivers = this.buildPendingWaivers(pendingWaiverTransactions, roster.rosterId, players);
+    const pendingTrades = this.buildPendingTrades(pendingTransactions, ownerNames, players, analysis, marketValues);
+    const pendingWaivers = this.buildPendingWaivers(pendingWaiverTransactions, roster.rosterId, players, marketValues);
     const tradeSuggestions = this.buildTradeSuggestions(analysis, roster, teams, leagueId);
     const waiverSuggestions = this.buildWaiverSuggestions(
       analysis,
@@ -361,6 +395,125 @@ export class FantasyService {
 
   private async get<T>(path: string): Promise<T> {
     return Axios.get<T>(`${SLEEPER_API_URL}${path}`, { timeout: 10000 }).then((response) => response.data);
+  }
+
+  private resolveLeagueFormat(league: SleeperLeague): { isDynasty: boolean; numQbs: number; ppr: number } {
+    const rosterPositions = league.roster_positions ?? [];
+    const requestedQbs = Math.max(1, rosterPositions.filter((slot) => slot === 'QB' || slot === 'SUPER_FLEX').length);
+    const numQbs = requestedQbs >= 2 ? 2 : 1;
+    const requestedPpr = league.scoring_settings?.rec;
+    const ppr = requestedPpr === undefined ? 0.5 : requestedPpr >= 0.75 ? 1 : requestedPpr >= 0.25 ? 0.5 : 0;
+    // Sleeper league format: 0 = redraft, 1 = keeper, 2 = dynasty. Keeper leagues value long-term assets
+    // similarly to dynasty, so both are treated as dynasty for valuation purposes.
+    const isDynasty = (league.settings?.type ?? 0) >= 1;
+    return { isDynasty, numQbs, ppr };
+  }
+
+  private getFantasyCalcCacheKey(league: SleeperLeague): string {
+    const { isDynasty, numQbs, ppr } = this.resolveLeagueFormat(league);
+    const numTeams = league.total_rosters || 12;
+    return `${isDynasty}:${numQbs}:${numTeams}:${ppr}`;
+  }
+
+  private getFantasyCalcAnalysisVersion(league: SleeperLeague): number {
+    return this.fantasyCalcAnalysisVersions.get(this.getFantasyCalcCacheKey(league)) ?? 0;
+  }
+
+  /**
+   * Fetches consensus player trade values from the FantasyCalc API (https://fantasycalc.com/api-docs),
+   * matched to the league's format (dynasty/redraft, QB count, PPR). Values are keyed by Sleeper player ID
+   * so they can be merged directly onto `FantasyPlayer` records. Failures are non-fatal: trade/waiver
+   * recommendations still work without market values, just with less precise fairness signal.
+   */
+  private async getFantasyCalcValues(league: SleeperLeague): Promise<Map<string, FantasyCalcPlayerValue>> {
+    const { isDynasty, numQbs, ppr } = this.resolveLeagueFormat(league);
+    const numTeams = league.total_rosters || 12;
+    const cacheKey = this.getFantasyCalcCacheKey(league);
+    const cached = this.fantasyCalcCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.values;
+    }
+    const inFlight = this.fantasyCalcRequests.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
+    }
+    const request = Axios.get<FantasyCalcApiEntry[]>(FANTASYCALC_API_URL, {
+      params: { isDynasty, numQbs, numTeams, ppr },
+      timeout: FANTASYCALC_TIMEOUT_MS,
+    })
+      .then((response) => {
+        const values = new Map<string, FantasyCalcPlayerValue>(
+          response.data
+            .filter((entry): entry is FantasyCalcApiEntry & { player: { sleeperId: string } } =>
+              Boolean(entry.player.sleeperId),
+            )
+            .map((entry) => [
+              entry.player.sleeperId,
+              {
+                sleeperId: entry.player.sleeperId,
+                value: entry.value,
+                overallRank: entry.overallRank,
+                positionRank: entry.positionRank,
+                trend30Day: entry.trend30Day,
+                tradeFrequency: entry.maybeTradeFrequency ?? null,
+              },
+            ]),
+        );
+        const version = this.getFantasyCalcAnalysisVersion(league) + 1;
+        this.fantasyCalcCache.set(cacheKey, { expiresAt: Date.now() + FANTASYCALC_CACHE_MS, values, version });
+        this.fantasyCalcAnalysisVersions.set(cacheKey, version);
+        return values;
+      })
+      .catch((error) => {
+        logError(this.serviceLogger, 'Failed to load FantasyCalc player values', error, {
+          isDynasty,
+          numQbs,
+          numTeams,
+          ppr,
+        });
+        const fallbackValues = cached?.values ?? new Map<string, FantasyCalcPlayerValue>();
+        const version = cached?.version ?? this.getFantasyCalcAnalysisVersion(league);
+        this.fantasyCalcCache.set(cacheKey, {
+          expiresAt: Date.now() + FANTASYCALC_FAILURE_CACHE_MS,
+          values: fallbackValues,
+          version,
+        });
+        return fallbackValues;
+      })
+      .finally(() => {
+        this.fantasyCalcRequests.delete(cacheKey);
+      });
+    this.fantasyCalcRequests.set(cacheKey, request);
+    return request;
+  }
+
+  private getFantasyCalcValuesForOverview(league: SleeperLeague): Promise<FantasyCalcSnapshot> {
+    const cacheKey = this.getFantasyCalcCacheKey(league);
+    const cached = this.fantasyCalcCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return Promise.resolve({ values: cached.values, version: cached.version });
+    }
+
+    const fallbackSnapshot: FantasyCalcSnapshot = cached
+      ? { values: cached.values, version: cached.version }
+      : { values: new Map<string, FantasyCalcPlayerValue>(), version: this.getFantasyCalcAnalysisVersion(league) };
+    const refreshPromise = this.getFantasyCalcValues(league);
+    if (cached) {
+      return Promise.resolve(fallbackSnapshot);
+    }
+
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(fallbackSnapshot), FANTASYCALC_OVERVIEW_WAIT_MS);
+      refreshPromise
+        .then((values) => {
+          clearTimeout(timeout);
+          resolve({ values, version: this.getFantasyCalcAnalysisVersion(league) });
+        })
+        .catch(() => {
+          clearTimeout(timeout);
+          resolve(fallbackSnapshot);
+        });
+    });
   }
 
   private getNflState(): Promise<NflState> {
@@ -405,9 +558,10 @@ export class FantasyService {
     key: string,
     refresh: boolean,
     generate: () => Promise<AITradeAnalysis>,
+    marketValueVersion = 0,
   ): Promise<AITradeAnalysis> {
     const cached = this.analysisCache.get(key);
-    if (!refresh && cached && cached.expiresAt > Date.now()) {
+    if (!refresh && cached && cached.expiresAt > Date.now() && cached.marketValueVersion === marketValueVersion) {
       return cached.analysis;
     }
 
@@ -415,6 +569,7 @@ export class FantasyService {
     this.analysisCache.set(key, {
       expiresAt: Date.now() + AI_ANALYSIS_CACHE_MS,
       analysis,
+      marketValueVersion,
     });
     return analysis;
   }
@@ -656,8 +811,13 @@ export class FantasyService {
     );
   }
 
-  private toPlayer(id: string, players: Record<string, SleeperPlayer | undefined>): FantasyPlayer {
+  private toPlayer(
+    id: string,
+    players: Record<string, SleeperPlayer | undefined>,
+    values?: Map<string, FantasyCalcPlayerValue>,
+  ): FantasyPlayer {
     const player = players[id];
+    const marketValue = values?.get(id);
     return {
       id,
       name: playerName(player, id),
@@ -669,6 +829,8 @@ export class FantasyService {
         : player?.position
           ? [player.position]
           : [],
+      marketValue: marketValue?.value ?? null,
+      positionRank: marketValue?.positionRank ?? null,
     };
   }
 
@@ -921,11 +1083,12 @@ export class FantasyService {
     roster: SleeperRoster,
     ownerNames: Map<number, string>,
     players: Record<string, SleeperPlayer | undefined>,
+    values?: Map<string, FantasyCalcPlayerValue>,
   ): FantasyTeam {
     return {
       rosterId: roster.roster_id,
       ownerName: ownerNames.get(roster.roster_id) ?? `Roster ${roster.roster_id}`,
-      players: (roster.players ?? []).map((id) => this.toPlayer(id, players)),
+      players: (roster.players ?? []).map((id) => this.toPlayer(id, players, values)),
       starters: roster.starters ?? [],
     };
   }
@@ -934,13 +1097,14 @@ export class FantasyService {
     transaction: SleeperTransaction,
     ownerNames: Map<number, string>,
     players: Record<string, SleeperPlayer | undefined>,
+    values?: Map<string, FantasyCalcPlayerValue>,
   ): TradeSide[] {
     return transaction.roster_ids.map((rosterId) => ({
       rosterId,
       ownerName: ownerNames.get(rosterId) ?? `Roster ${rosterId}`,
       players: Object.entries(transaction.adds ?? {})
         .filter(([, destinationRosterId]) => destinationRosterId === rosterId)
-        .map(([playerId]) => this.toPlayer(playerId, players)),
+        .map(([playerId]) => this.toPlayer(playerId, players, values)),
       draftPicks: (transaction.draft_picks ?? [])
         .filter((pick) => pick.owner_id === rosterId)
         .map((pick) => `${pick.season} round ${pick.round}`),
@@ -952,13 +1116,14 @@ export class FantasyService {
     ownerNames: Map<number, string>,
     players: Record<string, SleeperPlayer | undefined>,
     analysis: AITradeAnalysis,
+    values?: Map<string, FantasyCalcPlayerValue>,
   ): PendingTrade[] {
     return transactions.map((transaction) => {
       const insight = analysis.tradeInsights.find((item) => item.transactionId === transaction.transaction_id);
       return {
         transactionId: transaction.transaction_id,
         createdAt: new Date(transaction.created).toISOString(),
-        sides: this.buildTradeSides(transaction, ownerNames, players),
+        sides: this.buildTradeSides(transaction, ownerNames, players, values),
         insight: insight?.insight ?? 'AI insight is temporarily unavailable for this trade.',
         recommendation: insight?.recommendation ?? 'negotiate',
       };
@@ -969,6 +1134,7 @@ export class FantasyService {
     transactions: SleeperTransaction[],
     rosterId: number,
     players: Record<string, SleeperPlayer | undefined>,
+    values?: Map<string, FantasyCalcPlayerValue>,
   ): PendingWaiver[] {
     return transactions.map((transaction) => {
       const addPlayerId = Object.entries(transaction.adds ?? {}).find(
@@ -978,8 +1144,8 @@ export class FantasyService {
       return {
         transactionId: transaction.transaction_id,
         createdAt: new Date(transaction.created).toISOString(),
-        add: addPlayerId ? this.toPlayer(addPlayerId, players) : null,
-        drop: dropPlayerId ? this.toPlayer(dropPlayerId, players) : null,
+        add: addPlayerId ? this.toPlayer(addPlayerId, players, values) : null,
+        drop: dropPlayerId ? this.toPlayer(dropPlayerId, players, values) : null,
         bid: Number.isFinite(transaction.settings?.waiver_bid) ? (transaction.settings?.waiver_bid ?? null) : null,
       };
     });
@@ -1003,15 +1169,39 @@ export class FantasyService {
         return [];
       }
       const targetPlayers = new Map(target.players.map((player) => [player.id, player]));
+      if (
+        new Set(suggestion.givePlayerIds).size !== suggestion.givePlayerIds.length ||
+        new Set(suggestion.receivePlayerIds).size !== suggestion.receivePlayerIds.length
+      ) {
+        this.serviceLogger.warn('Ignoring AI suggestion with duplicate player ids', {
+          targetRosterId: suggestion.targetRosterId,
+        });
+        return [];
+      }
       const give = suggestion.givePlayerIds
         .map((id) => ownPlayers.get(id))
         .filter((item): item is FantasyPlayer => !!item);
       const receive = suggestion.receivePlayerIds
         .map((id) => targetPlayers.get(id))
         .filter((item): item is FantasyPlayer => !!item);
-      if (!give.length || !receive.length) {
-        this.serviceLogger.warn('Ignoring AI suggestion with players outside the proposed rosters', {
+      if (
+        !give.length ||
+        !receive.length ||
+        give.length !== suggestion.givePlayerIds.length ||
+        receive.length !== suggestion.receivePlayerIds.length
+      ) {
+        this.serviceLogger.warn('Ignoring AI suggestion with unknown players outside the proposed rosters', {
           targetRosterId: suggestion.targetRosterId,
+        });
+        return [];
+      }
+      const giveTotal = this.totalMarketValue(give);
+      const receiveTotal = this.totalMarketValue(receive);
+      if (giveTotal !== null && receiveTotal !== null && (giveTotal < receiveTotal * 0.8 || giveTotal > receiveTotal)) {
+        this.serviceLogger.warn('Ignoring AI suggestion with unverifiable or unrealistic market values', {
+          targetRosterId: suggestion.targetRosterId,
+          giveTotal,
+          receiveTotal,
         });
         return [];
       }
@@ -1026,6 +1216,17 @@ export class FantasyService {
         },
       ];
     });
+  }
+
+  private totalMarketValue(players: FantasyPlayer[]): number | null {
+    let total = 0;
+    for (const player of players) {
+      if (player.marketValue === null) {
+        return null;
+      }
+      total += player.marketValue;
+    }
+    return total;
   }
 
   private buildWaiverSuggestions(
@@ -1138,12 +1339,14 @@ export class FantasyService {
     const compactTeams = teams.map((team) => ({
       rosterId: team.rosterId,
       ownerName: team.ownerName,
-      players: team.players.map(({ id, name, position, team: nflTeam, injuryStatus }) => ({
+      players: team.players.map(({ id, name, position, team: nflTeam, injuryStatus, marketValue, positionRank }) => ({
         id,
         name,
         position,
         team: nflTeam,
         injuryStatus,
+        marketValue,
+        positionRank,
       })),
       needs: rosterNeeds.get(team.rosterId) ?? [],
     }));
@@ -1158,12 +1361,23 @@ export class FantasyService {
       instructions:
         'You are a fantasy football analyst. Return only valid JSON with keys teamHealth, tradeInsights, suggestions, waiverSuggestions, and lineupSummary. ' +
         'teamHealth must assess the user roster relative to the supplied league with an integer percentage from 0 to 100 and a concise summary. ' +
-        'tradeInsights must include exactly one item per pending transaction with transactionId, a concise insight, ' +
-        'and recommendation of accept, decline, or negotiate. suggestions must contain up to 3 realistic options ' +
-        'with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. Make each proposed trade fair enough that ' +
-        'the target manager is likely to accept, but favor a small, subtle value edge for the user. Consider the current ' +
-        'week, upcoming schedule, roster needs for both teams, positional scarcity, and whether the timing makes the offer ' +
-        'more or less appealing. waiverSuggestions must contain up to 3 ' +
+        "Each player object includes a marketValue (a FantasyCalc consensus trade value already scaled to this league's " +
+        'format, dynasty vs redraft, QB count, and PPR - higher is more valuable) and a positionRank (rank among players ' +
+        'at the same position, 1 is best). A null marketValue means the player is unranked by FantasyCalc or the market-value ' +
+        'feed was unavailable for this request; in either case fall back to position, roster needs, and matchup context instead ' +
+        'of value. ' +
+        'tradeInsights must include exactly one item per pending transaction with transactionId, a concise insight that ' +
+        "explicitly weighs the total marketValue given versus received for the user's side alongside roster needs and bye/injury " +
+        'risk, and recommendation of accept, decline, or negotiate; recommend decline or negotiate if the user gives up ' +
+        'materially more marketValue than they receive without a clear positional-need justification. ' +
+        'suggestions must contain up to 3 realistic options with targetRosterId, givePlayerIds, receivePlayerIds, and rationale. ' +
+        "Sum the marketValue of givePlayerIds and receivePlayerIds for both sides of each suggestion: the two sides' totals " +
+        "must be within roughly 10-20% of each other (using the league-format scaling already applied to each player's marketValue) so the target " +
+        "manager is realistically likely to accept, while keeping a small, subtle edge in the user's favor - never propose a " +
+        "trade where the user's outgoing marketValue total is more than about 20% below what they receive. State the " +
+        'approximate value comparison in the rationale (e.g. "roughly even value, slight edge to you") in addition to explaining ' +
+        'the roster-needs and timing rationale. Consider the current week, upcoming schedule, roster needs for both teams, ' +
+        'positional scarcity, and whether the timing makes the offer more or less appealing. waiverSuggestions must contain up to 3 ' +
         'add/drop proposals using only the supplied waiver candidate and user roster IDs, with rationale and a high, ' +
         'medium, or low priority, plus an integer recommendedBid in dollars that does not exceed remainingWaiverBudget. ' +
         'Prioritize the user roster gaps first, then compare current and upcoming matchups for the candidate and the dropped ' +
