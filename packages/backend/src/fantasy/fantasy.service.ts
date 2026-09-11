@@ -47,6 +47,7 @@ const AI_ANALYSIS_CACHE_MS = 24 * 60 * 60 * 1000;
 const WAIVER_MARKET_CACHE_MS = 6 * 60 * 60 * 1000;
 const FANTASYCALC_CACHE_MS = 6 * 60 * 60 * 1000;
 const FANTASYCALC_FAILURE_CACHE_MS = 5 * 60 * 1000;
+const FANTASYCALC_TIMEOUT_MS = 2000;
 const WAIVER_HISTORY_SEASONS = 3;
 const NFL_REGULAR_SEASON_WEEKS = 18;
 const SLEEPER_ID_PATTERN = /^\d{1,32}$/;
@@ -139,6 +140,7 @@ export class FantasyService {
   private waiverMarketCache = new Map<string, { expiresAt: number; samples: WaiverMarketSample[] }>();
   private projectionCache = new Map<string, { expiresAt: number; projections: SleeperProjection[] }>();
   private fantasyCalcCache = new Map<string, { expiresAt: number; values: Map<string, FantasyCalcPlayerValue> }>();
+  private fantasyCalcRequests = new Map<string, Promise<Map<string, FantasyCalcPlayerValue>>>();
   private analysisCache = new Map<string, { expiresAt: number; analysis: AITradeAnalysis }>();
   private readonly openAi: OpenAIClientLike;
   private readonly serviceLogger = logger.child({ module: 'FantasyService' });
@@ -381,8 +383,10 @@ export class FantasyService {
 
   private resolveLeagueFormat(league: SleeperLeague): { isDynasty: boolean; numQbs: number; ppr: number } {
     const rosterPositions = league.roster_positions ?? [];
-    const numQbs = Math.max(1, rosterPositions.filter((slot) => slot === 'QB' || slot === 'SUPER_FLEX').length);
-    const ppr = league.scoring_settings?.rec ?? 0.5;
+    const requestedQbs = Math.max(1, rosterPositions.filter((slot) => slot === 'QB' || slot === 'SUPER_FLEX').length);
+    const numQbs = requestedQbs >= 2 ? 2 : 1;
+    const requestedPpr = league.scoring_settings?.rec;
+    const ppr = requestedPpr === undefined ? 0.5 : requestedPpr >= 0.75 ? 1 : requestedPpr >= 0.25 ? 0.5 : 0;
     // Sleeper league format: 0 = redraft, 1 = keeper, 2 = dynasty. Keeper leagues value long-term assets
     // similarly to dynasty, so both are treated as dynasty for valuation purposes.
     const isDynasty = (league.settings?.type ?? 0) >= 1;
@@ -403,44 +407,56 @@ export class FantasyService {
     if (cached && cached.expiresAt > Date.now()) {
       return cached.values;
     }
-    try {
-      const response = await Axios.get<FantasyCalcApiEntry[]>(FANTASYCALC_API_URL, {
-        params: { isDynasty, numQbs, numTeams, ppr },
-        timeout: 10000,
-      });
-      const values = new Map<string, FantasyCalcPlayerValue>(
-        response.data
-          .filter((entry): entry is FantasyCalcApiEntry & { player: { sleeperId: string } } =>
-            Boolean(entry.player.sleeperId),
-          )
-          .map((entry) => [
-            entry.player.sleeperId,
-            {
-              sleeperId: entry.player.sleeperId,
-              value: isDynasty ? entry.value : entry.redraftValue,
-              overallRank: entry.overallRank,
-              positionRank: entry.positionRank,
-              trend30Day: entry.trend30Day,
-              tradeFrequency: entry.maybeTradeFrequency ?? null,
-            },
-          ]),
-      );
-      this.fantasyCalcCache.set(cacheKey, { expiresAt: Date.now() + FANTASYCALC_CACHE_MS, values });
-      return values;
-    } catch (error) {
-      logError(this.serviceLogger, 'Failed to load FantasyCalc player values', error, {
-        isDynasty,
-        numQbs,
-        numTeams,
-        ppr,
-      });
-      const emptyValues = new Map<string, FantasyCalcPlayerValue>();
-      this.fantasyCalcCache.set(cacheKey, {
-        expiresAt: Date.now() + FANTASYCALC_FAILURE_CACHE_MS,
-        values: emptyValues,
-      });
-      return emptyValues;
+    const inFlight = this.fantasyCalcRequests.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
     }
+    const request = Axios.get<FantasyCalcApiEntry[]>(FANTASYCALC_API_URL, {
+      params: { isDynasty, numQbs, numTeams, ppr },
+      timeout: FANTASYCALC_TIMEOUT_MS,
+    })
+      .then((response) => {
+        const values = new Map<string, FantasyCalcPlayerValue>(
+          response.data
+            .filter((entry): entry is FantasyCalcApiEntry & { player: { sleeperId: string } } =>
+              Boolean(entry.player.sleeperId),
+            )
+            .map((entry) => [
+              entry.player.sleeperId,
+              {
+                sleeperId: entry.player.sleeperId,
+                value: isDynasty ? entry.value : entry.redraftValue,
+                overallRank: entry.overallRank,
+                positionRank: entry.positionRank,
+                trend30Day: entry.trend30Day,
+                tradeFrequency: entry.maybeTradeFrequency ?? null,
+              },
+            ]),
+        );
+        this.fantasyCalcCache.set(cacheKey, { expiresAt: Date.now() + FANTASYCALC_CACHE_MS, values });
+        this.analysisCache.clear();
+        return values;
+      })
+      .catch((error) => {
+        logError(this.serviceLogger, 'Failed to load FantasyCalc player values', error, {
+          isDynasty,
+          numQbs,
+          numTeams,
+          ppr,
+        });
+        const emptyValues = new Map<string, FantasyCalcPlayerValue>();
+        this.fantasyCalcCache.set(cacheKey, {
+          expiresAt: Date.now() + FANTASYCALC_FAILURE_CACHE_MS,
+          values: emptyValues,
+        });
+        this.analysisCache.clear();
+        return emptyValues;
+      })
+      .finally(() => {
+        this.fantasyCalcRequests.delete(cacheKey);
+      });
+    this.fantasyCalcRequests.set(cacheKey, request);
+    return request;
   }
 
   private getNflState(): Promise<NflState> {
@@ -1106,6 +1122,22 @@ export class FantasyService {
         });
         return [];
       }
+      const giveTotal = this.totalMarketValue(give);
+      const receiveTotal = this.totalMarketValue(receive);
+      if (
+        giveTotal === null ||
+        receiveTotal === null ||
+        receiveTotal <= 0 ||
+        giveTotal < receiveTotal * 0.8 ||
+        giveTotal > receiveTotal
+      ) {
+        this.serviceLogger.warn('Ignoring AI suggestion with unverifiable or unrealistic market values', {
+          targetRosterId: suggestion.targetRosterId,
+          giveTotal,
+          receiveTotal,
+        });
+        return [];
+      }
       return [
         {
           targetRosterId: target.rosterId,
@@ -1117,6 +1149,17 @@ export class FantasyService {
         },
       ];
     });
+  }
+
+  private totalMarketValue(players: FantasyPlayer[]): number | null {
+    let total = 0;
+    for (const player of players) {
+      if (player.marketValue === null) {
+        return null;
+      }
+      total += player.marketValue;
+    }
+    return total;
   }
 
   private buildWaiverSuggestions(
@@ -1253,8 +1296,9 @@ export class FantasyService {
         'teamHealth must assess the user roster relative to the supplied league with an integer percentage from 0 to 100 and a concise summary. ' +
         "Each player object includes a marketValue (a FantasyCalc consensus trade value already scaled to this league's " +
         'format, dynasty vs redraft, QB count, and PPR - higher is more valuable) and a positionRank (rank among players ' +
-        'at the same position, 1 is best). A null marketValue means the player is unranked by FantasyCalc (e.g. a rookie ' +
-        'or deep bench piece); in that case fall back to position, roster needs, and matchup context instead of value. ' +
+        'at the same position, 1 is best). A null marketValue means the player is unranked by FantasyCalc or the market-value ' +
+        'feed was unavailable for this request; in either case fall back to position, roster needs, and matchup context instead ' +
+        'of value. ' +
         'tradeInsights must include exactly one item per pending transaction with transactionId, a concise insight that ' +
         "explicitly weighs the total marketValue given versus received for the user's side alongside roster needs and bye/injury " +
         'risk, and recommendation of accept, decline, or negotiate; recommend decline or negotiate if the user gives up ' +
