@@ -48,7 +48,10 @@ const WAIVER_MARKET_CACHE_MS = 6 * 60 * 60 * 1000;
 const FANTASYCALC_CACHE_MS = 6 * 60 * 60 * 1000;
 const FANTASYCALC_FAILURE_CACHE_MS = 5 * 60 * 1000;
 const FANTASYCALC_TIMEOUT_MS = 2000;
-const FANTASYCALC_OVERVIEW_WAIT_MS = 150;
+// Must be long enough for the FantasyCalc request (bounded by FANTASYCALC_TIMEOUT_MS) to actually
+// finish on a cold cache; a short wait here mostly guarantees the fallback (all-null marketValues)
+// on every first request after a deploy, since the in-memory cache resets on restart.
+const FANTASYCALC_OVERVIEW_WAIT_MS = FANTASYCALC_TIMEOUT_MS;
 const WAIVER_HISTORY_SEASONS = 3;
 const NFL_REGULAR_SEASON_WEEKS = 18;
 const SLEEPER_ID_PATTERN = /^\d{1,32}$/;
