@@ -12,6 +12,7 @@ import type { OpenAIClientLike } from '../lib/resilientOpenAIClient';
 import { SlackUser } from '../shared/db/models/SlackUser';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
+import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 import type {
   AITradeAnalysis,
   FantasyLandingResponse,
@@ -48,6 +49,9 @@ const WAIVER_MARKET_CACHE_MS = 6 * 60 * 60 * 1000;
 const FANTASYCALC_CACHE_MS = 6 * 60 * 60 * 1000;
 const FANTASYCALC_FAILURE_CACHE_MS = 5 * 60 * 1000;
 const FANTASYCALC_TIMEOUT_MS = 2000;
+const FANTASYCALC_STALE_CACHE_MS = 24 * 60 * 60 * 1000;
+const FANTASY_CACHE_PREFIX = 'fantasy:cache';
+const PLAYER_CACHE_KEY = `${FANTASY_CACHE_PREFIX}:players:nfl`;
 // Must be long enough for the FantasyCalc request (bounded by FANTASYCALC_TIMEOUT_MS) to actually
 // finish on a cold cache; a short wait here mostly guarantees the fallback (all-null marketValues)
 // on every first request after a deploy, since the in-memory cache resets on restart.
@@ -115,8 +119,14 @@ interface FantasyCalcSnapshot {
   version: number;
 }
 
-interface FantasyCalcCacheEntry extends FantasyCalcSnapshot {
-  expiresAt: number;
+interface FantasyCalcRedisEntry {
+  values: Array<[string, FantasyCalcPlayerValue]>;
+  version: number;
+}
+
+interface TradeAnalysisCacheEntry {
+  analysis: AITradeAnalysis;
+  marketValueVersion: number;
 }
 
 const isOutputMessage = (item: ResponseOutputItem): item is ResponseOutputMessage => item.type === 'message';
@@ -140,6 +150,124 @@ function isIntegerInRange(value: unknown, minimum: number, maximum: number): val
   return typeof value === 'number' && Number.isInteger(value) && value >= minimum && value <= maximum;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function compactPlayers(players: Record<string, unknown>): Record<string, SleeperPlayer | undefined> {
+  const result: Record<string, SleeperPlayer | undefined> = {};
+  for (const [key, value] of Object.entries(players)) {
+    if (isRecord(value)) {
+      result[key] = {
+        player_id: typeof value.player_id === 'string' ? value.player_id : key,
+        first_name: typeof value.first_name === 'string' ? value.first_name : null,
+        last_name: typeof value.last_name === 'string' ? value.last_name : null,
+        position: typeof value.position === 'string' ? value.position : null,
+        team: typeof value.team === 'string' ? value.team : null,
+        injury_status: typeof value.injury_status === 'string' ? value.injury_status : null,
+        fantasy_positions: Array.isArray(value.fantasy_positions)
+          ? value.fantasy_positions.filter((p): p is string => typeof p === 'string')
+          : undefined,
+        search_rank: typeof value.search_rank === 'number' ? value.search_rank : null,
+      };
+    }
+  }
+  return result;
+}
+
+function isSleeperPlayerRecord(value: unknown): value is Record<string, unknown> {
+  return isRecord(value);
+}
+
+function isSleeperProjectionArray(value: unknown): value is SleeperProjection[] {
+  return Array.isArray(value) && value.every((item) => isRecord(item) && typeof item.player_id === 'string');
+}
+
+function isWaiverMarketSampleArray(value: unknown): value is WaiverMarketSample[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.pricePerPoint === 'number' &&
+        (typeof item.position === 'string' || item.position === null) &&
+        typeof item.weight === 'number',
+    )
+  );
+}
+
+function isFantasyCalcPlayerValue(value: unknown): value is FantasyCalcPlayerValue {
+  return (
+    isRecord(value) &&
+    typeof value.sleeperId === 'string' &&
+    typeof value.value === 'number' &&
+    typeof value.overallRank === 'number' &&
+    typeof value.positionRank === 'number' &&
+    typeof value.trend30Day === 'number' &&
+    (typeof value.tradeFrequency === 'number' || value.tradeFrequency === null)
+  );
+}
+
+function isFantasyCalcRedisEntry(value: unknown): value is FantasyCalcRedisEntry {
+  return (
+    isRecord(value) &&
+    Number.isInteger(value.version) &&
+    Array.isArray(value.values) &&
+    value.values.every(
+      (entry) =>
+        Array.isArray(entry) &&
+        entry.length === 2 &&
+        typeof entry[0] === 'string' &&
+        isFantasyCalcPlayerValue(entry[1]),
+    )
+  );
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isAITradeAnalysis(value: unknown): value is AITradeAnalysis {
+  return (
+    isRecord(value) &&
+    isRecord(value.teamHealth) &&
+    typeof value.teamHealth.percentage === 'number' &&
+    typeof value.teamHealth.summary === 'string' &&
+    Array.isArray(value.tradeInsights) &&
+    value.tradeInsights.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.transactionId === 'string' &&
+        typeof item.insight === 'string' &&
+        isRecommendation(item.recommendation),
+    ) &&
+    Array.isArray(value.suggestions) &&
+    value.suggestions.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.targetRosterId === 'number' &&
+        isStringArray(item.givePlayerIds) &&
+        isStringArray(item.receivePlayerIds) &&
+        typeof item.rationale === 'string',
+    ) &&
+    Array.isArray(value.waiverSuggestions) &&
+    value.waiverSuggestions.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.addPlayerId === 'string' &&
+        typeof item.dropPlayerId === 'string' &&
+        typeof item.rationale === 'string' &&
+        isPriority(item.priority) &&
+        typeof item.recommendedBid === 'number',
+    ) &&
+    typeof value.lineupSummary === 'string'
+  );
+}
+
+function isTradeAnalysisCacheEntry(value: unknown): value is TradeAnalysisCacheEntry {
+  return isRecord(value) && Number.isInteger(value.marketValueVersion) && isAITradeAnalysis(value.analysis);
+}
+
 export class FantasyValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -148,18 +276,11 @@ export class FantasyValidationError extends Error {
 }
 
 export class FantasyService {
-  private playerCache: { expiresAt: number; players: Record<string, SleeperPlayer | undefined> } | null = null;
   private playerRequest: Promise<Record<string, SleeperPlayer | undefined>> | null = null;
-  private waiverMarketCache = new Map<string, { expiresAt: number; samples: WaiverMarketSample[] }>();
-  private projectionCache = new Map<string, { expiresAt: number; projections: SleeperProjection[] }>();
-  private fantasyCalcCache = new Map<string, FantasyCalcCacheEntry>();
   private fantasyCalcAnalysisVersions = new Map<string, number>();
   private fantasyCalcRequests = new Map<string, Promise<Map<string, FantasyCalcPlayerValue>>>();
-  private analysisCache = new Map<
-    string,
-    { expiresAt: number; analysis: AITradeAnalysis; marketValueVersion: number }
-  >();
   private readonly openAi: OpenAIClientLike;
+  private readonly redis = RedisPersistenceService.getInstance();
   private readonly serviceLogger = logger.child({ module: 'FantasyService' });
 
   constructor(openAi?: OpenAIClientLike) {
@@ -170,6 +291,38 @@ export class FantasyService {
           apiKey: process.env.OPENAI_API_KEY,
         }),
       );
+  }
+
+  private getRedisCacheKey(namespace: string, key: string): string {
+    return `${FANTASY_CACHE_PREFIX}:${namespace}:${encodeURIComponent(key)}`;
+  }
+
+  private async readRedisCache<T>(key: string, validator: (value: unknown) => value is T): Promise<T | null> {
+    try {
+      const raw = await this.redis.getValue(key);
+      if (!raw) {
+        return null;
+      }
+
+      const parsed: unknown = JSON.parse(raw);
+      if (!validator(parsed)) {
+        this.serviceLogger.warn('Ignoring invalid fantasy cache entry', { key });
+        await this.redis.removeKey(key);
+        return null;
+      }
+      return parsed;
+    } catch (error) {
+      logError(this.serviceLogger, 'Failed to read fantasy cache entry from Redis', error, { key });
+      return null;
+    }
+  }
+
+  private async writeRedisCache(key: string, value: unknown, ttlMs: number): Promise<void> {
+    try {
+      await this.redis.setValueWithExpire(key, JSON.stringify(value), 'PX', ttlMs);
+    } catch (error) {
+      logError(this.serviceLogger, 'Failed to write fantasy cache entry to Redis', error, { key });
+    }
   }
 
   public async getLanding(slackId: string, teamId: string): Promise<FantasyLandingResponse> {
@@ -432,22 +585,37 @@ export class FantasyService {
    * with less precise fairness signal.
    */
   private async getFantasyCalcValues(league: SleeperLeague): Promise<Map<string, FantasyCalcPlayerValue>> {
+    const cacheKey = this.getFantasyCalcCacheKey(league);
+    const inFlight = this.fantasyCalcRequests.get(cacheKey);
+    if (inFlight) return inFlight;
+
+    const request = this.loadFantasyCalcValues(league, cacheKey).finally(() => {
+      this.fantasyCalcRequests.delete(cacheKey);
+    });
+    this.fantasyCalcRequests.set(cacheKey, request);
+    return request;
+  }
+
+  private async loadFantasyCalcValues(
+    league: SleeperLeague,
+    cacheKey: string,
+  ): Promise<Map<string, FantasyCalcPlayerValue>> {
     const { isDynasty, numQbs, ppr } = this.resolveLeagueFormat(league);
     const numTeams = league.total_rosters || 12;
-    const cacheKey = this.getFantasyCalcCacheKey(league);
-    const cached = this.fantasyCalcCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.values;
+    const redisKey = this.getRedisCacheKey('fantasycalc', cacheKey);
+    const staleRedisKey = this.getRedisCacheKey('fantasycalc-stale', cacheKey);
+    const cached = await this.readRedisCache(redisKey, isFantasyCalcRedisEntry);
+    if (cached) {
+      this.fantasyCalcAnalysisVersions.set(cacheKey, cached.version);
+      return new Map(cached.values);
     }
-    const inFlight = this.fantasyCalcRequests.get(cacheKey);
-    if (inFlight) {
-      return inFlight;
-    }
-    const request = Axios.get<FantasyCalcApiEntry[]>(FANTASYCALC_API_URL, {
+    const stale = await this.readRedisCache(staleRedisKey, isFantasyCalcRedisEntry);
+    if (stale) this.fantasyCalcAnalysisVersions.set(cacheKey, stale.version);
+    return Axios.get<FantasyCalcApiEntry[]>(FANTASYCALC_API_URL, {
       params: { isDynasty, numQbs, numTeams, ppr },
       timeout: FANTASYCALC_TIMEOUT_MS,
     })
-      .then((response) => {
+      .then(async (response) => {
         const values = new Map<string, FantasyCalcPlayerValue>(
           response.data
             .filter((entry): entry is FantasyCalcApiEntry & { player: { sleeperId: string } } =>
@@ -465,47 +633,46 @@ export class FantasyService {
               },
             ]),
         );
-        const version = this.getFantasyCalcAnalysisVersion(league) + 1;
-        this.fantasyCalcCache.set(cacheKey, { expiresAt: Date.now() + FANTASYCALC_CACHE_MS, values, version });
+        const version = (stale?.version ?? this.getFantasyCalcAnalysisVersion(league)) + 1;
+        const entry: FantasyCalcRedisEntry = { values: [...values], version };
+        await Promise.all([
+          this.writeRedisCache(redisKey, entry, FANTASYCALC_CACHE_MS),
+          this.writeRedisCache(staleRedisKey, entry, FANTASYCALC_STALE_CACHE_MS),
+        ]);
         this.fantasyCalcAnalysisVersions.set(cacheKey, version);
         return values;
       })
-      .catch((error) => {
+      .catch(async (error) => {
         logError(this.serviceLogger, 'Failed to load FantasyCalc player values', error, {
           isDynasty,
           numQbs,
           numTeams,
           ppr,
         });
-        const fallbackValues = cached?.values ?? new Map<string, FantasyCalcPlayerValue>();
-        const version = cached?.version ?? this.getFantasyCalcAnalysisVersion(league);
-        this.fantasyCalcCache.set(cacheKey, {
-          expiresAt: Date.now() + FANTASYCALC_FAILURE_CACHE_MS,
-          values: fallbackValues,
-          version,
-        });
+        const fallbackValues = new Map(stale?.values ?? []);
+        const version = stale?.version ?? this.getFantasyCalcAnalysisVersion(league);
+        await this.writeRedisCache(redisKey, { values: [...fallbackValues], version }, FANTASYCALC_FAILURE_CACHE_MS);
         return fallbackValues;
-      })
-      .finally(() => {
-        this.fantasyCalcRequests.delete(cacheKey);
       });
-    this.fantasyCalcRequests.set(cacheKey, request);
-    return request;
   }
 
-  private getFantasyCalcValuesForOverview(league: SleeperLeague): Promise<FantasyCalcSnapshot> {
+  private async getFantasyCalcValuesForOverview(league: SleeperLeague): Promise<FantasyCalcSnapshot> {
     const cacheKey = this.getFantasyCalcCacheKey(league);
-    const cached = this.fantasyCalcCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      return Promise.resolve({ values: cached.values, version: cached.version });
+    const redisKey = this.getRedisCacheKey('fantasycalc', cacheKey);
+    const staleRedisKey = this.getRedisCacheKey('fantasycalc-stale', cacheKey);
+    const cached = await this.readRedisCache(redisKey, isFantasyCalcRedisEntry);
+    if (cached) {
+      this.fantasyCalcAnalysisVersions.set(cacheKey, cached.version);
+      return { values: new Map(cached.values), version: cached.version };
     }
-
-    const fallbackSnapshot: FantasyCalcSnapshot = cached
-      ? { values: cached.values, version: cached.version }
+    const stale = await this.readRedisCache(staleRedisKey, isFantasyCalcRedisEntry);
+    if (stale) this.fantasyCalcAnalysisVersions.set(cacheKey, stale.version);
+    const fallbackSnapshot: FantasyCalcSnapshot = stale
+      ? { values: new Map(stale.values), version: stale.version }
       : { values: new Map<string, FantasyCalcPlayerValue>(), version: this.getFantasyCalcAnalysisVersion(league) };
     const refreshPromise = this.getFantasyCalcValues(league);
-    if (cached) {
-      return Promise.resolve(fallbackSnapshot);
+    if (stale) {
+      return fallbackSnapshot;
     }
 
     return new Promise((resolve) => {
@@ -539,25 +706,22 @@ export class FantasyService {
     return this.get<SleeperLeague[]>(`/user/${encodeURIComponent(userId)}/leagues/nfl/${encodeURIComponent(season)}`);
   }
 
-  private getProjections(state: NflState, refresh: boolean): Promise<SleeperProjection[]> {
+  private async getProjections(state: NflState, refresh: boolean): Promise<SleeperProjection[]> {
     const key = `current:${state.season}:${state.season_type}:${Math.max(state.week, 1)}`;
-    const cached = this.projectionCache.get(key);
-    if (!refresh && cached && cached.expiresAt > Date.now()) {
-      return Promise.resolve(cached.projections);
+    const redisKey = this.getRedisCacheKey('projections', key);
+    if (!refresh) {
+      const cached = await this.readRedisCache(redisKey, isSleeperProjectionArray);
+      if (cached) return cached;
     }
-    return Axios.get<SleeperProjection[]>(
+    const response = await Axios.get<SleeperProjection[]>(
       `${SLEEPER_PROJECTIONS_URL}/${encodeURIComponent(state.season)}/${Math.max(state.week, 1)}`,
       {
         params: { season_type: state.season_type },
         timeout: 10000,
       },
-    ).then((response) => {
-      this.projectionCache.set(key, {
-        expiresAt: Date.now() + AI_ANALYSIS_CACHE_MS,
-        projections: response.data,
-      });
-      return response.data;
-    });
+    );
+    await this.writeRedisCache(redisKey, response.data, AI_ANALYSIS_CACHE_MS);
+    return response.data;
   }
 
   private async getTradeAnalysis(
@@ -566,34 +730,31 @@ export class FantasyService {
     generate: () => Promise<AITradeAnalysis>,
     marketValueVersion = 0,
   ): Promise<AITradeAnalysis> {
-    const cached = this.analysisCache.get(key);
-    if (!refresh && cached && cached.expiresAt > Date.now() && cached.marketValueVersion === marketValueVersion) {
-      return cached.analysis;
+    const redisKey = this.getRedisCacheKey('analysis', key);
+    if (!refresh) {
+      const cached = await this.readRedisCache(redisKey, isTradeAnalysisCacheEntry);
+      if (cached && cached.marketValueVersion === marketValueVersion) return cached.analysis;
     }
 
     const analysis = await generate();
-    this.analysisCache.set(key, {
-      expiresAt: Date.now() + AI_ANALYSIS_CACHE_MS,
-      analysis,
-      marketValueVersion,
-    });
+    await this.writeRedisCache(redisKey, { analysis, marketValueVersion }, AI_ANALYSIS_CACHE_MS);
     return analysis;
   }
 
-  private getSeasonProjections(season: string, week: number): Promise<SleeperProjection[]> {
+  private async getSeasonProjections(season: string, week: number): Promise<SleeperProjection[]> {
     const key = `${season}:${week}`;
-    const cached = this.projectionCache.get(key);
-    if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.projections);
-    return Axios.get<SleeperProjection[]>(`${SLEEPER_PROJECTIONS_URL}/${encodeURIComponent(season)}/${week}`, {
-      params: { season_type: 'regular' },
-      timeout: 10000,
-    }).then((response) => {
-      this.projectionCache.set(key, {
-        expiresAt: Date.now() + WAIVER_MARKET_CACHE_MS,
-        projections: response.data,
-      });
-      return response.data;
-    });
+    const redisKey = this.getRedisCacheKey('projections', key);
+    const cached = await this.readRedisCache(redisKey, isSleeperProjectionArray);
+    if (cached) return cached;
+    const response = await Axios.get<SleeperProjection[]>(
+      `${SLEEPER_PROJECTIONS_URL}/${encodeURIComponent(season)}/${week}`,
+      {
+        params: { season_type: 'regular' },
+        timeout: 10000,
+      },
+    );
+    await this.writeRedisCache(redisKey, response.data, WAIVER_MARKET_CACHE_MS);
+    return response.data;
   }
 
   private async getWaiverBidGuidance(
@@ -607,9 +768,10 @@ export class FantasyService {
     remainingBudget: number,
   ): Promise<WaiverBidGuidance> {
     const cacheKey = `${league.league_id}:${state.season}:${state.week}`;
-    const cached = this.waiverMarketCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      return this.buildWaiverBidGuidance(cached.samples, league, currentProjections, candidates, remainingBudget);
+    const redisKey = this.getRedisCacheKey('waiver-market', cacheKey);
+    const cached = await this.readRedisCache(redisKey, isWaiverMarketSampleArray);
+    if (cached) {
+      return this.buildWaiverBidGuidance(cached, league, currentProjections, candidates, remainingBudget);
     }
 
     type SeasonTransactions = {
@@ -741,10 +903,7 @@ export class FantasyService {
       }
     }
 
-    this.waiverMarketCache.set(cacheKey, {
-      expiresAt: Date.now() + WAIVER_MARKET_CACHE_MS,
-      samples,
-    });
+    await this.writeRedisCache(redisKey, samples, WAIVER_MARKET_CACHE_MS);
     return this.buildWaiverBidGuidance(samples, league, currentProjections, candidates, remainingBudget);
   }
 
@@ -787,16 +946,17 @@ export class FantasyService {
   }
 
   private async getPlayers(): Promise<Record<string, SleeperPlayer | undefined>> {
-    if (this.playerCache && this.playerCache.expiresAt > Date.now()) {
-      return this.playerCache.players;
-    }
+    const cached = await this.readRedisCache(PLAYER_CACHE_KEY, isSleeperPlayerRecord);
+    if (cached) return compactPlayers(cached);
+
     if (this.playerRequest) {
       return this.playerRequest;
     }
-    this.playerRequest = this.get<Record<string, SleeperPlayer | undefined>>('/players/nfl?active=true')
-      .then((players) => {
-        this.playerCache = { expiresAt: Date.now() + PLAYER_CACHE_MS, players };
-        return players;
+    this.playerRequest = this.get<Record<string, unknown>>('/players/nfl?active=true')
+      .then(async (players) => {
+        const compacted = compactPlayers(players);
+        await this.writeRedisCache(PLAYER_CACHE_KEY, compacted, PLAYER_CACHE_MS);
+        return compacted;
       })
       .finally(() => {
         this.playerRequest = null;
