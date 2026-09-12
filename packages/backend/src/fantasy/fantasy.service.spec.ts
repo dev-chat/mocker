@@ -1,6 +1,7 @@
 import Axios from 'axios';
 import { getRepository } from 'typeorm';
 import type { OpenAIClientLike } from '../lib/resilientOpenAIClient';
+import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 import type {
   AITradeAnalysis,
   FantasyCalcPlayerValue,
@@ -77,6 +78,7 @@ type FantasyCalcResponseEntry = {
 };
 
 type FantasyServiceInternals = {
+  getPlayers: () => Promise<Record<string, SleeperPlayer | undefined>>;
   getTradeAnalysis: (
     key: string,
     refresh: boolean,
@@ -148,7 +150,10 @@ describe('FantasyService', () => {
   const create = vi.fn();
   let service: FantasyService;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const redis = RedisPersistenceService.getInstance();
+    const cacheKeys = await redis.getPattern('fantasy:');
+    await Promise.all(cacheKeys.map((key) => redis.removeKey(key)));
     (getRepository as Mock).mockReturnValue({ findOne });
     create.mockResolvedValue(aiResponse);
     service = new FantasyService({ responses: { create } } as unknown as OpenAIClientLike);
@@ -178,6 +183,37 @@ describe('FantasyService', () => {
     expect(Axios.get).not.toHaveBeenCalled();
   });
 
+  it('shares a compact NFL player cache through Redis across service instances', async () => {
+    (Axios.get as Mock).mockResolvedValueOnce({
+      data: {
+        p1: {
+          player_id: 'p1',
+          first_name: 'Drew',
+          last_name: 'Runner',
+          position: 'RB',
+          team: 'SEA',
+          injury_status: null,
+          fantasy_positions: ['RB'],
+          search_rank: 10,
+          oversized_blob: 'not retained',
+        },
+      },
+    });
+    const firstInternals = service as unknown as FantasyServiceInternals;
+    const secondInternals = new FantasyService({
+      responses: { create },
+    } as unknown as OpenAIClientLike) as unknown as FantasyServiceInternals;
+
+    const first = await firstInternals.getPlayers();
+    const second = await secondInternals.getPlayers();
+
+    expect(Axios.get).toHaveBeenCalledOnce();
+    expect(second).toEqual(first);
+    expect(await RedisPersistenceService.getInstance().getValue('fantasy:cache:players:nfl')).not.toContain(
+      'oversized_blob',
+    );
+  });
+
   it('caches AI analysis for 24 hours and bypasses the cache on refresh', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-09T12:00:00.000Z'));
@@ -192,9 +228,9 @@ describe('FantasyService', () => {
     const generate = vi.fn().mockResolvedValue(analysis);
 
     try {
-      await expect(internals.getTradeAnalysis('U1:T1:999:1:2026:1', false, generate)).resolves.toBe(analysis);
+      await expect(internals.getTradeAnalysis('U1:T1:999:1:2026:1', false, generate)).resolves.toEqual(analysis);
       vi.advanceTimersByTime(24 * 60 * 60 * 1000 - 1);
-      await expect(internals.getTradeAnalysis('U1:T1:999:1:2026:1', false, generate)).resolves.toBe(analysis);
+      await expect(internals.getTradeAnalysis('U1:T1:999:1:2026:1', false, generate)).resolves.toEqual(analysis);
       expect(generate).toHaveBeenCalledOnce();
 
       await expect(internals.getTradeAnalysis('U1:T1:999:1:2026:1', true, generate)).resolves.toBe(analysis);
@@ -1574,6 +1610,7 @@ describe('FantasyService', () => {
 
     const first = internals.getFantasyCalcValues(league);
     const second = internals.getFantasyCalcValues(league);
+    await vi.waitFor(() => expect(resolveRequest).toBeDefined());
     resolveRequest?.({
       data: [
         {
@@ -1654,13 +1691,6 @@ describe('FantasyService', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
     const internals = service as unknown as FantasyServiceInternals;
-    const serviceState = service as unknown as {
-      fantasyCalcCache: Map<
-        string,
-        { expiresAt: number; values: Map<string, FantasyCalcPlayerValue>; version: number }
-      >;
-      fantasyCalcAnalysisVersions: Map<string, number>;
-    };
     const league: SleeperLeague = {
       league_id: '998',
       name: 'Redraft League',
@@ -1684,17 +1714,17 @@ describe('FantasyService', () => {
       ],
     ]);
     const cacheKey = 'false:1:12:0.5';
-    serviceState.fantasyCalcAnalysisVersions.set(cacheKey, 1);
-    serviceState.fantasyCalcCache.set(cacheKey, {
-      expiresAt: Date.now() - 1,
-      values: staleValues,
-      version: 1,
-    });
+    await RedisPersistenceService.getInstance().setValueWithExpire(
+      `fantasy:cache:fantasycalc-stale:${encodeURIComponent(cacheKey)}`,
+      JSON.stringify({ values: [...staleValues], version: 1 }),
+      'PX',
+      24 * 60 * 60 * 1000,
+    );
     (Axios.get as Mock).mockRejectedValueOnce(new Error('network error'));
 
     try {
-      await expect(internals.getFantasyCalcValues(league)).resolves.toBe(staleValues);
-      await expect(internals.getFantasyCalcValues(league)).resolves.toBe(staleValues);
+      await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(staleValues);
+      await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(staleValues);
       expect(Axios.get).toHaveBeenCalledTimes(1);
       expect(internals.getFantasyCalcAnalysisVersion(league)).toBe(1);
     } finally {
@@ -1764,13 +1794,6 @@ describe('FantasyService', () => {
 
   it('keeps the overview FantasyCalc version aligned with the fallback values snapshot', async () => {
     const internals = service as unknown as FantasyServiceInternals;
-    const serviceState = service as unknown as {
-      fantasyCalcCache: Map<
-        string,
-        { expiresAt: number; values: Map<string, FantasyCalcPlayerValue>; version: number }
-      >;
-      fantasyCalcAnalysisVersions: Map<string, number>;
-    };
     const league: SleeperLeague = {
       league_id: '998',
       name: 'Redraft League',
@@ -1794,12 +1817,12 @@ describe('FantasyService', () => {
       ],
     ]);
     const cacheKey = 'false:1:12:0.5';
-    serviceState.fantasyCalcAnalysisVersions.set(cacheKey, 1);
-    serviceState.fantasyCalcCache.set(cacheKey, {
-      expiresAt: Date.now() - 1,
-      values: staleValues,
-      version: 1,
-    });
+    await RedisPersistenceService.getInstance().setValueWithExpire(
+      `fantasy:cache:fantasycalc-stale:${encodeURIComponent(cacheKey)}`,
+      JSON.stringify({ values: [...staleValues], version: 1 }),
+      'PX',
+      24 * 60 * 60 * 1000,
+    );
     (Axios.get as Mock).mockResolvedValueOnce({
       data: [
         {
@@ -1815,7 +1838,7 @@ describe('FantasyService', () => {
 
     const snapshot = await internals.getFantasyCalcValuesForOverview(league);
 
-    expect(snapshot.values).toBe(staleValues);
+    expect(snapshot.values).toEqual(staleValues);
     expect(snapshot.version).toBe(1);
     await expect(internals.getFantasyCalcValues(league)).resolves.toEqual(
       new Map([
