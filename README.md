@@ -1,6 +1,6 @@
 # Mocker
 
-A Slack app that lets you mock your friends. Features real-time reactions, reputation tracking, game modes (Muzzle, Backfire, Counter, etc.), AI-powered summaries, and a web-based search interface for message history with team-scoped access control.
+A Slack extension that does it all. Features real-time reactions, reputation tracking, game modes (Muzzle, Backfire, Counter, etc.), AI-powered summaries, and a web-based search interface for message history with team-scoped access control.
 
 ## Architecture
 
