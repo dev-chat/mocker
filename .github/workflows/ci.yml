@@ -48,7 +48,7 @@ jobs:
           node-version: '24.14.1'
           cache: 'npm'
       - run: npm ci
-      - run: tar -czf node-modules.tar.gz node_modules
+      - run: tar -czf node-modules.tar.gz node_modules $(find packages -type d -name node_modules -prune -print)
       - uses: actions/upload-artifact@v4
         with:
           name: node-modules
