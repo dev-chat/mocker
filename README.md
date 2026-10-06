@@ -91,7 +91,6 @@ Add these slash commands with their request URLs:
   The user token must belong to a workspace **admin or owner**, because only an admin user token
   may delete another member's message.
   - `chat:write` — required for `chat.delete` when muzzling
-  - `users.profile:write` — required for `users.setPhoto`
   - `openid` — modern Sign in with Slack (see below)
 
 #### Search UI login
@@ -119,14 +118,18 @@ Copy your **Bot Token** and **User OAuth Token** from the app credentials page.
 #### Token usage
 
 The bot token (`MUZZLE_BOT_TOKEN`) is granular and is used for posting, editing, uploading and
-listing. The user token (`MUZZLE_BOT_USER_TOKEN`) is retained only for the two operations that
-genuinely require a user identity:
+listing. The user token (`MUZZLE_BOT_USER_TOKEN`) is retained only for deleting another member's
+message, which requires an admin/owner user token:
 
 - `chat.delete` — deleting another member's message requires an admin/owner user token.
-- `users.setPhoto` — acts on the authenticated user's own profile.
 
 Perspectival scopes (`chat:write:bot`, `chat:write:user`, `files:write:user`) and the `as_user`
 parameter apply only to the classic user token and are not used for bot-token calls.
+
+Moonbeam relaunches generate and post an image, but do not update a Slack profile photo.
+Slack's `users.setPhoto` method acts on the user represented by its token and is deprecated, so
+using the app's user token could overwrite the installing admin's photo. To change Moonbeam's
+app/bot icon, update it in the Slack app configuration.
 
 ### 2. Set Up MySQL Database
 

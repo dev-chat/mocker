@@ -43,7 +43,6 @@ const buildAiService = (): AIService => {
 
   ai.webService = {
     sendMessage: vi.fn().mockResolvedValue({ ok: true }),
-    setProfilePhoto: vi.fn().mockResolvedValue({ ok: true }),
   } as unknown as AIService['webService'];
 
   ai.slackService = {
@@ -226,7 +225,6 @@ describe('AIService', () => {
       await aiService.redeployMoonbeam();
 
       expect(diskSpy).toHaveBeenCalled();
-      expect(aiService.webService.setProfilePhoto).toHaveBeenCalledWith(expect.any(Buffer));
       expect(aiService.webService.sendMessage).toHaveBeenCalledWith(
         '#muzzlefeedback',
         'Moonbeam has been deployed.',

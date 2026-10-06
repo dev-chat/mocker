@@ -36,7 +36,6 @@ import { ResilientOpenAIClient } from '../lib/resilientOpenAIClient';
 import type { OpenAIClientLike } from '../lib/resilientOpenAIClient';
 import type { Part } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
-import sharp from 'sharp';
 import { extractParticipantSlackIds } from './helpers/extractParticipantSlackIds';
 
 interface ReleaseCommit {
@@ -313,12 +312,7 @@ export class AIService {
     return Promise.all([aiImage, aiQuote, releaseChangelog])
       .then(async (results) => {
         const [imageBytes, quote, changelog] = results;
-        const [imageUrl] = await Promise.all([
-          this.writeImageBufferToDiskAndReturnUrl(imageBytes),
-          this.updateMoonbeamProfilePhoto(imageBytes).catch((error) => {
-            logError(this.aiServiceLogger, 'Failed to update Moonbeam profile photo during redeploy', error);
-          }),
-        ]);
+        const imageUrl = await this.writeImageBufferToDiskAndReturnUrl(imageBytes);
 
         this.aiServiceLogger.info('Redeploy Moonbeam - generated quote and image successfully');
         this.aiServiceLogger.info('Redeploy Moonbeam - quote:', quote);
@@ -622,14 +616,6 @@ export class AIService {
           channelId,
         });
       });
-  }
-
-  private async updateMoonbeamProfilePhoto(imageBytes: Buffer): Promise<void> {
-    const profileImage = await sharp(imageBytes)
-      .resize(512, 512, { fit: 'cover', position: 'centre' })
-      .png()
-      .toBuffer();
-    await this.webService.setProfilePhoto(profileImage);
   }
 
   private async getMoonbeamReleaseChangelog(): Promise<string> {
