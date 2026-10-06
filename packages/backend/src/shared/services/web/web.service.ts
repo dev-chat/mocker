@@ -9,7 +9,6 @@ import type {
   Block,
   ConversationsListResponse,
   UsersListResponse,
-  UsersSetPhotoArguments,
 } from '@slack/web-api';
 import { WebClient } from '@slack/web-api';
 import { logError } from '../../logger/error-logging';
@@ -121,31 +120,6 @@ export class WebService {
           text,
           hasBlocks: !!blocks?.length,
           postRequest,
-          errorCode: getSlackErrorCode(e),
-        });
-        throw e;
-      });
-  }
-
-  public setProfilePhoto(image: Buffer): Promise<WebAPICallResult> {
-    // users.setPhoto acts on the authenticated user's own profile, so it requires the user token.
-    const token: string | undefined = process.env.MUZZLE_BOT_USER_TOKEN;
-    const photoRequest: UsersSetPhotoArguments = {
-      token,
-      image,
-    };
-
-    return this.web.users
-      .setPhoto(photoRequest)
-      .then((result) => {
-        if (result.ok === false) {
-          throw new Error(result.error || 'unknown_slack_error');
-        }
-
-        return result;
-      })
-      .catch((e) => {
-        logError(this.logger, 'Failed to set Slack profile photo', e, {
           errorCode: getSlackErrorCode(e),
         });
         throw e;

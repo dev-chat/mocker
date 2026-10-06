@@ -8,7 +8,7 @@ type MockWebClient = {
     postEphemeral: Mock;
     update: Mock;
   };
-  users: { list: Mock; setPhoto: Mock };
+  users: { list: Mock };
   conversations: { list: Mock };
   files: { upload: Mock };
 };
@@ -133,35 +133,6 @@ describe('WebService', () => {
       expect(mockWebClient.chat.update).toHaveBeenCalledWith(
         expect.objectContaining({ channel: 'C1', text: 'updated', ts: '1.23' }),
       );
-    });
-  });
-
-  describe('setProfilePhoto', () => {
-    it('uploads the profile photo successfully', async () => {
-      const result = { ok: true };
-      const image = Buffer.from('png-bytes');
-      mockWebClient.users.setPhoto.mockResolvedValue(result);
-
-      await expect(webService.setProfilePhoto(image)).resolves.toEqual(result);
-      expect(mockWebClient.users.setPhoto).toHaveBeenCalledWith(expect.objectContaining({ image }));
-    });
-
-    it('throws and logs when Slack responds with ok false', async () => {
-      const loggerSpy = vi.spyOn(webService.logger, 'error');
-      mockWebClient.users.setPhoto.mockResolvedValue({ ok: false, error: 'bad_image' });
-
-      await expect(webService.setProfilePhoto(Buffer.from('png-bytes'))).rejects.toThrow('bad_image');
-      expect(loggerSpy).toHaveBeenCalled();
-    });
-
-    it('throws and logs when the upload rejects', async () => {
-      const loggerSpy = vi.spyOn(webService.logger, 'error');
-      const error = new Error('upload failed');
-      (error as SlackApiError).data = { error: 'ratelimited' };
-      mockWebClient.users.setPhoto.mockRejectedValue(error);
-
-      await expect(webService.setProfilePhoto(Buffer.from('png-bytes'))).rejects.toThrow('upload failed');
-      expect(loggerSpy).toHaveBeenCalled();
     });
   });
 
