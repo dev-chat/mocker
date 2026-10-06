@@ -27,13 +27,14 @@ ENV NODE_ENV=production \
 	PORT=80 \
 	IMAGE_DIR=/tmp/mocker-images
 
-WORKDIR /usr/src/app
+WORKDIR /usr/src/app/packages/backend
 
 # Copy backend build artifacts. Runtime-generated images are written under /tmp.
 COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/dist ./dist
 COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/release-metadata.json ./release-metadata.json
-COPY --from=build --chown=65532:65532 /usr/src/app/node_modules ./node_modules
+COPY --from=build --chown=65532:65532 /usr/src/app/packages/backend/node_modules ./node_modules
+COPY --from=build --chown=65532:65532 /usr/src/app/node_modules /usr/src/app/node_modules
 
 EXPOSE 80
 
-CMD ["/usr/src/app/dist/index.js"]
+CMD ["/usr/src/app/packages/backend/dist/index.js"]
