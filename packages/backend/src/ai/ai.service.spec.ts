@@ -141,6 +141,66 @@ describe('AIService', () => {
   });
 
   describe('generateImage', () => {
+    it('keeps the request inflight until Slack delivery completes', async () => {
+      (aiService.gemini.models.generateContent as Mock).mockResolvedValue({
+        candidates: [{ content: { parts: [{ inlineData: { data: 'aW1hZ2U=' } }] } }],
+      });
+      vi.spyOn(aiService, 'writeToDiskAndReturnUrl').mockResolvedValue('https://example.com/images/test.png');
+      let finishDelivery!: () => void;
+      (aiService.webService.sendMessage as Mock).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finishDelivery = () => resolve({ ok: true });
+          }),
+      );
+
+      const generation = aiService.generateImage('U1', 'T1', 'C1', 'draw cat');
+      await vi.waitFor(() => expect(aiService.webService.sendMessage).toHaveBeenCalled());
+      const removedBeforeDelivery = (aiService.redis.removeInflight as Mock).mock.calls.length;
+      finishDelivery();
+      await generation;
+
+      expect(removedBeforeDelivery).toBe(0);
+      expect(aiService.redis.removeInflight).toHaveBeenCalledExactlyOnceWith('U1', 'T1');
+    });
+
+    it('refunds failed Gemini requests and clears the inflight lock', async () => {
+      (aiService.gemini.models.generateContent as Mock).mockRejectedValue(new Error('Gemini unavailable'));
+
+      await expect(aiService.generateImage('U1', 'T1', 'C1', 'draw cat')).rejects.toThrow('Gemini unavailable');
+
+      expect(aiService.redis.decrementDailyRequests).toHaveBeenCalledExactlyOnceWith('U1', 'T1');
+      expect(aiService.redis.removeInflight).toHaveBeenCalledExactlyOnceWith('U1', 'T1');
+    });
+
+    it('refunds disk write failures and clears the inflight lock', async () => {
+      (aiService.gemini.models.generateContent as Mock).mockResolvedValue({
+        candidates: [{ content: { parts: [{ inlineData: { data: 'aW1hZ2U=' } }] } }],
+      });
+      vi.spyOn(aiService, 'writeToDiskAndReturnUrl').mockRejectedValue(new Error('EACCES'));
+
+      await expect(aiService.generateImage('U1', 'T1', 'C1', 'draw cat')).rejects.toThrow('EACCES');
+
+      expect(aiService.redis.decrementDailyRequests).toHaveBeenCalledExactlyOnceWith('U1', 'T1');
+      expect(aiService.redis.removeInflight).toHaveBeenCalledExactlyOnceWith('U1', 'T1');
+      expect(aiService.webService.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('handles channel and fallback DM failures without an unhandled rejection or duplicate refund', async () => {
+      (aiService.gemini.models.generateContent as Mock).mockResolvedValue({
+        candidates: [{ content: { parts: [{ inlineData: { data: 'aW1hZ2U=' } }] } }],
+      });
+      vi.spyOn(aiService, 'writeToDiskAndReturnUrl').mockResolvedValue('https://example.com/images/test.png');
+      (aiService.webService.sendMessage as Mock).mockRejectedValue(new Error('channel_not_found'));
+
+      await expect(aiService.generateImage('U1', 'T1', 'C1', 'draw cat')).resolves.toBeUndefined();
+
+      expect(aiService.webService.sendMessage).toHaveBeenCalledTimes(2);
+      expect(aiService.redis.decrementDailyRequests).toHaveBeenCalledExactlyOnceWith('U1', 'T1');
+      expect(aiService.redis.removeInflight).toHaveBeenCalledExactlyOnceWith('U1', 'T1');
+      expect(aiService.aiServiceLogger.error).toHaveBeenCalled();
+    });
+
     it('sends generated image after writing it to disk', async () => {
       const generateContentSpy = aiService.gemini.models.generateContent as Mock;
       generateContentSpy.mockResolvedValue({
@@ -154,7 +214,7 @@ describe('AIService', () => {
       });
 
       const diskSpy = vi.spyOn(aiService, 'writeToDiskAndReturnUrl').mockResolvedValue('https://muzzle.lol/image.png');
-      const sendSpy = vi.spyOn(aiService, 'sendImage').mockImplementation();
+      const sendSpy = vi.spyOn(aiService, 'sendImage').mockResolvedValue();
 
       await aiService.generateImage('U1', 'T1', 'C1', 'draw cat');
 
@@ -171,6 +231,8 @@ describe('AIService', () => {
 
       await expect(aiService.generateImage('U1', 'T1', 'C1', 'draw cat')).rejects.toThrow();
       expect(errSpy).toHaveBeenCalled();
+      expect(aiService.redis.decrementDailyRequests).toHaveBeenCalledExactlyOnceWith('U1', 'T1');
+      expect(aiService.redis.removeInflight).toHaveBeenCalledExactlyOnceWith('U1', 'T1');
     });
   });
 
@@ -187,6 +249,7 @@ describe('AIService', () => {
         const filename = imageUrl.split('/').pop();
 
         expect(filename).toBeDefined();
+        expect(imageUrl).toBe(`https://api.muzzle.lol/images/${filename}`);
         expect(fs.existsSync(imageDir)).toBe(true);
         expect(fs.readFileSync(path.join(imageDir, filename as string))).toEqual(Buffer.from('png-bytes'));
       } finally {
@@ -196,6 +259,21 @@ describe('AIService', () => {
           process.env.IMAGE_DIR = originalImageDir;
         }
 
+        fs.rmSync(tempRoot, { recursive: true, force: true });
+      }
+    });
+
+    it('uses the configured public image URL without duplicate slashes', async () => {
+      const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-service-'));
+      vi.stubEnv('IMAGE_DIR', tempRoot);
+      vi.stubEnv('IMAGE_BASE_URL', 'https://example.com/images/');
+
+      try {
+        const imageUrl = await aiService.writeToDiskAndReturnUrl(Buffer.from('png-bytes').toString('base64'));
+
+        expect(imageUrl).toMatch(/^https:\/\/example\.com\/images\/[^/]+\.png$/);
+      } finally {
+        vi.unstubAllEnvs();
         fs.rmSync(tempRoot, { recursive: true, force: true });
       }
     });
@@ -824,9 +902,7 @@ describe('AIService', () => {
       const sendMock = aiService.webService.sendMessage as Mock;
       sendMock.mockRejectedValueOnce(new Error('slack fail')).mockResolvedValueOnce({ ok: true });
 
-      aiService.sendImage('https://img', 'U1', 'T1', 'C1', 'draw cat');
-      await Promise.resolve();
-      await Promise.resolve();
+      await aiService.sendImage('https://img', 'U1', 'T1', 'C1', 'draw cat');
 
       expect(sendMock).toHaveBeenCalled();
       expect(aiService.redis.decrementDailyRequests).toHaveBeenCalledWith('U1', 'T1');

@@ -9,6 +9,7 @@ import { rateLimit } from 'express-rate-limit';
 import { createConnection, getConnectionOptions } from 'typeorm';
 import type { RequestWithRawBody } from './shared/models/express/RequestWithRawBody';
 import { aiController } from './ai/ai.controller';
+import { imageController } from './ai/image.controller';
 import { clapController } from './clap/clap.controller';
 import { confessionController } from './confession/confession.controller';
 import { counterController } from './counter/counter.controller';
@@ -101,6 +102,7 @@ app.use('/dashboard', searchCors, searchRateLimit, authMiddleware, dashboardCont
 app.use('/calendar', searchCors, searchRateLimit, authMiddleware, calendarController);
 app.use('/fantasy', searchCors, searchRateLimit, authMiddleware, fantasyController);
 app.use('/health', healthController);
+app.use('/images', imageController);
 app.use(signatureVerificationMiddleware);
 app.use('/ai', aiController);
 app.use('/clap', clapController);

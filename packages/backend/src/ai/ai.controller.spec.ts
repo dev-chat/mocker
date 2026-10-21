@@ -68,6 +68,18 @@ describe('aiController', () => {
     expect(generateImage).toHaveBeenCalledWith('U1', 'T1', 'C1', 'cat');
   });
 
+  it('acknowledges /image and reports asynchronous generation failures to the requesting user', async () => {
+    generateImage.mockRejectedValueOnce(new Error('Gemini returned no image data'));
+
+    const response = await request(app)
+      .post('/image')
+      .send({ user_id: 'U1', team_id: 'T1', channel_id: 'C1', text: 'cat' })
+      .expect(200);
+
+    expect(response.text).toContain('Processing your request');
+    expect(sendEphemeral).toHaveBeenCalledWith('C1', '`Sorry! Your request for cat failed. Please try again.`', 'U1');
+  });
+
   it('handles /prompt-with-history', async () => {
     const body = { user_id: 'U1', team_id: 'T1', channel_id: 'C1', text: 'sum' };
     await request(app).post('/prompt-with-history').send(body).expect(200);

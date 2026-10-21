@@ -11,6 +11,7 @@ import type { KnownBlock } from '@slack/web-api';
 import { WebService } from '../shared/services/web/web.service';
 import {
   CORPO_SPEAK_INSTRUCTIONS,
+  DEFAULT_IMAGE_DIR,
   GENERAL_TEXT_INSTRUCTIONS,
   MOONBEAM_SYSTEM_INSTRUCTIONS,
   getHistoryInstructions,
@@ -107,7 +108,6 @@ const ensureSentenceCaseAndPunctuation = (text: string): string => {
   return `${capitalized}.`;
 };
 
-const DEFAULT_IMAGE_DIR = path.join('/tmp', 'mocker-images');
 const execFileAsync = promisify(execFile);
 const RELEASE_METADATA_PATHS = [
   path.resolve(process.cwd(), 'release-metadata.json'),
@@ -239,7 +239,8 @@ export class AIService {
     try {
       await fs.promises.mkdir(dir, { recursive: true });
       await fs.promises.writeFile(filePath, imageBytes);
-      return `https://muzzle.lol/images/${filename}`;
+      const baseUrl = process.env.IMAGE_BASE_URL || 'https://api.muzzle.lol/images';
+      return `${baseUrl.replace(/\/+$/, '')}/${filename}`;
     } catch (error) {
       logError(this.aiServiceLogger, 'Failed to write AI image to disk', error, {
         imageDirectory: dir,
@@ -385,12 +386,10 @@ export class AIService {
         return imageBytes.toString('base64');
       })
       .then(async (x) => {
-        await this.redis.removeInflight(userId, teamId);
-
         if (x) {
           return this.writeToDiskAndReturnUrl(x);
         } else {
-          const error = new Error(`No b64_json was returned for prompt: ${text}`);
+          const error = new Error('Gemini returned no image data');
           logError(this.aiServiceLogger, 'Gemini image generation returned no image data', error, {
             userId,
             teamId,
@@ -401,7 +400,7 @@ export class AIService {
         }
       })
       .then((imageUrl) => {
-        this.sendImage(imageUrl, userId, teamId, channel, text);
+        return this.sendImage(imageUrl, userId, teamId, channel, text);
       })
       .catch(async (e) => {
         logError(this.aiServiceLogger, 'Failed to generate AI image response', e, {
@@ -410,9 +409,11 @@ export class AIService {
           channelId: channel,
           prompt: text,
         });
-        await this.redis.removeInflight(userId, teamId);
         await this.redis.decrementDailyRequests(userId, teamId);
         throw e;
+      })
+      .finally(async () => {
+        await this.redis.removeInflight(userId, teamId);
       });
   }
 
@@ -720,7 +721,13 @@ export class AIService {
     };
   }
 
-  sendImage(image: string | undefined, userId: string, teamId: string, channel: string, text: string): void {
+  async sendImage(
+    image: string | undefined,
+    userId: string,
+    teamId: string,
+    channel: string,
+    text: string,
+  ): Promise<void> {
     if (image) {
       const blocks: KnownBlock[] = [
         {
@@ -738,18 +745,22 @@ export class AIService {
           ],
         },
       ];
-      this.webService.sendMessage(channel, text, blocks).catch((e) => {
+      await this.webService.sendMessage(channel, text, blocks).catch(async (e) => {
         logError(this.aiServiceLogger, 'Failed to send generated AI image to Slack', e, {
           userId,
           teamId,
           channelId: channel,
           prompt: text,
         });
-        void this.decrementDaiyRequests(userId, teamId);
-        void this.webService.sendMessage(
-          userId,
-          'Sorry, unable to send the requested image to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
-        );
+        await this.decrementDaiyRequests(userId, teamId);
+        await this.webService
+          .sendMessage(
+            userId,
+            'Sorry, unable to send the requested image to Slack. You have been credited for your Moon Token. Perhaps you were trying to send in a private channel? If so, invite @MoonBeam and try again.',
+          )
+          .catch((error) => {
+            logError(this.aiServiceLogger, 'Failed to notify user of AI image delivery failure', error, { userId });
+          });
       });
     }
   }

@@ -56,6 +56,7 @@ Add these slash commands with their request URLs:
 - `/counter` → `<backend-url>/counter`
 - `/repstats` → `<backend-url>/rep/get`
 - `/walkie` → `<backend-url>/walkie`
+- `/image` → `<backend-url>/ai/image`
 
 **Important:** Check `Escape Channels, users and links sent to your app` for all commands.
 
@@ -186,8 +187,58 @@ NODE_ENV=development
 
 # External APIs (optional, for AI features)
 OPENAI_API_KEY=sk-your-openai-key
+GOOGLE_GEMINI_API_KEY=your-gemini-api-key
 GOOGLE_TRANSLATE_API_KEY=your-google-translate-key
+IMAGE_DIR=/tmp/mocker-images
+IMAGE_BASE_URL=https://api.muzzle.lol/images
 ```
+
+#### `/image` troubleshooting and diagnosis
+
+`/image` passes suppression, prompt-length, daily-limit, and in-flight checks before
+`POST /ai/image` acknowledges the request. The backend calls Gemini's
+`gemini-3-pro-image-preview` with image output enabled, writes the returned inline
+image data to `IMAGE_DIR`, and posts an image block through Slack's `chat.postMessage`.
+`GOOGLE_GEMINI_API_KEY` is required for image generation; an OpenAI or Google Translate
+key is not a substitute.
+
+The investigation reproduced these defects with mocked Gemini/Slack responses and real
+temporary-file writes (no paid API calls or workspace messages):
+
+- **Image hosting mismatch:** files were written to `/tmp/mocker-images` but the returned
+  URL was hard-coded to `https://muzzle.lol/images/...`. The backend had no image-serving
+  route; any separate reverse-proxy mapping was outside the repository and unverified.
+  The backend now serves generated PNG filenames at `GET /images/<uuid>.png`, before
+  Slack signature verification so Slack can fetch them. `IMAGE_BASE_URL` defaults to
+  `https://api.muzzle.lol/images`; set it to your publicly reachable HTTPS backend
+  (or tunnel) image URL. This also applies to Moonbeam relaunch images.
+- **Request lifecycle:** a deferred Slack response reproduced the lock being removed
+  before delivery, and an empty Gemini response removed it twice. Delivery is now awaited
+  and the lock is released once, after disk writing and Slack delivery/fallback finish.
+- **Detached error handling:** a rejected channel post followed by a rejected fallback DM
+  could produce an unhandled rejection. Both are now awaited and logged; a failed channel
+  post refunds the daily request count once.
+
+Before the fixes, regression output included `AssertionError: expected 1 to be +0`
+for premature lock removal and `Number of calls: 2` for empty-response lock cleanup.
+Empty Gemini responses previously raised `No b64_json was returned for prompt: ...`
+(an obsolete OpenAI field name); they now raise `Gemini returned no image data`.
+Relevant structured log messages are `Gemini image generation returned no image data`,
+`Failed to write AI image to disk`, and `Failed to send generated AI image to Slack`.
+No production API error logs or stack traces were available during this investigation;
+key validity, billing/quota, model availability, and reverse-proxy configuration still
+require verification in the deployed environment. The inspected PR CI run required
+approval and had no job logs, rather than a failing build.
+
+For deployment, ensure `IMAGE_DIR` is writable by the backend and that the public
+`IMAGE_BASE_URL` routes to that backend's `/images` endpoint. Fetch a generated URL
+without authentication and confirm a `200` response with `Content-Type: image/png`.
+Generated images are public to anyone holding their random URL; do not put sensitive
+files in this directory. `/tmp` is ephemeral, so use persistent/shared storage if images
+must survive restarts or be fetched across multiple replicas, and arrange file retention
+cleanup. If Slack rejects a channel post, check bot scopes and invite Moonbeam to private
+channels. Inspect Gemini errors for key, quota, model access, or safety-blocked output
+rather than assuming all failures are channel-permission problems.
 
 #### Production rollout for dashboard query indexes
 

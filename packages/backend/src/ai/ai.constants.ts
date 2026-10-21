@@ -1,5 +1,6 @@
 export const GPT_MODEL = 'gpt-6-luna';
 export const GPT_IMAGE_MODEL = 'dall-e-3';
+export const DEFAULT_IMAGE_DIR = '/tmp/mocker-images';
 
 export const MAX_AI_REQUESTS_PER_DAY = 5;
 export const GENERAL_TEXT_INSTRUCTIONS = 'Generate a response with a focus on being helpful and succinct.';
