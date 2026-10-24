@@ -170,6 +170,11 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
+            --pull \
             -f packages/backend/Dockerfile \
             -t muzzle:ci \
             .
+      - name: Verify Brotli support in runtime image
+        run: |
+          docker run --rm --entrypoint=node muzzle:ci -e \
+            "const zlib = require('node:zlib'); const input = Buffer.from('brotli-smoke-test'); const compressed = zlib.brotliCompressSync(input); if (!zlib.brotliDecompressSync(compressed).equals(input)) process.exit(1)"
