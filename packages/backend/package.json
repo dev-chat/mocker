@@ -4,7 +4,7 @@
   "description": "Mock your friends - Backend API",
   "main": "dist/index.js",
   "engines": {
-    "node": ">=24.14.1 <25"
+    "node": ">=24.22.1 <25"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
