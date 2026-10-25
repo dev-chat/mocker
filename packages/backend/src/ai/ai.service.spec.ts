@@ -175,6 +175,30 @@ describe('AIService', () => {
   });
 
   describe('writeToDiskAndReturnUrl', () => {
+    it('uses unique UUID v4 PNG filenames and preserves image bytes and public URLs', async () => {
+      vi.stubEnv('IMAGE_DIR', path.join(process.cwd(), 'test-images'));
+      const mkdir = vi.spyOn(fs.promises, 'mkdir').mockResolvedValue(undefined);
+      const writeFile = vi.spyOn(fs.promises, 'writeFile').mockResolvedValue(undefined);
+      const bytes = Buffer.from('png-bytes');
+
+      try {
+        const firstUrl = await aiService.writeToDiskAndReturnUrl(`data:image/png;base64,${bytes.toString('base64')}`);
+        const secondUrl = await aiService.writeToDiskAndReturnUrl(bytes.toString('base64'));
+        const uuidPngUrl =
+          /^https:\/\/muzzle\.lol\/images\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.png$/;
+
+        expect(firstUrl).toMatch(uuidPngUrl);
+        expect(secondUrl).toMatch(uuidPngUrl);
+        expect(firstUrl).not.toBe(secondUrl);
+        expect(mkdir).toHaveBeenCalledWith(process.env.IMAGE_DIR, { recursive: true });
+        for (const url of [firstUrl, secondUrl]) {
+          expect(writeFile).toHaveBeenCalledWith(path.join(process.env.IMAGE_DIR, url.split('/').pop()!), bytes);
+        }
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
+
     it('creates the image directory before writing the file', async () => {
       const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-service-'));
       const imageDir = path.join(tempRoot, 'nested', 'images');

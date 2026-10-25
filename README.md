@@ -247,6 +247,29 @@ npm run test:watch -w @mocker/backend
 npm run test:coverage -w @mocker/backend
 ```
 
+The unit suite mocks TypeORM. To also exercise the real MySQL driver, build the
+backend and run the optional database compatibility test against an **isolated,
+disposable** MySQL/MariaDB server with a local socket and a passwordless `root`
+test account:
+
+```bash
+npm run build:backend
+MOCKER_TEST_MYSQL_SOCKET=/absolute/path/to/disposable/mysql.sock npm run test:db -w @mocker/backend
+```
+
+This test creates a randomly named `mocker_test_*` database and drops it afterward.
+It does not load `.env` or use the application's database configuration. Never
+point it at an existing application database server.
+
+Dependency maintenance keeps UUID on CommonJS-compatible v11 (with bundled
+types), rather than the ESM-only newer majors. The narrowly scoped
+`postcss-selector-parser` overrides give Tailwind 3 and `postcss-nested` the
+patched v7 parser without migrating the application to Tailwind 4. The v7
+insertion-iteration change is covered by a real Tailwind compilation regression
+test for nested components and responsive, dark, group, and arbitrary variants.
+Zod resolves within the existing v3-or-v4 peer ranges of OpenAI, React Hooks ESLint,
+and `zod-validation-error`; no v3-only consumer is overridden.
+
 ### 6. Linting & Formatting
 
 ```bash
