@@ -7,7 +7,7 @@ import request from 'supertest';
 import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 
-describe('HTTP dependency compatibility', () => {
+describe('HTTP dependency compatibility in an isolated Express fixture', () => {
   const app = express();
   let server: Server;
   let baseUrl: string;
@@ -62,7 +62,7 @@ describe('HTTP dependency compatibility', () => {
       .expect(413);
   });
 
-  it('retains proxy-aware, per-client limits, standard headers, and IPv6 subnet grouping', async () => {
+  it('uses explicitly configured proxy trust for per-client limits, standard headers, and IPv6 subnet grouping', async () => {
     const first = await request(app).get('/limited').set('X-Forwarded-For', '192.0.2.10').expect(200);
     expect(first.body.ip).toBe('192.0.2.10');
     expect(first.headers['ratelimit-limit']).toBe('2');
