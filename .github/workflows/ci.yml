@@ -23,11 +23,15 @@ jobs:
         with:
           filters: |
             backend:
+              - '.github/workflows/ci.yml'
+              - '.github/actions/setup/**'
               - 'packages/backend/**'
               - 'package.json'
               - 'package-lock.json'
               - 'tsconfig.base.json'
             frontend:
+              - '.github/workflows/ci.yml'
+              - '.github/actions/setup/**'
               - 'packages/frontend/**'
               - 'package.json'
               - 'package-lock.json'
@@ -48,7 +52,10 @@ jobs:
           node-version: '24.22.1'
           cache: 'npm'
       - run: npm ci
-      - run: tar -czf node-modules.tar.gz node_modules
+      - name: Archive root and workspace dependencies
+        run: |
+          find . -type d -name node_modules -prune -print0 |
+            tar --null -czf node-modules.tar.gz --files-from=-
       - uses: actions/upload-artifact@v4
         with:
           name: node-modules
