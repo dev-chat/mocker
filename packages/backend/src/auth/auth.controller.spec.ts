@@ -1,7 +1,9 @@
 import { vi } from 'vitest';
+import { createHash } from 'node:crypto';
 import express from 'express';
 import request from 'supertest';
 import Axios from 'axios';
+import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 
 vi.mock('axios');
 vi.mock('../shared/utils/session-token', async () => ({
@@ -12,6 +14,8 @@ import { authController } from './auth.controller';
 
 const TEST_STATE = 'test-state-value';
 const STATE_COOKIE = `oauth_state=${TEST_STATE}`;
+const AH_VERIFIER = 'A'.repeat(43);
+const AH_CHALLENGE = createHash('sha256').update(AH_VERIFIER).digest('base64url');
 
 describe('authController', () => {
   const app = express();
@@ -72,9 +76,159 @@ describe('authController', () => {
       const res = await request(app).get('/slack');
       expect(res.status).toBe(500);
     });
+
+    it('requires a well-formed challenge for AH login', async () => {
+      expect((await request(app).get('/slack').query({ app: 'ah' })).status).toBe(400);
+      expect((await request(app).get('/slack').query({ app: 'ah', challenge: 'invalid' })).status).toBe(400);
+    });
   });
 
   describe('GET /slack/callback', () => {
+    async function completeAhLogin(): Promise<string> {
+      const start = await request(app).get('/slack').query({ app: 'ah', challenge: AH_CHALLENGE });
+      const state = new URL(start.headers.location).searchParams.get('state');
+      const cookies = (start.headers['set-cookie'] as unknown as string[]).map((cookie) => cookie.split(';')[0]);
+      expect(cookies.some((cookie) => cookie === `oauth_ah_state=${state}.${AH_CHALLENGE}`)).toBe(true);
+      (Axios.post as Mock).mockResolvedValue({ data: { ok: true, access_token: 'xoxp-token' } });
+      (Axios.get as Mock).mockResolvedValue({
+        data: { ok: true, 'https://slack.com/user_id': 'U123', 'https://slack.com/team_id': 'T123' },
+      });
+      const callback = await request(app)
+        .get('/slack/callback')
+        .set('Cookie', cookies)
+        .query({ code: 'valid-code', state });
+      expect(callback.status).toBe(302);
+      const redirect = new URL(callback.headers.location);
+      expect(redirect.origin).toBe('https://ah.muzzle.lol');
+      expect(redirect.hash).not.toContain('token=');
+      expect(
+        (callback.headers['set-cookie'] as unknown as string[]).some((c) => c.startsWith('oauth_ah_state=;')),
+      ).toBe(true);
+      const code = new URLSearchParams(redirect.hash.slice(1)).get('code');
+      expect(code).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      return code!;
+    }
+
+    it('returns a one-use AH exchange code instead of a Muzzle bearer token', async () => {
+      const code = await completeAhLogin();
+      const result = await request(app).post('/ah/exchange').send({ code, verifier: AH_VERIFIER });
+      expect(result.status).toBe(200);
+      expect(result.headers['cache-control']).toBe('no-store');
+      expect(result.body).toEqual({ userId: 'U123', teamId: 'T123', expiresAt: expect.any(Number) });
+      expect((await request(app).post('/ah/exchange').send({ code, verifier: AH_VERIFIER })).status).toBe(401);
+    });
+
+    it('stores only a hash of the code with a 60-second Redis TTL', async () => {
+      const spy = vi.spyOn(RedisPersistenceService.prototype, 'setValueWithExpire');
+      try {
+        const code = await completeAhLogin();
+        expect(spy).toHaveBeenCalledWith(
+          `auth:ah:exchange:${createHash('sha256').update(code).digest('hex')}`,
+          expect.any(String),
+          'PX',
+          60_000,
+        );
+        expect(JSON.stringify(spy.mock.calls)).not.toContain(code);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('allows exactly one of two concurrent exchanges', async () => {
+      const code = await completeAhLogin();
+      const results = await Promise.all([
+        request(app).post('/ah/exchange').send({ code, verifier: AH_VERIFIER }),
+        request(app).post('/ah/exchange').send({ code, verifier: AH_VERIFIER }),
+      ]);
+      expect(results.map((result) => result.status).sort()).toEqual([200, 401]);
+    });
+
+    it('fails closed when Redis cannot store or consume an exchange', async () => {
+      const code = await completeAhLogin();
+      const consume = vi
+        .spyOn(RedisPersistenceService.prototype, 'consumeValue')
+        .mockRejectedValue(new Error('offline'));
+      try {
+        const result = await request(app).post('/ah/exchange').send({ code, verifier: AH_VERIFIER });
+        expect(result.status).toBe(503);
+        expect(JSON.stringify(result.body)).not.toContain('offline');
+      } finally {
+        consume.mockRestore();
+      }
+
+      const store = vi
+        .spyOn(RedisPersistenceService.prototype, 'setValueWithExpire')
+        .mockRejectedValue(new Error('offline'));
+      try {
+        const start = await request(app).get('/slack').query({ app: 'ah', challenge: AH_CHALLENGE });
+        const state = new URL(start.headers.location).searchParams.get('state');
+        const cookies = (start.headers['set-cookie'] as unknown as string[]).map((cookie) => cookie.split(';')[0]);
+        const callback = await request(app)
+          .get('/slack/callback')
+          .set('Cookie', cookies)
+          .query({ code: 'valid-code', state });
+        expect(callback.headers.location).toBe('https://ah.muzzle.lol/?auth_error=server_error');
+      } finally {
+        store.mockRestore();
+      }
+    });
+
+    it('rejects malformed stored exchange data', async () => {
+      const consume = vi.spyOn(RedisPersistenceService.prototype, 'consumeValue').mockResolvedValue('{bad json');
+      try {
+        const result = await request(app)
+          .post('/ah/exchange')
+          .send({ code: 'C'.repeat(43), verifier: AH_VERIFIER });
+        expect(result.status).toBe(401);
+      } finally {
+        consume.mockRestore();
+      }
+    });
+
+    it('rejects a wrong verifier and consumes the exchange code', async () => {
+      const code = await completeAhLogin();
+      expect(
+        (
+          await request(app)
+            .post('/ah/exchange')
+            .send({ code, verifier: 'B'.repeat(43) })
+        ).status,
+      ).toBe(401);
+      expect((await request(app).post('/ah/exchange').send({ code, verifier: AH_VERIFIER })).status).toBe(401);
+    });
+
+    it('rejects a missing or malformed verifier', async () => {
+      const code = await completeAhLogin();
+      expect((await request(app).post('/ah/exchange').send({ code })).status).toBe(400);
+      expect((await request(app).post('/ah/exchange').send({ code, verifier: 'invalid' })).status).toBe(400);
+    });
+
+    it('rejects an expired AH exchange code', async () => {
+      const code = await completeAhLogin();
+      const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 61_000);
+      try {
+        expect((await request(app).post('/ah/exchange').send({ code, verifier: AH_VERIFIER })).status).toBe(401);
+      } finally {
+        clock.mockRestore();
+      }
+    });
+
+    it('does not send the AH code to an arbitrary destination', async () => {
+      const start = await request(app).get('/slack').query({ app: 'https://evil.example' });
+      const cookies = start.headers['set-cookie'] as unknown as string[];
+      expect(cookies.some((cookie) => cookie.startsWith('oauth_ah_state=;'))).toBe(true);
+      expect(cookies.some((cookie) => /evil\.example/.test(cookie))).toBe(false);
+    });
+
+    it('does not issue an AH code when the OAuth state is incorrect', async () => {
+      const res = await request(app)
+        .get('/slack/callback')
+        .set('Cookie', `${STATE_COOKIE}; oauth_ah_state=${TEST_STATE}.${AH_CHALLENGE}`)
+        .query({ code: 'valid-code', state: 'wrong' });
+      expect(res.headers.location).toBe('https://ah.muzzle.lol/?auth_error=access_denied');
+      expect(Axios.post).not.toHaveBeenCalled();
+    });
+
     it('returns 500 when SEARCH_FRONTEND_URL is not set', async () => {
       delete process.env.SEARCH_FRONTEND_URL;
       const res = await request(app)

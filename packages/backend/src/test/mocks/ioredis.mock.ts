@@ -20,6 +20,12 @@ export class Redis {
     return Promise.resolve(this.getEntry(key)?.value ?? null);
   }
 
+  eval(_script: string, _numberOfKeys: number, key: string): Promise<string | null> {
+    const value = this.getEntry(key)?.value ?? null;
+    this.store.delete(key);
+    return Promise.resolve(value);
+  }
+
   set(key: string, value: string | number, mode?: string): Promise<string> {
     const expiresAt = mode === 'KEEPTTL' ? (this.getEntry(key)?.expiresAt ?? null) : null;
     this.store.set(key, { value: String(value), expiresAt });
