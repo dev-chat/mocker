@@ -26,6 +26,17 @@ export class RedisPersistenceService {
     return RedisPersistenceService.redis.get(key);
   }
 
+  // Atomic across processes, including Redis versions before GETDEL.
+  async consumeValue(key: string): Promise<string | null> {
+    const result: unknown = await RedisPersistenceService.redis.eval(
+      "local value = redis.call('GET', KEYS[1]); if value then redis.call('DEL', KEYS[1]); end; return value",
+      1,
+      key,
+    );
+    if (typeof result === 'string' || result === null) return result;
+    throw new Error('Unexpected Redis consume result');
+  }
+
   setValue(key: string, value: string | number): Promise<string | null> {
     return RedisPersistenceService.redis.set(key, value, 'KEEPTTL');
   }

@@ -6,6 +6,7 @@ import { createSessionToken } from '../shared/utils/session-token';
 import { logError } from '../shared/logger/error-logging';
 import { logger } from '../shared/logger/logger';
 import { TOKEN_TTL_MS } from '../shared/utils/session-token.const';
+import { RedisPersistenceService } from '../shared/services/redis.persistence.service';
 import {
   SLACK_AUTH_URL,
   SLACK_TOKEN_URL,
@@ -19,27 +20,61 @@ const authLogger = logger.child({ module: 'AuthController' });
 const AH_FRONTEND_URL = 'https://ah.muzzle.lol/';
 const AH_STATE_COOKIE = 'oauth_ah_state';
 const AH_EXCHANGE_TTL_MS = 60_000;
-const AH_MAX_EXCHANGES = 1_000;
-const ahExchanges = new Map<
-  string,
-  { userId: string; teamId: string; expiresAt: number; codeExpiresAt: number; challenge: string }
->();
+type AhExchange = { userId: string; teamId: string; expiresAt: number; codeExpiresAt: number; challenge: string };
 
-function createAhExchange(userId: string, teamId: string, challenge: string): string | null {
+function exchangeKey(code: string): string {
+  return `auth:ah:exchange:${crypto.createHash('sha256').update(code).digest('hex')}`;
+}
+
+async function createAhExchange(userId: string, teamId: string, challenge: string): Promise<string> {
   const now = Date.now();
-  for (const [code, exchange] of ahExchanges) {
-    if (exchange.codeExpiresAt <= now) ahExchanges.delete(code);
-  }
-  if (ahExchanges.size >= AH_MAX_EXCHANGES) return null;
   const code = crypto.randomBytes(32).toString('base64url');
-  ahExchanges.set(code, {
+  const exchange: AhExchange = {
     userId,
     teamId,
     expiresAt: now + TOKEN_TTL_MS,
     codeExpiresAt: now + AH_EXCHANGE_TTL_MS,
     challenge,
-  });
+  };
+  const stored = await RedisPersistenceService.getInstance().setValueWithExpire(
+    exchangeKey(code),
+    JSON.stringify(exchange),
+    'PX',
+    AH_EXCHANGE_TTL_MS,
+  );
+  if (stored !== 'OK') throw new Error('AH exchange storage unavailable');
   return code;
+}
+
+function parseAhExchange(value: string | null): AhExchange | null {
+  if (!value) return null;
+  try {
+    const exchange: unknown = JSON.parse(value);
+    if (!exchange || typeof exchange !== 'object') return null;
+    const userId: unknown = Reflect.get(exchange, 'userId');
+    const teamId: unknown = Reflect.get(exchange, 'teamId');
+    const expiresAt: unknown = Reflect.get(exchange, 'expiresAt');
+    const codeExpiresAt: unknown = Reflect.get(exchange, 'codeExpiresAt');
+    const challenge: unknown = Reflect.get(exchange, 'challenge');
+    if (
+      typeof userId !== 'string' ||
+      !userId ||
+      typeof teamId !== 'string' ||
+      !teamId ||
+      typeof expiresAt !== 'number' ||
+      !Number.isFinite(expiresAt) ||
+      expiresAt <= Date.now() ||
+      typeof codeExpiresAt !== 'number' ||
+      !Number.isFinite(codeExpiresAt) ||
+      codeExpiresAt <= Date.now() ||
+      typeof challenge !== 'string' ||
+      !/^[A-Za-z0-9_-]{43}$/.test(challenge)
+    )
+      return null;
+    return { userId, teamId, expiresAt, codeExpiresAt, challenge };
+  } catch {
+    return null;
+  }
 }
 
 // AH exchanges a short-lived one-time code server-to-server. It never receives
@@ -57,18 +92,19 @@ authController.post('/ah/exchange', (req, res) => {
     res.status(400).json({ error: 'Invalid exchange code or verifier' });
     return;
   }
-  const exchange = ahExchanges.get(code);
-  ahExchanges.delete(code);
-  const actualChallenge = crypto.createHash('sha256').update(verifier).digest('base64url');
-  if (
-    !exchange ||
-    exchange.codeExpiresAt <= Date.now() ||
-    !crypto.timingSafeEqual(Buffer.from(actualChallenge), Buffer.from(exchange.challenge))
-  ) {
-    res.status(401).json({ error: 'Invalid or expired exchange code' });
-    return;
-  }
-  res.json({ userId: exchange.userId, teamId: exchange.teamId, expiresAt: exchange.expiresAt });
+  void (async () => {
+    const stored = await RedisPersistenceService.getInstance().consumeValue(exchangeKey(code));
+    const exchange = parseAhExchange(stored);
+    const actualChallenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+    if (!exchange || !crypto.timingSafeEqual(Buffer.from(actualChallenge), Buffer.from(exchange.challenge))) {
+      res.status(401).json({ error: 'Invalid or expired exchange code' });
+      return;
+    }
+    res.json({ userId: exchange.userId, teamId: exchange.teamId, expiresAt: exchange.expiresAt });
+  })().catch(() => {
+    authLogger.error('AH exchange storage unavailable');
+    res.status(503).json({ error: 'Sign-in temporarily unavailable' });
+  });
 });
 
 interface SlackOpenIdTokenResponse {
@@ -219,9 +255,12 @@ authController.get('/slack/callback', (req, res) => {
     }
 
     if (isAh) {
-      const exchangeCode = createAhExchange(userId, teamId, challenge);
-      if (!exchangeCode) {
-        res.redirect(`${frontendUrl}?auth_error=server_busy`);
+      let exchangeCode: string;
+      try {
+        exchangeCode = await createAhExchange(userId, teamId, challenge);
+      } catch {
+        authLogger.error('AH exchange storage unavailable');
+        res.redirect(`${frontendUrl}?auth_error=server_error`);
         return;
       }
       res.redirect(`${frontendUrl}#code=${exchangeCode}`);
